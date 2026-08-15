@@ -3,105 +3,76 @@
 // Electron's globalShortcut cannot do this: on Windows it maps to
 // RegisterHotKey which only accepts ONE non-modifier key, so a
 // "CommandOrControl+D+S" accelerator is silently reduced to Ctrl+S (the last
-// plain key wins) and Ctrl+S alone also triggers. We therefore install a
-// low-level keyboard hook (WH_KEYBOARD_LL) through koffi (a pure N-API FFI
-// already present in the dependency tree) and detect the exact Ctrl+D+S
-// chord ourselves — Ctrl+S alone is passed through untouched.
+// plain key wins) and Ctrl+S alone also triggers.
+//
+// A WH_KEYBOARD_LL hook would also work, but its callback is only dispatched
+// while the installing thread pumps Windows messages — the Electron main
+// process's Node thread has no message pump, so the hook never fires. Instead
+// we poll GetAsyncKeyState: it reads the current global keyboard state (no
+// message loop needed, works from any foreground app) and we fire on the
+// rising edge of the exact Ctrl+D+S chord. Ctrl+S alone never matches.
 
 "use strict";
 
 const koffi = require("koffi");
 
-const WH_KEYBOARD_LL = 13;
-const WM_KEYDOWN = 0x0100;
-const WM_SYSKEYDOWN = 0x0104;
 const VK_CONTROL = 0x11;
 const VK_D = 0x44;
 const VK_S = 0x53;
 const KEY_DOWN = 0x8000;
-/** Debounce repeated firings while the chord is held. */
-const FIRE_COOLDOWN_MS = 300;
+/** Poll interval — short enough to feel instant, long enough to stay cheap. */
+const POLL_MS = 50;
+/** Debounce repeated fires while the chord is held. */
+const FIRE_COOLDOWN_MS = 350;
 
 const user32 = koffi.load("user32.dll");
-
-// KBDLLHOOKSTRUCT (x64): four DWORDs then a ULONG_PTR, 24 bytes total.
-const KBDLLHOOKSTRUCT = koffi.struct("KBDLLHOOKSTRUCT", {
-  vkCode: "uint32",
-  scanCode: "uint32",
-  flags: "uint32",
-  time: "uint32",
-  dwExtraInfo: "uintptr"
-});
-
-// LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
-koffi.proto("LowLevelKeyboardProc", "intptr", ["int32", "uintptr", "uintptr"]);
-
-const SetWindowsHookExW = user32.func("SetWindowsHookExW", "void *", ["int32", "void *", "void *", "uint32"]);
-const CallNextHookEx = user32.func("CallNextHookEx", "intptr", ["void *", "int32", "uintptr", "uintptr"]);
-const UnhookWindowsHookEx = user32.func("UnhookWindowsHookEx", "int32", ["void *"]);
 const GetAsyncKeyState = user32.func("GetAsyncKeyState", "int16", ["int32"]);
 
-let hook = null; // HHOOK
-let callback = null; // registered koffi callback
 let onTrigger = null;
+let timer = null;
+let prevDown = false;
 let lastFired = 0;
 
 function down(vk) {
   return (GetAsyncKeyState(vk) & KEY_DOWN) !== 0;
 }
 
-const proc = (nCode, wParam, lParam) => {
-  if (nCode >= 0 && (wParam === WM_KEYDOWN || wParam === WM_SYSKEYDOWN)) {
-    try {
-      const kb = koffi.decode(lParam, KBDLLHOOKSTRUCT);
-      const vk = kb.vkCode;
-      if (vk === VK_D || vk === VK_S) {
-        const other = vk === VK_D ? VK_S : VK_D;
-        if (down(VK_CONTROL) && down(other)) {
-          const now = Date.now();
-          if (now - lastFired > FIRE_COOLDOWN_MS) {
-            lastFired = now;
-            try { onTrigger?.(); } catch { /* keep the hook alive */ }
-          }
-          return 1; // consume the chord so nothing else sees it
-        }
-      }
-    } catch { /* malformed message — pass through */ }
-  }
-  return CallNextHookEx(hook, nCode, wParam, lParam);
-};
-
-/**
- * Install the Ctrl+D+S low-level hook.
- * @param handler - fired when the exact chord is pressed.
- * @returns true when the hook is installed.
- */
-function install(handler) {
-  if (hook !== null) return true;
-  onTrigger = handler;
-  try {
-    callback = koffi.register(proc, "LowLevelKeyboardProc");
-    hook = SetWindowsHookExW(WH_KEYBOARD_LL, callback, null, 0);
-    if (hook === null) {
-      koffi.unregister(callback);
-      callback = null;
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
+/** True when exactly Ctrl+D+S are held together (other keys don't matter). */
+function chordDown() {
+  return down(VK_CONTROL) && down(VK_D) && down(VK_S);
 }
 
-/** Remove the hook. Safe to call multiple times. */
+/**
+ * Install the Ctrl+D+S poller.
+ * @param handler - fired on each fresh press of the exact chord.
+ * @returns true.
+ */
+function install(handler) {
+  if (timer !== null) return true;
+  onTrigger = handler;
+  prevDown = chordDown();
+  timer = setInterval(() => {
+    let now = false;
+    try {
+      now = chordDown();
+    } catch { /* transient FFI failure — keep polling */ }
+    if (now && !prevDown) {
+      const t = Date.now();
+      if (t - lastFired > FIRE_COOLDOWN_MS) {
+        lastFired = t;
+        try { onTrigger?.(); } catch { /* keep polling */ }
+      }
+    }
+    prevDown = now;
+  }, POLL_MS);
+  return true;
+}
+
+/** Remove the poller. Safe to call multiple times. */
 function uninstall() {
-  if (hook !== null) {
-    try { UnhookWindowsHookEx(hook); } catch { /* ignore */ }
-    hook = null;
-  }
-  if (callback !== null) {
-    try { koffi.unregister(callback); } catch { /* ignore */ }
-    callback = null;
+  if (timer !== null) {
+    clearInterval(timer);
+    timer = null;
   }
   onTrigger = null;
 }
