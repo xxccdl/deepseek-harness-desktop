@@ -90,6 +90,18 @@ function summarize(blocks, max = 80) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+/** Latest assistant text preview from a session's raw event list. */
+function lastAssistantText(session, max = 80) {
+  const events = Array.isArray(session?.events) ? session.events : [];
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i];
+    if (event?.type !== "assistant/message") continue;
+    const text = summarize(event.data?.message?.content, max);
+    if (text !== "") return text;
+  }
+  return "";
+}
+
 /**
  * Run one AI task headlessly: spawn a fresh agent session, feed the prompt as a
  * user message, and wait for the agent to finish. Mirrors the headless runner
@@ -144,14 +156,18 @@ function apply(ctx) {
   };
 
   // ── task lifecycle notifications ──
-  ctx.on("session/event", (_session, event) => {
+  ctx.on("session/event", (session, event) => {
     try {
       if (event?.type === "user/message" && event.data?.source?.kind === "user") {
         const text = summarize(event.data.content);
         maybeNotify("start", "AI 开始执行任务", text || "用户提交了新任务");
-      } else if (event?.type === "assistant/message") {
-        const text = summarize(event.data?.message?.content);
-        maybeNotify("done", "AI 已完成任务", text || "回复已完成");
+      } else if (event?.type === "turn/end") {
+        // One turn (a full reply, possibly with multiple tool calls) just finished
+        // — only now notify "done", not on every assistant/message during tool
+        // calls. The reason may be "success", "max-tokens", "error", etc.
+        const text = lastAssistantText(session);
+        const label = event.data?.reason?.kind === "success" ? "已完成" : "已结束";
+        maybeNotify("done", `AI ${label}任务`, text || "回复已完成");
       }
     } catch (error) {
       ctx.logger.warn(`task-notify: session event handling failed: ${error instanceof Error ? error.message : String(error)}`);

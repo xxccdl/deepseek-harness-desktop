@@ -6,10 +6,10 @@
 // process are needed: the harness server, the WebSocket transport and the
 // frontend all run inside this process on a loopback-only port the OS
 // assigns.
-import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell } from "electron";
+import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import {
@@ -69,6 +69,8 @@ let ctx = undefined; // settled root context
 let serverUrl = undefined; // canonical GUI URL, set after boot
 let disposed = false;
 let quitting = false;
+/** Monotonic id for the pill's proxied RPC envelopes. */
+let rpcSeq = 0;
 
 /** Dispose the harness tree exactly once. */
 async function disposeHarness() {
@@ -146,33 +148,127 @@ function stateFile() {
   return join(app.getPath("userData"), "window-state.json");
 }
 
-/** The detached quick-chat mini window (Ctrl+D+S). Created lazily on demand. */
+/**
+ * The detached quick-input pill window (Ctrl+D+S). A tiny frosted-glass input
+ * bar pinned to the bottom-middle of the screen; it is NOT draggable. Created
+ * lazily on demand and shown only while the hotkey summons it.
+ */
 let quickChatWindow = undefined;
+/** 60s auto-hide timer handle for the pill. */
+let pillHideTimer = undefined;
 
-/** Toggle the detached quick-chat mini panel (no main window involvement). */
+/** The pill's screen size — a short, wide bar. */
+const PILL_W = 520;
+const PILL_H = 60;
+/** Idle timeout before the pill hides itself. */
+const PILL_IDLE_MS = 60_000;
+
+/** Clear the pill's auto-hide timer (call on every interaction/show). */
+function clearPillTimer() {
+  if (pillHideTimer !== undefined) {
+    clearTimeout(pillHideTimer);
+    pillHideTimer = undefined;
+  }
+}
+
+/** Hide the pill window (if any) and drop its idle timer. */
+function hidePillWindow() {
+  clearPillTimer();
+  if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) quickChatWindow.hide();
+}
+
+/** Show the pill window and (re)arm its 60s auto-hide timer. */
+function showPillWindow() {
+  if (quickChatWindow === undefined || quickChatWindow.isDestroyed() || serverUrl === undefined) return;
+  clearPillTimer();
+  if (quickChatWindow.isMinimized()) quickChatWindow.restore();
+  quickChatWindow.show();
+  quickChatWindow.focus();
+  // Hide after 60s of inactivity; interacting (wake) resets this.
+  pillHideTimer = setTimeout(hidePillWindow, PILL_IDLE_MS);
+}
+
+/** Resolve the dsh dark/light preference from the harness settings service. */
+function resolvePillTheme() {
+  try {
+    const settings = ctx?.get("settings");
+    const section = settings?.get?.("ui-theme");
+    const pref = section?.preference ?? "system";
+    if (pref === "dark") return { dark: true, preference: pref };
+    if (pref === "light") return { dark: false, preference: pref };
+  } catch { /* fall through to system */ }
+  return { dark: nativeTheme.shouldUseDarkColors, preference: "system" };
+}
+
+/** Ease-out cubic: 0 → 1 over t∈[0,1]. */
+function easeOutCubic(t) {
+  const u = 1 - t;
+  return 1 - u * u * u;
+}
+
+/**
+ * Animate a window's bounds from `from` to `to` with a smooth ease-out curve.
+ * @param win - the BrowserWindow to move.
+ * @param from - start bounds {x, y, width, height}.
+ * @param to - end bounds {x, y, width, height}.
+ * @param duration - animation length in ms.
+ * @returns a promise resolved when the animation finishes.
+ */
+function animateBounds(win, from, to, duration = 520) {
+  return new Promise((resolve) => {
+    if (win.isDestroyed()) return resolve();
+    const start = performance.now();
+    const step = () => {
+      if (win.isDestroyed()) return resolve();
+      const t = Math.min(1, (performance.now() - start) / duration);
+      const e = easeOutCubic(t);
+      const bounds = {
+        x: Math.round(from.x + (to.x - from.x) * e),
+        y: Math.round(from.y + (to.y - from.y) * e),
+        width: Math.round(from.width + (to.width - from.width) * e),
+        height: Math.round(from.height + (to.height - from.height) * e)
+      };
+      try { win.setBounds(bounds); } catch { return resolve(); }
+      if (t < 1) setTimeout(step, 16);
+      else resolve();
+    };
+    step();
+  });
+}
+
+/**
+ * Toggle the detached quick-input pill (Ctrl+D+S). Showing the pill never
+ * touches the main window.
+ */
 function toggleQuickChatPanel() {
   if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) {
-    // The renderer flips the panel visibility; visibility drives show/hide.
-    quickChatWindow.webContents.send("dsh:quickchat-toggle");
+    if (quickChatWindow.isVisible()) {
+      hidePillWindow();
+    } else {
+      showPillWindow();
+    }
     return;
   }
   if (serverUrl === undefined) return;
   const display = screen.getPrimaryDisplay();
-  const panelW = 476;
-  const panelH = 600;
-  const x = display.workArea.x + display.workArea.width - panelW - 24;
-  const y = display.workArea.y + display.workArea.height - panelH - 24;
+  const x = Math.round(display.workArea.x + (display.workArea.width - PILL_W) / 2);
+  const y = Math.round(display.workArea.y + display.workArea.height - PILL_H - 36);
   quickChatWindow = new BrowserWindow({
-    width: panelW,
-    height: panelH,
+    width: PILL_W,
+    height: PILL_H,
     x, y,
     show: false,
     frame: false,
     transparent: true,
     backgroundColor: "#00000000",
     resizable: false,
+    movable: false,
+    maximizable: false,
+    fullscreenable: false,
+    minimizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    hasShadow: false,
     icon: fileURLToPath(new URL("../resources/icon.png", import.meta.url)),
     webPreferences: {
       preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)),
@@ -182,17 +278,70 @@ function toggleQuickChatPanel() {
       spellcheck: false
     }
   });
-  quickChatWindow.loadURL(serverUrl.includes("?") ? `${serverUrl}&dsh-mini=1` : `${serverUrl}?dsh-mini=1`);
-  // The mini panel opens itself by default (visible=true), so just show the
-  // window once the SPA is ready — the panel state drives further show/hide.
+  quickChatWindow.loadURL(pathToFileURL(fileURLToPath(new URL("./quickchat.html", import.meta.url))).href);
+  // Clicking outside the pill hides it — but only if the blur is real (not a
+  // transient focus loss during the initial show+focus). We defer the blur
+  // listener so the first show doesn't race the blur and kill the window
+  // before the user can click anything.
   quickChatWindow.once("ready-to-show", () => {
-    if (!quickChatWindow || quickChatWindow.isDestroyed()) return;
-    quickChatWindow.show();
-    quickChatWindow.focus();
+    showPillWindow();
+    // Arm the blur-to-hide only after the pill is visibly on-screen.
+    setTimeout(() => {
+      if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) {
+        quickChatWindow.on("blur", hidePillWindow);
+      }
+    }, 600);
   });
   quickChatWindow.on("closed", () => {
+    clearPillTimer();
     quickChatWindow = undefined;
   });
+}
+
+/**
+ * Expand the pill into the main dsh conversation page showing `sessionId`.
+ * Sends the request to the harness SPA (which loads the persisted session
+ * selection), then animates the main window growing from the pill's spot to
+ * its normal bounds — a smooth, elegant "the pill unfolds into the app".
+ * @param sessionId - the session whose conversation the main window should show.
+ */
+async function expandPillToSession(sessionId) {
+  // The pill goes away; the main window takes over the space.
+  hidePillWindow();
+  const main = BrowserWindow.getAllWindows().find((w) => w !== quickChatWindow && !w.isDestroyed());
+  if (main === undefined || main.isDestroyed()) return;
+  const start = quickChatWindow !== undefined && !quickChatWindow.isDestroyed()
+    ? quickChatWindow.getBounds()
+    : undefined;
+  const target = main.getNormalBounds();
+
+  // Persist the target session so the SPA restores it on boot. If the page is
+  // still loading, apply the selection right after it finishes (then reload).
+  const applySession = () => {
+    const script =
+      `localStorage.setItem("dsh.sessions.current", ${JSON.stringify(JSON.stringify({ sessionId }))}); ` +
+      `if (!location.pathname.startsWith("/")) location.href = "/"; "ok"`;
+    return main.webContents.executeJavaScript(script).catch(() => {});
+  };
+  if (main.webContents.isLoading()) {
+    main.webContents.once("did-finish-load", () => { void applySession(); void main.webContents.reload(); });
+  } else {
+    await applySession();
+    main.webContents.reload();
+  }
+
+  // Seed the window at the pill's location/size so the growth animation reads.
+  const from = start ?? {
+    x: target.x + (target.width - PILL_W) / 2,
+    y: target.y + target.height - PILL_H,
+    width: PILL_W,
+    height: PILL_H
+  };
+  try { main.setBounds(from); } catch { /* ignore */ }
+  if (main.isMinimized()) main.restore();
+  main.show();
+  main.focus();
+  void animateBounds(main, from, target, 520);
 }
 
 async function loadWindowState() {
@@ -487,20 +636,39 @@ function registerIpc() {
     applyDesktopSettings(BrowserWindow.getAllWindows()[0], next);
     return { ...next, trayActive: tray !== undefined, hotkeyActive: currentHotkey !== undefined };
   });
-  // The quick-chat mini window asks the main process to show/hide/close itself
-  // (panel visibility drives the window) without touching the main window.
-  ipcMain.on("dsh:quickchat-show", () => {
-    if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) {
-      if (quickChatWindow.isMinimized()) quickChatWindow.restore();
-      quickChatWindow.show();
-      quickChatWindow.focus();
-    }
-  });
-  ipcMain.on("dsh:quickchat-hide", () => {
-    if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) quickChatWindow.hide();
-  });
+  // The quick-input pill window asks the main process to show/hide/close
+  // itself (visibility drives the window) without touching the main window.
+  ipcMain.on("dsh:quickchat-show", () => showPillWindow());
+  ipcMain.on("dsh:quickchat-hide", () => hidePillWindow());
   ipcMain.on("dsh:quickchat-close", () => {
     if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) quickChatWindow.close();
+  });
+  // Typing in the pill resets its 60s idle auto-hide.
+  ipcMain.on("dsh:quickchat-wake", () => {
+    if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed() && quickChatWindow.isVisible()) {
+      clearPillTimer();
+      pillHideTimer = setTimeout(hidePillWindow, PILL_IDLE_MS);
+    }
+  });
+  // The pill reads the dsh dark/light preference to match the app theme.
+  ipcMain.handle("dsh:quickchat-theme", () => resolvePillTheme());
+  // RPC proxy: the pill is a file:// page, so a browser fetch to the loopback
+  // harness is CORS-blocked. Node fetch has no such restriction.
+  ipcMain.handle("dsh:quickchat-rpc", async (_event, req) => {
+    const method = req && typeof req.method === "string" ? req.method : undefined;
+    if (method === undefined || serverUrl === undefined) throw new Error("rpc unavailable");
+    const res = await fetch(serverUrl + "api/" + method, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "client-request", rpcId: "pill-" + String(++rpcSeq), method, payload: req.payload || {} })
+    });
+    if (!res.ok) throw new Error("HTTP " + String(res.status));
+    return res.json();
+  });
+  // Sending from the pill expands it into the main dsh conversation page.
+  ipcMain.on("dsh:quickchat-expand", (_event, payload) => {
+    const sessionId = payload && typeof payload.sessionId === "string" ? payload.sessionId : undefined;
+    if (sessionId !== undefined) void expandPillToSession(sessionId);
   });
 }
 

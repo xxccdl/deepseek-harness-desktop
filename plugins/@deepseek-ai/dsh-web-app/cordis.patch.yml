@@ -220,10 +220,11 @@
     - id: ui-usage
       name: '@deepseek-ai/dsh-client-ui-usage'
 
-    # Quick chat: a frosted-glass mini dialog (Ctrl+D+S) with 4 agent-preset
-    # modes, send-to-current-session, and a task list with mini conversations.
-    - id: ui-quickchat
-      name: '@deepseek-ai/dsh-client-ui-quickchat'
+    # Quick chat is a standalone Electron pill window (Ctrl+D+S), not an SPA
+    # overlay — the old ui-quickchat plugin's mask would cover the whole page
+    # and swallow clicks, so it's removed.
+    # - id: ui-quickchat
+    #   name: '@deepseek-ai/dsh-client-ui-quickchat'
 
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'

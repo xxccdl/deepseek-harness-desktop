@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src http://127.0.0.1:*/ http://localhost:*/ ws://127.0.0.1:*/; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+<title>快捷输入</title>
+<style>
+  :root {
+    /* light (default) */
+    --pill-ink: #171c2c;
+    --pill-ink-2: rgba(23,28,44,.6);
+    --pill-ink-3: rgba(23,28,44,.38);
+    --pill-bg: #ffffff;
+    --pill-line: rgba(23,28,44,.08);
+    --pill-btn: #171c2c;
+    --pill-btn-ink: #ffffff;
+    --pill-btn-disabled: rgba(23,28,44,.15);
+  }
+  html[data-ds-dark-theme] {
+    --pill-ink: #e7ebf5;
+    --pill-ink-2: rgba(231,235,245,.62);
+    --pill-ink-3: rgba(231,235,245,.4);
+    --pill-bg: #1a1e2e;
+    --pill-line: rgba(255,255,255,.1);
+    --pill-btn: #e7ebf5;
+    --pill-btn-ink: #1a1e2e;
+    --pill-btn-disabled: rgba(231,235,245,.15);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: var(--pill-ink);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* ── pill shell ── */
+  #pill {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* never a drag region — the pill is not draggable */
+    -webkit-app-region: no-drag;
+  }
+  #pill .bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    padding: 0 8px 0 20px;
+    border-radius: 999px;
+    background: var(--pill-bg);
+    border: 1px solid var(--pill-line);
+    box-shadow: 0 10px 34px rgba(10,14,30,.18), 0 2px 10px rgba(10,14,30,.1);
+    -webkit-app-region: no-drag;
+  }
+  html[data-ds-dark-theme] #pill .bar {
+    box-shadow: 0 10px 34px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.4);
+  }
+  /* leading dot */
+  #pill .dot {
+    flex: none;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--pill-ink-2);
+  }
+  /* input */
+  #in {
+    flex: 1; min-width: 0;
+    border: none; outline: 0;
+    background: transparent;
+    color: var(--pill-ink);
+    font: 400 13.5px/1 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    caret-color: var(--pill-ink);
+    user-select: text;
+  }
+  #in::placeholder { color: var(--pill-ink-3); }
+  /* send */
+  #send {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    flex: none;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--pill-btn);
+    color: var(--pill-btn-ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity .14s ease, transform .1s ease;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+  }
+  #send:hover { opacity: .85; }
+  #send:active { transform: scale(.94); }
+  #send:disabled { background: var(--pill-btn-disabled); cursor: default; opacity: 1; transform: none; }
+  #send svg { width: 15px; height: 15px; }
+</style>
+</head>
+<body>
+<div id="pill">
+  <div class="bar">
+    <span class="dot"></span>
+    <input id="in" type="text" spellcheck="false" autocomplete="off"
+           placeholder="给 AI 发送消息，回车发送" />
+    <button id="send" title="发送" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+    </button>
+  </div>
+</div>
+<script>
+(function () {
+  "use strict";
+  const inEl = document.getElementById("in");
+  const sendBtn = document.getElementById("send");
+
+  let sending = false;
+
+  // ── rpc helper (proxied through the main process to dodge file:// CORS) ──
+  async function rpc(method, payload) {
+    const env = await window.dshQuickChat.rpc(method, payload);
+    if (env?.result?.ok !== true) throw new Error(env?.result?.error?.message || (method + " failed"));
+    return env.result.value;
+  }
+
+  // ── send: create a session, queue the message, then expand into the main window ──
+  async function send() {
+    const text = inEl.value.trim();
+    if (!text || sending) return;
+    sending = true;
+    sendBtn.disabled = true;
+    try {
+      const created = await rpc("session.create", {});
+      const sessionId = created.sessionId;
+      await rpc("session.prompt", { sessionId, mode: "queue", content: [{ type: "text", text }] });
+      // Hand the session + text to the main process, which animates the pill
+      // into the dsh main window showing this conversation.
+      window.dshQuickChat?.expand({ sessionId, text });
+    } catch (e) {
+      sending = false;
+      sendBtn.disabled = false;
+      inEl.focus();
+      const msg = (e && e.message ? e.message : String(e));
+      console.error("pill send failed:", msg);
+    }
+  }
+
+  function init() {
+    sendBtn.addEventListener("click", send);
+    inEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); send(); }
+    });
+    inEl.addEventListener("input", () => {
+      sendBtn.disabled = inEl.value.trim() === "" || sending;
+      window.dshQuickChat?.wake?.();
+    });
+    inEl.addEventListener("focus", () => window.dshQuickChat?.wake?.());
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") window.dshQuickChat?.hide?.();
+    });
+
+    setTimeout(() => inEl.focus(), 30);
+  }
+
+  (async () => {
+    // follow the dsh dark/light theme
+    try {
+      const theme = await window.dshQuickChat?.getTheme?.();
+      if (theme) document.documentElement.toggleAttribute("data-ds-dark-theme", theme.dark === true);
+    } catch { /* keep default light */ }
+    init();
+  })();
+})();
+</script>
+</body>
+</html>
