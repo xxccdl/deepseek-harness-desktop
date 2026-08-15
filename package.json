@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "DeepSeek Harness desktop app — the dsh web surface in a native Electron shell",
   "author": "DeepSeek Harness Desktop",
   "type": "module",
