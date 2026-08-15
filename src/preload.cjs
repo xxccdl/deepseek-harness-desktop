@@ -10,6 +10,50 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const TITLE_BAR_HEIGHT = 36;
 
+// ── quick-chat mini mode ─────────────────────────────────────────────────────
+// The detached Ctrl+D+S panel is the same SPA loaded with ?dsh-mini=1. In that
+// mode we hide the whole harness UI (the sidebar / chat / settings) and let the
+// quick-chat plugin render full-window: visibility is inherited and can be
+// overridden by the panel, so #root stays hidden while the panel shows.
+const IS_MINI = new URLSearchParams(typeof location !== "undefined" ? location.search : "").has("dsh-mini");
+
+const MINI_CSS = `
+html.dsh-mini-ready { background: transparent !important; }
+body.dsh-mini { background: transparent !important; }
+body.dsh-mini #root { visibility: hidden !important; }
+body.dsh-mini .qck-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+body.dsh-mini .qck-mask { display: none !important; }
+body.dsh-mini .qck-head { -webkit-app-region: drag; }
+body.dsh-mini .qck-head button,
+body.dsh-mini .qck-head .qck-sub,
+body.dsh-mini .qck-modes,
+body.dsh-mini .qck-tabs,
+body.dsh-mini .qck-body,
+body.dsh-mini .qck-inputbar { -webkit-app-region: no-drag; }
+`;
+
+if (IS_MINI) {
+  const style = document.createElement("style");
+  style.textContent = MINI_CSS;
+  document.head.appendChild(style);
+  // The class must be set on <body> before the SPA paints; the SPA may replace
+  // body children but not the body element itself.
+  document.documentElement.classList.add("dsh-mini-ready");
+  document.body.classList.add("dsh-mini");
+}
+
 const TITLE_BAR_CSS = `
 #dsh-titlebar {
   position: relative;
@@ -163,10 +207,12 @@ function injectTitleBar() {
 }
 
 // The SPA is served over http; inject once its document is interactive.
-if (document.readyState === "loading") {
-  window.addEventListener("DOMContentLoaded", injectTitleBar, { once: true });
-} else {
-  injectTitleBar();
+if (!IS_MINI) {
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", injectTitleBar, { once: true });
+  } else {
+    injectTitleBar();
+  }
 }
 
 contextBridge.exposeInMainWorld("dshDesktop", {
@@ -193,12 +239,21 @@ contextBridge.exposeInMainWorld("dshDesktop", {
 });
 
 // Quick-chat bridge: the main process forwards the Ctrl+D+S global shortcut
-// to the renderer, where the quick-chat plugin toggles its glass panel.
+// to the renderer, where the quick-chat plugin toggles its glass panel. In the
+// detached mini window the plugin can also hide/close the window itself.
 contextBridge.exposeInMainWorld("dshQuickChat", {
+  /** True when this window is the detached mini panel (?dsh-mini=1). */
+  isMini: IS_MINI,
   /** Subscribe to the global quick-chat toggle (Ctrl+D+S). Returns an unsubscribe. */
   onToggle: (callback) => {
     const listener = () => callback();
     ipcRenderer.on("dsh:quickchat-toggle", listener);
     return () => ipcRenderer.removeListener("dsh:quickchat-toggle", listener);
-  }
+  },
+  /** Ask the main process to show and focus the mini window. */
+  show: () => ipcRenderer.send("dsh:quickchat-show"),
+  /** Ask the main process to hide the mini window (main window untouched). */
+  hide: () => ipcRenderer.send("dsh:quickchat-hide"),
+  /** Ask the main process to close the mini window. */
+  close: () => ipcRenderer.send("dsh:quickchat-close")
 });

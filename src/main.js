@@ -11,6 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 import {
   PROFILE_PATCH_FILENAME,
   boot,
@@ -143,6 +144,55 @@ async function bootHarness() {
 // ── window state persistence ─────────────────────────────────────────────────
 function stateFile() {
   return join(app.getPath("userData"), "window-state.json");
+}
+
+/** The detached quick-chat mini window (Ctrl+D+S). Created lazily on demand. */
+let quickChatWindow = undefined;
+
+/** Toggle the detached quick-chat mini panel (no main window involvement). */
+function toggleQuickChatPanel() {
+  if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) {
+    // The renderer flips the panel visibility; visibility drives show/hide.
+    quickChatWindow.webContents.send("dsh:quickchat-toggle");
+    return;
+  }
+  if (serverUrl === undefined) return;
+  const display = screen.getPrimaryDisplay();
+  const panelW = 476;
+  const panelH = 600;
+  const x = display.workArea.x + display.workArea.width - panelW - 24;
+  const y = display.workArea.y + display.workArea.height - panelH - 24;
+  quickChatWindow = new BrowserWindow({
+    width: panelW,
+    height: panelH,
+    x, y,
+    show: false,
+    frame: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    resizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    icon: fileURLToPath(new URL("../resources/icon.png", import.meta.url)),
+    webPreferences: {
+      preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false
+    }
+  });
+  quickChatWindow.loadURL(serverUrl.includes("?") ? `${serverUrl}&dsh-mini=1` : `${serverUrl}?dsh-mini=1`);
+  // The mini panel opens itself by default (visible=true), so just show the
+  // window once the SPA is ready — the panel state drives further show/hide.
+  quickChatWindow.once("ready-to-show", () => {
+    if (!quickChatWindow || quickChatWindow.isDestroyed()) return;
+    quickChatWindow.show();
+    quickChatWindow.focus();
+  });
+  quickChatWindow.on("closed", () => {
+    quickChatWindow = undefined;
+  });
 }
 
 async function loadWindowState() {
@@ -437,6 +487,21 @@ function registerIpc() {
     applyDesktopSettings(BrowserWindow.getAllWindows()[0], next);
     return { ...next, trayActive: tray !== undefined, hotkeyActive: currentHotkey !== undefined };
   });
+  // The quick-chat mini window asks the main process to show/hide/close itself
+  // (panel visibility drives the window) without touching the main window.
+  ipcMain.on("dsh:quickchat-show", () => {
+    if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) {
+      if (quickChatWindow.isMinimized()) quickChatWindow.restore();
+      quickChatWindow.show();
+      quickChatWindow.focus();
+    }
+  });
+  ipcMain.on("dsh:quickchat-hide", () => {
+    if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) quickChatWindow.hide();
+  });
+  ipcMain.on("dsh:quickchat-close", () => {
+    if (quickChatWindow !== undefined && !quickChatWindow.isDestroyed()) quickChatWindow.close();
+  });
 }
 
 // ── app lifecycle ────────────────────────────────────────────────────────────
@@ -482,19 +547,19 @@ if (!gotLock) {
     Menu.setApplicationMenu(buildMenu(win));
     // Apply persisted desktop settings (tray / auto-launch / global hotkey).
     applyDesktopSettings(win, await readDesktopSettings());
-    // Quick chat: Ctrl+D+S shows/focuses the main window and toggles the
-    // glass quick-chat panel in the renderer.
+    // Quick chat: the true three-key chord Ctrl+D+S toggles the detached mini
+    // panel — the main window is left untouched (never shown/focused).
+    // globalShortcut can't express this (Windows RegisterHotKey accepts only
+    // one plain key), so a low-level keyboard hook does the matching — and it
+    // makes sure Ctrl+S alone does NOT trigger.
+    const require = createRequire(import.meta.url);
+    const quickchatHotkey = require("./quickchat-hotkey.cjs");
     try {
-      globalShortcut.register("CommandOrControl+D+S", () => {
-        const [target] = BrowserWindow.getAllWindows();
-        if (!target) return;
-        if (target.isMinimized()) target.restore();
-        target.show();
-        target.focus();
-        target.webContents.send("dsh:quickchat-toggle");
-      });
+      if (!quickchatHotkey.install(() => toggleQuickChatPanel())) {
+        console.warn("dsh-desktop: failed to install quick-chat hotkey (Ctrl+D+S)");
+      }
     } catch (error) {
-      console.warn("dsh-desktop: failed to register quick-chat shortcut", error);
+      console.warn("dsh-desktop: failed to install quick-chat hotkey", error);
     }
     // Bridge the harness "dsh/notify" events (task start/done, scheduler) to
     // native Windows notifications.
@@ -514,6 +579,10 @@ if (!gotLock) {
 
   app.on("will-quit", () => {
     globalShortcut.unregisterAll();
+    try {
+      const require = createRequire(import.meta.url);
+      require("./quickchat-hotkey.cjs").uninstall();
+    } catch { /* not installed */ }
   });
 
   app.on("before-quit", (event) => {

@@ -91,7 +91,7 @@ window.__ModuleLoader__.load({
 
 		function nodeText(node) {
 			if (node?.kind === "user") return (node.content ?? []).filter((b) => b?.type === "text").map((b) => b.text).join("");
-			if (node?.kind === "assistant") return (node.content ?? []).filter((b) => b?.kind === "text").map((b) => b.text).join("");
+			if (node?.kind === "assistant") return (node.blocks ?? []).filter((b) => b?.kind === "text").map((b) => b.text).join("");
 			return "";
 		}
 
@@ -103,7 +103,9 @@ window.__ModuleLoader__.load({
 		}
 
 		function QuickChatPanel({ t, sessions, api }) {
-			const [visible, setVisible] = useState(false);
+			const bridge = typeof window !== "undefined" ? window.dshQuickChat : undefined;
+			const isMini = bridge?.isMini === true;
+			const [visible, setVisible] = useState(isMini ? true : false);
 			const [tab, setTab] = useState("chat"); // 'chat' | 'tasks'
 			const [mode, setMode] = useState("standard");
 			const [inTask, setInTask] = useState(false); // inside a task's mini conversation
@@ -117,13 +119,25 @@ window.__ModuleLoader__.load({
 			const modeRef = useRef(mode);
 			modeRef.current = mode;
 
+			// Sync the detached window with the panel visibility: shown → visible,
+			// hidden → invisible. The main window is never touched.
+			const prevVisibleRef = useRef(visible);
 			useEffect(() => {
-				const bridge = typeof window !== "undefined" ? window.dshQuickChat : undefined;
+				if (!isMini) return;
+				if (visible && !prevVisibleRef.current) {
+					bridge?.show?.();
+				} else if (!visible && prevVisibleRef.current) {
+					bridge?.hide?.();
+				}
+				prevVisibleRef.current = visible;
+			}, [visible, isMini]);
+
+			useEffect(() => {
 				if (!bridge || typeof bridge.onToggle !== "function") return;
 				return bridge.onToggle(() => setVisible((v) => !v));
 			}, []);
 
-			// Esc: close a task view, else close the panel.
+			// Esc: close a task view, else close the panel (mini: hide the window).
 			useEffect(() => {
 				if (!visible) return;
 				const onKey = (e) => {

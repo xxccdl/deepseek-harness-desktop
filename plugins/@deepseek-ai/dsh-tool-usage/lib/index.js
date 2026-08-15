@@ -130,6 +130,26 @@ function apply(ctx) {
     })();
   });
 
+  /** Estimate for the active conversation only (sessions.current), computed from
+   *  its session event slice — mirrors cost() but scoped to the latest session. */
+  const sessionCost = (session) => {
+    const t = emptyTotals();
+    const events = Array.isArray(session?.events) ? session.events : [];
+    for (const event of events) {
+      if (event?.type !== "assistant/message") continue;
+      const usage = event.data?.usage;
+      if (usage === undefined || usage === null) continue;
+      t.input += Number(usage.inputTokens) || 0;
+      t.output += Number(usage.outputTokens) || 0;
+      t.cacheRead += Number(usage.cacheReadTokens) || 0;
+      t.cacheWrite += Number(usage.cacheWriteTokens) || 0;
+    }
+    return (t.input / 1e6) * PRICE_INPUT_MISS
+      + (t.cacheRead / 1e6) * PRICE_INPUT_HIT
+      + (t.cacheWrite / 1e6) * PRICE_INPUT_MISS
+      + (t.output / 1e6) * PRICE_OUTPUT;
+  };
+
   /** Resolve the live DeepSeek balance plus the current spend estimate.
    *  No caching: every /api/usage request re-queries the provider so the bar
    *  always reflects the latest balance. */
@@ -173,6 +193,11 @@ function apply(ctx) {
       handler: async (_req, res) => {
         try {
           const payload = await getPayload();
+          // Current-session spend for the budget bar (sessions.current); the
+          // all-time total stays under payload.spent / payload.sessions.total.
+          const list = ctx.get("sessions", false)?.list?.() ?? [];
+          const current = list.length > 0 ? list[list.length - 1] : undefined;
+          payload.sessions = { current: sessionCost(current), total: payload.spent };
           res.writeHead(200, {
             "Content-Type": "application/json; charset=utf-8",
             "Cache-Control": "no-store"

@@ -17,7 +17,6 @@ if (!existsSync(source)) {
 if (!existsSync(target)) mkdirSync(target, { recursive: true });
 
 let count = 0;
-for (const name of Array.isArray(arguments) ? [] : []) void name; // noop guard
 for (const name of (await import("node:fs")).readdirSync(source)) {
   const from = join(source, name);
   const to = join(target, name);

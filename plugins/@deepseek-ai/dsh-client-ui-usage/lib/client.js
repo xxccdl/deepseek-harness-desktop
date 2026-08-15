@@ -68,7 +68,9 @@ window.__ModuleLoader__.load({
 			}, [refresh]);
 
 			if (data === undefined || data.configured !== true || typeof data.balance !== "number") return null;
-			const spent = Math.max(0, Number(data.spent) || 0);
+			// "已用" tracks the current conversation's spend (sessions.current), not
+			// the all-time total (sessions.total). Persisted server-side in usage.json.
+			const spent = Math.max(0, Number(data.sessions?.current ?? data.spent) || 0);
 			const balance = Math.max(0, Number(data.balance) || 0);
 			const total = spent + balance;
 			const ratio = total > 0 ? Math.min(1, spent / total) : 0;
