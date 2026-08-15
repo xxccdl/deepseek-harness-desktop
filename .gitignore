@@ -1,0 +1,21 @@
+# Build artifacts and installed dependencies (recreated by npm install)
+node_modules/
+dist/
+out/
+*.log
+
+# Downloaded runtime binaries (computer-use needs resources/runtime/uv/uv.exe;
+# download it from https://github.com/astral-sh/uv/releases)
+resources/runtime/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Temporary analysis / screenshot files
+*-screenshot*.png
+*-preview*.png
+analyze_image.py
+codedsh-gui_analyze.html
+pkg*.log
+build*.log

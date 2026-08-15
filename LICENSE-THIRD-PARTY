@@ -1,0 +1,43 @@
+THIRD-PARTY LICENSES
+====================
+
+This project includes and redistributes third-party components. Each component
+is governed by its own license terms; the original copyright and license
+notices are preserved in the respective package directories.
+
+The primary upstream project and the harness plugins are from:
+
+  DeepSeek Harness (https://github.com/deepseek-ai/deepseek-harness)
+  Copyright (c) 2026 DeepSeek
+  License: MIT (see LICENSE)
+
+Upstream packages under node_modules/@deepseek-ai/ retain their MIT licenses
+in their own package directories.
+
+Desktop fork plugins (our additions) are under the same MIT License as the
+upstream project, copyright (c) 2026 xxccdl <6541171@qq.com>:
+
+  @deepseek-ai/dsh-client-ui-memory        — memory settings viewer
+  @deepseek-ai/dsh-client-ui-computer-use  — computer-use settings
+  @deepseek-ai/dsh-client-ui-desktop       — desktop settings
+  @deepseek-ai/dsh-client-ui-scheduler     — scheduled-task settings
+  @deepseek-ai/dsh-client-ui-quickchat     — quick-chat glass panel
+  @deepseek-ai/dsh-client-ui-usage         — sidebar budget bar
+  @deepseek-ai/dsh-tool-memory             — persistent memory tools + HTTP
+  @deepseek-ai/dsh-tool-computer-use       — Windows-MCP computer use
+  @deepseek-ai/dsh-tool-notify             — notifications + scheduler
+  @deepseek-ai/dsh-tool-usage              — usage & balance tracking + HTTP
+
+Modified upstream packages (desktop fork edits):
+
+  @deepseek-ai/dsh-client-ui-sidebar       — added sidebar.footer.status slot
+  @deepseek-ai/dsh-client-ui-settings-general — per-section nav icons
+  @deepseek-ai/dsh-client-ui-settings-models — API-key handling fixes
+  @deepseek-ai/dsh-client-ui-agent-preset  — preset selection plumbing
+
+All other node_modules dependencies (Electron, React, Cordis, zod, etc.) are
+redistributed under their own licenses, which are included in each package
+directory.
+
+This file is provided for attribution and compliance. When redistributing,
+keep the LICENSE and this file with the source.

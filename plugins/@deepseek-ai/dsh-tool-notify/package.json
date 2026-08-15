@@ -1,0 +1,30 @@
+{
+  "name": "@deepseek-ai/dsh-tool-notify",
+  "description": "Task notifications + scheduler for DeepSeek Harness: Windows notifications when the AI starts/finishes a task, plus user-defined repeating scheduled tasks with optional commands, driven by the `notify` settings namespace",
+  "version": "0.1.0-rc.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/tool/tool-notify"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/index.js"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "@deepseek-ai/dsh-home-paths": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6"
+  }
+}
