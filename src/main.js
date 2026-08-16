@@ -376,7 +376,7 @@ function createMainWindow(serverUrl) {
     autoHideMenuBar: true,
     icon: fileURLToPath(new URL("../resources/icon.png", import.meta.url)),
     title: "DeepSeek Harness",
-    backgroundColor: "#0f1117",
+    backgroundColor: "#0a0c10",
     webPreferences: {
       preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)),
       contextIsolation: true,
@@ -400,7 +400,31 @@ function createMainWindow(serverUrl) {
     if (state.maximized) win.maximize();
   });
 
-  win.once("ready-to-show", () => win.show());
+  // Splash: show a calm "Made by xxccdl" animation immediately at launch, then
+  // swap in the app once it has played (2s) and the UI is ready — never sooner.
+  const splashUrl = pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
+  const appStartedAt = Date.now();
+  let appReady = false;
+  let shown = false;
+  const tryShowApp = () => {
+    if (!appReady || shown || win.isDestroyed()) return;
+    if (Date.now() - appStartedAt < 2000) return;
+    shown = true;
+    void win.loadURL(serverUrl);
+  };
+  void win.loadURL(splashUrl);
+  win.once("ready-to-show", () => {
+    win.show();
+    setTimeout(() => { appReady = true; tryShowApp(); }, 2000);
+  });
+  win.webContents.once("did-finish-load", () => {
+    if (win.webContents.getURL().startsWith(serverUrl)) return; // already the app
+    // The splash finished painting; treat the UI as ready so the 2s timer
+    // alone gates the swap.
+    appReady = true;
+    tryShowApp();
+  });
+
   win.on("close", () => void saveWindowState(win));
 
   // Push maximize state to the custom title bar.
@@ -419,7 +443,6 @@ function createMainWindow(serverUrl) {
     if (url.startsWith("http://") || url.startsWith("https://")) void shell.openExternal(url);
   });
 
-  void win.loadURL(serverUrl);
   return win;
 }
 
@@ -645,7 +668,7 @@ async function buildSources(original) {
   const candidates = [original];
   for (const mirror of mirrors) {
     const base = mirror.replace(/\/+$/, "") + "/";
-    candidates.push(base + original);
+    candidates.push(base + original.replace(/^\/+/, ""));
   }
   return candidates;
 }

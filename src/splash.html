@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DeepSeek Harness</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --fg: #e6e9f0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    font-family: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── ambient glow that breathes in, then settles ── */
+  .glow {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    animation: glowIn 900ms cubic-bezier(.2, .6, .3, 1) 60ms forwards,
+               glowSettle 1100ms ease 620ms forwards,
+               fadeOut .5s ease 1.7s forwards;
+    pointer-events: none;
+  }
+  .glow::before {
+    content: "";
+    width: 340px;
+    height: 340px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(88, 108, 245, .16) 0%,
+      rgba(88, 108, 245, .07) 34%,
+      transparent 68%);
+    filter: blur(6px);
+  }
+  @keyframes glowIn {
+    from { opacity: 0; transform: scale(.82); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes glowSettle {
+    from { opacity: 1; }
+    to   { opacity: .55; }
+  }
+
+  /* ── the brand line ── */
+  .mark {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    animation: recede .5s cubic-bezier(.5, 0, .7, .4) 1.7s forwards;
+  }
+  .text {
+    display: flex;
+    align-items: baseline;
+    gap: 0.42em;
+    font-size: 30px;
+    font-weight: 300;
+    letter-spacing: 0.06em;
+    color: var(--fg);
+  }
+  .text .by, .text .name {
+    display: inline-block;
+    opacity: 0;
+  }
+  /* Each word drifts in and overshoots to a soft, organic settle — no linear,
+     no bounce-timer feel. */
+  .text .by {
+    transform: translateY(14px) scale(.94);
+    animation: driftIn 760ms cubic-bezier(.22, 1.1, .32, 1) 140ms forwards;
+    font-weight: 300;
+    color: rgba(230, 233, 240, .6);
+    font-style: italic;
+  }
+  .text .name {
+    transform: translateY(14px) scale(.94);
+    animation: driftIn 820ms cubic-bezier(.2, 1.16, .3, 1) 260ms forwards;
+    font-weight: 500;
+    background: linear-gradient(115deg, #c9d2ff 0%, #7c8cf8 45%, #5f6ef0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  @keyframes driftIn {
+    0%   { opacity: 0; transform: translateY(16px) scale(.92); filter: blur(4px); }
+    55%  { opacity: 1; transform: translateY(-1.5px) scale(1.01); filter: blur(0); }
+    78%  { transform: translateY(.6px) scale(.997); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+
+  /* ── a hairline that sweeps in like a signature stroke ── */
+  .line {
+    position: relative;
+    height: 1px;
+    width: 0;
+    overflow: visible;
+    background: linear-gradient(90deg, transparent, rgba(124, 140, 248, .9) 30%, rgba(124, 140, 248, .9) 70%, transparent);
+    animation: strokeIn 720ms cubic-bezier(.3, .8, .3, 1) 500ms forwards;
+  }
+  .line::after {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: 50%;
+    width: 60px;
+    height: 7px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(124, 140, 248, .5), transparent 70%);
+    filter: blur(3px);
+  }
+  @keyframes strokeIn {
+    from { width: 0; opacity: 0; }
+    60%  { opacity: 1; }
+    to   { width: 200px; opacity: 1; }
+  }
+
+  /* ── a slow ripple ring that lingers after the text settles ── */
+  .ripple {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 1px solid rgba(124, 140, 248, .18);
+    transform: translate(-50%, -50%) scale(.5);
+    opacity: 0;
+    animation: ripple 1500ms cubic-bezier(.16, .6, .3, 1) 620ms forwards;
+    pointer-events: none;
+  }
+  @keyframes ripple {
+    from { transform: translate(-50%, -50%) scale(.5); opacity: 0; }
+    20%  { opacity: .5; }
+    to   { transform: translate(-50%, -50%) scale(1.06); opacity: 0; }
+  }
+
+  /* ── exit: everything recedes together, soft and calm (see .mark/.glow
+     animation delays at 1.7s). The main process swaps in the app at ~2s. ── */
+  @keyframes fadeOut { to { opacity: 0; } }
+  @keyframes recede {
+    to { opacity: 0; transform: translateY(-8px) scale(.985); filter: blur(2px); }
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="ripple"></div>
+  <div class="mark">
+    <div class="text"><span class="by">Made by</span><span class="name">xxccdl</span></div>
+    <div class="line"></div>
+  </div>
+</body>
+</html>
