@@ -208,7 +208,16 @@ contextBridge.exposeInMainWorld("dshDesktop", {
   },
 
   /** Launch the downloaded installer and quit this instance. */
-  installUpdate: (filePath) => ipcRenderer.invoke("dsh:update-install", filePath)
+  installUpdate: (filePath) => ipcRenderer.invoke("dsh:update-install", filePath),
+
+  /** Read the mirror-source list → { mirrors, customized }. */
+  getUpdateMirrors: () => ipcRenderer.invoke("dsh:update-mirrors-get"),
+
+  /** Persist the mirror-source list. */
+  setUpdateMirrors: (mirrors) => ipcRenderer.invoke("dsh:update-mirrors-set", mirrors),
+
+  /** Clear the custom list, falling back to the built-in defaults. */
+  resetUpdateMirrors: () => ipcRenderer.invoke("dsh:update-mirrors-reset")
 });
 
 // Quick-input bridge: the main process forwards the Ctrl+D+S global shortcut

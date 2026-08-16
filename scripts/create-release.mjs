@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.2.8";
+const tag = process.argv[2] ?? "v1.2.9";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,9 +19,12 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
-  "## 1.2.8",
+  "## 1.2.9",
   "",
-  "- 修复：打包安装版遗漏 fork 专属包（dsh-client-ui-updater / dsh-client-ui-browser / dsh-tool-browser），安装版启动报错；已在 bundle 包依赖中补全声明",
+  "- 全新高速多线程下载引擎：官方源 + 加速镜像**并行测速择优**（直连被限速时自动走镜像，速度可达数 MB/s）；AIMD 拥塞控制自动调节并发，段级拆分重试应对慢速/超时",
+  "- 新增**自定义镜像源**设置：设置 → 更新 → 加速镜像源，可增删镜像、恢复默认，持久化保存",
+  "- 修复：下载慢速时 30s 段超时导致 'The operation was aborted'（段超时放宽 + 失败自动拆段重试）",
+  "- 下载进度显示实时速度、剩余时间、活跃线程数与当前源（直连/加速镜像）",
   "",
   "安装包与便携版见本地 dist/ 目录（本 release 不附安装包）。"
 ].join("\n");

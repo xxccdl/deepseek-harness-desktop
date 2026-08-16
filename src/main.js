@@ -8,7 +8,7 @@
 // assigns.
 import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, screen, session, shell } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
@@ -25,6 +25,7 @@ import {
 import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
 import { provideCmdline } from "@deepseek-ai/dsh-cmdline";
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from "@deepseek-ai/dsh-launch-environment";
+import { downloadWithThreads } from "./update-downloader.mjs";
 
 const BIN_NAME = "dsh";
 const PROFILE_NAME = "web";
@@ -590,10 +591,64 @@ function applyDesktopSettings(win, settings) {
 // installer with N concurrent HTTP range requests, then launches it.
 const UPDATE_OWNER = "xxccdl";
 const UPDATE_REPO = "deepseek-harness-desktop";
-/** Concurrent range-request threads for the installer download. */
-const UPDATE_THREADS = 50;
-/** Progress is pushed to the renderer roughly every 256 KiB. */
-const PROGRESS_TICK_BYTES = 256 * 1024;
+/** Concurrent range-request threads for the installer download (adaptive, soft cap). */
+const UPDATE_THREADS = 16;
+
+/**
+ * Default GitHub acceleration mirrors (URL-prefix proxies). The official
+ * release CDN is throttled to tens of KB/s from many regions; these mirrors
+ * prefix the original `https://github.com/...` asset URL and can reach several
+ * MB/s. The download engine probes every candidate and picks the fastest. They
+ * are third-party proxies — only used for public installer downloads. Users can
+ * override this list from the updater settings (persisted to mirrors.json).
+ */
+const DEFAULT_UPDATE_MIRRORS = [
+  "https://ghproxy.net/",
+  "https://gh-proxy.com/",
+  "https://ghfast.top/",
+  "https://github.moeyy.xyz/",
+  "https://ghproxy.cn/",
+  "https://gh.llkk.cc/"
+];
+
+/** Persisted mirror configuration lives beside the downloaded installers. */
+function mirrorsConfigPath() {
+  return join(app.getPath("userData"), "updates", "mirrors.json");
+}
+
+/**
+ * Read the user's mirror list. Returns `undefined` when the user never
+ * customized it (callers fall back to DEFAULT_UPDATE_MIRRORS).
+ */
+async function readMirrorConfig() {
+  try {
+    const raw = await readFile(mirrorsConfigPath(), "utf8");
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.mirrors)) {
+      const list = data.mirrors.filter((m) => typeof m === "string" && m.trim() !== "").map((m) => m.trim());
+      if (list.length > 0) return list;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Build the candidate URL list for an official github.com asset URL: the
+ * official link first, then the user-configured (or default) mirrors.
+ */
+async function buildSources(original) {
+  if (typeof original !== "string" || !original.startsWith("https://github.com/")) return [original];
+  const user = await readMirrorConfig();
+  const mirrors = user ?? DEFAULT_UPDATE_MIRRORS;
+  const candidates = [original];
+  for (const mirror of mirrors) {
+    const base = mirror.replace(/\/+$/, "") + "/";
+    candidates.push(base + original);
+  }
+  return candidates;
+}
 
 /** Parse a semver string ("v1.2.3", "1.2.3-beta.1") into comparable parts. */
 function parseVersion(value) {
@@ -630,65 +685,6 @@ async function fetchLatestRelease() {
 /** Shared fetch helper honoring system proxy, with a per-request timeout. */
 function proxyFetch(url, init = {}) {
   return net.fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(30000) });
-}
-
-/**
- * Download a file using `threads` concurrent HTTP range requests, writing each
- * segment at its byte offset into a shared file. Requires the server to accept
- * byte ranges (GitHub release assets do). Reports `{ received, total }` ticks.
- * @param url - absolute asset URL.
- * @param destPath - destination file path.
- * @param threads - concurrent range-request count.
- * @param onProgress - periodic progress callback.
- * @returns the destination path once fully written and verified.
- */
-async function downloadWithThreads(url, destPath, threads, onProgress) {
-  const { open: fspOpen, stat } = await import("node:fs/promises");
-  const head = await proxyFetch(url, { method: "HEAD", redirect: "follow" });
-  const total = Number(head.headers.get("content-length"));
-  const ranges = head.headers.get("accept-ranges");
-  if (!(total > 0) || ranges !== "bytes") throw new Error("源服务器不支持多线程下载");
-  const count = Math.min(threads, Math.max(1, Math.floor(total / 262144)));
-  const chunk = Math.ceil(total / count);
-
-  const out = await fspOpen(destPath, "w");
-  await out.truncate(total);
-  await out.close();
-
-  const segments = [];
-  for (let start = 0; start < total; start += chunk) {
-    segments.push({ start, end: Math.min(total - 1, start + chunk - 1) });
-  }
-  let received = 0;
-  let lastEmit = 0;
-  const emit = () => onProgress?.({ received, total });
-  await Promise.all(segments.map(async (seg) => {
-    const fd = await fspOpen(destPath, "r+");
-    try {
-      const res = await proxyFetch(url, { headers: { Range: `bytes=${seg.start}-${seg.end}` }, redirect: "follow" });
-      if (!res.ok && res.status !== 206) throw new Error(`HTTP ${res.status}`);
-      if (!res.body) throw new Error("empty response body");
-      const reader = res.body.getReader();
-      let offset = seg.start;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        await fd.write(value, 0, value.length, offset);
-        offset += value.length;
-        received += value.length;
-        if (received - lastEmit >= PROGRESS_TICK_BYTES) {
-          lastEmit = received;
-          emit();
-        }
-      }
-    } finally {
-      await fd.close();
-    }
-  }));
-  const final = await stat(destPath);
-  if (final.size !== total) throw new Error(`下载不完整：${final.size}/${total}`);
-  emit();
-  return destPath;
 }
 
 // ── IPC surface exposed through the preload ──────────────────────────────────
@@ -782,11 +778,34 @@ function registerIpc() {
     const report = (p) => { if (!event.sender.isDestroyed()) event.sender.send("dsh:update-progress", p); };
     try {
       if (!payload || typeof payload.url !== "string") throw new Error("缺少下载地址");
-      await downloadWithThreads(payload.url, dest, UPDATE_THREADS, report);
+      const sources = await buildSources(payload.url);
+      await downloadWithThreads(payload.url, dest, UPDATE_THREADS, report, proxyFetch, { sources });
       return { ok: true, filePath: dest };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
+  });
+  // Updater: read the user's mirror-source list (customized or defaults).
+  ipcMain.handle("dsh:update-mirrors-get", async () => {
+    const user = await readMirrorConfig();
+    return { mirrors: user ?? DEFAULT_UPDATE_MIRRORS, customized: user !== undefined };
+  });
+  // Updater: persist the user's mirror-source list.
+  ipcMain.handle("dsh:update-mirrors-set", async (_event, list) => {
+    const mirrors = Array.isArray(list)
+      ? list.filter((m) => typeof m === "string" && m.trim() !== "").map((m) => m.trim())
+      : [];
+    const dir = join(app.getPath("userData"), "updates");
+    await mkdir(dir, { recursive: true });
+    await writeFile(mirrorsConfigPath(), JSON.stringify({ mirrors }, null, 2), "utf8");
+    return { mirrors, customized: true };
+  });
+  // Updater: clear the custom list and fall back to the built-in defaults.
+  ipcMain.handle("dsh:update-mirrors-reset", async () => {
+    try {
+      await unlink(mirrorsConfigPath());
+    } catch { /* not customized yet */ }
+    return { mirrors: DEFAULT_UPDATE_MIRRORS, customized: false };
   });
   // Updater: launch the downloaded installer and quit this instance.
   ipcMain.handle("dsh:update-install", async (_event, filePath) => {

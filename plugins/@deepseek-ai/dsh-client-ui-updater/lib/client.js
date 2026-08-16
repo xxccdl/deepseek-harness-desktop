@@ -49,6 +49,8 @@ window.__ModuleLoader__.load({
 			".mupd-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--dsw-static-blue-600),color-mix(in srgb,var(--dsw-static-blue-600) 55%,#7c5cff));transition:width .15s ease}",
 			".mupd-meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}",
 			".mupd-meta b{font-weight:600;color:var(--dsw-alias-label-primary)}",
+			".mupd-mirrors{box-sizing:border-box;width:100%;min-height:120px;resize:vertical;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:20px;padding:10px 12px;border-radius:12px;transition:border-color .15s ease}",
+			".mupd-mirrors:focus{outline:0;border-color:var(--dsw-static-blue-600)}",
 			"@keyframes mupd-dot{0%,60%,100%{transform:scale(.55);opacity:.35}30%{transform:scale(1);opacity:1}}",
 			"@keyframes mupd-shimmer{100%{transform:translateX(100%)}}"
 		].join("");
@@ -73,6 +75,12 @@ window.__ModuleLoader__.load({
 			if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
 			return `${(n / 1024 / 1024).toFixed(1)} MB`;
 		}
+		function fmtEta(ms) {
+			const s = Math.max(0, Math.round(ms / 1000));
+			if (s < 60) return `${s}s`;
+			if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
+			return `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
+		}
 		function fmtDate(s) {
 			if (!s) return "";
 			const d = new Date(s);
@@ -90,7 +98,8 @@ window.__ModuleLoader__.load({
 			const [info, setInfo] = useState(undefined);
 			const [appVersion, setAppVersion] = useState("");
 			const [checkError, setCheckError] = useState(undefined);
-			const [dl, setDl] = useState({ status: "idle", percent: 0, received: 0, total: 0, speed: 0, filePath: undefined, error: undefined });
+			const [dl, setDl] = useState({ status: "idle", percent: 0, received: 0, total: 0, speed: 0, active: 0, etaMs: 0, source: undefined, filePath: undefined, error: undefined });
+			const [mirrors, setMirrors] = useState({ list: [], customized: false, draft: "", loaded: false, saving: false, saved: false });
 			const speedRef = useRef({ time: 0, received: 0 });
 			// Show the current app version immediately, independent of the check result.
 			useEffect(() => {
@@ -100,20 +109,36 @@ window.__ModuleLoader__.load({
 					}).catch(() => {});
 				}
 			}, []);
+			// Load the mirror-source list (customized or defaults).
+			useEffect(() => {
+				if (desktop === undefined || typeof desktop.getUpdateMirrors !== "function") return;
+				desktop.getUpdateMirrors().then((res) => {
+					if (res && Array.isArray(res.mirrors)) {
+						setMirrors((s) => ({ ...s, list: res.mirrors, customized: res.customized === true, draft: res.mirrors.join("\n"), loaded: true }));
+					}
+				}).catch(() => {});
+			}, []);
 			const onProgress = useCallback((p) => {
-				const now = Date.now();
-				const prev = speedRef.current;
-				let speed = 0;
-				if (prev.time > 0 && now > prev.time) {
-					speed = ((p.received ?? 0) - prev.received) * 1000 / (now - prev.time);
+				// Prefer the engine-reported throughput/ETA when present; fall back to
+				// a client-side sample for older bridges that only send received/total.
+				let speed = typeof p.speed === "number" && p.speed > 0 ? p.speed : 0;
+				if (speed === 0) {
+					const now = Date.now();
+					const prev = speedRef.current;
+					if (prev.time > 0 && now > prev.time) {
+						speed = ((p.received ?? 0) - prev.received) * 1000 / (now - prev.time);
+					}
+					speedRef.current = { time: now, received: p.received ?? 0 };
 				}
-				speedRef.current = { time: now, received: p.received ?? 0 };
 				setDl((s) => ({
 					...s,
 					status: "downloading",
 					received: p.received ?? 0,
 					total: p.total ?? 0,
 					speed,
+					active: p.active ?? 0,
+					etaMs: p.etaMs ?? 0,
+					source: p.source,
 					percent: p.total > 0 ? Math.min(100, Math.round((p.received ?? 0) * 100 / p.total)) : 0
 				}));
 			}, []);
@@ -170,6 +195,31 @@ window.__ModuleLoader__.load({
 					setDl((s) => ({ ...s, status: "error", error: err instanceof Error ? err.message : String(err) }));
 				}
 			};
+			const saveMirrors = async () => {
+				if (desktop === undefined || typeof desktop.setUpdateMirrors !== "function") return;
+				const list = mirrors.draft.split(/\r?\n/).map((m) => m.trim()).filter((m) => m !== "");
+				setMirrors((s) => ({ ...s, saving: true, saved: false }));
+				try {
+					const res = await desktop.setUpdateMirrors(list);
+					if (res && Array.isArray(res.mirrors)) {
+						setMirrors((s) => ({ ...s, list: res.mirrors, customized: true, saving: false, saved: true }));
+					}
+				} catch {
+					setMirrors((s) => ({ ...s, saving: false, saved: false }));
+				}
+			};
+			const resetMirrors = async () => {
+				if (desktop === undefined || typeof desktop.resetUpdateMirrors !== "function") return;
+				setMirrors((s) => ({ ...s, saving: true, saved: false }));
+				try {
+					const res = await desktop.resetUpdateMirrors();
+					if (res && Array.isArray(res.mirrors)) {
+						setMirrors((s) => ({ ...s, list: res.mirrors, customized: false, draft: res.mirrors.join("\n"), saving: false, saved: true }));
+					}
+				} catch {
+					setMirrors((s) => ({ ...s, saving: false, saved: false }));
+				}
+			};
 			const hasUpdate = info?.hasUpdate === true;
 			const downloading = dl.status === "downloading";
 			const asset = (info?.assets ?? [])[0];
@@ -217,13 +267,29 @@ window.__ModuleLoader__.load({
 						downloading ? jsxs("div", { className: "mupd-progress", children: [
 							jsx("div", { className: "mupd-bar", children: jsx("div", { className: "mupd-bar-fill", style: { width: `${dl.percent}%` } }) }),
 							jsxs("div", { className: "mupd-meta", children: [
-								jsx("span", { children: jsxs(Fragment, { children: [jsx("b", { children: t("threads", { n: "50" }) }), jsx("span", { children: " · " }), jsx("b", { children: fmtSize(dl.received) }), jsx("span", { children: " / " + fmtSize(dl.total) })] }) }),
-								jsx("span", { children: dl.speed > 0 ? `${fmtSize(dl.speed)}/s` : "" })
+								jsx("span", { children: jsxs(Fragment, { children: [jsx("b", { children: t("threads", { n: "16" }) }), jsx("span", { children: " · " }), jsx("b", { children: fmtSize(dl.received) }), jsx("span", { children: " / " + fmtSize(dl.total) })] }) }),
+								jsx("span", { children: dl.speed > 0 ? `${fmtSize(dl.speed)}/s` : "" }),
+								dl.etaMs > 0 ? jsx("span", { children: ` · ${fmtEta(dl.etaMs)}` }) : null,
+								dl.active > 0 ? jsx("span", { children: ` · ${dl.active} ${t("activeThreads")}` }) : null,
+								dl.source !== undefined ? jsx("span", { children: ` · ${t(dl.source === "mirror" ? "source.mirror" : "source.direct")}` }) : null
 							] })
 						] }) : null,
 						dl.status === "done" ? jsx("div", { className: "mupd-status mupd-status-ok", children: t("downloadDone") }) : null,
 						dl.status === "installing" ? jsx("div", { className: "mupd-status", children: t("installingHint") }) : null,
 						dl.status === "error" && dl.error !== undefined ? jsx("div", { className: "mupd-error", children: dl.error }) : null
+					] })
+				] }),
+				jsxs("div", { className: "mupd-card", children: [
+					jsx("div", { className: "mupd-card-head", children: [jsx("span", { className: "mupd-head-dot" }), jsx("span", { children: t("mirrors.title") })] }),
+					jsxs("div", { className: "mupd-body", children: [
+						jsx("p", { className: "mupd-hint", children: t("mirrors.hint") }),
+						jsx("textarea", { className: "mupd-mirrors", rows: 6, spellCheck: false, value: mirrors.draft, placeholder: t("mirrors.placeholder"), onChange: (e) => setMirrors((s) => ({ ...s, draft: e.target.value, saved: false })) }),
+						jsxs("div", { className: "mupd-actions", children: [
+							jsx("button", { type: "button", className: "mupd-btn mupd-btn-primary", disabled: mirrors.saving || !mirrors.loaded, onClick: () => void saveMirrors(), children: mirrors.saving ? t("mirrors.saving") : t("mirrors.save") }),
+							jsx("button", { type: "button", className: "mupd-btn", disabled: mirrors.saving || !mirrors.loaded, onClick: () => void resetMirrors(), children: t("mirrors.reset") }),
+							mirrors.saved ? jsx("span", { className: "mupd-status-ok mupd-note", children: t("mirrors.saved") }) : null,
+							mirrors.customized ? jsx("span", { className: "mupd-note", children: t("mirrors.custom") }) : jsx("span", { className: "mupd-note", children: t("mirrors.default") })
+						] })
 					] })
 				] }),
 				jsx("p", { className: "mupd-note", children: t("note") })
@@ -254,6 +320,18 @@ window.__ModuleLoader__.load({
 					"download": "下载安装包",
 					"downloading": "下载中",
 					"threads": "{n} 线程加速",
+					"activeThreads": "线程",
+					"source.direct": "直连",
+					"source.mirror": "加速镜像",
+					"mirrors.title": "加速镜像源",
+					"mirrors.hint": "每行一个加速镜像地址（URL 前缀代理）。下载时引擎会并行测速，自动选择最快的镜像；留空或使用默认列表走直连。注意：镜像为第三方代理，仅用于公开安装包下载。",
+					"mirrors.placeholder": "https://ghproxy.net/\nhttps://gh-proxy.com/",
+					"mirrors.save": "保存",
+					"mirrors.saving": "保存中…",
+					"mirrors.saved": "已保存",
+					"mirrors.reset": "恢复默认",
+					"mirrors.custom": "正在使用自定义镜像",
+					"mirrors.default": "正在使用默认镜像",
 					"downloadFailed": "下载失败",
 					"downloadDone": "下载完成，可以开始安装。",
 					"installNow": "安装更新",
@@ -281,6 +359,18 @@ window.__ModuleLoader__.load({
 					"download": "Download installer",
 					"downloading": "Downloading",
 					"threads": "{n}-thread accelerated",
+					"activeThreads": "threads",
+					"source.direct": "direct",
+					"source.mirror": "accelerated mirror",
+					"mirrors.title": "Mirror sources",
+					"mirrors.hint": "One mirror URL per line (URL-prefix proxy). The engine probes every candidate and picks the fastest. Leave empty / use defaults for direct downloads. Note: mirrors are third-party proxies, used only for public installer downloads.",
+					"mirrors.placeholder": "https://ghproxy.net/\nhttps://gh-proxy.com/",
+					"mirrors.save": "Save",
+					"mirrors.saving": "Saving…",
+					"mirrors.saved": "Saved",
+					"mirrors.reset": "Restore defaults",
+					"mirrors.custom": "Using custom mirrors",
+					"mirrors.default": "Using default mirrors",
 					"downloadFailed": "Download failed",
 					"downloadDone": "Download complete. You can install now.",
 					"installNow": "Install update",
