@@ -210,6 +210,12 @@
     - id: ui-desktop
       name: '@deepseek-ai/dsh-client-ui-desktop'
 
+    # Updater settings: a '更新' settings section checking GitHub releases,
+    # showing the changelog, and one-click downloading/installing with a
+    # 50-thread parallel download (window.dshDesktop).
+    - id: ui-updater
+      name: '@deepseek-ai/dsh-client-ui-updater'
+
     # Scheduler settings: a '定时任务' settings section managing task
     # notifications and repeating scheduled tasks over /api/scheduler.
     - id: ui-scheduler

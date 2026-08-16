@@ -190,7 +190,25 @@ contextBridge.exposeInMainWorld("dshDesktop", {
   getDesktopSettings: () => ipcRenderer.invoke("dsh:desktop-get"),
 
   /** Apply a partial desktop-settings patch and return the new state. */
-  setDesktopSettings: (patch) => ipcRenderer.invoke("dsh:desktop-set", patch)
+  setDesktopSettings: (patch) => ipcRenderer.invoke("dsh:desktop-set", patch),
+
+  /** Check GitHub for the latest release → { ok, current, latest, hasUpdate, changelog, assets }. */
+  checkUpdate: () => ipcRenderer.invoke("dsh:update-check"),
+
+  /** Download the installer (50-thread parallel); progress via onProgress. */
+  downloadUpdate: (payload, onProgress) => {
+    if (typeof onProgress === "function") {
+      const listener = (_event, progress) => onProgress(progress);
+      ipcRenderer.on("dsh:update-progress", listener);
+      return ipcRenderer.invoke("dsh:update-download", payload).finally(() => {
+        ipcRenderer.removeListener("dsh:update-progress", listener);
+      });
+    }
+    return ipcRenderer.invoke("dsh:update-download", payload);
+  },
+
+  /** Launch the downloaded installer and quit this instance. */
+  installUpdate: (filePath) => ipcRenderer.invoke("dsh:update-install", filePath)
 });
 
 // Quick-input bridge: the main process forwards the Ctrl+D+S global shortcut

@@ -6,7 +6,7 @@
 // process are needed: the harness server, the WebSocket transport and the
 // frontend all run inside this process on a loopback-only port the OS
 // assigns.
-import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, screen, session, shell } from "electron";
+import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, screen, session, shell } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -585,6 +585,112 @@ function applyDesktopSettings(win, settings) {
   }
 }
 
+// ── updater (GitHub releases + multi-threaded download) ────────────────────
+// Detects the latest release on GitHub, surfaces the changelog, downloads the
+// installer with N concurrent HTTP range requests, then launches it.
+const UPDATE_OWNER = "xxccdl";
+const UPDATE_REPO = "deepseek-harness-desktop";
+/** Concurrent range-request threads for the installer download. */
+const UPDATE_THREADS = 50;
+/** Progress is pushed to the renderer roughly every 256 KiB. */
+const PROGRESS_TICK_BYTES = 256 * 1024;
+
+/** Parse a semver string ("v1.2.3", "1.2.3-beta.1") into comparable parts. */
+function parseVersion(value) {
+  const m = String(value ?? "").replace(/^v/, "").match(/^(\d+)\.(\d+)\.(\d+)(?:[-.+](.+))?$/);
+  if (!m) return undefined;
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]), pre: m[4] ?? "" };
+}
+/** True when version `a` is strictly newer than version `b` (release > prerelease). */
+function isNewerVersion(a, b) {
+  const pa = parseVersion(a);
+  const pb = parseVersion(b);
+  if (pa === undefined || pb === undefined) return false;
+  if (pa.major !== pb.major) return pa.major > pb.major;
+  if (pa.minor !== pb.minor) return pa.minor > pb.minor;
+  if (pa.patch !== pb.patch) return pa.patch > pb.patch;
+  if (pa.pre === pb.pre) return false;
+  if (pa.pre === "") return true;
+  if (pb.pre === "") return false;
+  return pa.pre > pb.pre;
+}
+
+/** Fetch the latest GitHub release payload for this repository. Uses Electron's
+ *  `net.fetch` so system proxy settings are honored (Node's global fetch would
+ *  bypass them and fail on networks that require a proxy). */
+async function fetchLatestRelease() {
+  const res = await net.fetch(`https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases/latest`, {
+    headers: { "Accept": "application/vnd.github+json", "User-Agent": "dsh-desktop-updater" },
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+/** Shared fetch helper honoring system proxy, with a per-request timeout. */
+function proxyFetch(url, init = {}) {
+  return net.fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(30000) });
+}
+
+/**
+ * Download a file using `threads` concurrent HTTP range requests, writing each
+ * segment at its byte offset into a shared file. Requires the server to accept
+ * byte ranges (GitHub release assets do). Reports `{ received, total }` ticks.
+ * @param url - absolute asset URL.
+ * @param destPath - destination file path.
+ * @param threads - concurrent range-request count.
+ * @param onProgress - periodic progress callback.
+ * @returns the destination path once fully written and verified.
+ */
+async function downloadWithThreads(url, destPath, threads, onProgress) {
+  const { open: fspOpen, stat } = await import("node:fs/promises");
+  const head = await proxyFetch(url, { method: "HEAD", redirect: "follow" });
+  const total = Number(head.headers.get("content-length"));
+  const ranges = head.headers.get("accept-ranges");
+  if (!(total > 0) || ranges !== "bytes") throw new Error("源服务器不支持多线程下载");
+  const count = Math.min(threads, Math.max(1, Math.floor(total / 262144)));
+  const chunk = Math.ceil(total / count);
+
+  const out = await fspOpen(destPath, "w");
+  await out.truncate(total);
+  await out.close();
+
+  const segments = [];
+  for (let start = 0; start < total; start += chunk) {
+    segments.push({ start, end: Math.min(total - 1, start + chunk - 1) });
+  }
+  let received = 0;
+  let lastEmit = 0;
+  const emit = () => onProgress?.({ received, total });
+  await Promise.all(segments.map(async (seg) => {
+    const fd = await fspOpen(destPath, "r+");
+    try {
+      const res = await proxyFetch(url, { headers: { Range: `bytes=${seg.start}-${seg.end}` }, redirect: "follow" });
+      if (!res.ok && res.status !== 206) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error("empty response body");
+      const reader = res.body.getReader();
+      let offset = seg.start;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        await fd.write(value, 0, value.length, offset);
+        offset += value.length;
+        received += value.length;
+        if (received - lastEmit >= PROGRESS_TICK_BYTES) {
+          lastEmit = received;
+          emit();
+        }
+      }
+    } finally {
+      await fd.close();
+    }
+  }));
+  const final = await stat(destPath);
+  if (final.size !== total) throw new Error(`下载不完整：${final.size}/${total}`);
+  emit();
+  return destPath;
+}
+
 // ── IPC surface exposed through the preload ──────────────────────────────────
 function registerIpc() {
   ipcMain.handle("dsh:open-external", (_event, url) => {
@@ -608,6 +714,7 @@ function registerIpc() {
       chrome: process.versions.chrome,
       node: process.versions.node
     },
+    appVersion: app.getVersion(),
     harnessVersion: harnessVersion(),
     dshHome: resolveDshHome(),
     profileDir: join(resolveDshHome(), "profiles", PROFILE_NAME),
@@ -635,6 +742,62 @@ function registerIpc() {
     const next = await writeDesktopSettings(patch);
     applyDesktopSettings(BrowserWindow.getAllWindows()[0], next);
     return { ...next, trayActive: tray !== undefined, hotkeyActive: currentHotkey !== undefined };
+  });
+  // Updater: check the latest GitHub release (version + changelog + assets).
+  ipcMain.handle("dsh:update-check", async () => {
+    const current = app.getVersion();
+    try {
+      const release = await fetchLatestRelease();
+      const tag = String(release.tag_name ?? "");
+      const latest = tag.replace(/^v/, "");
+      const assets = (release.assets ?? [])
+        .filter((a) => typeof a.name === "string" && /\.exe$/i.test(a.name))
+        .map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size ?? 0 }));
+      return {
+        ok: true,
+        current,
+        latest,
+        tag,
+        hasUpdate: isNewerVersion(latest, current),
+        changelog: typeof release.body === "string" ? release.body : "",
+        url: release.html_url ?? "",
+        assets,
+        publishedAt: release.published_at ?? ""
+      };
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error);
+      const message = /fetch failed|ENOTFOUND|ECONNREFUSED|EHOSTUNREACH|timed out|timeout/i.test(raw)
+        ? "无法连接 GitHub，请检查网络或代理后重试"
+        : raw;
+      return { ok: false, current, error: message };
+    }
+  });
+  // Updater: download the installer with UPDATE_THREADS concurrent range requests.
+  ipcMain.handle("dsh:update-download", async (event, payload) => {
+    const dir = join(app.getPath("userData"), "updates");
+    await mkdir(dir, { recursive: true });
+    const rawName = payload && typeof payload.name === "string" ? payload.name : "";
+    const safeName = /^[\w .-]+\.exe$/i.test(rawName) ? rawName : "deepseek-harness-desktop-setup.exe";
+    const dest = join(dir, safeName);
+    const report = (p) => { if (!event.sender.isDestroyed()) event.sender.send("dsh:update-progress", p); };
+    try {
+      if (!payload || typeof payload.url !== "string") throw new Error("缺少下载地址");
+      await downloadWithThreads(payload.url, dest, UPDATE_THREADS, report);
+      return { ok: true, filePath: dest };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+  // Updater: launch the downloaded installer and quit this instance.
+  ipcMain.handle("dsh:update-install", async (_event, filePath) => {
+    if (typeof filePath !== "string" || !existsSync(filePath)) return { ok: false, error: "安装包不存在" };
+    try {
+      await shell.openPath(filePath);
+      setTimeout(() => app.quit(), 1500);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
   });
   // The quick-input pill window asks the main process to show/hide/close
   // itself (visibility drives the window) without touching the main window.
