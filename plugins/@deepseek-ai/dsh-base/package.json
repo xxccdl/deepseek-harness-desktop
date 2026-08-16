@@ -108,6 +108,7 @@
     "@deepseek-ai/dsh-tool-web": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-tool-workflow": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tool-browser": "0.1.0-rc.6",
     "@deepseek-ai/dsh-typert-loader": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-typert-registry": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-user-approval": "^0.1.0-rc.6",
