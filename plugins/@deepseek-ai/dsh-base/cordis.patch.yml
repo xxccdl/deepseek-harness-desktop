@@ -382,6 +382,11 @@
     - id: tool-computer-use
       name: '@deepseek-ai/dsh-tool-computer-use'
 
+    # Browser control: drives Edge/Chrome over CDP so the AI can automate the
+    # web (navigate, click, type, screenshot, evaluate JS) via browser_control.
+    - id: tool-browser
+      name: '@deepseek-ai/dsh-tool-browser'
+
     # Persisted same-session goals reach the model and the slash menu here; the
     # domain, driver, and `/goal` command are above.
     - id: tool-goal

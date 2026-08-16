@@ -216,6 +216,11 @@
     - id: ui-updater
       name: '@deepseek-ai/dsh-client-ui-updater'
 
+    # Browser-control settings: a '浏览器控制' settings section to enable and
+    # configure Edge/Chrome automation, with live status and start/stop/test.
+    - id: ui-browser
+      name: '@deepseek-ai/dsh-client-ui-browser'
+
     # Scheduler settings: a '定时任务' settings section managing task
     # notifications and repeating scheduled tasks over /api/scheduler.
     - id: ui-scheduler

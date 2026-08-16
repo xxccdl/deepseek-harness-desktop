@@ -104,6 +104,10 @@ window.__ModuleLoader__.load({
 				className: SettingsRoot_module_css_default.navIcon,
 				size: 16
 			});
+			if (id === "browser") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
+				className: SettingsRoot_module_css_default.navIcon,
+				size: 16
+			});
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSettingsOutline16, {
 				className: SettingsRoot_module_css_default.navIcon,
 				size: 16
