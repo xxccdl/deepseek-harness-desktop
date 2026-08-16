@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.2.6";
+const tag = process.argv[2] ?? "v1.2.8";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,10 +19,9 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
-  "## 1.2.7",
+  "## 1.2.8",
   "",
-  "- 新增「浏览器控制」：设置页可启用/配置 Edge/Chrome（浏览器、调试端口、无头模式、自动提醒），AI 通过 `browser_control` 工具执行复杂网页自动化——打开网页、标签页管理（列出/切换/新建/关闭）、点击/双击/右键/悬停（CSS 选择器、可见文本或坐标定位）、输入文字、按键（含回车表单提交兜底）、滚动、执行 JS、截图、前进/后退/刷新、等待",
-  "- 修复：设置页「浏览器控制」的启用开关点不动（`browser-control` 设置命名空间未对配置客户端暴露，现已在 dsh-apiproxy 白名单放行，读写均生效）",
+  "- 修复：打包安装版遗漏 fork 专属包（dsh-client-ui-updater / dsh-client-ui-browser / dsh-tool-browser），安装版启动报错；已在 bundle 包依赖中补全声明",
   "",
   "安装包与便携版见本地 dist/ 目录（本 release 不附安装包）。"
 ].join("\n");
