@@ -226,6 +226,24 @@
     - id: ui-scheduler
       name: '@deepseek-ai/dsh-client-ui-scheduler'
 
+    # UI enhancements: Ctrl+K session search, F1 shortcut help, Ctrl+Shift+V
+    # clipboard history, Ctrl+E markdown export, code-block toolbar + Mermaid.
+    - id: ui-enhance
+      name: '@deepseek-ai/dsh-client-ui-enhance'
+
+    # Quick-snippet picker (Ctrl+/) over the shared snippet store (/api/snippets).
+    - id: ui-snippets
+      name: '@deepseek-ai/dsh-client-ui-snippets'
+
+    # Stats settings: a '统计' section with usage spend/balance and session counts.
+    - id: ui-stats
+      name: '@deepseek-ai/dsh-client-ui-stats'
+
+    # Onboarding: first-run wizard (API-key check, feature tour, shortcuts) plus
+    # a full '使用教程' settings section with a rerun-wizard button.
+    - id: ui-onboarding
+      name: '@deepseek-ai/dsh-client-ui-onboarding'
+
     # Sidebar budget bar: a '已用/余额' bar above the settings trigger, fed by
     # /api/usage from dsh-tool-usage.
     - id: ui-usage

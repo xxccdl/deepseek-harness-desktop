@@ -6,12 +6,13 @@
 // process are needed: the harness server, the WebSocket transport and the
 // frontend all run inside this process on a loopback-only port the OS
 // assigns.
-import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, net, screen, session, shell } from "electron";
+import { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, clipboard, nativeImage, nativeTheme, net, screen, session, shell } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
 import {
   PROFILE_PATCH_FILENAME,
   boot,
@@ -364,7 +365,7 @@ async function saveWindowState(win) {
 }
 
 // ── window creation ──────────────────────────────────────────────────────────
-function createMainWindow(serverUrl) {
+function createMainWindow(serverUrl, startHidden = false) {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -400,29 +401,70 @@ function createMainWindow(serverUrl) {
     if (state.maximized) win.maximize();
   });
 
-  // Splash: show a calm "Made by xxccdl" animation immediately at launch, then
-  // swap in the app once it has played (2s) and the UI is ready — never sooner.
-  const splashUrl = pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
-  const appStartedAt = Date.now();
-  let appReady = false;
-  let shown = false;
-  const tryShowApp = () => {
-    if (!appReady || shown || win.isDestroyed()) return;
-    if (Date.now() - appStartedAt < 2000) return;
-    shown = true;
+  if (startHidden) {
+    // Silent start (auto-launch with --hidden): load the app directly, never
+    // show the window. The tray (forced on in this mode) is the way back in.
     void win.loadURL(serverUrl);
-  };
-  void win.loadURL(splashUrl);
-  win.once("ready-to-show", () => {
-    win.show();
-    setTimeout(() => { appReady = true; tryShowApp(); }, 2000);
+  } else {
+    // Splash: show a calm "Made by xxccdl" animation immediately at launch, then
+    // swap in the app once it has played (2s) and the UI is ready — never sooner.
+    const splashUrl = pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
+    const appStartedAt = Date.now();
+    let appReady = false;
+    let shown = false;
+    const tryShowApp = () => {
+      if (!appReady || shown || win.isDestroyed()) return;
+      if (Date.now() - appStartedAt < 2000) return;
+      shown = true;
+      void win.loadURL(serverUrl);
+    };
+    void win.loadURL(splashUrl);
+    win.once("ready-to-show", () => {
+      win.show();
+      setTimeout(() => { appReady = true; tryShowApp(); }, 2000);
+    });
+    win.webContents.once("did-finish-load", () => {
+      if (win.webContents.getURL().startsWith(serverUrl)) return; // already the app
+      // The splash finished painting; treat the UI as ready so the 2s timer
+      // alone gates the swap.
+      appReady = true;
+      tryShowApp();
+    });
+  }
+
+  // Re-apply persisted UI state every time the app page (re)loads: zoom level
+  // and always-on-top.
+  win.webContents.on("did-finish-load", () => {
+    if (win.isDestroyed() || !win.webContents.getURL().startsWith(serverUrl)) return;
+    void readDesktopSettings().then((settings) => {
+      if (win.isDestroyed()) return;
+      const zoom = typeof settings.zoomFactor === "number" ? settings.zoomFactor : 1;
+      if (zoom !== 1) {
+        try { win.webContents.setZoomFactor(Math.min(1.8, Math.max(0.6, zoom))); } catch { /* non-fatal */ }
+      }
+      if (settings.alwaysOnTop === true) win.setAlwaysOnTop(true);
+    });
   });
-  win.webContents.once("did-finish-load", () => {
-    if (win.webContents.getURL().startsWith(serverUrl)) return; // already the app
-    // The splash finished painting; treat the UI as ready so the 2s timer
-    // alone gates the swap.
-    appReady = true;
-    tryShowApp();
+
+  // In-app shortcuts: Ctrl+= / Ctrl+- / Ctrl+0 zoom, Ctrl+Alt+T pin toggle.
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const key = (input.key ?? "").toLowerCase();
+    const mod = input.control || input.meta;
+    if (!mod) return;
+    if (key === "=" || key === "+") {
+      event.preventDefault();
+      void applyZoom(win, 0.1);
+    } else if (key === "-") {
+      event.preventDefault();
+      void applyZoom(win, -0.1);
+    } else if (key === "0" && !input.alt && !input.shift) {
+      event.preventDefault();
+      void applyZoom(win, "reset");
+    } else if (input.alt && key === "t") {
+      event.preventDefault();
+      void toggleAlwaysOnTop(win);
+    }
   });
 
   win.on("close", () => void saveWindowState(win));
@@ -564,6 +606,115 @@ const APP_ICON_PATH = fileURLToPath(new URL("../resources/icon.png", import.meta
 let tray = undefined;
 let currentHotkey = undefined;
 let hideToTrayHandler = undefined;
+/** Cached desktop settings so event handlers (sounds, boss key) read them sync. */
+let desktopCache = {};
+
+// ── UI zoom (Ctrl+= / Ctrl+- / Ctrl+0, persisted) ────────────────────────────
+const ZOOM_MIN = 0.6;
+const ZOOM_MAX = 1.8;
+
+/** Apply a zoom step (+/-0.1) or "reset", persist it, and set it on the window. */
+async function applyZoom(win, delta) {
+  if (win === undefined || win.isDestroyed()) return;
+  const settings = await readDesktopSettings();
+  const current = typeof settings.zoomFactor === "number" ? settings.zoomFactor : 1;
+  const next = delta === "reset"
+    ? 1
+    : Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((current + delta) * 100) / 100));
+  if (next !== current) await writeDesktopSettings({ zoomFactor: next });
+  try { win.webContents.setZoomFactor(next); } catch { /* non-fatal */ }
+}
+
+// ── always-on-top pin (title-bar button / Ctrl+Alt+T) ───────────────────────
+/** Toggle (or force) always-on-top for the main window; persist + push state. */
+async function toggleAlwaysOnTop(win, force) {
+  if (win === undefined || win.isDestroyed()) return false;
+  const next = force ?? !win.isAlwaysOnTop();
+  try { win.setAlwaysOnTop(next); } catch { /* non-fatal */ }
+  await writeDesktopSettings({ alwaysOnTop: next });
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed()) w.webContents.send("dsh:always-on-top", next);
+  }
+  return next;
+}
+
+// ── boss key (Ctrl+Alt+B: instantly hide everything) ─────────────────────────
+/** Toggle the boss-key hide: with tray → hide to tray; without → minimize. */
+function bossKeyToggle() {
+  const win = BrowserWindow.getAllWindows().find((w) => w !== quickChatWindow && !w.isDestroyed());
+  hidePillWindow();
+  if (win === undefined) return;
+  if (!win.isVisible() && !win.isMinimized()) {
+    win.show();
+    win.focus();
+    return;
+  }
+  if (tray !== undefined) win.hide();
+  else win.minimize();
+}
+
+// ── UI sounds (task done / error / message), generated with WebAudio ─────────
+/** Tiny WebAudio snippets played inside the main window — no asset files. */
+const UI_SOUNDS = {
+  done:
+    "(function(){var c=new (window.AudioContext||window.webkitAudioContext)();var t=c.currentTime;" +
+    "[[880,0,.1],[1318.5,.12,.18]].forEach(function(p){var f=p[0],o=p[1],d=p[2];var s=c.createOscillator(),g=c.createGain();" +
+    "s.type='sine';s.frequency.value=f;g.gain.setValueAtTime(0.0001,t+o);g.gain.exponentialRampToValueAtTime(0.16,t+o+0.015);" +
+    "g.gain.exponentialRampToValueAtTime(0.0001,t+o+d);s.connect(g);g.connect(c.destination);s.start(t+o);s.stop(t+o+d+0.05);});" +
+    "setTimeout(function(){c.close();},700);})()",
+  error:
+    "(function(){var c=new (window.AudioContext||window.webkitAudioContext)();var t=c.currentTime;" +
+    "var s=c.createOscillator(),g=c.createGain();s.type='square';s.frequency.setValueAtTime(330,t);s.frequency.exponentialRampToValueAtTime(165,t+0.22);" +
+    "g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.08,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.26);" +
+    "s.connect(g);g.connect(c.destination);s.start(t);s.stop(t+0.3);setTimeout(function(){c.close();},600);})()",
+  message:
+    "(function(){var c=new (window.AudioContext||window.webkitAudioContext)();var t=c.currentTime;" +
+    "var s=c.createOscillator(),g=c.createGain();s.type='sine';s.frequency.setValueAtTime(659,t);s.frequency.setValueAtTime(880,t+0.09);" +
+    "g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.12,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);" +
+    "s.connect(g);g.connect(c.destination);s.start(t);s.stop(t+0.24);setTimeout(function(){c.close();},500);})()"
+};
+
+/** Play a UI sound in the main window (no-op when sounds are disabled). */
+function playUiSound(kind) {
+  if (desktopCache.sounds === false) return;
+  const code = UI_SOUNDS[kind];
+  if (code === undefined) return;
+  const win = BrowserWindow.getAllWindows().find((w) => w !== quickChatWindow && !w.isDestroyed());
+  if (win === undefined || win.webContents.isLoading()) return;
+  win.webContents.executeJavaScript(code, true).catch(() => { /* audio may be unavailable */ });
+}
+
+/** Map a notify payload to a sound kind, or undefined for silence. */
+function soundForNotify(payload) {
+  if (typeof payload?.sound === "string" && UI_SOUNDS[payload.sound] !== undefined) return payload.sound;
+  const title = String(payload?.title ?? "");
+  if (/失败|错误|error|failed/i.test(title)) return "error";
+  if (/完成|成功|done|complete|success/i.test(title)) return "done";
+  if (/消息|回复|message|reply/i.test(title)) return "message";
+  return undefined;
+}
+
+// ── clipboard history (polling watcher, last 50 text entries) ────────────────
+let clipboardHistory = [];
+let lastClipboardText = "";
+
+/** Start the clipboard watcher; records text copies into a 50-entry history. */
+function startClipboardWatcher() {
+  setInterval(() => {
+    let text;
+    try {
+      text = clipboard.readText();
+    } catch {
+      return;
+    }
+    if (!text || text === lastClipboardText || text.length > 8000) return;
+    lastClipboardText = text;
+    clipboardHistory = [
+      { id: randomUUID(), text, at: Date.now() },
+      ...clipboardHistory.filter((entry) => entry.text !== text)
+    ].slice(0, 50);
+  }, 1500);
+}
 
 /**
  * Apply the desktop settings to the running app: create/destroy the system
@@ -573,6 +724,7 @@ let hideToTrayHandler = undefined;
  * @param settings - partial desktop settings object.
  */
 function applyDesktopSettings(win, settings) {
+  desktopCache = { ...desktopCache, ...settings };
   if (settings.tray === true && tray === undefined && win !== undefined) {
     const icon = nativeImage.createFromPath(APP_ICON_PATH).resize({ width: 16, height: 16 });
     tray = new Tray(icon);
@@ -596,7 +748,24 @@ function applyDesktopSettings(win, settings) {
     tray = undefined;
   }
 
-  app.setLoginItemSettings({ openAtLogin: settings.autoLaunch === true });
+  app.setLoginItemSettings({
+    openAtLogin: settings.autoLaunch === true,
+    // Silent start passes --hidden so the auto-launched instance stays in tray.
+    args: settings.silentStart === true ? ["--hidden"] : []
+  });
+
+  // Boss key Ctrl+Alt+B: instantly hide the app (toggle). Default on.
+  if (settings.bossKey !== false && !globalShortcut.isRegistered("Control+Alt+B")) {
+    globalShortcut.register("Control+Alt+B", bossKeyToggle);
+  } else if (settings.bossKey === false && globalShortcut.isRegistered("Control+Alt+B")) {
+    globalShortcut.unregister("Control+Alt+B");
+  }
+
+  // Always-on-top restored from settings on apply (explicit values only).
+  if (win !== undefined && !win.isDestroyed()) {
+    if (settings.alwaysOnTop === true) win.setAlwaysOnTop(true);
+    else if (settings.alwaysOnTop === false) win.setAlwaysOnTop(false);
+  }
 
   const hotkey = typeof settings.hotkey === "string" && settings.hotkey !== "" ? settings.hotkey : undefined;
   if (hotkey !== currentHotkey) {
@@ -749,8 +918,12 @@ function registerIpc() {
     else if (action === "toggle-maximize") {
       if (win.isMaximized()) win.unmaximize();
       else win.maximize();
+    } else if (action === "toggle-pin") {
+      void toggleAlwaysOnTop(win);
     } else if (action === "close") win.close();
   });
+  // Clipboard history (last 50 text copies) for the Ctrl+Shift+V picker.
+  ipcMain.handle("dsh:clipboard-history-get", () => clipboardHistory);
   // Desktop behaviors (tray / auto-launch / global hotkey) for the ui-desktop settings page.
   ipcMain.handle("dsh:desktop-get", async () => {
     const settings = await readDesktopSettings();
@@ -906,7 +1079,10 @@ if (!gotLock) {
       // rejection becomes one labelled diagnostic, tree dispose, and exit(1).
       installFailLoud(BIN_NAME, process, () => disposeHarness());
       serverUrl = await bootHarness();
-      win = createMainWindow(serverUrl);
+      // Silent start: the auto-launched instance boots straight into the app
+      // without a window (the tray, forced on below, is the way back in).
+      const startHidden = process.argv.includes("--hidden");
+      win = createMainWindow(serverUrl, startHidden);
     } catch (error) {
       console.error("dsh-desktop: boot failed", error);
       await disposeHarness();
@@ -918,8 +1094,13 @@ if (!gotLock) {
       return;
     }
     Menu.setApplicationMenu(buildMenu(win));
-    // Apply persisted desktop settings (tray / auto-launch / global hotkey).
-    applyDesktopSettings(win, await readDesktopSettings());
+    // Apply persisted desktop settings (tray / auto-launch / global hotkey /
+    // boss key / zoom / sounds). A silent start implies the tray.
+    const initialSettings = await readDesktopSettings();
+    if (process.argv.includes("--hidden") && initialSettings.tray !== true) initialSettings.tray = true;
+    applyDesktopSettings(win, initialSettings);
+    // Clipboard history watcher (Ctrl+Shift+V picker reads it).
+    startClipboardWatcher();
     // Quick chat: the true three-key chord Ctrl+D+S toggles the detached mini
     // panel — the main window is left untouched (never shown/focused).
     // globalShortcut can't express this (Windows RegisterHotKey accepts only
@@ -935,17 +1116,20 @@ if (!gotLock) {
       console.warn("dsh-desktop: failed to install quick-chat hotkey", error);
     }
     // Bridge the harness "dsh/notify" events (task start/done, scheduler) to
-    // native Windows notifications.
+    // native Windows notifications, plus a matching UI sound when enabled.
     if (ctx !== undefined) {
       ctx.on("dsh/notify", (payload) => {
-        if (!Notification.isSupported()) return;
         const title = typeof payload?.title === "string" ? payload.title : "DeepSeek Harness";
         const body = typeof payload?.body === "string" ? payload.body : "";
-        try {
-          new Notification({ title, body, silent: false }).show();
-        } catch (error) {
-          console.warn("dsh-desktop: failed to show notification", error);
+        if (Notification.isSupported()) {
+          try {
+            new Notification({ title, body, silent: false }).show();
+          } catch (error) {
+            console.warn("dsh-desktop: failed to show notification", error);
+          }
         }
+        const sound = soundForNotify(payload);
+        if (sound !== undefined) playUiSound(sound);
       });
     }
   });

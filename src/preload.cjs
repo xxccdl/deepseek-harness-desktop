@@ -73,6 +73,13 @@ const TITLE_BAR_CSS = `
 #dsh-titlebar .dsh-btn.dsh-close:hover {
   background: #e81123 !important;
 }
+#dsh-titlebar .dsh-btn.dsh-pin {
+  width: 40px !important;
+}
+#dsh-titlebar .dsh-btn.dsh-pin.dsh-pinned {
+  color: #7c8cf8 !important;
+  background: rgba(124, 140, 248, 0.12) !important;
+}
 #dsh-titlebar .dsh-btn svg {
   display: block;
   width: 12px;
@@ -102,6 +109,8 @@ const TITLE_BAR_CSS = `
 const ICONS = {
   minimize:
     '<svg viewBox="0 0 12 12"><path d="M1 6h10"/></svg>',
+  pin:
+    '<svg viewBox="0 0 12 12"><path d="M4.4 1.4h3.2l-.5 2.8 1.6 1.6v1H3.3v-1l1.6-1.6z"/><path d="M6 6.8V11"/></svg>',
   maximize:
     '<svg class="dsh-max-full" viewBox="0 0 12 12"><rect x="1.4" y="1.4" width="9.2" height="9.2" rx="0.8"/></svg>' +
     '<svg class="dsh-max-restore" viewBox="0 0 12 12">' +
@@ -126,6 +135,7 @@ function injectTitleBar() {
       <span>DeepSeek Harness</span>
     </span>
     <div class="dsh-controls">
+      <button class="dsh-btn dsh-pin" data-action="toggle-pin" title="窗口置顶 (Ctrl+Alt+T)" aria-label="窗口置顶">${ICONS.pin}</button>
       <button class="dsh-btn" data-action="minimize" title="最小化" aria-label="最小化">${ICONS.minimize}</button>
       <button class="dsh-btn" data-action="toggle-maximize" title="最大化" aria-label="最大化">${ICONS.maximize}</button>
       <button class="dsh-btn dsh-close" data-action="close" title="关闭" aria-label="关闭">${ICONS.close}</button>
@@ -159,6 +169,12 @@ function injectTitleBar() {
 
   ipcRenderer.on("dsh:window-maximized", (_event, maximized) => {
     bar.classList.toggle("dsh-maximized", maximized);
+  });
+
+  // Keep the pin button in sync with the actual always-on-top state.
+  const pinBtn = bar.querySelector(".dsh-pin");
+  ipcRenderer.on("dsh:always-on-top", (_event, pinned) => {
+    if (pinBtn) pinBtn.classList.toggle("dsh-pinned", pinned === true);
   });
 }
 
@@ -217,7 +233,10 @@ contextBridge.exposeInMainWorld("dshDesktop", {
   setUpdateMirrors: (mirrors) => ipcRenderer.invoke("dsh:update-mirrors-set", mirrors),
 
   /** Clear the custom list, falling back to the built-in defaults. */
-  resetUpdateMirrors: () => ipcRenderer.invoke("dsh:update-mirrors-reset")
+  resetUpdateMirrors: () => ipcRenderer.invoke("dsh:update-mirrors-reset"),
+
+  /** Read the clipboard history (last 50 text copies) → [{id, text, at}]. */
+  getClipboardHistory: () => ipcRenderer.invoke("dsh:clipboard-history-get")
 });
 
 // Quick-input bridge: the main process forwards the Ctrl+D+S global shortcut

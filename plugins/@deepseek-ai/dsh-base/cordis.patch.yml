@@ -289,6 +289,10 @@
     - id: command-compact
       name: '@deepseek-ai/dsh-command-compact'
 
+    # /btw: ask the running agent a side question without interrupting it.
+    - id: command-btw
+      name: '@deepseek-ai/dsh-command-btw'
+
     - id: subagent
       name: '@deepseek-ai/dsh-subagent'
 
@@ -386,6 +390,27 @@
     # web (navigate, click, type, screenshot, evaluate JS) via browser_control.
     - id: tool-browser
       name: '@deepseek-ai/dsh-tool-browser'
+
+    # Web fetch: model-facing web_fetch(url) returning a page's readable text.
+    - id: tool-webfetch
+      name: '@deepseek-ai/dsh-tool-webfetch'
+
+    # Shared snippet library: snippet_save/list/get/delete tools plus
+    # /api/snippets for the UI picker (Ctrl+/).
+    - id: tool-snippets
+      name: '@deepseek-ai/dsh-tool-snippets'
+
+    # Delayed reminders: remind(delayMinutes, title) fires a dsh/notify event.
+    - id: tool-remind
+      name: '@deepseek-ai/dsh-tool-remind'
+
+    # Fast filename search: file_name_search(pattern, root?) over the tree.
+    - id: tool-filesearch
+      name: '@deepseek-ai/dsh-tool-filesearch'
+
+    # OS clipboard bridge: clipboard_read / clipboard_write tools.
+    - id: tool-clipboard
+      name: '@deepseek-ai/dsh-tool-clipboard'
 
     # Persisted same-session goals reach the model and the slash menu here; the
     # domain, driver, and `/goal` command are above.

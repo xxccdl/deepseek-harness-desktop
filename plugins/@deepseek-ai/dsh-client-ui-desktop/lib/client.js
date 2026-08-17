@@ -73,7 +73,7 @@ window.__ModuleLoader__.load({
 
 		function DesktopSection() {
 			const t = boundT;
-			const [settings, setSettings] = useState({ tray: false, autoLaunch: false, hotkey: "", trayActive: false, hotkeyActive: false });
+			const [settings, setSettings] = useState({ tray: false, autoLaunch: false, silentStart: false, bossKey: true, sounds: true, hotkey: "", trayActive: false, hotkeyActive: false });
 			const [loaded, setLoaded] = useState(false);
 			const refresh = useCallback(async () => {
 				try {
@@ -106,7 +106,13 @@ window.__ModuleLoader__.load({
 					jsx(Switch, { checked: settings.tray === true, onChange: (v) => void update({ tray: v }), disabled: !loaded }),
 					jsx("span", { className: "mydesk-status" + (settings.trayActive ? "" : " mydesk-status-off"), children: settings.trayActive ? t("on") : t("off") })
 				] })),
-				row(t("autoLaunch.title"), t("autoLaunch.desc"), jsx(Switch, { checked: settings.autoLaunch === true, onChange: (v) => void update({ autoLaunch: v }), disabled: !loaded })),
+				row(t("autoLaunch.title"), t("autoLaunch.desc"), jsx(Switch, { checked: settings.autoLaunch === true, onChange: (v) => void update({ autoLaunch: v, ...(v ? {} : {}) }), disabled: !loaded })),
+				row(t("silentStart.title"), t("silentStart.desc"), jsx(Switch, { checked: settings.silentStart === true, onChange: (v) => void update({ silentStart: v, ...(v ? { tray: true } : {}) }), disabled: !loaded })),
+				row(t("bossKey.title"), t("bossKey.desc"), jsxs(Fragment, { children: [
+					jsx(Switch, { checked: settings.bossKey !== false, onChange: (v) => void update({ bossKey: v }), disabled: !loaded }),
+					jsx("span", { className: "mydesk-row-desc", children: "Ctrl+Alt+B" })
+				] })),
+				row(t("sounds.title"), t("sounds.desc"), jsx(Switch, { checked: settings.sounds !== false, onChange: (v) => void update({ sounds: v }), disabled: !loaded })),
 				row(t("hotkey.title"), t("hotkey.desc"), jsxs(Fragment, { children: [
 					jsx(HotkeyField, { value: settings.hotkey ?? "", onChange: (v) => void update({ hotkey: v }) }),
 					jsx("span", { className: "mydesk-status" + (settings.hotkeyActive ? "" : " mydesk-status-off"), children: settings.hotkeyActive ? t("on") : t("off") })
@@ -126,7 +132,13 @@ window.__ModuleLoader__.load({
 					"tray.title": "系统托盘",
 					"tray.desc": "在系统托盘显示图标；开启后点击关闭按钮会最小化到托盘而不是退出。",
 					"autoLaunch.title": "开机自启",
-					"autoLaunch.desc": "登录 Windows 时自动启动应用。",
+				"autoLaunch.desc": "登录 Windows 时自动启动应用。",
+				"silentStart.title": "静默启动",
+				"silentStart.desc": "开机自启时不显示窗口，仅在系统托盘运行（自动开启托盘）。",
+				"bossKey.title": "老板键",
+				"bossKey.desc": "任意界面按 Ctrl+Alt+B 立即隐藏应用（再按恢复）；有托盘时隐藏到托盘，否则最小化。",
+				"sounds.title": "提示音效",
+				"sounds.desc": "任务完成、出错、收到消息时播放提示音。",
 					"hotkey.title": "全局快捷键",
 					"hotkey.desc": "任意应用前台时按下即可唤起主窗口；留空表示禁用。格式如 CommandOrControl+Shift+Space。",
 					"on": "已开启",
@@ -139,7 +151,13 @@ window.__ModuleLoader__.load({
 					"tray.title": "System tray",
 					"tray.desc": "Show an icon in the system tray; when on, closing the window minimizes to the tray instead of quitting.",
 					"autoLaunch.title": "Launch at login",
-					"autoLaunch.desc": "Start the app automatically when you sign in to Windows.",
+				"autoLaunch.desc": "Start the app automatically when you sign in to Windows.",
+				"silentStart.title": "Silent start",
+				"silentStart.desc": "When auto-launched at login, stay hidden in the system tray (tray turns on automatically).",
+				"bossKey.title": "Boss key",
+				"bossKey.desc": "Press Ctrl+Alt+B anywhere to instantly hide the app (press again to restore); hides to tray when present, otherwise minimizes.",
+				"sounds.title": "Sound effects",
+				"sounds.desc": "Play a sound when tasks complete, fail, or a message arrives.",
 					"hotkey.title": "Global hotkey",
 					"hotkey.desc": "Summons the main window from any app; leave empty to disable. Format like CommandOrControl+Shift+Space.",
 					"on": "On",
