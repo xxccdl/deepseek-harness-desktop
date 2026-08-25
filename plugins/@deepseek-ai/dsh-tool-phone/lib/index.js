@@ -106,6 +106,7 @@ function renderScreenElements(value) {
     if (inputs.length > 25) lines.push(`…等共 ${inputs.length} 个输入框`);
   }
   lines.push("操作：点击用 phone_tap 传「文字」或中心坐标；输入先 phone_tap 点输入框再 phone_type；长按/双击同理。");
+  lines.push("视觉模式：若元素缺少文字、或需要理解图标/图片/图表/整体布局，调用 phone_screenshot 截屏（多模态模型直接看画面）后，再结合 phone_tap / phone_swipe / phone_type 完成操作。");
   return lines.join("\n");
 }
 

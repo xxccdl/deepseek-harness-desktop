@@ -210,6 +210,7 @@ window.__ModuleLoader__.load({
 						] }),
 						jsx("div", { className: "pc-actions", children: [
 							["phone_screen", "actions.screen"],
+							["phone_screenshot", "actions.screenshot"],
 							["phone_tap", "actions.tap"],
 							["phone_longpress", "actions.longpress"],
 							["phone_swipe", "actions.swipe"],
@@ -236,7 +237,7 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh: {
 					"nav": "手机控制",
-					"hint": "管理手机控制：开启后 AI 可读取当前屏幕的界面元素，并执行点击、长按、滑动、输入、滚动、按键、打开应用等操作来操控手机。",
+					"hint": "管理手机控制：开启后 AI 可读取当前屏幕的界面元素，并执行点击、长按、滑动、输入、滚动、按键、打开应用等操作来操控手机。使用支持视觉的多模态模型时，AI 还能截取屏幕画面直接查看（视觉控制），识别图标、图片、图表与整体布局。",
 					"status.title": "服务状态",
 					"status.enable": "无障碍服务",
 					"status.enableDesc": "AI 操控手机依赖系统的无障碍服务。",
@@ -252,6 +253,7 @@ window.__ModuleLoader__.load({
 					"test.running": "读取中…",
 					"actions.title": "AI 可执行的操作",
 					"actions.screen": "读取屏幕元素列表",
+					"actions.screenshot": "截取屏幕画面（多模态模型直接看图）",
 					"actions.tap": "点击（按文字或坐标）",
 					"actions.longpress": "长按",
 					"actions.swipe": "滑动（拖拽/翻页）",
@@ -264,7 +266,7 @@ window.__ModuleLoader__.load({
 				},
 				en: {
 					"nav": "Phone control",
-					"hint": "Manage phone control: when enabled, the AI can read the current screen's elements and tap, long-press, swipe, type, scroll, press keys, and open apps to operate your phone.",
+					"hint": "Manage phone control: when enabled, the AI can read the current screen's elements and tap, long-press, swipe, type, scroll, press keys, and open apps to operate your phone. With a vision-capable multimodal model, the AI can also capture the screen and see it directly (vision control) to recognize icons, images, charts, and overall layout.",
 					"status.title": "Service status",
 					"status.enable": "Accessibility service",
 					"status.enableDesc": "AI phone control relies on the system accessibility service.",
@@ -280,6 +282,7 @@ window.__ModuleLoader__.load({
 					"test.running": "Reading…",
 					"actions.title": "Actions the AI can run",
 					"actions.screen": "Read screen elements",
+					"actions.screenshot": "Capture screen (multimodal model sees the image)",
 					"actions.tap": "Tap (by text or coordinate)",
 					"actions.longpress": "Long-press",
 					"actions.swipe": "Swipe (drag / flip pages)",
