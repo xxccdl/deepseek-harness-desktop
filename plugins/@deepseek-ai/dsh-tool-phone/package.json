@@ -1,0 +1,29 @@
+{
+  "name": "@deepseek-ai/dsh-tool-phone",
+  "description": "Phone control for DeepSeek Harness mobile: model-facing tools let the AI read the current screen's interactive elements and tap / swipe / type / press keys / scroll / open apps through the native accessibility service (local HTTP bridge at 127.0.0.1:3090)",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/tools/phone"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "files": [
+    "lib/index.js"
+  ]
+}

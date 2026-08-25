@@ -4578,7 +4578,8 @@ const discoveredModelViewSchema = z$1.object({
 	id: z$1.string().min(1),
 	name: z$1.string().min(1).optional(),
 	contextWindow: z$1.number().int().positive().optional(),
-	maxTokens: z$1.number().int().positive().optional()
+	maxTokens: z$1.number().int().positive().optional(),
+	inputModalities: z$1.array(z$1.union([z$1.literal("text"), z$1.literal("image")])).optional()
 });
 /** llm.discoverModels request payload. */
 const llmDiscoverModelsRequestSchema = z$1.object({

@@ -412,6 +412,11 @@
     - id: tool-clipboard
       name: '@deepseek-ai/dsh-tool-clipboard'
 
+    # Multimodal vision: vision_analyze(image_path?) analyzes a local image or
+    # live screen capture using the DeepSeek vision model.
+    - id: tool-vision
+      name: '@deepseek-ai/dsh-tool-vision'
+
     # Persisted same-session goals reach the model and the slash menu here; the
     # domain, driver, and `/goal` command are above.
     - id: tool-goal

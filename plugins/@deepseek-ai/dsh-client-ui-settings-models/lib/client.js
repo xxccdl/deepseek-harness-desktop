@@ -729,13 +729,19 @@ window.__ModuleLoader__.load({
 		function capacitySpelling(value) {
 			return value === void 0 ? "" : formatCapacity(value);
 		}
+		/** The request modalities a drafted model declares, tolerant of a malformed value. */
+		function modelInput(model) {
+			const value = model.input;
+			return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
+		}
 		/** Adopt a candidate, keeping whatever capacities the provider disclosed. */
 		function adopt(candidate) {
 			return {
 				id: candidate.id,
 				...candidate.name === void 0 ? {} : { name: candidate.name },
 				...candidate.contextWindow === void 0 ? {} : { contextWindow: candidate.contextWindow },
-				...candidate.maxTokens === void 0 ? {} : { maxTokens: candidate.maxTokens }
+				...candidate.maxTokens === void 0 ? {} : { maxTokens: candidate.maxTokens },
+				...candidate.inputModalities === void 0 ? {} : { input: candidate.inputModalities }
 			};
 		}
 		/**
@@ -785,6 +791,14 @@ window.__ModuleLoader__.load({
 						...next
 					}).filter(([key]) => !cleared.has(key)));
 				}));
+			};
+			/** Toggle image admission on one drafted model. */
+			const toggleImageInput = (index) => {
+				const current = modelInput(models[index] ?? {});
+				const base = current.length === 0 ? ["text"] : current;
+				const hasImage = base.includes("image");
+				const next = hasImage ? base.filter((entry) => entry !== "image") : [...new Set([...base, "image"])];
+				patch(index, { input: next });
 			};
 			const fetchModels = async () => {
 				setBusy(true);
@@ -969,6 +983,19 @@ window.__ModuleLoader__.load({
 									disabled,
 									onChange: (event) => {
 										editCapacity(index, "maxTokens", event.target.value);
+									}
+								})]
+							}), (0, react_jsx_runtime.jsxs)("label", {
+								className: ModelsSection_module_css_default["modelField"],
+								children: [(0, react_jsx_runtime.jsx)("span", {
+									className: ModelsSection_module_css_default["modelFieldLabel"],
+									children: t("modelImageInput")
+								}), (0, react_jsx_runtime.jsx)("input", {
+									type: "checkbox",
+									checked: modelInput(model).includes("image"),
+									disabled,
+									onChange: () => {
+										toggleImageInput(index);
 									}
 								})]
 							})]
@@ -2489,7 +2516,8 @@ window.__ModuleLoader__.load({
 			maxTokens: "Max output tokens",
 			maxTokensPlaceholder: "Uses the provider default",
 			modelAdvanced: "Capacities",
-			addModel: "Add model",
+		modelImageInput: "Image input",
+		addModel: "Add model",
 			removeModel: "Delete model",
 			modelsEmpty: "No models will be shown in the selector. Unlisted IDs can still be sent directly.",
 			keyBlank: "Enter the API key, or leave the field empty to keep the stored one.",
@@ -2585,7 +2613,8 @@ window.__ModuleLoader__.load({
 			maxTokens: "最大输出 token 数",
 			maxTokensPlaceholder: "使用提供方默认值",
 			modelAdvanced: "容量",
-			addModel: "添加模型",
+		modelImageInput: "图像输入",
+		addModel: "添加模型",
 			removeModel: "删除模型",
 			modelsEmpty: "模型选择器中将不显示任何模型；目录外 ID 仍可直接发送。",
 			keyBlank: "请输入 API 密钥；留空则保持已存储的密钥。",

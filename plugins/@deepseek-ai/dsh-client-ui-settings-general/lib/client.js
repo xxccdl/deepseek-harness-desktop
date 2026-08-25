@@ -108,6 +108,26 @@ window.__ModuleLoader__.load({
 				className: SettingsRoot_module_css_default.navIcon,
 				size: 16
 			});
+			if (id === "onboarding") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSparkle16, {
+				className: SettingsRoot_module_css_default.navIcon,
+				size: 16
+			});
+			if (id === "floatball") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGoalOutline16, {
+				className: SettingsRoot_module_css_default.navIcon,
+				size: 16
+			});
+			if (id === "phone-control") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlayOutline16, {
+				className: SettingsRoot_module_css_default.navIcon,
+				size: 16
+			});
+			if (id === "stats") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconThinkOutline16, {
+				className: SettingsRoot_module_css_default.navIcon,
+				size: 16
+			});
+			if (id === "updatecheck") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16, {
+				className: SettingsRoot_module_css_default.navIcon,
+				size: 16
+			});
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSettingsOutline16, {
 				className: SettingsRoot_module_css_default.navIcon,
 				size: 16

@@ -19,3 +19,13 @@ analyze_image.py
 codedsh-gui_analyze.html
 pkg*.log
 build*.log
+
+# Nested independent git repositories / media / tooling (never part of the app)
+dsh-mobile/
+video/
+Packages
+gitee-release-body.md
+gitee-release-resp.json
+gitee-upload-resp.json
+.dsh-video-home/
+.trae/

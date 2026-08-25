@@ -4,7 +4,7 @@ import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 /** Host loader entry for the browser implementation exported from `./client`. */
 /** Durable settings namespace for product-wide GUI onboarding facts. */
 const ONBOARDING_SETTINGS_NAMESPACE = "ui-onboarding";
-const OnboardingSettingsSchema = z.object({ welcomeNoticeVersion: z.string() });
+const OnboardingSettingsSchema = z.object({ welcomeNoticeVersion: z.string(), dshOnboardingDone: z.boolean() });
 /** Register the durable GUI-onboarding section when a settings provider exists. */
 function apply(ctx) {
 	ctx.inject(["settings"], (settingsCtx) => {

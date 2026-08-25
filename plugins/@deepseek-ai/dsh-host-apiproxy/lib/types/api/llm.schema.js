@@ -32,6 +32,7 @@ export const discoveredModelViewSchema = z.object({
     name: z.string().min(1).optional(),
     contextWindow: z.number().int().positive().optional(),
     maxTokens: z.number().int().positive().optional(),
+    inputModalities: z.array(z.union([z.literal('text'), z.literal('image')])).optional(),
 });
 /** llm.discoverModels request payload. */
 export const llmDiscoverModelsRequestSchema = z.object({

@@ -1,6 +1,6 @@
 {
   "name": "dsh-desktop",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "DeepSeek Harness desktop app — the dsh web surface in a native Electron shell",
   "author": "DeepSeek Harness Desktop",
   "type": "module",
@@ -37,7 +37,26 @@
     "@deepseek-ai/dsh-subagent-in-process-driver": "0.1.0-rc.6",
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6"
+    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tool-vision": "0.1.0",
+    "@deepseek-ai/dsh-tool-clipboard": "0.1.0",
+    "@deepseek-ai/dsh-tool-snippets": "0.1.0",
+    "@deepseek-ai/dsh-tool-remind": "0.1.0",
+    "@deepseek-ai/dsh-tool-filesearch": "0.1.0",
+    "@deepseek-ai/dsh-tool-webfetch": "0.1.0",
+    "@deepseek-ai/dsh-tool-phone": "0.1.0",
+    "@deepseek-ai/dsh-tool-deliver": "0.1.0",
+    "@deepseek-ai/dsh-command-btw": "0.1.0",
+    "@deepseek-ai/dsh-mobile-bridge": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-enhance": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-snippets": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-stats": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-onboarding": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-floatball": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-phone-control": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-updatecheck": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-deliver": "0.1.0",
+    "@deepseek-ai/dsh-client-ui-pet": "0.1.0"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
@@ -62,7 +81,8 @@
     "files": [
       "src/**/*",
       "resources/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/@deepseek-ai/**/*"
     ],
     "win": {
       "target": [

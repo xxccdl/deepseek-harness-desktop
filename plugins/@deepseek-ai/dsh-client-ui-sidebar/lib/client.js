@@ -159,10 +159,10 @@ window.__ModuleLoader__.load({
 							onClick: () => {
 								startSession();
 							},
-							children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.BrandWordmark, {}), (0, react_jsx_runtime.jsx)("span", {
+							children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.BrandWordmark, {}), (typeof navigator !== "undefined" && /Android|iPhone|iPad|Mobile|Windows Phone/i.test(navigator.userAgent)) ? (0, react_jsx_runtime.jsx)("span", {
 							className: SidebarRoot_module_css_default.desktopBadge,
-							children: "Desktop"
-						})]
+							children: "Mobile"
+						}) : null]
 						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 							label: collapsed ? t("toggle.open") : t("toggle.collapse"),
 							delayMs: 500,

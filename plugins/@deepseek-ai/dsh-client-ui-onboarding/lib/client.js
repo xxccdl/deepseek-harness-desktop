@@ -168,11 +168,39 @@ window.__ModuleLoader__.load({
 		];
 		//#endregion
 		//#region wizard
-		const DONE_KEY = "dsh.onboarding.done";
-		let wizardEl = undefined;
-		function markDone() {
-			try { localStorage.setItem(DONE_KEY, "1"); } catch { /* storage unavailable */ }
-		}
+	const DONE_KEY = "dsh.onboarding.done";
+	/**
+	* Durable settings home for the finished marker. The desktop shell boots the
+	* SPA on a fresh loopback port each launch, so the localStorage origin (and
+	* with it the done flag) changes between runs. Persisting here survives that.
+	*/
+	const PERSIST_NS = "ui-onboarding";
+	const PERSIST_FIELD = "dshOnboardingDone";
+	/** Whether the durable settings marker says onboarding is finished. */
+	let donePersisted = false;
+	/** Read the durable finished marker through the settings wire. */
+	async function readPersistedDone() {
+		try {
+			const value = await rpc("settings.describe", {});
+			const view = value?.namespaces?.find((candidate) => candidate.ns === PERSIST_NS);
+			if (view?.value?.[PERSIST_FIELD] === true) donePersisted = true;
+		} catch { /* fall back to local storage only */ }
+	}
+	/** Persist the finished marker durably so it survives origin changes. */
+	async function persistDone() {
+		try {
+			await rpc("settings.mutate", {
+				ns: PERSIST_NS,
+				ops: [{ op: "set", path: [PERSIST_FIELD], value: true }]
+			});
+		} catch { /* non-fatal: local storage still covers the same-origin case */ }
+	}
+	let wizardEl = undefined;
+	function markDone() {
+		donePersisted = true;
+		try { localStorage.setItem(DONE_KEY, "1"); } catch { /* storage unavailable */ }
+		void persistDone();
+	}
 		function closeWizard() {
 			if (wizardEl === undefined) return;
 			const el = wizardEl;
@@ -200,7 +228,7 @@ window.__ModuleLoader__.load({
 		function runWizard(force = false) {
 			if (!force) {
 				try {
-					if (localStorage.getItem(DONE_KEY) === "1") return;
+					if (localStorage.getItem(DONE_KEY) === "1" || donePersisted) return;
 				} catch { /* run anyway */ }
 			}
 			if (wizardEl !== undefined) return;
@@ -398,7 +426,20 @@ window.__ModuleLoader__.load({
 		}
 		// Public handle: the tutorial section's rerun button (and the console).
 		window.__dshOnboarding = { run: () => runWizard(true) };
-		const bootWizard = () => setTimeout(() => runWizard(false), 1400);
+		const bootWizard = () => {
+			// Resolve the durable marker first: the shell SPA changes its loopback
+			// origin between launches, so local-only state cannot gate the wizard.
+			// A user who already has a DeepSeek key was configured before the durable
+			// marker existed — treat them as done rather than re-showing the wizard.
+			void readPersistedDone()
+				.then(() => {
+					if (donePersisted) return;
+					return checkApiKey().then((configured) => {
+						if (configured) markDone();
+					}).catch(() => { /* detection failed: show the wizard as usual */ });
+				})
+				.finally(() => setTimeout(() => runWizard(false), 1400));
+		};
 		if (document.readyState === "complete" || document.readyState === "interactive") bootWizard();
 		else document.addEventListener("DOMContentLoaded", bootWizard, { once: true });
 		//#endregion

@@ -1,0 +1,14 @@
+{
+  "name": "@deepseek-ai/dsh-mobile-bridge",
+  "description": "Mobile bridge for DeepSeek Harness: forwards dsh/notify events (AI task start/done, scheduler, reminders) to Android system notifications via a queue file the native layer watches — works in background",
+  "version": "0.1.0-rc.6",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/index.js"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  }
+}

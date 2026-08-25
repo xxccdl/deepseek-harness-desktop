@@ -1,0 +1,26 @@
+{
+  "name": "@deepseek-ai/dsh-tool-vision",
+  "description": "Multimodal vision tool for dsh: analyze images or screen captures using DeepSeek vision models",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "^0.1.0-rc.6"
+  },
+  "license": "MIT",
+  "files": [
+    "lib/index.js"
+  ]
+}
