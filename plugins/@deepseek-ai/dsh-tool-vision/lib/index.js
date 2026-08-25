@@ -140,10 +140,10 @@ function apply(ctx, config) {
   const visionAnalyze = defineTool({
     name: "vision_analyze",
     description:
-      "分析图片内容（支持识别图片中的文字、UI界面、图标、图表、物体、配色、整体布局等）。" +
-      "必须提供 image_path 参数指定图片文件的路径（支持 png/jpg/jpeg/webp/gif）。" +
-      "在移动端不填 image_path 时可自动截取当前屏幕——用于手机控制场景：当需要看懂手机屏幕的视觉内容（图标/图片/图表/布局/无文字元素）时，调用本工具（不传 image_path）即可截屏并让视觉模型识别。" +
-      "也可使用 read_image 工具直接将图片附到对话中让模型直接查看。",
+      "分析图片内容（识别图片中的文字、UI界面、图标、图表、物体、配色、整体布局等）。" +
+      "注意：如果你（当前模型）本身就是多模态视觉模型（支持图像输入），请**直接使用 read_image 工具**读取图片——read_image 会把图片附到对话中让你直接查看，无需再调用本工具。" +
+      "本工具仅用于：① 当前模型不支持图像输入时，借助独立视觉模型 API 分析图片；② 移动端需要看懂手机屏幕的视觉内容（图标/图片/图表/布局/无文字元素）时，不传 image_path 自动截屏。" +
+      "桌面端必须提供 image_path 参数指定图片文件路径（支持 png/jpg/jpeg/webp/gif）。",
     parameters: {
       prompt: {
         type: "string",
