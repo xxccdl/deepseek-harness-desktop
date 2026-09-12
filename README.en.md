@@ -56,6 +56,14 @@ same-named upstream npm packages:
 | `dsh-host-plugin-market` | Market host bridge: install/uninstall/publish persistence and live mounting |
 | `dsh-tool-plugin-market` | Publish tools: `plugin_publish` / `ask-publish-plugin` |
 
+Two differences in how they start:
+
+- `dsh-client-ui-world-clock` currently ships through the **plugin market** (install and
+  it is live) rather than the default composition; to keep it resident, add it to the
+  `dsh-web-app` patch layer
+- `dsh-tool-plugin-market` is only mounted by the creation-mode agent preset, so the
+  publish tools are available in that mode alone
+
 Modified upstream packages (also shipped as full copies under
 `plugins/@deepseek-ai/`): `dsh-client-ui-sidebar` (added the `footer.status` slot),
 `dsh-client-ui-settings-general` (section icons), `dsh-client-ui-settings-models`,

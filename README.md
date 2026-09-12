@@ -46,6 +46,12 @@
 | `dsh-host-plugin-market` | 市场宿主桥:安装/卸载/发布的落盘与热挂载 |
 | `dsh-tool-plugin-market` | 发布工具:`plugin_publish` / `ask-publish-plugin` |
 
+两点启动方式差异:
+
+- `dsh-client-ui-world-clock` 目前经**插件市场**分发(装完即用),未写进默认组合;想让它常驻,
+  把它加进 `dsh-web-app` 的 patch 层即可
+- `dsh-tool-plugin-market` 只在**创造模式**的 agent preset 里挂载,所以发布工具仅在该模式下可用
+
 修改过的上游包(同样在 `plugins/@deepseek-ai/` 提供完整副本):
 `dsh-client-ui-sidebar`(新增 footer.status 槽位)、`dsh-client-ui-settings-general`(分区图标)、
 `dsh-client-ui-settings-models`、`dsh-client-ui-agent-preset`、`dsh-web-app`(注册插件)、
