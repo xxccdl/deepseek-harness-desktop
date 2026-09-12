@@ -1,6 +1,7 @@
 # Build artifacts and installed dependencies (recreated by npm install)
 node_modules/
 dist/
+dist-*/
 out/
 *.log
 
