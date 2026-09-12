@@ -1,14 +1,16 @@
 // DeepSeek Harness multimodal vision tool.
 //
-// The model-facing `vision_analyze` tool lets the AI analyze an image file or
-// a live screen capture using DeepSeek's vision model (deepseek-v4-flash-vision-exp).
+// Image reading is native now: models that declare image input (deepseek-flash)
+// see pictures directly through `read_image` / screenshot tools, so the
+// model-facing `vision_analyze` tool is the fallback for routes that cannot take
+// images at all. It analyzes an image file or a live screen capture with a
+// DeepSeek vision-capable model (deepseek-flash, i.e. DeepSeek-V4.1-Flash).
 // Images are sent as base64 data URLs to the DeepSeek chat-completions API.
 //
 // @module @deepseek-ai/dsh-tool-vision
 import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
 import z from "@deepseek-ai/schemastery";
@@ -18,14 +20,14 @@ const name = "tool-vision";
 /** Required services. */
 const inject = ["tools"];
 
-const NS = settingsNamespace("tool-vision");
-const DEFAULT_MODEL = "deepseek-v4-flash-vision-exp";
+const NS = "tool-vision";
+const DEFAULT_MODEL = "deepseek-flash";
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_API_KEY_ENV = "DEEPSEEK_API_KEY";
 const SCREENSHOT_URL = "http://127.0.0.1:3090/api/screenshot";
 
 const VISION_MODELS = [
-  { id: "deepseek-v4-flash-vision-exp", name: "DeepSeek-V4-Flash-Vision-Exp (多模态视觉)" },
+  { id: "deepseek-flash", name: "DeepSeek-V4.1-Flash（原生支持图片输入）" },
 ];
 
 const Config = z.object({
@@ -111,9 +113,11 @@ async function callVisionAPI({ apiKey, baseURL, model, prompt, imageBase64, medi
 
 function apply(ctx, config) {
   let current = () => config;
-  installSettingsSection(ctx, NS, Config, config, {
-    setSource: (source) => { current = source; },
-    onChange: () => {},
+  ctx.inject(["settings"], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, NS, Config, config, {
+      setSource: (source) => { current = source; },
+      onChange: () => {},
+    });
   });
 
   async function resolveConfig() {
@@ -141,9 +145,8 @@ function apply(ctx, config) {
     name: "vision_analyze",
     description:
       "分析图片内容（识别图片中的文字、UI界面、图标、图表、物体、配色、整体布局等）。" +
-      "注意：如果你（当前模型）本身就是多模态视觉模型（支持图像输入），请**直接使用 read_image 工具**读取图片——read_image 会把图片附到对话中让你直接查看，无需再调用本工具。" +
-      "本工具仅用于：① 当前模型不支持图像输入时，借助独立视觉模型 API 分析图片；② 移动端需要看懂手机屏幕的视觉内容（图标/图片/图表/布局/无文字元素）时，不传 image_path 自动截屏。" +
-      "桌面端必须提供 image_path 参数指定图片文件路径（支持 png/jpg/jpeg/webp/gif）。",
+      "优先直接看图：当当前模型支持图像输入（如 deepseek-flash）时，请**直接用 read_image 工具读取本地图片**（截图类场景用对应的 screenshot 工具）——图片会附到对话中，你能直接看到画面，无需再调用本工具。" +
+      "本工具仅用于：① 当前模型不支持图像输入（纯文本模型）时，借助独立视觉模型 API 代看图片；② 移动端不传 image_path 时自动截屏。桌面端必须提供 image_path 参数指定图片文件路径（支持 png/jpg/jpeg/webp/gif）。",
     parameters: {
       prompt: {
         type: "string",

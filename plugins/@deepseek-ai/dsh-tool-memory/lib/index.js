@@ -16,7 +16,6 @@ import { dirname, join } from "node:path";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { dshHomePath } from "@deepseek-ai/dsh-home-paths";
 import z from "@deepseek-ai/schemastery";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 /** Cordis plugin name. */
 const name = "tool-memory";
@@ -1035,7 +1034,7 @@ function registerMemoryHttp(ctx) {
 
 // ── plugin ────────────────────────────────────────────────────────────────────
 /** Settings namespace owned by the memory plugin. */
-const MEMORY_SETTINGS_NS = settingsNamespace("memory");
+const MEMORY_SETTINGS_NS = "memory";
 /** Durable memory settings; the harness Settings document (`settings.yaml`) edits it. */
 const MemorySettingsSchema = z.object({
   /** Master switch: when false, no memory tools, skill, or reminder are mounted. */

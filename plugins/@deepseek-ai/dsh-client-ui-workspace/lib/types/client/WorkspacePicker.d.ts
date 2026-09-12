@@ -9,7 +9,7 @@
  * occupant's own create-folder affordance already covers creating one.
  */
 import type { ReactNode, RefObject } from 'react';
-import type { WorkspaceId, WorkspaceListState, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import type { WorkspaceId, WorkspaceSnapshot, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client';
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots';
 import type { DirectoryFlowOwnerProps, WorkspacePickerProps } from './contract/slots.ts';
 /** Core flow props: the owner supplies popover control and pick semantics. */
@@ -21,7 +21,7 @@ export interface WorkspacePickFlowProps {
     /** The anchor button element — the popover's placement anchor. */
     anchorRef?: RefObject<HTMLElement | null> | undefined;
     /** Selector hook over the workspace list (framework standard hook). */
-    useWorkspaces: <S>(selector: (state: WorkspaceListState) => S) => S;
+    useWorkspaces: <S>(selector: (state: WorkspaceSnapshot) => S) => S;
     /** Adopt a picked host directory as a real Workspace. */
     createWorkspace: (input: {
         path: string;

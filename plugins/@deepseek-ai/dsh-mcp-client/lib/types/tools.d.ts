@@ -13,7 +13,7 @@
  */
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Context } from '@deepseek-ai/cordis';
-import type { JsonValue } from '@deepseek-ai/dsh-tools';
+import type { JsonValue } from '@deepseek-ai/dsh-util-values';
 /** Resolved options relevant to tool bridging. */
 export interface ToolBridgeOptions {
     /** Whether a registry conflict is contained or rejects this synchronization. */
@@ -23,7 +23,7 @@ export interface ToolBridgeOptions {
 }
 /** State for one sync generation: the current set of disposers keyed by public name. */
 export type ToolDisposers = Map<string, () => void>;
-/** Canonical MCP result exposed to Code Mode without discarding protocol blocks. */
+/** Canonical MCP result exposed to PTC mode without discarding protocol blocks. */
 export type McpResult<Structured extends JsonValue = JsonValue> = {
     content: JsonValue[];
     structuredContent?: Structured;

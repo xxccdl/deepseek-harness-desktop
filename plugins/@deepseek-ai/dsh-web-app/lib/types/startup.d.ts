@@ -1,6 +1,6 @@
 /**
  * The web app's command-line provider: it parses the `dsh --profile web` flag
- * family (`--host`, `--port`, `--trusted-host`) and its `--help`
+ * family (`--host`, `--port`, `--trusted-host`, `--no-open`) and its `--help`
  * text, then provides the immutable values as {@link WEB_STARTUP_SERVICE}.
  * Ordinary rows inject that service before reading it from lazy config.
  * @module @deepseek-ai/dsh-web-app/startup
@@ -14,6 +14,8 @@ export declare const inject: string[];
 export declare const WEB_STARTUP_SERVICE = "webStartup";
 /** What the web rows read from {@link WEB_STARTUP_SERVICE}. */
 export interface WebStartupValues {
+    /** Whether this invocation opens the default browser after startup. */
+    openBrowser: boolean;
     /** `--host`, absent when the invocation did not name one. */
     host?: string;
     /** `--port`, absent when the invocation did not name one. */

@@ -79,6 +79,8 @@
     user-select: text;
   }
   #in::placeholder { color: var(--pill-ink-3); }
+  #pill .bar.error { border-color: rgba(214,63,63,.55); }
+  #pill .bar.error #in::placeholder { color: rgba(214,63,63,.85); }
   /* send */
   #send {
     appearance: none;
@@ -120,14 +122,36 @@
   "use strict";
   const inEl = document.getElementById("in");
   const sendBtn = document.getElementById("send");
+  const barEl = document.querySelector("#pill .bar");
+  const PLACEHOLDER = inEl.placeholder;
 
   let sending = false;
+  let errorTimer;
+
+  /** Surface a send failure inside the pill instead of failing silently. */
+  function flashError(message) {
+    inEl.placeholder = message;
+    barEl.classList.add("error");
+    clearTimeout(errorTimer);
+    errorTimer = setTimeout(() => {
+      inEl.placeholder = PLACEHOLDER;
+      barEl.classList.remove("error");
+    }, 5000);
+  }
 
   // ── rpc helper (proxied through the main process to dodge file:// CORS) ──
-  async function rpc(method, payload) {
-    const env = await window.dshQuickChat.rpc(method, payload);
+  // dsh 0.1.2-alpha.2 speaks the Typert gateway wire: the endpoint is
+  // `<namespace>/<method>` and the payload carries exactly one `args` field
+  // whose keys are the Remote method's wire parameter names.
+  async function rpc(method, args) {
+    const env = await window.dshQuickChat.rpc(method, { args });
     if (env?.result?.ok !== true) throw new Error(env?.result?.error?.message || (method + " failed"));
     return env.result.value;
+  }
+
+  function newRequestId() {
+    if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+    return "pill-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
 
   // ── send: create a session, queue the message, then expand into the main window ──
@@ -137,9 +161,16 @@
     sending = true;
     sendBtn.disabled = true;
     try {
-      const created = await rpc("session.create", {});
+      const created = await rpc("session/create", { request: {} });
       const sessionId = created.sessionId;
-      await rpc("session.prompt", { sessionId, mode: "queue", content: [{ type: "text", text }] });
+      await rpc("session/prompt", {
+        request: {
+          requestId: newRequestId(),
+          sessionId,
+          mode: "queue",
+          content: [{ type: "text", text }]
+        }
+      });
       // Hand the session + text to the main process, which animates the pill
       // into the dsh main window showing this conversation.
       window.dshQuickChat?.expand({ sessionId, text });
@@ -149,6 +180,7 @@
       inEl.focus();
       const msg = (e && e.message ? e.message : String(e));
       console.error("pill send failed:", msg);
+      flashError("发送失败：" + msg);
     }
   }
 

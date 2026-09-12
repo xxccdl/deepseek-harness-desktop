@@ -57,6 +57,7 @@ export declare const zh: {
     'status.planReview': string;
     'status.waitingAnswer': string;
     'status.completed': string;
+    'schedule.active': string;
     'hover.created': string;
     'hover.copied': string;
     'date.ymd': string;
@@ -124,6 +125,7 @@ export declare const en: {
     'status.planReview': string;
     'status.waitingAnswer': string;
     'status.completed': string;
+    'schedule.active': string;
     'hover.created': string;
     'hover.copied': string;
     'date.ymd': string;

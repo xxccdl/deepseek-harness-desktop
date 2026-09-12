@@ -22,7 +22,6 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import z from "@deepseek-ai/schemastery";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 /** Cordis plugin name. */
 const name = "tool-computer-use";
@@ -49,7 +48,7 @@ const MARKER_FILENAME = ".dsh-provisioned";
  */
 const PROVISION_RECIPE = "windows-mcp";
 /** Settings namespace owned by the computer-use plugin. */
-const COMPUTER_USE_SETTINGS_NS = settingsNamespace("computer-use");
+const COMPUTER_USE_SETTINGS_NS = "computer-use";
 /** Durable computer-use settings; the harness Settings document edits it. */
 const ComputerUseSettingsSchema = z.object({
   /** Master switch: when false, no MCP runtime, skill, or reminder is mounted. */
@@ -155,6 +154,7 @@ const computerUseSkill = {
     "",
     "## Workflow",
     "- Before acting on a screen you have not seen, capture context first: `mcp__windows__screenshot` (visual) and/or `mcp__windows__snapshot` (structured UI elements with coordinates).",
+    "- A screenshot comes back as an image attached to the conversation: look at it yourself — no `vision_analyze` round-trip is needed for a model that accepts image input.",
     "- Click by element label when available; otherwise use coordinates from the screenshot/snapshot.",
     "- Type text with `mcp__windows__type`; press shortcuts with `mcp__windows__shortcut` (e.g. `ctrl`, `s`).",
     "- Launch or switch apps with `mcp__windows__app`; manage windows with its resize/switch modes.",
@@ -171,7 +171,7 @@ const computerUseSkill = {
 const COMPUTER_USE_PROMPT_SECTION = {
   name: "computer-use:capability",
   order: -88,
-  text: "【电脑控制】你已可控制本机 Windows 桌面（Windows-MCP，工具前缀 mcp__windows__）：点击、输入、快捷键、打开/管理应用与窗口、截图、文件与剪贴板、进程。操作前先截图/snapshot 确认屏幕，操作后截图核验；只做用户要求的操作。"
+  text: "【电脑控制】你已可控制本机 Windows 桌面（Windows-MCP，工具前缀 mcp__windows__）：点击、输入、快捷键、打开/管理应用与窗口、截图、文件与剪贴板、进程。截图会作为图片直接附到对话中，你可以直接看到画面，无需再用 vision_analyze。操作前先截图/snapshot 确认屏幕，操作后截图核验；只做用户要求的操作。"
 };
 
 // ── HTTP status (settings viewer) ────────────────────────────────────────────

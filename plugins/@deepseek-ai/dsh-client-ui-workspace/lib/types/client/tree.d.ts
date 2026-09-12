@@ -3,11 +3,15 @@
  * Unassigned Sessions trail under Ungrouped; only the selected blank Session
  * remains visible.
  */
-import { type PendingInteractionStatus, type SessionId, type SessionListState, type SessionSearchResultItem, type WorkspaceId, type WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import { type SessionListState, type SessionSearchResultItem } from '@deepseek-ai/dsh-api-session-controller/client';
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client';
+import type { SessionPendingInteractionBase } from '@deepseek-ai/dsh-client-ui-session/client';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
 /** Group key for Sessions outside every Workspace. */
 export declare const UNGROUPED_KEY = "";
-/** Display label for the ungrouped bucket row. */
-export declare const UNGROUPED_LABEL = "Ungrouped";
+/** Pending interaction kinds with dedicated Workspace-row presentation. */
+export type SessionPendingInteractionStatus = 'approval' | 'plan-review' | 'question';
+type SessionPendingInteractions = ReadonlyMap<SessionId, SessionPendingInteractionBase>;
 /** One top-level session row in a group or the flat list. */
 export interface SessionNode {
     id: SessionId;
@@ -15,13 +19,15 @@ export interface SessionNode {
     title: string;
     /** The provisional blank session (renderer shows the localized New Session title). */
     blank: boolean;
-    /** The runtime Session list reports an interaction awaiting this user. */
-    pendingInteraction?: PendingInteractionStatus;
+    /** A Session-scoped UI consumer is awaiting this user. */
+    pendingInteraction?: SessionPendingInteractionStatus;
     running: boolean;
     /** Running descendants connected through uninterrupted subagent-origin lineage. */
     runningSubagentCount: number;
     /** Finished running while not selected and not yet opened (the green "done" reminder dot). */
     completed: boolean;
+    /** The current list projection contains at least one active Schedule record. */
+    hasActiveSchedule: boolean;
     updatedAt: number;
 }
 /** Session order selected by the Workspace browser. */
@@ -49,13 +55,15 @@ export interface SearchResultNode {
     id: SessionId;
     title: string;
     workspace: string;
-    /** The runtime Session list reports an interaction awaiting this user. */
-    pendingInteraction?: PendingInteractionStatus;
+    /** A Session-scoped UI consumer is awaiting this user. */
+    pendingInteraction?: SessionPendingInteractionStatus;
     running: boolean;
     /** Running descendants connected through uninterrupted subagent-origin lineage. */
     runningSubagentCount: number;
     /** Finished running while not selected and not yet opened (the green "done" reminder dot). */
     completed: boolean;
+    /** The current list projection contains at least one active Schedule record. */
+    hasActiveSchedule: boolean;
     snippet?: string;
 }
 /** Bounded merged search projection plus the refine-query hint bit. */
@@ -73,7 +81,7 @@ export interface TreeView {
  * Directory display label: basename of the path (both separators accepted).
  * Ungrouped-bucket fallback for surfaces without a workspace title.
  * @param cwd - directory path, or undefined for the ungrouped bucket.
- * @returns basename, the raw cwd when it has no basename, or the ungrouped label.
+ * @returns basename, the raw cwd when it has no basename, or an empty ungrouped marker.
  */
 export declare function workspaceLabel(cwd: string | undefined): string;
 /**
@@ -87,10 +95,11 @@ export declare function workspaceLabel(cwd: string | undefined): string;
  * @param list - sessions list snapshot (`current` feeds containsCurrent).
  * @param workspaces - real workspaces in stable Host order.
  * @param archivedSessionIds - registry-global archive set.
+ * @param pendingInteractions - pending UI interactions by Session.
  * @param view - local expansion arrays.
  * @returns group sections in render order.
  */
-export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], view: TreeView): GroupNode[];
+export declare function deriveGroups(list: SessionListState, workspaces: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[], pendingInteractions: SessionPendingInteractions, view: TreeView): GroupNode[];
 /**
  * Derive the flat session list ("In one list" mode): every session — fork
  * children included — as a top-level row, strictly newest-first. No grouping,
@@ -98,16 +107,10 @@ export declare function deriveGroups(list: SessionListState, workspaces: readonl
  * (see {@link deriveSearchResults}).
  * @param list - sessions list snapshot.
  * @param archivedSessionIds - registry-global archive set.
+ * @param pendingInteractions - pending UI interactions by Session.
  * @returns flat rows in render order.
  */
-export declare function deriveFlat(list: SessionListState, archivedSessionIds: readonly SessionId[]): SessionNode[];
-/** Relative-time bucket of a session row's trailing label. */
-export type RelativeTimeUnit = 'now' | 'minutes' | 'hours' | 'days' | 'months' | 'years';
-/** Structured relative time: the bucket plus its magnitude (0 for 'now'). */
-export interface RelativeTime {
-    unit: RelativeTimeUnit;
-    n: number;
-}
+export declare function deriveFlat(list: SessionListState, archivedSessionIds: readonly SessionId[], pendingInteractions: SessionPendingInteractions): SessionNode[];
 /**
  * Merge immediate title/Workspace substring matches with ranked Host content
  * matches. Local rows lead newest-first, content-only rows retain backend
@@ -116,20 +119,14 @@ export interface RelativeTime {
  * @param workspaces - Workspace membership and display labels.
  * @param query - caller text; surrounding whitespace is ignored.
  * @param archivedSessionIds - registry-global archive set (members never match).
+ * @param pendingInteractions - pending UI interactions by Session.
  * @param content - ranked Host content-search page.
  * @param limit - protocol-owned maximum merged row count.
  * @returns bounded deduplicated flat rows and a refine-query hint bit.
  */
-export declare function deriveSearchResults(list: SessionListState, workspaces: readonly WorkspaceView[], query: string, archivedSessionIds: readonly SessionId[], content: {
+export declare function deriveSearchResults(list: SessionListState, workspaces: readonly WorkspaceView[], query: string, archivedSessionIds: readonly SessionId[], pendingInteractions: SessionPendingInteractions, content: {
     items: readonly SessionSearchResultItem[];
     hasMore: boolean;
 }, limit: number): SearchResultSet;
-/**
- * Compact relative time for session rows, as a structured bucket the
- * renderer localizes ("now"/"5min"/"3h"/"2d"/"4mo"/"1y" in en).
- * @param updatedAt - epoch ms of the session's last activity.
- * @param now - current epoch ms (injected for pure rendering).
- * @returns the row's trailing time bucket and magnitude.
- */
-export declare function relativeTime(updatedAt: number, now: number): RelativeTime;
+export {};
 //# sourceMappingURL=tree.d.ts.map

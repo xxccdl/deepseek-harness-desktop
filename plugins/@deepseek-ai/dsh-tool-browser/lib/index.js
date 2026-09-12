@@ -19,7 +19,6 @@ import { join } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import z from "@deepseek-ai/schemastery";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 /** Cordis plugin name. */
 const name = "tool-browser";
@@ -30,7 +29,7 @@ const inject = ["tools", "skills", "systemPrompt"];
 const DEFAULT_PORT = 9222;
 
 /** Settings namespace owned by the browser-control plugin. */
-const BROWSER_SETTINGS_NS = settingsNamespace("browser-control");
+const BROWSER_SETTINGS_NS = "browser-control";
 /** Durable browser-control settings; the harness Settings document edits it. */
 const BrowserSettingsSchema = z.object({
   /** Master switch: when false, no browser runtime, tool, or reminder is mounted. */

@@ -1,0 +1,23 @@
+{
+  "name": "@deepseek-ai/dsh-tool-plugin-market",
+  "description": "Model-facing plugin_publish tool: packages the plugin the agent just wrote and publishes it to the DSH plugin market, so the 「插件发布」button in creation mode is one tool call",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/tool/tool-plugin-market"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/index.js"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+  }
+}

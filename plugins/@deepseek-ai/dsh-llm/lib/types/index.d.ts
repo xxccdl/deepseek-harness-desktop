@@ -5,15 +5,15 @@
  *
  * @module @deepseek-ai/dsh-llm
  */
-import { Context, Service } from '@deepseek-ai/cordis';
-import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, StreamChunk } from './types.ts';
+import { Context } from '@deepseek-ai/cordis';
+import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
+import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmImageRequestPricing, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, ModelModality, StreamChunk } from './types.ts';
 import type { ResolvedRetryPolicy } from './retry-policy.ts';
 import type { ProviderRequestId } from './brand.ts';
 import type { LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
 import { HarnessError } from './error.ts';
 export * from './attribution.ts';
 export * from './brand.ts';
-export * from './never.ts';
 export * from './error.ts';
 export * from './api-key.ts';
 export * from './types.ts';
@@ -21,7 +21,7 @@ export * from './content.ts';
 export * from './message.ts';
 export * from './retry-policy.ts';
 export { BlockAssembler } from './assembler.ts';
-export { callConfigEquals, deepFreeze, isAgentLoopRequest, markAgentLoopRequest } from './call-config.ts';
+export { callConfigEquals, isAgentLoopRequest, markAgentLoopRequest } from './call-config.ts';
 export type { LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
 declare module '@deepseek-ai/cordis' {
     interface Context {
@@ -93,6 +93,8 @@ export interface PreparedLlmCall {
     readonly retryPolicy: ResolvedRetryPolicy;
     /** Detached context metadata resolved with the registration-bound call. */
     readonly context?: LlmModelContext;
+    /** Exact model modalities captured with the adapter dispatch generation. */
+    readonly inputModalities?: readonly ModelModality[];
     /** Config fields materialized by the captured adapter rather than proposed by the caller. */
     readonly adapterDefaults: LlmCallConfigAdapterDefaults;
     /**
@@ -102,6 +104,13 @@ export interface PreparedLlmCall {
      * @param options - fully assembled request carrying the prepared config.
      * @returns the chunk stream, including the `llm/stream` waterfall.
      */
+    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
+}
+/** One adapter-owned model-resolution generation bound to its eventual stream call. */
+export interface PreparedAdapterCall {
+    /** Exact model metadata from the same adapter generation as {@link stream}. */
+    readonly model: LlmResolvedModelInfo;
+    /** Dispatch through that generation without re-reading dynamic connection facts. */
     stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
 }
 /**
@@ -124,6 +133,16 @@ export declare abstract class LlmAdapter {
      */
     providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;
     /**
+     * Resolve provider-side request-image pricing for one exact model route.
+     * The default declares none, so consumers fall back to their own neutral
+     * estimate. Implementations must answer synchronously without I/O; the
+     * token meter resolves this per measurement.
+     * @param _provider - a route passed to `registerAdapter()` for this instance.
+     * @param _model - exact model id passed to {@link GenerateOptions.model}.
+     * @returns route-owned image pricing, or `undefined` when the route declares none.
+     */
+    imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;
+    /**
      * List models this adapter can currently advertise for one owned provider.
      * The result is advisory: an adapter may accept unlisted model ids, and
      * consumers must not turn absence into request rejection.
@@ -141,6 +160,16 @@ export declare abstract class LlmAdapter {
      * @returns provider/model identity plus any context, call-default, and reasoning metadata.
      */
     resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;
+    /**
+     * Bind exact model metadata and the eventual request dispatch to one adapter generation.
+     * Dynamic adapters override this so settings changes between preparation and
+     * dispatch cannot combine one generation's capabilities with another's endpoint.
+     * @param provider - registered provider route.
+     * @param model - exact model id.
+     * @param signal - cancellation for model resolution.
+     * @returns model metadata and a one-generation stream entry point.
+     */
+    prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;
     /**
      * Stream one model call as raw chunks. The only required method.
      * @param options - the fully-assembled request; implementations must honor `options.signal`.
@@ -195,7 +224,7 @@ export interface DirectoryRegistrationHandle {
  * The abstract `llm` service: an adapter registry plus a streaming model-call
  * API, interceptable via the `llm/stream` waterfall.
  */
-export declare class LlmRuntime extends Service {
+export declare class LlmRuntime extends TypertRemoteService {
     private adapters;
     private directory;
     private discoveries;
@@ -253,10 +282,10 @@ export declare class LlmRuntime extends Service {
      * directory, and because a provider being *added* has no route to name yet.
      * Disposed with the fiber.
      * @param settingsNs - the namespace whose profiles this discovery serves.
-     * @param discover - interrogates one endpoint; must honor `request.signal`.
+     * @param discover - interrogates one endpoint and must honor the supplied signal.
      * @returns the disposer that withdraws the offer.
      */
-    registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest) => Promise<readonly LlmDiscoveredModel[]>): () => void;
+    registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;
     /**
      * Interrogate one provider endpoint for the models it advertises. The
      * request describes a draft, not a stored route, so nothing here reads or
@@ -264,15 +293,35 @@ export declare class LlmRuntime extends Service {
      * candidate metadata a surface may offer for adoption.
      * @param settingsNs - namespace whose registered discovery serves this draft.
      * @param request - the endpoint, protocol, and one-shot credential to use.
+     * @param signal - caller cancellation.
      * @returns the advertised models, deduplicated in endpoint order.
      */
-    discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest): Promise<LlmDiscoveredModel[]>;
+    discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;
+    /**
+     * Remote adapter for one draft provider interrogation.
+     * @param settingsNs - namespace whose registered discovery serves this draft.
+     * @param request - endpoint, protocol, and one-shot credential to use.
+     * @param signal - caller cancellation supplied by the Remote carrier.
+     * @returns advertised models in endpoint order.
+     * @throws RemoteError with `llm/model-discovery-rejected` when discovery refuses or fails.
+     */
+    remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;
     /**
      * Resolve the retry policy captured when one provider route was registered.
      * @param provider - registered provider route to inspect.
      * @returns the provider-owned policy, with normal defaults already resolved.
      */
     providerRetryPolicy(provider: string): ResolvedRetryPolicy;
+    /**
+     * Resolve provider-side request-image pricing for one exact route, or
+     * `undefined` when the provider is unregistered or declares none. Unknown
+     * providers degrade to `undefined` rather than throwing because callers
+     * price durable history whose route may no longer be mounted.
+     * @param provider - provider route named by a request header.
+     * @param model - exact model id named by the same header.
+     * @returns the owning adapter's image pricing for the route, when declared.
+     */
+    imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;
     /** Detach typed adapter-owned modality metadata. */
     private detachedModalities;
     /**
@@ -293,6 +342,8 @@ export declare class LlmRuntime extends Service {
      */
     resolveModelInfo(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo>;
     private resolveModelInfoFor;
+    /** Validate and detach one adapter-returned exact model result. */
+    private normalizeModelInfo;
     /**
      * Validate a conversation call config against its exact model capability and
      * materialize adapter-configured defaults. Unsupported explicit efforts
@@ -305,6 +356,8 @@ export declare class LlmRuntime extends Service {
      */
     resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>;
     private resolveCallFor;
+    /** Validate request controls against one already-bound exact model result. */
+    private resolveCallWithInfo;
     /**
      * Resolve one call under its current adapter registration. The returned
      * one-shot handle keeps that registration across header logging and dispatch,

@@ -1,0 +1,20 @@
+{
+  "name": "@deepseek-ai/dsh-host-plugin-market",
+  "description": "Plugin market bridge: installs verified packages from the DSH plugin market into the deployment's plugin directory and mounts them through the live profile patch layer, and publishes local plugin directories back to the market",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/host/host-plugin-market"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/index.js",
+    "lib/archive.js"
+  ],
+  "license": "MIT"
+}

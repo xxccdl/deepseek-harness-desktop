@@ -9,7 +9,7 @@
 import z from '@deepseek-ai/schemastery';
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout';
 import { EMPTY_RESPONSE_CODE } from "./error.js";
-const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_INITIAL_DELAY_MS = 500;
 const DEFAULT_MAX_DELAY_MS = 10_000;
 const DEFAULT_JITTER_RATIO = 0.1;
@@ -43,7 +43,11 @@ export const RetryPolicySchema = z.union([
 const NORMAL_POLICY_KEYS = new Set([
     'mode', 'maxRetries', 'retryableCodes', 'backoff',
 ]);
-const ALWAYS_POLICY_KEYS = new Set(['mode', 'backoff']);
+// Layered configuration can retain normal-only fields after switching modes;
+// always mode ignores those inactive values while still rejecting unknown keys.
+const ALWAYS_POLICY_KEYS = new Set([
+    'mode', 'maxRetries', 'retryableCodes', 'backoff',
+]);
 const BACKOFF_KEYS = new Set(['initialDelayMs', 'maxDelayMs', 'jitterRatio']);
 function validateKeys(value, allowed, path) {
     for (const key of Object.keys(value)) {

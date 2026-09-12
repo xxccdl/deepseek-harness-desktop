@@ -32,10 +32,11 @@ interface WorkspaceRowDragProps {
  * @param props.onToggle - expand/collapse the group.
  * @param props.onCreate - start a frontend Session inside this Workspace.
  * @param props.drag - optional workspace-row drag wiring.
+ * @param props.home - host account home for POSIX hover-path abbreviation.
  * @param props.t - the browser root's locale seat.
  * @returns the row element.
  */
-export declare function ProjectRowItem({ group, onToggle, onCreate, actions, drag, t }: {
+export declare function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home, t }: {
     group: GroupNode;
     onToggle: () => void;
     onCreate: () => void;
@@ -46,6 +47,8 @@ export declare function ProjectRowItem({ group, onToggle, onCreate, actions, dra
     } | undefined;
     /** Present only for real Workspace rows in the grouped view. */
     drag?: WorkspaceRowDragProps | undefined;
+    /** Host account home; POSIX home-rooted hover paths display as `~`. */
+    home?: string | undefined;
     t: RowTranslate;
 }): import("react").JSX.Element;
 /**

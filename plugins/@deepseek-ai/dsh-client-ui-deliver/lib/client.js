@@ -5,7 +5,24 @@ window.__ModuleLoader__.load({
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react_jsx_runtime = require("react/jsx-runtime");
-		let _runtime_client = require("@deepseek-ai/dsh-client-runtime/client");
+
+		//#region surface-event narrowing (inlined; the client bundle cannot reach core)
+		/** Runtime counterpart of the message-producing event union. */
+		const SURFACE_EVENT_TYPES = new Set([
+			"user/message",
+			"assistant/message",
+			"tool/result"
+		]);
+		/** Narrow an event to a surface-eligible event carrying its required marker. */
+		function isSurfaceEvent(event) {
+			if (!SURFACE_EVENT_TYPES.has(event.type)) return false;
+			return event.surfaceOp !== void 0;
+		}
+		/** Narrow an event to an append-origin surface event. */
+		function isAppendSurfaceEvent(event) {
+			return isSurfaceEvent(event) && event.surfaceOp === "append";
+		}
+		//#endregion
 
 		/** Trailing path segment. */
 		function basename(path) {
@@ -24,7 +41,7 @@ window.__ModuleLoader__.load({
 			match: (event) => {
 				if (event.type === "turn/start") return { id: String(event.data.turn), role: "start" };
 				if (event.type === "tool/call") return { id: String(event.data.turn), role: "update" };
-				if (event.type === "tool/result" && (0, _runtime_client.isAppendSurfaceEvent)(event)) return { id: String(event.data.turn), role: "update" };
+				if (event.type === "tool/result" && isAppendSurfaceEvent(event)) return { id: String(event.data.turn), role: "update" };
 				return null;
 			},
 			start: (_context, match) => {

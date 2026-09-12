@@ -1,6 +1,7 @@
 /** Message value types, identity, and immutable construction helpers. */
-import { MessageId } from "./brand.js";
-import { deepFreeze } from "./call-config.js";
+import { randomUUID } from '@deepseek-ai/dsh-util-crypto';
+import { brandString } from '@deepseek-ai/dsh-brand';
+import { deepFreeze } from '@deepseek-ai/dsh-util-values';
 /**
  * Bound for a `notice` summary. The account rides a collapsed transcript row
  * and is committed to the durable log, while its inputs — task labels, goal
@@ -33,7 +34,7 @@ export function freezeMessage(message) {
 export function createMessage(input) {
     return freezeMessage({
         ...input,
-        id: MessageId(crypto.randomUUID()),
+        id: brandString(randomUUID()),
     });
 }
 /**
@@ -77,24 +78,5 @@ export function createToolResultMessage(input) {
                 isError: input.isError,
             }],
     });
-}
-/**
- * Whether a stream chunk carries visible model output (the first-token
- * boundary shared by client step timing and the whole-log sessionStats
- * projection). Empty deltas (heartbeats, empty tool-call frames) do not count
- * as a first token.
- * @param chunk - the stream chunk to test.
- * @returns true when the chunk contains a non-empty text/reasoning/tool delta.
- */
-export function isTokenDelta(chunk) {
-    switch (chunk.type) {
-        case 'text-delta':
-        case 'reasoning-delta':
-            return chunk.text !== '';
-        case 'tool-call-delta':
-            return chunk.argumentsDelta !== '' || chunk.name !== undefined;
-        default:
-            return false;
-    }
 }
 //# sourceMappingURL=message.js.map

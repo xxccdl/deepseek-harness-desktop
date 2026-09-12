@@ -1,0 +1,28 @@
+{
+  "name": "@deepseek-ai/dsh-client-ui-desktop-pet",
+  "version": "1.0.0",
+  "private": false,
+  "description": "DeepSeek 桌宠：界面右下角一只可拖拽的蓝色小鲸鱼，会漂浮眨眼、跟你说话、按心情变表情",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js"
+  ],
+  "license": "MIT"
+}

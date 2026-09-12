@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>插件市场 · DeepSeek Harness</title>
+    <meta name="description" content="发现并安装插件、技能等扩展，拓展 DeepSeek Harness 的能力。" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234a6cf7'/%3E%3Cpath d='M16 9v14M9 16h14' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1>插件市场</h1>
+          <p class="lede">发现并安装插件、技能等扩展，拓展 DeepSeek Harness 的能力。</p>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-btn" id="manage-btn" type="button">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h7M11.5 4.5H14M2 11.5h2.5M7 11.5h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="4.5" r="1.6" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="11.5" r="1.6" stroke="currentColor" stroke-width="1.4"/></svg>
+            管理
+          </button>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <nav class="tabs" id="kind-tabs" role="tablist" aria-label="内容类型">
+          <span class="tabs-thumb" id="tabs-thumb" aria-hidden="true"></span>
+          <button class="tab" type="button" role="tab" data-kind="" aria-selected="true">插件</button>
+          <button class="tab" type="button" role="tab" data-kind="skill" aria-selected="false">技能</button>
+        </nav>
+        <label class="search">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.5"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <input id="search" type="search" placeholder="搜索插件、作者或标签" autocomplete="off" spellcheck="false" />
+        </label>
+      </div>
+
+      <section class="featured" id="featured" aria-label="精选分类"></section>
+
+      <div class="chips" id="chips" role="group" aria-label="分类筛选"></div>
+
+      <section class="listing">
+        <div class="listing-head">
+          <h2 id="listing-title">全部插件</h2>
+          <div class="listing-tools">
+            <span class="count" id="listing-count"></span>
+            <select id="sort" aria-label="排序">
+              <option value="featured">推荐优先</option>
+              <option value="downloads">下载最多</option>
+              <option value="recent">最近更新</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <p class="empty" id="empty" hidden>没有找到匹配的插件，换个关键词试试。</p>
+      </section>
+
+      <footer class="foot">
+        <span id="foot-status">正在读取插件市场…</span>
+        <span class="foot-sep"></span>
+        <a href="/api/catalog" target="_blank" rel="noreferrer">目录 API</a>
+      </footer>
+    </div>
+
+    <aside class="drawer" id="drawer" hidden aria-label="插件详情">
+      <div class="drawer-scrim" id="drawer-scrim"></div>
+      <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+        <div class="drawer-head">
+          <div class="detail-icon" id="detail-icon"></div>
+          <div class="detail-heading">
+            <h3 id="detail-title">插件</h3>
+            <p id="detail-meta" class="detail-meta"></p>
+          </div>
+          <button class="icon-btn" id="drawer-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="drawer-body">
+          <div class="detail-actions">
+            <button class="primary-btn" id="detail-install" type="button">安装</button>
+            <button class="ghost-btn" id="detail-download" type="button">下载 .tgz</button>
+          </div>
+          <p class="detail-status" id="detail-status" hidden></p>
+          <div class="detail-stats" id="detail-stats"></div>
+          <div class="markdown" id="detail-readme"></div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="modal" id="manage-modal" hidden>
+      <div class="modal-scrim" data-close="1"></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-label="管理">
+        <div class="modal-head">
+          <h3>安装与发布</h3>
+          <button class="icon-btn" type="button" data-close="1" aria-label="关闭">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="modal-body markdown">
+          <h4>安装</h4>
+          <p>在 DeepSeek Harness 里打开本页，点<strong>安装</strong>即可：包会下载到本地 <code>plugins/@deepseek-ai/&lt;id&gt;</code>，写入 profile 的 patch 层，热重载后立即可用。若校验不通过，安装会整体回滚，不会影响正在运行的应用。</p>
+          <h4>发布</h4>
+          <p>把 DSH 切到<strong>创造模式</strong>让 AI 写好插件，对话结束后点底部的<strong>插件发布</strong>按钮，AI 会打包并推送到这里。也可以直接调用接口：</p>
+          <pre><code>curl -X POST http://&lt;market&gt;/api/plugins \
+  -H "X-Market-Meta: $(echo -n '{"title":"我的插件","category":"开发工具"}' | base64 -w0)" \
+  --data-binary @my-plugin.tgz</code></pre>
+          <h4>包要求</h4>
+          <p>根目录含 <code>package.json</code>（含 <code>name</code>、<code>version</code>、入口文件），脚本为纯 JS、无 npm 依赖，所有 .js 通过 <code>node --check</code>。首次发布返回的发布令牌请在后续更新时带上。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

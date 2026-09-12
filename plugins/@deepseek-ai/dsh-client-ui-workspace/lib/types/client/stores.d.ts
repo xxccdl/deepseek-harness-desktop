@@ -5,7 +5,7 @@
  * register() receives the factory and the browser derives its PropsStore
  * share from the return type.
  */
-import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client';
+import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-store';
 /** Browser-local order account for the hierarchy-free flat Session list. */
 export declare const FLAT_SESSION_ORDER_KEY = "__flat_session_order__";
 /** Session-list grouping mode: workspace sections or one flat recency list. */

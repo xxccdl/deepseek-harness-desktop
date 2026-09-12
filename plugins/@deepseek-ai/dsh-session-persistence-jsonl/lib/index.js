@@ -6,7 +6,7 @@ import { performance } from "node:perf_hooks";
 import { scheduler } from "node:timers/promises";
 import { randomBytes } from "node:crypto";
 import { DEFAULT_PREPARED_SESSION_CACHE_SIZE, DEFAULT_WRITE_BATCH_MAX_DELAY_MS, MAX_WRITE_BATCH_DELAY_MS, PersistenceCoordinator, SessionFormatUnsupportedError, SessionPersistence, SessionPersistenceRevision, sessionFormatVersionRefusal } from "@deepseek-ai/dsh-session-persistence";
-import { SESSION_FORMAT_VERSION, decodeStorageRecord, packChunkRuns } from "@deepseek-ai/dsh-session";
+import { SESSION_FORMAT_VERSION, decodeSeqRanges, decodeStorageRecord, encodeSeqRanges, packChunkRuns } from "@deepseek-ai/dsh-session";
 import { constants, createZstdDecompress, zstdCompress, zstdDecompress, zstdDecompressSync } from "node:zlib";
 import { promisify } from "node:util";
 import { constants as constants$1 } from "node:buffer";
@@ -160,22 +160,53 @@ function logPath(root, cwd, id, compression) {
 * Serialize an event batch as JSONL lines (no trailing newline). With
 * `packChunks` on, delta-chunk runs pack into `text-chunks` /
 * `reasoning-chunks` / `tool-call-chunks` storage rows; off writes one event
-* per line, byte-identical to the pre-packing layout. Reading is layout-blind
-* either way ({@link scanLog} always decodes rows), so the switch changes only
-* newly written bytes.
+* per line. Both modes range-encode provenance at the storage boundary.
+* Reading is layout-blind either way ({@link scanLog} always decodes rows),
+* so the switch changes only newly written bytes.
 * @param events - the batch to serialize, in log order.
 * @param packChunks - whether to pack delta runs into storage rows.
 * @returns the batch's JSONL text; the writer adds the final newline.
 */
 function eventLines(events, packChunks) {
-	return (packChunks ? packChunkRuns(events) : events).map((record) => JSON.stringify(record)).join("\n");
+	return (packChunks ? packChunkRuns(events) : events).map((record) => JSON.stringify(encodeProvenanceForStorage(record))).join("\n");
+}
+/**
+* Losslessly shrink a record's `sourceEventSeqs` for the log: consecutive
+* runs of at least three seqs become `[start, end]` pairs, and any other list
+* stays verbatim.
+* @param record - one stored record (event or packed row).
+* @returns the record with its provenance in storage form (widened from the
+*   in-memory `number[]`; {@link expandProvenanceFromStorage} restores it).
+*/
+function encodeProvenanceForStorage(record) {
+	if (!("sourceEventSeqs" in record)) return record;
+	return {
+		...record,
+		sourceEventSeqs: encodeSeqRanges(record.sourceEventSeqs)
+	};
+}
+/**
+* Expand a parsed line's storage-form provenance back to `number[]`.
+* @param parsed - the JSON-parsed value of one stored line.
+* @returns the value with provenance expanded.
+* @throws when the record or its storage-form provenance is malformed.
+*/
+function expandProvenanceFromStorage(parsed) {
+	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new TypeError("stored session records must be objects");
+	const record = parsed;
+	if (record.sourceEventSeqs === void 0) return parsed;
+	if (!Number.isSafeInteger(record.seq) || record.seq < 0) throw new TypeError("stored session event seq must be a non-negative safe integer");
+	return {
+		...record,
+		sourceEventSeqs: decodeSeqRanges(record.sourceEventSeqs, record.seq)
+	};
 }
 /** Parse one complete header record supplied independently from event rows. */
 /**
 * Refuse a header carrying a format version this build does not read BEFORE
 * validating the current header shape or decoding any event row: a future
-* format need not satisfy today's structural checks at all, and its user must
-* see "upgrade the harness", never "corrupt session log".
+* format need not satisfy this build's structural checks at all, and its user
+* must see "upgrade the harness", never "corrupt session log".
 * @param parsed - the JSON-parsed first line of a session artifact.
 */
 function refuseForeignFormatVersion(parsed) {
@@ -276,7 +307,7 @@ var SessionLogScanner = class {
 		this.eventLine += 1;
 		let decoded;
 		try {
-			decoded = decodeStorageRecord(JSON.parse(line.toString("utf8")));
+			decoded = decodeStorageRecord(expandProvenanceFromStorage(JSON.parse(line.toString("utf8"))));
 		} catch {
 			this.issue ??= /* @__PURE__ */ new Error(`corrupt session log: unparsable committed event at line ${this.eventLine}`);
 			return;
@@ -809,6 +840,9 @@ var JsonlSessionPersistence = class extends SessionPersistence {
 	create(meta) {
 		return this.coordinator.create(meta);
 	}
+	ensureMaterialized(session) {
+		return this.coordinator.ensureMaterialized(session);
+	}
 	append(id, events) {
 		return this.coordinator.append(id, events);
 	}
@@ -820,6 +854,9 @@ var JsonlSessionPersistence = class extends SessionPersistence {
 	}
 	inspect(id, signal) {
 		return this.coordinator.inspect(id, signal);
+	}
+	borrowSession(id, signal) {
+		return this.coordinator.borrowSession(id, signal);
 	}
 	readFrom(id, fromSeq, signal) {
 		return this.coordinator.readFrom(id, fromSeq, signal);
@@ -1023,6 +1060,10 @@ var JsonlSessionPersistence = class extends SessionPersistence {
 		if (isMaterialized) await this.appendLines(meta, events);
 		else await this.materialize(meta, events);
 	}
+	/** Materialize a header-only JSONL artifact for an explicitly durable empty session. */
+	async materializeHeader(meta) {
+		await this.materialize(meta, []);
+	}
 	/**
 	* Make a crash repair durable: truncate a torn tail, restore complete events
 	* decoded from it, then append synthetic closers. Two fsync'd steps — the seam
@@ -1032,6 +1073,7 @@ var JsonlSessionPersistence = class extends SessionPersistence {
 		if (tornMarker !== void 0) await this.repair(meta, tornMarker.truncateTo);
 		const repairedEvents = [...tornMarker?.recoveredEvents ?? [], ...closers];
 		if (repairedEvents.length > 0) await this.appendLines(meta, repairedEvents);
+		if (tornMarker !== void 0) this.ctx.logger.warn(`${this.name}: session "${meta.id}" recovered from a torn tail; incomplete tail bytes were discarded`);
 	}
 	/** List valid unique stored sessions' metadata (header line only — no full-log parse). */
 	async list(signal) {
@@ -1177,6 +1219,7 @@ var JsonlSessionPersistence = class extends SessionPersistence {
 	/** Encode the header and first batch without combining their frame boundaries. */
 	async encodeMaterialization(meta, events) {
 		const header = JSON.stringify(toHeaderLine(meta)) + "\n";
+		if (events.length === 0) return this.compression === "none" ? header : compressZstdFrame(header);
 		const body = eventLines(events, this.packChunks) + "\n";
 		if (this.compression === "none") return header + body;
 		const headerFrame = await compressZstdFrame(header);
@@ -1442,7 +1485,8 @@ var JsonlSessionPersistence = class extends SessionPersistence {
 		} catch (error) {
 			/* v8 ignore else -- Windows reports file-valued parents as ENOENT; POSIX covers direct ENOTDIR. */
 			if (isENOENT(error)) {
-				await this.assertLogParentAllowsAbsence(path);
+				/* v8 ignore next -- native Windows coverage exercises this platform dispatch; POSIX reports ENOTDIR from open */
+				if (process.platform === "win32") await this.assertLogParentAllowsAbsence(path);
 				return false;
 			}
 			/* v8 ignore next -- Windows repairs ENOTDIR from ENOENT above; POSIX covers direct ENOTDIR. */

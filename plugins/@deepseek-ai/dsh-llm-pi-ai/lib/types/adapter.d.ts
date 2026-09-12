@@ -13,16 +13,22 @@
  * way down: switching models mid-reply takes effect on the next step, never
  * inside the one in flight.
  *
- * Credentials stay outside that collection. The harness resolves a route's key
- * through its own seam and passes it as the request's `apiKey` option, which
- * pi-ai treats as the highest-priority auth override — so `Models` never holds
- * a credential store and the harness keeps its fail-loud reference semantics.
+ * A route naming a credential reference still resolves it through the harness
+ * seam and passes it as the request's `apiKey` option, which pi-ai treats as
+ * the highest-priority auth override — that is what keeps the fail-loud
+ * reference semantics. Everything that override does not cover reaches pi-ai
+ * through the collection's own auth: the credential store holds the records a
+ * login wrote and a refresh rotates, and the auth context answers the ambient
+ * questions a provider asks while resolving. Both are stable across snapshots,
+ * so a configuration change rebuilds the collection without forgetting who is
+ * signed in.
  *
  * @module dsh-llm-pi-ai/adapter
  */
+import type { AuthContext, CredentialStore } from '@earendil-works/pi-ai';
 import { LlmAdapter } from '@deepseek-ai/dsh-llm';
-import type { GenerateOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, ResolvedRetryPolicy, StreamChunk } from '@deepseek-ai/dsh-llm';
-import type { AttachmentStore } from '@deepseek-ai/dsh-attachment';
+import type { GenerateOptions, ImageAttachmentAccess, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, PreparedAdapterCall, ResolvedRetryPolicy, StreamChunk } from '@deepseek-ai/dsh-llm';
+import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
 import type { ResolvedPiAiProviderProfile } from './config.ts';
 /** Constructor options for {@link PiAiAdapter}: the two resolution hooks the plugin owns. */
 export interface PiAiAdapterOptions {
@@ -37,8 +43,35 @@ export interface PiAiAdapterOptions {
      * `MISSING_CREDENTIAL` rather than falling back.
      */
     resolveApiKey: (provider: string, profile: ResolvedPiAiProviderProfile) => Promise<string | undefined>;
+    /**
+     * How every collection this adapter builds resolves auth the request-level
+     * `apiKey` override does not cover. Required rather than optional: a
+     * collection built without them gets pi-ai's in-memory default store, which
+     * is empty at every boot and discarded on every configuration change, so a
+     * route whose only method is a login would report itself unconfigured on
+     * every request no matter how often the human signed in.
+     */
+    auth: PiAiAuthInjection;
     /** Resolve the optional durable attachment service at request time. */
     resolveAttachments?: () => AttachmentStore | undefined;
+    /** Bridge one attachment reference into the current model-tool execution world. */
+    resolveImageAccess?: (attachments: AttachmentStore, ref: ImageAttachmentRef) => ImageAttachmentAccess | undefined;
+    /**
+     * Observe one assistant history message degrading to provider-neutral
+     * conversion because its stored replay state is unusable by this build.
+     */
+    onReplayDegrade?: (detail: {
+        provider: string;
+        model: string;
+        reason: string;
+    }) => void;
+}
+/** The two auth injectables a pi-ai collection is built with. */
+export interface PiAiAuthInjection {
+    /** Durable storage for credentials pi-ai itself writes: logins, and the refreshes it runs under its own lock. */
+    credentials: CredentialStore;
+    /** Ambient lookups a provider performs while resolving its own auth. */
+    authContext: AuthContext;
 }
 /**
  * pi-ai-backed multi-provider adapter. Each operation reads the current
@@ -64,6 +97,9 @@ export declare class PiAiAdapter extends LlmAdapter {
     providerRetryPolicy(provider: string): ResolvedRetryPolicy | undefined;
     listModels(provider: string): Promise<readonly LlmModelInfo[]>;
     resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;
+    private modelInfo;
+    prepareCall(provider: string, model: string, _signal?: AbortSignal): Promise<PreparedAdapterCall>;
     stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
+    private streamWithSnapshot;
 }
 //# sourceMappingURL=adapter.d.ts.map

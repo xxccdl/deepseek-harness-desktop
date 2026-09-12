@@ -20,6 +20,20 @@ import type { ResolvedRetryPolicy, RetryPolicyConfig } from '@deepseek-ai/dsh-ll
 import type { PiAiCompatProfile, PiAiModality, PiAiModelOverride, PiAiModelProfile } from './catalog.ts';
 /** Default maximum idle interval while an adapter stream read is outstanding. */
 export declare const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300000;
+/**
+ * Default request-level bound on base64-encoded image payload. Every image in
+ * history is re-encoded into every request body, so an unbounded conversation
+ * eventually exceeds a provider or gateway request-size cap and the session
+ * can never complete another request. The 20MiB default admits fifteen 1MiB
+ * request versions after base64 expansion and reserves request capacity for
+ * system prompts, history, tools, and JSON.
+ * Deployments behind stricter gateways lower it per route.
+ */
+export declare const DEFAULT_MAX_REQUEST_IMAGE_BYTES: number;
+/** Default total-pixel budget preserves the complete 2048px normalized attachment. */
+export declare const DEFAULT_REQUEST_IMAGE_PIXEL_BUDGET: number;
+/** Default raw encoded-byte target before inline base64 expansion; the smallest quality-ladder output is used when no quality fits. */
+export declare const DEFAULT_REQUEST_IMAGE_MAX_BYTES: number;
 /** Context capacity assumed for a model neither configuration nor the catalog sizes. */
 export declare const DEFAULT_CONTEXT_WINDOW = 262144;
 /** Output capability assumed for a model neither configuration nor the catalog sizes. */
@@ -66,10 +80,11 @@ export interface PiAiProviderProfile {
      */
     modelOverrides?: Record<string, PiAiModelOverride>;
     /**
-     * Reasoning-dispatch switches for every `openai-completions` model on this
-     * route; each model's own `compat` overrides per field. What neither sets
-     * keeps the installed catalog entry's value, then pi-ai's baseURL-derived
-     * detection.
+     * pi-ai wire-compatibility switches defaulting every model on this route
+     * whose protocol declares them; each model's own `compat` overrides per
+     * field. What neither sets keeps the installed catalog entry's value, then
+     * pi-ai's own detection. A switch no model on the route could read is
+     * refused rather than left looking applied.
      */
     compat?: PiAiCompatProfile;
     /**
@@ -111,7 +126,21 @@ export interface PiAiProviderProfile {
     websocketConnectTimeoutMs?: number;
     /** Maximum provider idle time while one stream read is outstanding. */
     streamIdleTimeoutMs?: number;
-    /** Provider-owned model-request retry policy; omission uses normal defaults. */
+    /**
+     * Maximum base64-encoded image payload per request. When a request's
+     * accumulated images exceed it, the oldest images are replaced by text
+     * placeholders until the request fits, so a long session keeps completing
+     * requests instead of being rejected by a request-size cap.
+     */
+    maxRequestImageBytes?: number;
+    /** Total-pixel budget for each deterministic inline request version. */
+    requestImagePixelBudget?: number;
+    /**
+     * Raw encoded-byte target for each deterministic inline request version;
+     * the smallest quality-ladder output is used when no quality fits.
+     */
+    requestImageMaxBytes?: number;
+    /** Provider-owned model-request retry policy; omission uses normal mode with five retries. */
     retryPolicy?: RetryPolicyConfig;
 }
 /** Validated profile with its route stamped and every adapter-owned default resolved. */
@@ -124,6 +153,12 @@ export interface ResolvedPiAiProviderProfile extends Omit<PiAiProviderProfile, '
     apiKeyEnv?: CredentialRef;
     /** Positive finite provider-idle interval after defaulting. */
     streamIdleTimeoutMs: number;
+    /** Positive request-level base64 image payload bound after defaulting. */
+    maxRequestImageBytes: number;
+    /** Positive total-pixel request-version budget after defaulting. */
+    requestImagePixelBudget: number;
+    /** Positive raw request-version byte target after defaulting; the smallest quality-ladder output is used when no quality fits. */
+    requestImageMaxBytes: number;
     /** Immutable retry policy captured with this provider route. */
     retryPolicy: ResolvedRetryPolicy;
     /**

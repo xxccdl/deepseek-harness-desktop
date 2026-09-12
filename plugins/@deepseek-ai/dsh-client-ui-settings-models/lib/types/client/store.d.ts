@@ -1,16 +1,36 @@
 /**
  * Models settings page store: one snapshot joining the configurable-provider
- * directory (`llm.providers`), the settings namespaces (`settings.describe`),
- * and the referenced credentials (`credentials.describe`). The host stays the
+ * directory (`llm/listProviders` joined with `llm/listConfigurableProviders`),
+ * the settings namespaces (shared settings mirror),
+ * and the referenced credentials (`credentials/describe`). The host stays the
  * single fact source — every mutation writes through the wire and the page
  * re-renders from the next describe, pushed or refetched.
  */
-import type { ConfigurableProviderView, CredentialView, IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client';
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
+import type { CredentialInfo, LlmConfigurableProvider, LlmProviderInfo, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client';
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store';
+import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client';
+import type { SettingsSchemaOperations } from './schema-operations.ts';
+/** One provider row after joining the configurable directory with live routes. */
+export interface ProviderDirectoryEntry {
+    readonly provider: string;
+    readonly displayName: string;
+    readonly settingsNs: string;
+    readonly settingsPath: readonly string[];
+    readonly active: boolean;
+    readonly declared?: boolean;
+}
+/**
+ * Join declared configurable providers with the currently registered routes.
+ * @param registered - live provider routes in registration order.
+ * @param directory - declared configurable providers in declaration order.
+ * @returns declared rows followed by live routes with no declaration.
+ */
+export declare function joinProviderDirectory(registered: readonly LlmProviderInfo[], directory: readonly LlmConfigurableProvider[]): ProviderDirectoryEntry[];
 /** One provider row the page renders. */
 export interface ProviderRow {
     /** The directory entry (route id, display name, settings address, live state). */
-    entry: ConfigurableProviderView;
+    entry: ProviderDirectoryEntry;
     /** Whether any layer configures this provider (its profile resolves). */
     configured: boolean;
     /** Whether the user layer alone carries the profile (removal restores the base). */
@@ -18,7 +38,14 @@ export interface ProviderRow {
     /** The credential reference the resolved profile names, when one does. */
     apiKeyEnv: string | undefined;
     /** Credential state for {@link apiKeyEnv}, once described. */
-    credential: CredentialView | undefined;
+    credential: CredentialInfo | undefined;
+    /**
+     * Credential state for the page's derived `<ROUTE>_API_KEY`, described only
+     * while the profile names no reference — the provider-card seat's
+     * `keyConfigured` fact for dormant and keyless rows, matching the editor's
+     * own derivation rule.
+     */
+    derivedCredential?: CredentialInfo;
 }
 /** Page snapshot. */
 export interface ModelsSettingsState {
@@ -35,14 +62,6 @@ export interface ModelsSettingsState {
     namespaces: ReadonlyMap<string, SettingsNamespaceView>;
 }
 /**
- * Human text for a rejected wire call. A transport failure rejects with an
- * Error; a host or a runtime can reject with anything, and the page still has
- * to say something.
- * @param error - the rejection value.
- * @returns the message to show.
- */
-export declare function messageOf(error: unknown): string;
-/**
  * Derive the conventional credential reference for a provider route: the v1
  * page never asks for an environment-variable name, so a typed key stores
  * under this derived reference and the profile records it as `apiKeyEnv`.
@@ -56,27 +75,37 @@ export declare function deriveKeyRef(provider: string): string;
  * the choices the page offers cannot drift from the ones the adapter accepts:
  * both come from the same `Config`.
  * @param namespace - the namespace view whose schema declares the profile shape.
+ * @param schema - settings schema operations.
  * @returns the protocol identifiers, or an empty list when the schema has none.
  */
-export declare function protocolChoices(namespace: SettingsNamespaceView | undefined): string[];
+export declare function protocolChoices(namespace: SettingsNamespaceView | undefined, schema: SettingsSchemaOperations): string[];
 /** The models settings page controller (one per settings surface). */
 export declare class ModelsSettingsStore {
-    private readonly api;
+    private readonly ctx;
+    private readonly schema;
+    private readonly describeFace;
     /** The snapshot the section renders from (uSES-safe store). */
     readonly store: SnapshotStore<ModelsSettingsState>;
     /** Latest load wins; an older response never overwrites a newer one. */
     private generation;
     /**
-     * @param api - the wire face (settings/credentials/llm domains).
+     * @param ctx - the page plugin's context, whose `remote.llm` and
+     * `remote.credentials` namespaces carry the directory and credential reads.
+     * @param schema - settings-owned schema and immutable path operations.
+     * @param describeFace - the shared mirror's describe face (namespace views and writability).
      */
-    constructor(api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>);
+    constructor(ctx: ClientContext, schema: SettingsSchemaOperations, describeFace: SettingsDescribeFace);
     /**
-     * Refresh the whole page snapshot: directory and namespaces in parallel,
-     * then one batched credential describe over every referenced ref. A
-     * failure keeps the last good rows and surfaces the error.
+     * Refresh the whole page snapshot: the provider directory and the mirror's
+     * settings answer in parallel, then one batched credential describe over
+     * every referenced ref. Provider failure or absence of an initial settings
+     * answer keeps the last good rows and surfaces an error; a failed settings
+     * refresh reuses the mirror's held view.
      * @returns nothing; the snapshot carries the outcome.
      */
     load(): Promise<void>;
+    /** Publish one load's failure text, unless a newer load already took over. */
+    private failLoad;
 }
 /**
  * Whether a joined row can serve model requests as it stands: the route is

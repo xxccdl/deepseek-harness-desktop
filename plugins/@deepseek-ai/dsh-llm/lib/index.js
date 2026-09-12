@@ -1,138 +1,10 @@
 import { createRequire } from "node:module";
-import { Service } from "@deepseek-ai/cordis";
+import { Remote, RemoteError, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
+import { assertNever, deepFreeze } from "@deepseek-ai/dsh-util-values";
+import { randomUUID } from "@deepseek-ai/dsh-util-crypto";
+import { brandString } from "@deepseek-ai/dsh-brand";
 import z from "@deepseek-ai/schemastery";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
-//#region lib/types/brand.js
-/**
-* dsh-llm's owned branded ids: tool-call correlation and provider request
-* diagnostics.
-*
-* The `Branded<B>` primitive itself lives in `@deepseek-ai/dsh-brand` (a
-* zero-dependency type-only package) so every owner of a cross-boundary id can
-* brand it without depending on dsh-llm; see that package's README for the
-* nominal-typing policy.
-*
-* @module @deepseek-ai/dsh-llm/brand
-*/
-/**
-* Brand a message identifier.
-* @param id - the opaque message identifier.
-* @returns the same string, branded; no validation is performed.
-*/
-function MessageId(id) {
-	return id;
-}
-/**
-* Brand a string as a {@link CallId}.
-* @param id - the provider-issued (or synthesized) call id.
-* @returns the same string, branded; no validation is performed.
-*/
-function CallId(id) {
-	return id;
-}
-/**
-* Brand a provider-issued request identifier.
-* @param id - the opaque provider-issued string.
-* @returns the same string, branded; no validation is performed.
-*/
-function ProviderRequestId(id) {
-	return id;
-}
-/**
-* Brand an adapter-owned reasoning-effort identifier.
-* @param id - the opaque identifier exposed by one model capability.
-* @returns the same string, branded; no validation is performed.
-*/
-function ReasoningEffortId(id) {
-	return id;
-}
-//#endregion
-//#region lib/types/call-config.js
-/**
-* Conversation call configuration and freeze utilities. Provider routing,
-* model, reasoning effort, and sampling values are request-header state that
-* can affect cache reuse; request waterfalls replace them and the loop logs
-* changed snapshots instead of allowing silent per-call drift.
-* @module dsh-llm/call-config
-*/
-/** Process-local identities of request objects assembled by dsh-agent-loop. */
-const AGENT_LOOP_REQUESTS = /* @__PURE__ */ new WeakSet();
-/**
-* Field-wise equality over {@link LlmCallConfig} — the comparison a caller
-* runs to decide whether a proposed configuration is a real change (worth a
-* logged header snapshot) or the held one restated.
-* @param a - one configuration.
-* @param b - the other.
-* @returns whether every field (including the `stop` list, element-wise) matches.
-*/
-function callConfigEquals(a, b) {
-	if (a.provider !== b.provider || a.model !== b.model || a.reasoningEffort !== b.reasoningEffort || a.temperature !== b.temperature || a.maxTokens !== b.maxTokens) return false;
-	if (a.stop === void 0 || b.stop === void 0) return a.stop === b.stop;
-	return a.stop.length === b.stop.length && a.stop.every((s, i) => s === b.stop?.[i]);
-}
-/**
-* Mark one exact request object as assembled by dsh-agent-loop.
-* @param request - loop-owned request envelope before LLM dispatch.
-* @returns the same request object marked as created by the process-local agent loop.
-*/
-function markAgentLoopRequest(request) {
-	AGENT_LOOP_REQUESTS.add(request);
-	return request;
-}
-/**
-* Test whether the exact request object was assembled by dsh-agent-loop.
-* @param request - request envelope observed at the LLM waterfall.
-* @returns whether {@link markAgentLoopRequest} recorded this object.
-*/
-function isAgentLoopRequest(request) {
-	return AGENT_LOOP_REQUESTS.has(request);
-}
-/**
-* Deep-freeze a value in place with an iterative traversal, guarding cycles,
-* so later mutation throws without imposing a JavaScript call-stack depth cap.
-* {@link AbortSignal} objects are deliberately skipped because they are the
-* request's live cancellation channel and freezing them breaks abort.
-* @param value - the value to freeze in place.
-* @returns the same value, frozen.
-*/
-function deepFreeze(value) {
-	const seen = /* @__PURE__ */ new WeakSet();
-	const pending = [{
-		kind: "visit",
-		node: value
-	}];
-	while (pending.length > 0) {
-		const task = pending.pop();
-		/* v8 ignore next -- the loop condition guarantees one pending task. */
-		if (task === void 0) continue;
-		if (task.kind === "property") {
-			pending.push({
-				kind: "visit",
-				node: task.source[task.key]
-			});
-			continue;
-		}
-		const node = task.node;
-		if (node === null || typeof node !== "object") continue;
-		if (node instanceof AbortSignal) continue;
-		if (seen.has(node)) continue;
-		seen.add(node);
-		Object.freeze(node);
-		const keys = Object.keys(node);
-		for (let index = keys.length - 1; index >= 0; index--) {
-			const key = keys[index];
-			/* v8 ignore next -- the loop is bounded by the captured key count. */
-			if (key === void 0) continue;
-			pending.push({
-				kind: "property",
-				source: node,
-				key
-			});
-		}
-	}
-	return value;
-}
-//#endregion
 //#region lib/types/message.js
 /** Message value types, identity, and immutable construction helpers. */
 /**
@@ -165,7 +37,7 @@ function freezeMessage(message) {
 function createMessage(input) {
 	return freezeMessage({
 		...input,
-		id: MessageId(crypto.randomUUID())
+		id: brandString(randomUUID())
 	});
 }
 /**
@@ -212,22 +84,6 @@ function createToolResultMessage(input) {
 			isError: input.isError
 		}]
 	});
-}
-/**
-* Whether a stream chunk carries visible model output (the first-token
-* boundary shared by client step timing and the whole-log sessionStats
-* projection). Empty deltas (heartbeats, empty tool-call frames) do not count
-* as a first token.
-* @param chunk - the stream chunk to test.
-* @returns true when the chunk contains a non-empty text/reasoning/tool delta.
-*/
-function isTokenDelta(chunk) {
-	switch (chunk.type) {
-		case "text-delta":
-		case "reasoning-delta": return chunk.text !== "";
-		case "tool-call-delta": return chunk.argumentsDelta !== "" || chunk.name !== void 0;
-		default: return false;
-	}
 }
 //#endregion
 //#region lib/types/error.js
@@ -353,7 +209,7 @@ function isHarnessError(value) {
 *
 * @module @deepseek-ai/dsh-llm/retry-policy
 */
-const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_INITIAL_DELAY_MS = 500;
 const DEFAULT_MAX_DELAY_MS = 1e4;
 const DEFAULT_JITTER_RATIO = .1;
@@ -387,7 +243,12 @@ const NORMAL_POLICY_KEYS = new Set([
 	"retryableCodes",
 	"backoff"
 ]);
-const ALWAYS_POLICY_KEYS = new Set(["mode", "backoff"]);
+const ALWAYS_POLICY_KEYS = new Set([
+	"mode",
+	"maxRetries",
+	"retryableCodes",
+	"backoff"
+]);
 const BACKOFF_KEYS = new Set([
 	"initialDelayMs",
 	"maxDelayMs",
@@ -448,6 +309,47 @@ function resolveRetryPolicy(config, path) {
 			});
 		default: throw new Error(`${path}.mode must be "normal" or "always"`);
 	}
+}
+//#endregion
+//#region lib/types/call-config.js
+/**
+* Conversation call configuration and freeze utilities. Provider routing,
+* model, reasoning effort, and sampling values are request-header state that
+* can affect cache reuse; request waterfalls replace them and the loop logs
+* changed snapshots instead of allowing silent per-call drift.
+* @module dsh-llm/call-config
+*/
+/** Process-local identities of request objects assembled by dsh-agent-loop. */
+const AGENT_LOOP_REQUESTS = /* @__PURE__ */ new WeakSet();
+/**
+* Field-wise equality over {@link LlmCallConfig} — the comparison a caller
+* runs to decide whether a proposed configuration is a real change (worth a
+* logged header snapshot) or the held one restated.
+* @param a - one configuration.
+* @param b - the other.
+* @returns whether every field (including the `stop` list, element-wise) matches.
+*/
+function callConfigEquals(a, b) {
+	if (a.provider !== b.provider || a.model !== b.model || a.reasoningEffort !== b.reasoningEffort || a.temperature !== b.temperature || a.maxTokens !== b.maxTokens) return false;
+	if (a.stop === void 0 || b.stop === void 0) return a.stop === b.stop;
+	return a.stop.length === b.stop.length && a.stop.every((s, i) => s === b.stop?.[i]);
+}
+/**
+* Mark one exact request object as assembled by dsh-agent-loop.
+* @param request - loop-owned request envelope before LLM dispatch.
+* @returns the same request object marked as created by the process-local agent loop.
+*/
+function markAgentLoopRequest(request) {
+	AGENT_LOOP_REQUESTS.add(request);
+	return request;
+}
+/**
+* Test whether the exact request object was assembled by dsh-agent-loop.
+* @param request - request envelope observed at the LLM waterfall.
+* @returns whether {@link markAgentLoopRequest} recorded this object.
+*/
+function isAgentLoopRequest(request) {
+	return AGENT_LOOP_REQUESTS.has(request);
 }
 //#endregion
 //#region lib/types/adapter-failure.js
@@ -575,6 +477,220 @@ function normalizeApiKey(raw) {
 	};
 }
 //#endregion
+//#region lib/types/content.js
+/** Content-block structure helpers. @module @deepseek-ai/dsh-llm/content */
+/**
+* Bridge one attachment provider's host object location into the mounted
+* tool execution world. The consumer supplies the current filesystem
+* provider's mapping without making attachment or LLM definitions depend on it.
+* @param attachments - provider that owns the normalized attachment object.
+* @param mapHostPath - map one absolute host path into the current tool execution world.
+* @param ref - durable normalized attachment reference.
+* @returns a read-only execution-world path, or undefined when either provider exposes no mapping.
+* @throws an attachment error when the durable reference is invalid.
+*/
+function resolveImageAttachmentAccess(attachments, mapHostPath, ref) {
+	const hostPath = attachments.imageHostPath(ref);
+	if (hostPath === void 0) return void 0;
+	const readonlyPath = mapHostPath(hostPath);
+	return readonlyPath === void 0 ? void 0 : { readonlyPath };
+}
+function quoted(value) {
+	return JSON.stringify(value);
+}
+function imageIdentity(ref) {
+	return ref.name === void 0 ? String(ref.attachmentId) : `${quoted(ref.name)} (${ref.attachmentId})`;
+}
+function extension(mediaType) {
+	switch (mediaType) {
+		case "image/png": return ".png";
+		case "image/jpeg": return ".jpg";
+		case "image/webp": return ".webp";
+		case "image/gif": return ".gif";
+		default: return assertNever(mediaType, "image extension");
+	}
+}
+function normalizedAccessText(ref, access) {
+	return ` Normalized copy (read-only; may be resized or re-encoded): ${quoted(access.readonlyPath)} (${ref.width}x${ref.height}px, ${ref.mediaType}). Source dimensions, format, and byte size may differ. Copy to a writable path ending in ${extension(ref.mediaType)} before editing.`;
+}
+/**
+* Stable text shown to a model that cannot accept one durable image reference.
+* @param ref - durable normalized attachment omitted from the request.
+* @returns deterministic text-only placeholder.
+*/
+function textOnlyImageText(ref) {
+	return `[image omitted because this model accepts text only; attachment sha256:${String(ref.attachmentId).slice(7, 15)}]`;
+}
+/**
+* Stable model-facing handle for one exact request image. Identity comes from
+* the occurrence's own durable reference: request versions are prepared per
+* attachment id, so one shared version may serve occurrences whose display
+* names differ.
+* @param ref - the occurrence's durable normalized attachment.
+* @param version - exact request-image dimensions shown beside the text.
+* @param access - optional path resolved for the current tool execution world.
+* @returns attachment handle and request-image dimensions.
+*/
+function requestImageHandleText(ref, version, access) {
+	const preview = `Image ${imageIdentity(ref)}; request preview ${version.width}x${version.height}px.`;
+	return access === void 0 ? `${preview} It may be resized or re-encoded; source dimensions, format, and byte size may differ.` : preview + normalizedAccessText(ref, access);
+}
+/**
+* Stable per-image placeholder for a request-limit omission.
+* @param ref - durable normalized attachment omitted from this request.
+* @param access - optional provider-resolved path for model tools.
+* @returns identity, normalized metadata, and the available recovery path.
+*/
+function offloadedImageText(ref, access) {
+	const identity = `image omitted to fit request image limits; ${imageIdentity(ref)}.`;
+	if (access === void 0) return `[${identity} No local normalized image path is available; ask the user to attach it again if needed.]`;
+	return `[${identity}${normalizedAccessText(ref, access)}]`;
+}
+/**
+* True when typed model content contains an image block, walking nested
+* tool-result content. This is the one recursive image walk shared by every
+* image policy (capability gating, text-only serialization, compaction
+* survey), so a consumer cannot silently diverge on nesting depth.
+* @param content - typed model content blocks.
+* @returns whether any nested block is an image.
+*/
+function contentHasImage(content) {
+	return content.some((block) => block.type === "image" || block.type === "tool-result" && contentHasImage(block.content));
+}
+/** Base64 length of raw image bytes, including padding. */
+function base64Length(bytes) {
+	return Math.ceil(bytes / 3) * 4;
+}
+/** Collect represented image lengths in request and nested-block order. */
+function collectImageLengths(blocks, lengths, policy) {
+	for (const block of blocks) if (block.type === "image") {
+		const bytes = policy.byteLength === void 0 ? block.attachment.bytes : policy.byteLength(block.attachment);
+		lengths.push(policy.representation === "base64" ? base64Length(bytes) : bytes);
+	} else if (block.type === "tool-result") collectImageLengths(block.content, lengths, policy);
+}
+/** Replace the first `remaining.count` image occurrences without mutating durable messages. */
+function replaceOldestImages(blocks, remaining, placeholder) {
+	let next;
+	for (const [index, block] of blocks.entries()) {
+		if (block.type === "image" && remaining.count > 0) {
+			remaining.count -= 1;
+			next ??= blocks.slice(0, index);
+			next.push({
+				type: "text",
+				text: placeholder(block.attachment)
+			});
+			continue;
+		}
+		if (block.type === "tool-result") {
+			const content = replaceOldestImages(block.content, remaining, placeholder);
+			if (content !== block.content) {
+				next ??= blocks.slice(0, index);
+				next.push({
+					...block,
+					content
+				});
+				continue;
+			}
+		}
+		next?.push(block);
+	}
+	return next ?? blocks;
+}
+/** Replace every image occurrence, including nested tool results, for a text-only model. */
+function replaceImagesForTextModel(blocks) {
+	let next;
+	for (const [index, block] of blocks.entries()) {
+		if (block.type === "image") {
+			next ??= blocks.slice(0, index);
+			next.push({
+				type: "text",
+				text: textOnlyImageText(block.attachment)
+			});
+			continue;
+		}
+		if (block.type === "tool-result") {
+			const content = replaceImagesForTextModel(block.content);
+			if (content !== block.content) {
+				next ??= blocks.slice(0, index);
+				next.push({
+					...block,
+					content
+				});
+				continue;
+			}
+		}
+		next?.push(block);
+	}
+	return next ?? blocks;
+}
+/**
+* Project durable image history into deterministic text for an exact text-only model.
+* @param messages - complete request history.
+* @returns the original list without images, otherwise shallow message copies with stable placeholders.
+*/
+function projectImagesForTextModel(messages) {
+	if (!messages.some((message) => contentHasImage(message.content))) return messages;
+	return messages.map((message) => {
+		const content = replaceImagesForTextModel(message.content);
+		return content === message.content ? message : {
+			...message,
+			content
+		};
+	});
+}
+/**
+* Number of oldest image occurrences one request projection removes, in whole
+* count and byte quanta, once a route budget is exceeded. The result depends
+* only on the represented lengths, so provider request pricing reproduces the
+* exact serialization decision without building the projected messages.
+* @param lengths - represented byte length of every occurrence, in request order.
+* @param policy - count/byte budgets and removal quanta; unbounded when absent.
+* @returns how many leading occurrences the projection replaces with placeholders.
+*/
+function offloadedImagePrefixCount(lengths, policy) {
+	const total = lengths.reduce((sum, bytes) => sum + bytes, 0);
+	const excessCount = policy.maxImages === void 0 ? 0 : Math.max(0, lengths.length - policy.maxImages);
+	const excessBytes = policy.maxBytes === void 0 ? 0 : Math.max(0, total - policy.maxBytes);
+	if (excessCount === 0 && excessBytes === 0) return 0;
+	const countQuantum = policy.countQuantum ?? 1;
+	const byteQuantum = policy.byteQuantum ?? 1;
+	const removeCount = excessCount === 0 ? 0 : Math.ceil(excessCount / countQuantum) * countQuantum;
+	const removeBytes = excessBytes === 0 ? 0 : Math.ceil(excessBytes / byteQuantum) * byteQuantum;
+	let count = 0;
+	let removedBytes = 0;
+	for (const imageBytes of lengths) {
+		if (count >= removeCount && (removeBytes === 0 || (byteQuantum === 1 ? removedBytes >= removeBytes : removedBytes > removeBytes))) break;
+		removedBytes += imageBytes;
+		count += 1;
+	}
+	return count;
+}
+/**
+* Return a deterministic transient projection whose oldest images are replaced
+* in whole count and byte quanta after a route budget is exceeded. The target
+* depends only on complete durable history: at 129 one-megabyte images under
+* a 128 MiB bound with a 64 MiB quantum, the oldest 65 images are removed so
+* 64 MiB remain; that removed prefix stays fixed until total history exceeds
+* 192 MiB.
+* @param messages - complete request history, oldest first.
+* @param policy - route representation, budgets, and removal quanta.
+* @returns original messages below both bounds, otherwise shallow copies with deterministic placeholders.
+*/
+function offloadRequestImagesWithPolicy(messages, policy) {
+	const lengths = [];
+	for (const message of messages) collectImageLengths(message.content, lengths, policy);
+	const count = offloadedImagePrefixCount(lengths, policy);
+	if (count === 0) return messages;
+	const remaining = { count };
+	return messages.map((message) => {
+		const content = replaceOldestImages(message.content, remaining, policy.placeholder);
+		return content === message.content ? message : {
+			...message,
+			content
+		};
+	});
+}
+//#endregion
 //#region lib/types/attribution.js
 /**
 * Centralize the non-secret product identity every provider request sends as `User-Agent`, keeping
@@ -617,38 +733,49 @@ function attributionHeaders(identity = APP_IDENTITY) {
 	return { "user-agent": userAgent(identity) };
 }
 //#endregion
-//#region lib/types/never.js
+//#region lib/types/brand.js
 /**
-* Exhaustiveness helper for closed core unions. Use {@link assertNever} at the default branch so a
-* new variant fails compilation at every required handler. Do not use it for declaration-merged
-* unions such as session events or content blocks: handle known variants and explicitly fall
-* through because plugins may add valid unknown cases.
-* @module @deepseek-ai/dsh-llm/never
+* dsh-llm's owned branded ids: tool-call correlation and provider request
+* diagnostics.
+*
+* The `Branded<B>` primitive and stateless constructor live in
+* `@deepseek-ai/dsh-brand` so every owner of a cross-boundary id can brand it
+* without depending on dsh-llm; see that package's README for the
+* nominal-typing policy.
+*
+* @module @deepseek-ai/dsh-llm/brand
 */
 /**
-* Mark an unreachable closed-union branch. A newly unhandled typed variant fails at the call site;
-* a value that escaped its type throws with diagnostics at runtime.
-* @param value - the impossible value; typed `never` so an unhandled variant fails compilation at the call site.
-* @param context - optional label (e.g. the switch site) prefixed into the throw message.
-* @returns never — it always throws, with the offending value JSON-rendered in the message.
+* Brand a message identifier.
+* @param id - the opaque message identifier.
+* @returns the same string with the message-id brand.
 */
-function assertNever(value, context) {
-	const rendered = JSON.stringify(value) ?? String(value);
-	throw new Error(`unreachable variant${context ? ` in ${context}` : ""}: ${rendered}`);
+function MessageId(id) {
+	return brandString(id);
 }
-//#endregion
-//#region lib/types/content.js
-/** Content-block structure helpers. @module @deepseek-ai/dsh-llm/content */
 /**
-* True when typed model content contains an image block, walking nested
-* tool-result content. This is the one recursive image walk shared by every
-* image policy (capability gating, text-only serialization, compaction
-* survey), so a consumer cannot silently diverge on nesting depth.
-* @param content - typed model content blocks.
-* @returns whether any nested block is an image.
+* Brand a string as a {@link ToolCallId}.
+* @param id - the provider-issued or synthesized call id.
+* @returns the same string with the tool-call-id brand.
 */
-function contentHasImage(content) {
-	return content.some((block) => block.type === "image" || block.type === "tool-result" && contentHasImage(block.content));
+function ToolCallId(id) {
+	return brandString(id);
+}
+/**
+* Brand a provider-issued request identifier.
+* @param id - the opaque provider-issued string.
+* @returns the same string, branded; no validation is performed.
+*/
+function ProviderRequestId(id) {
+	return brandString(id);
+}
+/**
+* Brand an adapter-owned reasoning-effort identifier.
+* @param id - the opaque identifier exposed by one model capability.
+* @returns the same string, branded; no validation is performed.
+*/
+function ReasoningEffortId(id) {
+	return brandString(id);
 }
 //#endregion
 //#region lib/types/assembler.js
@@ -664,7 +791,8 @@ function contentHasImage(content) {
 * {@link ContentBlock}s and a final assistant {@link Message}.
 *
 * The agent loop feeds it while logging raw chunks for replay fidelity, then
-* reads `blocks()` / `message()` / `usage` / `finish` once the stream ends.
+* reads `blocks()` / `message()` / `usage` / `finish` once the stream ends,
+* or `interruptedBlocks()` when cancellation cut the stream short.
 *
 * Tolerant of delta-only protocols (no block-start/end); deltas arriving for
 * an index already closed by `block-end` are ignored (malformed stream) so a
@@ -675,7 +803,7 @@ var BlockAssembler = class {
 	order = [];
 	_usage;
 	_finish;
-	_replayState = void 0;
+	_replayState;
 	/**
 	* Feed one chunk into the assembly state.
 	* @param chunk - the next raw chunk, in stream order.
@@ -749,7 +877,7 @@ var BlockAssembler = class {
 			};
 			case "tool-call": return {
 				type: "tool-call",
-				id: partial.toolCallId ?? CallId(`call-${index}`),
+				id: partial.toolCallId ?? brandString(`call-${index}`),
 				name: partial.toolCallName ?? "",
 				arguments: partial.toolCallArguments
 			};
@@ -763,14 +891,54 @@ var BlockAssembler = class {
 		return partial;
 	}
 	/**
+	* The one shared keep/drop decision over all seen blocks: max-token
+	* truncation drops tool calls that cannot be executed safely. Emitted blocks
+	* and replay metadata both derive from this result, so they cannot disagree.
+	*/
+	assembled() {
+		const all = this.order.map((index) => this.assemble(this.mustGet(index), index));
+		const kept = this.finish.kind === "max-tokens" ? all.map((block) => block.type !== "tool-call") : void 0;
+		const blocks = kept === void 0 ? all : all.filter((_, position) => kept[position]);
+		const envelope = this._replayState;
+		if (envelope?.blocks === void 0) return {
+			blocks,
+			replay: envelope
+		};
+		if (envelope.blocks.length !== all.length) return {
+			blocks,
+			replay: void 0
+		};
+		return {
+			blocks,
+			replay: kept === void 0 || blocks.length === all.length ? envelope : {
+				response: envelope.response,
+				blocks: envelope.blocks.filter((_, position) => kept[position])
+			}
+		};
+	}
+	/**
 	* Assemble all blocks seen so far, in stream order.
 	* @returns one block per seen index, except that max-token truncation drops
 	*   tool calls that cannot be executed safely; an open block assembles from
 	*   its accumulated deltas (an unknown block type never closed by `block-end` throws).
 	*/
 	blocks() {
-		const blocks = this.order.map((index) => this.assemble(this.mustGet(index), index));
-		return this.finish.kind === "max-tokens" ? blocks.filter((block) => block.type !== "tool-call") : blocks;
+		return this.assembled().blocks;
+	}
+	/**
+	* Assemble the prefix an interrupted stream can safely finalize: closed and
+	* open text/reasoning blocks with non-whitespace content, in stream order.
+	* Tool calls are omitted because interruption precedes dispatch; retaining
+	* one would require a fabricated result. Open unknown blocks are also omitted.
+	* @returns the kept blocks; empty when nothing streamed before the interruption.
+	*/
+	interruptedBlocks() {
+		return this.order.map((index) => {
+			const partial = this.mustGet(index);
+			const type = partial.block?.type ?? partial.blockType;
+			if (type !== "text" && type !== "reasoning") return void 0;
+			return this.assemble(partial, index);
+		}).filter((block) => (block?.type === "text" || block?.type === "reasoning") && block.text.trim() !== "");
 	}
 	/** Usage from the `usage` chunk; undefined until one arrives. */
 	get usage() {
@@ -780,9 +948,13 @@ var BlockAssembler = class {
 	get finish() {
 		return this._finish ?? { kind: "stop" };
 	}
-	/** Adapter-private replay state from the terminal finish chunk, if any. */
+	/**
+	* Replay metadata from the terminal finish chunk, if any, with per-block
+	* entries pruned in step with {@link blocks}. Undefined when the envelope's
+	* entries do not align with the emitted blocks.
+	*/
 	get replayState() {
-		return this._replayState;
+		return this.assembled().replay;
 	}
 	/**
 	* The assembled assistant message.
@@ -809,6 +981,44 @@ var BlockAssembler = class {
 *
 * @module @deepseek-ai/dsh-llm
 */
+var __runInitializers = function(thisArg, initializers, value) {
+	var useValue = arguments.length > 2;
+	for (var i = 0; i < initializers.length; i++) value = useValue ? initializers[i].call(thisArg, value) : initializers[i].call(thisArg);
+	return useValue ? value : void 0;
+};
+var __esDecorate = function(ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
+	function accept(f) {
+		if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected");
+		return f;
+	}
+	var kind = contextIn.kind, key = kind === "getter" ? "get" : kind === "setter" ? "set" : "value";
+	var target = !descriptorIn && ctor ? contextIn["static"] ? ctor : ctor.prototype : null;
+	var descriptor = descriptorIn || (target ? Object.getOwnPropertyDescriptor(target, contextIn.name) : {});
+	var _, done = false;
+	for (var i = decorators.length - 1; i >= 0; i--) {
+		var context = {};
+		for (var p in contextIn) context[p] = p === "access" ? {} : contextIn[p];
+		for (var p in contextIn.access) context.access[p] = contextIn.access[p];
+		context.addInitializer = function(f) {
+			if (done) throw new TypeError("Cannot add initializers after decoration has completed");
+			extraInitializers.push(accept(f || null));
+		};
+		var result = (0, decorators[i])(kind === "accessor" ? {
+			get: descriptor.get,
+			set: descriptor.set
+		} : descriptor[key], context);
+		if (kind === "accessor") {
+			if (result === void 0) continue;
+			if (result === null || typeof result !== "object") throw new TypeError("Object expected");
+			if (_ = accept(result.get)) descriptor.get = _;
+			if (_ = accept(result.set)) descriptor.set = _;
+			if (_ = accept(result.init)) initializers.unshift(_);
+		} else if (_ = accept(result)) if (kind === "field") initializers.unshift(_);
+		else descriptor[key] = _;
+	}
+	if (target) Object.defineProperty(target, contextIn.name, descriptor);
+	done = true;
+};
 /**
 * Typed error for LLM-related failures. Extends {@link HarnessError}, so the
 * `code` string (e.g. `AUTH`, `RATE_LIMIT`, `NO_ADAPTER`) is shared taxonomy.
@@ -886,6 +1096,16 @@ var LlmAdapter = class {
 	*/
 	providerRetryPolicy(_provider) {}
 	/**
+	* Resolve provider-side request-image pricing for one exact model route.
+	* The default declares none, so consumers fall back to their own neutral
+	* estimate. Implementations must answer synchronously without I/O; the
+	* token meter resolves this per measurement.
+	* @param _provider - a route passed to `registerAdapter()` for this instance.
+	* @param _model - exact model id passed to {@link GenerateOptions.model}.
+	* @returns route-owned image pricing, or `undefined` when the route declares none.
+	*/
+	imageRequestPricing(_provider, _model) {}
+	/**
 	* List models this adapter can currently advertise for one owned provider.
 	* The result is advisory: an adapter may accept unlisted model ids, and
 	* consumers must not turn absence into request rejection.
@@ -911,485 +1131,615 @@ var LlmAdapter = class {
 			name: model
 		});
 	}
+	/**
+	* Bind exact model metadata and the eventual request dispatch to one adapter generation.
+	* Dynamic adapters override this so settings changes between preparation and
+	* dispatch cannot combine one generation's capabilities with another's endpoint.
+	* @param provider - registered provider route.
+	* @param model - exact model id.
+	* @param signal - cancellation for model resolution.
+	* @returns model metadata and a one-generation stream entry point.
+	*/
+	async prepareCall(provider, model, signal) {
+		return {
+			model: await this.resolveModel(provider, model, signal),
+			stream: (options) => this.stream(options)
+		};
+	}
 };
 /**
 * The abstract `llm` service: an adapter registry plus a streaming model-call
 * API, interceptable via the `llm/stream` waterfall.
 */
-var LlmRuntime = class extends Service {
-	adapters = /* @__PURE__ */ new Map();
-	directory = /* @__PURE__ */ new Map();
-	discoveries = /* @__PURE__ */ new Map();
-	constructor(ctx) {
-		super(ctx, "llm");
-	}
-	/** Notify topology observers without letting one broken listener veto the commit. */
-	emitAdaptersUpdated() {
-		let invariantFailure;
-		for (const listener of this.ctx.events.dispatch("emit", ["llm/adapters-updated"])) try {
-			const returned = listener();
-			if (returned != null && typeof returned.then === "function") Promise.resolve(returned).then(void 0, (error) => {
-				this.warnAdaptersListenerFailure(error);
-			});
-		} catch (error) {
-			if (error?.code === "INVARIANT") {
-				invariantFailure ??= error;
-				continue;
-			}
-			this.warnAdaptersListenerFailure(error);
-		}
-		if (invariantFailure !== void 0) throw invariantFailure;
-	}
-	/** Contained-listener diagnostic shared by the sync and async failure paths. */
-	warnAdaptersListenerFailure(error) {
-		this.ctx.logger.warn("llm: an llm/adapters-updated listener failed");
-		this.ctx.logger.warn(error);
-	}
-	/**
-	* Register an adapter for the given provider routes. Throws `LlmError` with code
-	* `DUPLICATE_ADAPTER` if any provider already has an adapter (all-or-nothing).
-	* Disposed with the fiber.
-	* @param providers - every provider route this adapter should serve.
-	* @param adapter - the adapter that streams calls for those providers.
-	* @returns the disposer, carrying {@link AdapterRegistrationHandle.replace}.
-	*/
-	registerAdapter(providers, adapter) {
-		const owned = /* @__PURE__ */ new Set();
-		let released = false;
-		const dispose = this.ctx.effect(function* () {
-			if (providers.length === 0) throw new LlmError("an adapter must register at least one provider", "INVALID_ADAPTER");
-			this.commitRoutes(owned, this.prepareRoutes(providers, adapter, owned));
-			yield () => {
-				released = true;
-				for (const provider of owned) this.adapters.delete(provider);
-				owned.clear();
-				this.emitAdaptersUpdated();
-			};
-		}.bind(this), "llm.registerAdapter()");
-		const handle = (() => void dispose());
-		handle.replace = (next) => {
-			if (released) throw new LlmError("a disposed adapter registration cannot replace its routes", "REGISTRATION_DISPOSED");
-			this.commitRoutes(owned, this.prepareRoutes(next, adapter, owned));
-		};
-		return handle;
-	}
-	/**
-	* Validate one candidate route set for `adapter`, treating routes this
-	* registration already holds as available. Nothing is mutated: a rejected
-	* candidate leaves the registry exactly as it was.
-	*/
-	prepareRoutes(providers, adapter, owned) {
-		const unique = /* @__PURE__ */ new Set();
-		const registrations = [];
-		for (const provider of providers) {
-			if (provider.length === 0) throw new LlmError("adapter provider names must be non-empty", "INVALID_ADAPTER");
-			if (unique.has(provider) || this.adapters.has(provider) && !owned.has(provider)) throw new LlmError(`an adapter for provider "${provider}" is already registered`, "DUPLICATE_ADAPTER");
-			const info = adapter.providerInfo(provider);
-			if (typeof info.id !== "string" || info.id !== provider || typeof info.name !== "string" || info.name.length === 0) throw new LlmError(`adapter metadata for provider "${provider}" must preserve its id and have a non-empty name`, "INVALID_ADAPTER");
-			unique.add(provider);
-			const retryPolicy = adapter.providerRetryPolicy(provider) ?? resolveRetryPolicy(void 0, `llm: provider "${provider}" retryPolicy`);
-			registrations.push({
-				adapter,
-				provider: {
-					id: info.id,
-					name: info.name
+let LlmRuntime = (() => {
+	let _classSuper = TypertRemoteService;
+	let _instanceExtraInitializers = [];
+	let _listProviders_decorators;
+	let _listConfigurableProviders_decorators;
+	let _remoteDiscoverModels_decorators;
+	return class LlmRuntime extends _classSuper {
+		static {
+			const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+			_listProviders_decorators = [Remote];
+			_listConfigurableProviders_decorators = [Remote];
+			_remoteDiscoverModels_decorators = [Remote("discoverModels")];
+			__esDecorate(this, null, _listProviders_decorators, {
+				kind: "method",
+				name: "listProviders",
+				static: false,
+				private: false,
+				access: {
+					has: (obj) => "listProviders" in obj,
+					get: (obj) => obj.listProviders
 				},
-				retryPolicy
+				metadata: _metadata
+			}, null, _instanceExtraInitializers);
+			__esDecorate(this, null, _listConfigurableProviders_decorators, {
+				kind: "method",
+				name: "listConfigurableProviders",
+				static: false,
+				private: false,
+				access: {
+					has: (obj) => "listConfigurableProviders" in obj,
+					get: (obj) => obj.listConfigurableProviders
+				},
+				metadata: _metadata
+			}, null, _instanceExtraInitializers);
+			__esDecorate(this, null, _remoteDiscoverModels_decorators, {
+				kind: "method",
+				name: "remoteDiscoverModels",
+				static: false,
+				private: false,
+				access: {
+					has: (obj) => "remoteDiscoverModels" in obj,
+					get: (obj) => obj.remoteDiscoverModels
+				},
+				metadata: _metadata
+			}, null, _instanceExtraInitializers);
+			if (_metadata) Object.defineProperty(this, Symbol.metadata, {
+				enumerable: true,
+				configurable: true,
+				writable: true,
+				value: _metadata
 			});
 		}
-		return registrations;
-	}
-	/**
-	* Swap this registration's routes for the prepared ones in one synchronous
-	* section, so no observer can see the registry between the release and the
-	* re-registration. The route set's one mutation point is also where
-	* `llm/adapters-updated` is published, so a `replace` announces itself
-	* exactly like a first registration.
-	*/
-	commitRoutes(owned, registrations) {
-		for (const provider of owned) this.adapters.delete(provider);
-		owned.clear();
-		for (const registration of registrations) {
-			this.adapters.set(registration.provider.id, registration);
-			owned.add(registration.provider.id);
+		adapters = (__runInitializers(this, _instanceExtraInitializers), /* @__PURE__ */ new Map());
+		directory = /* @__PURE__ */ new Map();
+		discoveries = /* @__PURE__ */ new Map();
+		constructor(ctx) {
+			super(ctx, "llm");
 		}
-		this.emitAdaptersUpdated();
-	}
-	/**
-	* Describe provider routes with a registered adapter.
-	* @returns detached provider metadata in registration order.
-	*/
-	listProviders() {
-		return [...this.adapters.values()].map(({ provider }) => ({ ...provider }));
-	}
-	/**
-	* Declare provider routes an adapter plugin can activate through
-	* configuration. Registration is all-or-nothing: an empty list, invalid
-	* entry, or a provider already declared by any registration throws
-	* `LlmError` without registering the rest. Disposed with the fiber.
-	* @param entries - every configurable provider this plugin owns.
-	* @returns a handle that withdraws all of them, and can atomically replace them.
-	*/
-	registerConfigurableProviders(entries) {
-		let held = [];
-		let disposed = false;
+		/** Notify topology observers without letting one broken listener veto the commit. */
+		emitAdaptersUpdated() {
+			let invariantFailure;
+			for (const listener of this.ctx.events.dispatch("emit", ["llm/adapters-updated"])) try {
+				const returned = listener();
+				if (returned != null && typeof returned.then === "function") Promise.resolve(returned).then(void 0, (error) => {
+					this.warnAdaptersListenerFailure(error);
+				});
+			} catch (error) {
+				if (error?.code === "INVARIANT") {
+					invariantFailure ??= error;
+					continue;
+				}
+				this.warnAdaptersListenerFailure(error);
+			}
+			if (invariantFailure !== void 0) throw invariantFailure;
+		}
+		/** Contained-listener diagnostic shared by the sync and async failure paths. */
+		warnAdaptersListenerFailure(error) {
+			this.ctx.logger.warn("llm: an llm/adapters-updated listener failed");
+			this.ctx.logger.warn(error);
+		}
 		/**
-		* Validate a candidate set in full against everything this registration
-		* does not already hold, then publish it. Nothing is written until the
-		* whole set passes, so a refused candidate leaves the current entries in
-		* place — the property that makes `replace` a swap rather than a
-		* delete-then-add that can strand the directory empty.
+		* Register an adapter for the given provider routes. Throws `LlmError` with code
+		* `DUPLICATE_ADAPTER` if any provider already has an adapter (all-or-nothing).
+		* Disposed with the fiber.
+		* @param providers - every provider route this adapter should serve.
+		* @param adapter - the adapter that streams calls for those providers.
+		* @returns the disposer, carrying {@link AdapterRegistrationHandle.replace}.
 		*/
-		const commit = (candidates) => {
-			const detached = [];
-			const own = new Set(held.map((entry) => entry.provider));
-			for (const entry of candidates) {
-				if (entry.provider.length === 0 || entry.displayName.length === 0 || entry.settingsNs.length === 0) throw new LlmError("configurable providers need a non-empty provider, displayName, and settingsNs", "INVALID_DIRECTORY");
-				if (entry.settingsPath.some((segment) => segment.length === 0)) throw new LlmError(`configurable provider "${entry.provider}" has an empty settingsPath segment`, "INVALID_DIRECTORY");
-				if (this.directory.has(entry.provider) && !own.has(entry.provider) || detached.some((seen) => seen.provider === entry.provider)) throw new LlmError(`configurable provider "${entry.provider}" is already declared`, "DUPLICATE_DIRECTORY");
-				detached.push({
-					...entry,
-					settingsPath: [...entry.settingsPath]
+		registerAdapter(providers, adapter) {
+			const owned = /* @__PURE__ */ new Set();
+			let released = false;
+			const dispose = this.ctx.effect(function* () {
+				if (providers.length === 0) throw new LlmError("an adapter must register at least one provider", "INVALID_ADAPTER");
+				this.commitRoutes(owned, this.prepareRoutes(providers, adapter, owned));
+				yield () => {
+					released = true;
+					for (const provider of owned) this.adapters.delete(provider);
+					owned.clear();
+					this.emitAdaptersUpdated();
+				};
+			}.bind(this), "llm.registerAdapter()");
+			const handle = (() => void dispose());
+			handle.replace = (next) => {
+				if (released) throw new LlmError("a disposed adapter registration cannot replace its routes", "REGISTRATION_DISPOSED");
+				this.commitRoutes(owned, this.prepareRoutes(next, adapter, owned));
+			};
+			return handle;
+		}
+		/**
+		* Validate one candidate route set for `adapter`, treating routes this
+		* registration already holds as available. Nothing is mutated: a rejected
+		* candidate leaves the registry exactly as it was.
+		*/
+		prepareRoutes(providers, adapter, owned) {
+			const unique = /* @__PURE__ */ new Set();
+			const registrations = [];
+			for (const provider of providers) {
+				if (provider.length === 0) throw new LlmError("adapter provider names must be non-empty", "INVALID_ADAPTER");
+				if (unique.has(provider) || this.adapters.has(provider) && !owned.has(provider)) throw new LlmError(`an adapter for provider "${provider}" is already registered`, "DUPLICATE_ADAPTER");
+				const info = adapter.providerInfo(provider);
+				if (typeof info.id !== "string" || info.id !== provider || typeof info.name !== "string" || info.name.length === 0) throw new LlmError(`adapter metadata for provider "${provider}" must preserve its id and have a non-empty name`, "INVALID_ADAPTER");
+				unique.add(provider);
+				const retryPolicy = adapter.providerRetryPolicy(provider) ?? resolveRetryPolicy(void 0, `llm: provider "${provider}" retryPolicy`);
+				registrations.push({
+					adapter,
+					provider: {
+						id: info.id,
+						name: info.name
+					},
+					retryPolicy
 				});
 			}
-			for (const entry of held) this.directory.delete(entry.provider);
-			for (const entry of detached) this.directory.set(entry.provider, entry);
-			held = detached;
+			return registrations;
+		}
+		/**
+		* Swap this registration's routes for the prepared ones in one synchronous
+		* section, so no observer can see the registry between the release and the
+		* re-registration. The route set's one mutation point is also where
+		* `llm/adapters-updated` is published, so a `replace` announces itself
+		* exactly like a first registration.
+		*/
+		commitRoutes(owned, registrations) {
+			for (const provider of owned) this.adapters.delete(provider);
+			owned.clear();
+			for (const registration of registrations) {
+				this.adapters.set(registration.provider.id, registration);
+				owned.add(registration.provider.id);
+			}
 			this.emitAdaptersUpdated();
-		};
-		const dispose = this.ctx.effect(function* () {
-			if (entries.length === 0) throw new LlmError("a configurable-provider registration must declare at least one provider", "INVALID_DIRECTORY");
-			commit(entries);
-			yield () => {
-				disposed = true;
+		}
+		/**
+		* Describe provider routes with a registered adapter.
+		* @returns detached provider metadata in registration order.
+		*/
+		listProviders() {
+			return [...this.adapters.values()].map(({ provider }) => ({ ...provider }));
+		}
+		/**
+		* Declare provider routes an adapter plugin can activate through
+		* configuration. Registration is all-or-nothing: an empty list, invalid
+		* entry, or a provider already declared by any registration throws
+		* `LlmError` without registering the rest. Disposed with the fiber.
+		* @param entries - every configurable provider this plugin owns.
+		* @returns a handle that withdraws all of them, and can atomically replace them.
+		*/
+		registerConfigurableProviders(entries) {
+			let held = [];
+			let disposed = false;
+			/**
+			* Validate a candidate set in full against everything this registration
+			* does not already hold, then publish it. Nothing is written until the
+			* whole set passes, so a refused candidate leaves the current entries in
+			* place — the property that makes `replace` a swap rather than a
+			* delete-then-add that can strand the directory empty.
+			*/
+			const commit = (candidates) => {
+				const detached = [];
+				const own = new Set(held.map((entry) => entry.provider));
+				for (const entry of candidates) {
+					if (entry.provider.length === 0 || entry.displayName.length === 0 || entry.settingsNs.length === 0) throw new LlmError("configurable providers need a non-empty provider, displayName, and settingsNs", "INVALID_DIRECTORY");
+					if (entry.settingsPath.some((segment) => segment.length === 0)) throw new LlmError(`configurable provider "${entry.provider}" has an empty settingsPath segment`, "INVALID_DIRECTORY");
+					if (this.directory.has(entry.provider) && !own.has(entry.provider) || detached.some((seen) => seen.provider === entry.provider)) throw new LlmError(`configurable provider "${entry.provider}" is already declared`, "DUPLICATE_DIRECTORY");
+					detached.push({
+						...entry,
+						settingsPath: [...entry.settingsPath]
+					});
+				}
 				for (const entry of held) this.directory.delete(entry.provider);
-				held = [];
+				for (const entry of detached) this.directory.set(entry.provider, entry);
+				held = detached;
 				this.emitAdaptersUpdated();
 			};
-		}.bind(this), "llm.registerConfigurableProviders()");
-		const handle = (() => void dispose());
-		handle.replace = (next) => {
-			if (disposed) throw new LlmError("this configurable-provider registration was disposed", "REGISTRATION_DISPOSED");
-			commit(next);
-		};
-		return handle;
-	}
-	/**
-	* List every declared configurable provider, registered or dormant.
-	* @returns detached directory entries in declaration order.
-	*/
-	listConfigurableProviders() {
-		return [...this.directory.values()].map((entry) => ({
-			...entry,
-			settingsPath: [...entry.settingsPath]
-		}));
-	}
-	/**
-	* Offer to interrogate provider endpoints on behalf of the settings
-	* namespace this plugin owns. The namespace is the key because that is what
-	* a configuration surface already holds from the configurable-provider
-	* directory, and because a provider being *added* has no route to name yet.
-	* Disposed with the fiber.
-	* @param settingsNs - the namespace whose profiles this discovery serves.
-	* @param discover - interrogates one endpoint; must honor `request.signal`.
-	* @returns the disposer that withdraws the offer.
-	*/
-	registerModelDiscovery(settingsNs, discover) {
-		const dispose = this.ctx.effect(function* () {
-			if (settingsNs.length === 0) throw new LlmError("model discovery needs a non-empty settings namespace", "INVALID_DISCOVERY");
-			if (this.discoveries.has(settingsNs)) throw new LlmError(`model discovery for "${settingsNs}" is already registered`, "DUPLICATE_DISCOVERY");
-			this.discoveries.set(settingsNs, discover);
-			yield () => {
-				this.discoveries.delete(settingsNs);
-			};
-		}.bind(this), "llm.registerModelDiscovery()");
-		return () => void dispose();
-	}
-	/**
-	* Interrogate one provider endpoint for the models it advertises. The
-	* request describes a draft, not a stored route, so nothing here reads or
-	* writes settings or credentials — the caller owns both, and the reply is
-	* candidate metadata a surface may offer for adoption.
-	* @param settingsNs - namespace whose registered discovery serves this draft.
-	* @param request - the endpoint, protocol, and one-shot credential to use.
-	* @returns the advertised models, deduplicated in endpoint order.
-	*/
-	async discoverModels(settingsNs, request) {
-		const discover = this.discoveries.get(settingsNs);
-		if (discover === void 0) throw new LlmError(`no model discovery is registered for "${settingsNs}"`, "NO_DISCOVERY");
-		if ((request.provider ?? "").length === 0 && (request.baseURL ?? "").length === 0) throw new LlmError("model discovery needs a provider route or a baseURL", "INVALID_DISCOVERY");
-		const discovered = await discover(request);
-		const seen = /* @__PURE__ */ new Set();
-		const models = [];
-		for (const model of discovered) {
-			if (typeof model.id !== "string" || model.id.length === 0 || seen.has(model.id)) continue;
-			seen.add(model.id);
-			models.push({
-				id: model.id,
-				...model.name === void 0 ? {} : { name: model.name },
-				...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
-				...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
-				...model.inputModalities === void 0 ? {} : { inputModalities: [...model.inputModalities] }
-			});
-		}
-		return models;
-	}
-	/**
-	* Resolve the retry policy captured when one provider route was registered.
-	* @param provider - registered provider route to inspect.
-	* @returns the provider-owned policy, with normal defaults already resolved.
-	*/
-	providerRetryPolicy(provider) {
-		return this.registration(provider).retryPolicy;
-	}
-	/** Detach typed adapter-owned modality metadata. */
-	detachedModalities(modalities) {
-		return modalities === void 0 ? void 0 : [...modalities];
-	}
-	/**
-	* Discover models advertised by one registered provider. Catalog membership
-	* is advisory and never changes routing or request validation.
-	* @param provider - registered provider route to inspect.
-	* @returns detached model metadata in adapter-preferred order.
-	*/
-	async listModels(provider) {
-		const models = await this.registration(provider).adapter.listModels(provider);
-		const seen = /* @__PURE__ */ new Set();
-		return models.map((model) => {
-			if (typeof model.provider !== "string" || model.provider !== provider || typeof model.id !== "string" || model.id.length === 0 || typeof model.name !== "string" || model.name.length === 0 || model.description !== void 0 && typeof model.description !== "string" || seen.has(model.id)) throw new LlmError(`adapter returned invalid or duplicate model metadata for provider "${provider}"`, "INVALID_CATALOG");
-			seen.add(model.id);
-			const inputModalities = this.detachedModalities(model.inputModalities);
-			return {
-				provider: model.provider,
-				id: model.id,
-				name: model.name,
-				...model.description === void 0 ? {} : { description: model.description },
-				...inputModalities === void 0 ? {} : { inputModalities }
-			};
-		});
-	}
-	/**
-	* Resolve and validate all metadata from the adapter that owns one exact
-	* route. The result is detached from adapter-owned objects; catalog
-	* membership remains advisory and does not control request routing.
-	* @param provider - registered provider route to inspect.
-	* @param model - exact model id passed to the adapter.
-	* @param signal - optional cancellation for adapter-owned asynchronous lookup.
-	* @returns exact model identity plus available context and reasoning metadata.
-	*/
-	async resolveModelInfo(provider, model, signal) {
-		return this.resolveModelInfoFor(this.registration(provider), model, signal);
-	}
-	async resolveModelInfoFor(registration, model, signal) {
-		const provider = registration.provider.id;
-		const resolved = await registration.adapter.resolveModel(provider, model, signal);
-		if (typeof resolved.provider !== "string" || resolved.provider !== provider || typeof resolved.id !== "string" || resolved.id !== model || typeof resolved.name !== "string" || resolved.name.length === 0 || resolved.description !== void 0 && typeof resolved.description !== "string") throw new LlmError(`adapter returned invalid exact model metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_INFO");
-		const context = resolved.context;
-		if (context !== void 0 && (!Number.isInteger(context.contextWindow) || context.contextWindow <= 0)) throw new LlmError(`adapter returned invalid context metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_CONTEXT");
-		const inputModalities = this.detachedModalities(resolved.inputModalities);
-		const defaultMaxTokens = resolved.defaultMaxTokens;
-		if (defaultMaxTokens !== void 0 && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) throw new LlmError(`adapter returned invalid default maxTokens for provider "${provider}" model "${model}"`, "INVALID_MODEL_MAX_TOKENS");
-		const info = {
-			provider,
-			id: model,
-			name: resolved.name,
-			...resolved.description === void 0 ? {} : { description: resolved.description },
-			...inputModalities === void 0 ? {} : { inputModalities },
-			...context === void 0 ? {} : { context: { contextWindow: context.contextWindow } },
-			...defaultMaxTokens === void 0 ? {} : { defaultMaxTokens }
-		};
-		const reasoning = resolved.reasoning;
-		if (reasoning === void 0) return info;
-		if (reasoning.efforts.length === 0) throw new LlmError(`adapter returned invalid reasoning metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_REASONING");
-		const seen = /* @__PURE__ */ new Set();
-		const efforts = reasoning.efforts.map((effort) => {
-			if (typeof effort.id !== "string" || effort.id.length === 0 || typeof effort.name !== "string" || effort.name.length === 0 || effort.description !== void 0 && typeof effort.description !== "string" || seen.has(effort.id)) throw new LlmError(`adapter returned invalid or duplicate reasoning effort metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_REASONING");
-			seen.add(effort.id);
-			return {
-				id: effort.id,
-				name: effort.name,
-				...effort.description === void 0 ? {} : { description: effort.description }
-			};
-		});
-		if (reasoning.defaultEffort !== void 0 && !seen.has(reasoning.defaultEffort)) throw new LlmError(`adapter returned an unknown default reasoning effort for provider "${provider}" model "${model}"`, "INVALID_MODEL_REASONING");
-		return {
-			...info,
-			reasoning: {
-				efforts,
-				...reasoning.defaultEffort === void 0 ? {} : { defaultEffort: reasoning.defaultEffort }
-			}
-		};
-	}
-	/**
-	* Validate a conversation call config against its exact model capability and
-	* materialize adapter-configured defaults. Unsupported explicit efforts
-	* reject before provider I/O; no clamping or aliasing is performed. This
-	* standalone query does not bind a later dispatch; use {@link prepareCall}
-	* when logging and streaming must share one adapter registration.
-	* @param config - provider/model route and optional request controls.
-	* @param signal - optional cancellation for adapter-owned capability lookup.
-	* @returns a detached config only when a default must be materialized.
-	*/
-	async resolveCallConfig(config, signal) {
-		return (await this.resolveCallFor(this.registration(config.provider), config, signal)).config;
-	}
-	async resolveCallFor(registration, config, signal) {
-		const info = await this.resolveModelInfoFor(registration, config.model, signal);
-		const defaulted = config.maxTokens === void 0 && info.defaultMaxTokens !== void 0 ? {
-			...config,
-			maxTokens: info.defaultMaxTokens
-		} : config;
-		const reasoning = info.reasoning;
-		const requested = defaulted.reasoningEffort;
-		let resolvedConfig = defaulted;
-		if (reasoning === void 0) {
-			if (requested !== void 0) throw new LlmError(`provider "${config.provider}" model "${config.model}" does not support reasoning effort "${requested}"`, "UNSUPPORTED_REASONING_EFFORT");
-		} else {
-			const effective = requested ?? reasoning.defaultEffort;
-			if (effective !== void 0) {
-				if (!reasoning.efforts.some((effort) => effort.id === effective)) throw new LlmError(`provider "${config.provider}" model "${config.model}" does not support reasoning effort "${effective}"`, "UNSUPPORTED_REASONING_EFFORT");
-				if (requested !== effective) resolvedConfig = {
-					...defaulted,
-					reasoningEffort: effective
+			const dispose = this.ctx.effect(function* () {
+				if (entries.length === 0) throw new LlmError("a configurable-provider registration must declare at least one provider", "INVALID_DIRECTORY");
+				commit(entries);
+				yield () => {
+					disposed = true;
+					for (const entry of held) this.directory.delete(entry.provider);
+					held = [];
+					this.emitAdaptersUpdated();
 				};
-			}
+			}.bind(this), "llm.registerConfigurableProviders()");
+			const handle = (() => void dispose());
+			handle.replace = (next) => {
+				if (disposed) throw new LlmError("this configurable-provider registration was disposed", "REGISTRATION_DISPOSED");
+				commit(next);
+			};
+			return handle;
 		}
-		return {
-			config: resolvedConfig,
-			...info.context === void 0 ? {} : { context: info.context }
-		};
-	}
-	/**
-	* Resolve one call under its current adapter registration. The returned
-	* one-shot handle keeps that registration across header logging and dispatch,
-	* so HMR cannot combine one adapter's capability result with another adapter.
-	* @param config - provider/model route and optional request controls.
-	* @param signal - optional cancellation for adapter-owned capability lookup.
-	* @returns a prepared config and its registration-bound stream entry point.
-	*/
-	async prepareCall(config, signal) {
-		const registration = this.registration(config.provider);
-		const resolved = await this.resolveCallFor(registration, config, signal);
-		const resolvedConfig = deepFreeze(structuredClone(resolved.config));
-		const context = resolved.context === void 0 ? void 0 : deepFreeze(structuredClone(resolved.context));
-		const adapterDefaults = deepFreeze({
-			...config.reasoningEffort === void 0 && resolvedConfig.reasoningEffort !== void 0 ? { reasoningEffort: true } : {},
-			...config.maxTokens === void 0 && resolvedConfig.maxTokens !== void 0 ? { maxTokens: true } : {}
-		});
-		let dispatched = false;
-		return Object.freeze({
-			config: resolvedConfig,
-			retryPolicy: registration.retryPolicy,
-			adapterDefaults,
-			...context === void 0 ? {} : { context },
-			stream: (options) => {
-				if (dispatched) throw new LlmError("a prepared LLM call can only be dispatched once", "INVALID_PREPARED_CALL");
-				if (!callConfigEquals(options, resolvedConfig)) throw new LlmError("prepared LLM call config changed before adapter dispatch", "INVALID_PREPARED_CALL");
-				dispatched = true;
-				return this.streamWithRegistration(options, {
-					registration,
-					config: resolvedConfig
+		/**
+		* List every declared configurable provider, registered or dormant.
+		* @returns detached directory entries in declaration order.
+		*/
+		listConfigurableProviders() {
+			return [...this.directory.values()].map((entry) => ({
+				...entry,
+				settingsPath: [...entry.settingsPath]
+			}));
+		}
+		/**
+		* Offer to interrogate provider endpoints on behalf of the settings
+		* namespace this plugin owns. The namespace is the key because that is what
+		* a configuration surface already holds from the configurable-provider
+		* directory, and because a provider being *added* has no route to name yet.
+		* Disposed with the fiber.
+		* @param settingsNs - the namespace whose profiles this discovery serves.
+		* @param discover - interrogates one endpoint and must honor the supplied signal.
+		* @returns the disposer that withdraws the offer.
+		*/
+		registerModelDiscovery(settingsNs, discover) {
+			const dispose = this.ctx.effect(function* () {
+				if (settingsNs.length === 0) throw new LlmError("model discovery needs a non-empty settings namespace", "INVALID_DISCOVERY");
+				if (this.discoveries.has(settingsNs)) throw new LlmError(`model discovery for "${settingsNs}" is already registered`, "DUPLICATE_DISCOVERY");
+				this.discoveries.set(settingsNs, discover);
+				yield () => {
+					this.discoveries.delete(settingsNs);
+				};
+			}.bind(this), "llm.registerModelDiscovery()");
+			return () => void dispose();
+		}
+		/**
+		* Interrogate one provider endpoint for the models it advertises. The
+		* request describes a draft, not a stored route, so nothing here reads or
+		* writes settings or credentials — the caller owns both, and the reply is
+		* candidate metadata a surface may offer for adoption.
+		* @param settingsNs - namespace whose registered discovery serves this draft.
+		* @param request - the endpoint, protocol, and one-shot credential to use.
+		* @param signal - caller cancellation.
+		* @returns the advertised models, deduplicated in endpoint order.
+		*/
+		async discoverModels(settingsNs, request, signal) {
+			const discover = this.discoveries.get(settingsNs);
+			if (discover === void 0) throw new LlmError(`no model discovery is registered for "${settingsNs}"`, "NO_DISCOVERY");
+			if ((request.provider ?? "").length === 0 && (request.baseURL ?? "").length === 0) throw new LlmError("model discovery needs a provider route or a baseURL", "INVALID_DISCOVERY");
+			const discovered = signal === void 0 ? await discover(request) : await discover(request, signal);
+			const seen = /* @__PURE__ */ new Set();
+			const models = [];
+			for (const model of discovered) {
+				if (typeof model.id !== "string" || model.id.length === 0 || seen.has(model.id)) continue;
+				seen.add(model.id);
+				models.push({
+					id: model.id,
+					...model.name === void 0 ? {} : { name: model.name },
+					...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
+					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens }
 				});
 			}
-		});
-	}
-	registration(provider) {
-		const registration = this.adapters.get(provider);
-		if (!registration) throw new LlmError(`no adapter registered for provider "${provider}"`, "NO_ADAPTER");
-		return registration;
-	}
-	/** Remove replay state whose historical route is owned by another adapter. */
-	forAdapter(options, adapter) {
-		const messages = options.messages.map((message) => {
-			const source = message.source;
-			if (message.role !== "assistant" || source.kind !== "model" || source.replayState === void 0) return message;
-			if (this.adapters.get(source.provider)?.adapter === adapter) return message;
-			return freezeMessage({
-				...message,
-				source: {
-					kind: "model",
-					provider: source.provider,
-					model: source.model
+			return models;
+		}
+		/**
+		* Remote adapter for one draft provider interrogation.
+		* @param settingsNs - namespace whose registered discovery serves this draft.
+		* @param request - endpoint, protocol, and one-shot credential to use.
+		* @param signal - caller cancellation supplied by the Remote carrier.
+		* @returns advertised models in endpoint order.
+		* @throws RemoteError with `llm/model-discovery-rejected` when discovery refuses or fails.
+		*/
+		async remoteDiscoverModels(settingsNs, request, signal) {
+			try {
+				return await this.discoverModels(settingsNs, request, signal);
+			} catch (error) {
+				throw new RemoteError("llm/model-discovery-rejected", error instanceof Error ? error.message : String(error), {
+					settingsNs,
+					...request.baseURL === void 0 ? {} : { baseURL: request.baseURL }
+				}, { cause: error });
+			}
+		}
+		/**
+		* Resolve the retry policy captured when one provider route was registered.
+		* @param provider - registered provider route to inspect.
+		* @returns the provider-owned policy, with normal defaults already resolved.
+		*/
+		providerRetryPolicy(provider) {
+			return this.registration(provider).retryPolicy;
+		}
+		/**
+		* Resolve provider-side request-image pricing for one exact route, or
+		* `undefined` when the provider is unregistered or declares none. Unknown
+		* providers degrade to `undefined` rather than throwing because callers
+		* price durable history whose route may no longer be mounted.
+		* @param provider - provider route named by a request header.
+		* @param model - exact model id named by the same header.
+		* @returns the owning adapter's image pricing for the route, when declared.
+		*/
+		imageRequestPricing(provider, model) {
+			return this.adapters.get(provider)?.adapter.imageRequestPricing(provider, model);
+		}
+		/** Detach typed adapter-owned modality metadata. */
+		detachedModalities(modalities) {
+			return modalities === void 0 ? void 0 : [...modalities];
+		}
+		/**
+		* Discover models advertised by one registered provider. Catalog membership
+		* is advisory and never changes routing or request validation.
+		* @param provider - registered provider route to inspect.
+		* @returns detached model metadata in adapter-preferred order.
+		*/
+		async listModels(provider) {
+			const models = await this.registration(provider).adapter.listModels(provider);
+			const seen = /* @__PURE__ */ new Set();
+			return models.map((model) => {
+				if (typeof model.provider !== "string" || model.provider !== provider || typeof model.id !== "string" || model.id.length === 0 || typeof model.name !== "string" || model.name.length === 0 || model.description !== void 0 && typeof model.description !== "string" || seen.has(model.id)) throw new LlmError(`adapter returned invalid or duplicate model metadata for provider "${provider}"`, "INVALID_CATALOG");
+				seen.add(model.id);
+				const inputModalities = this.detachedModalities(model.inputModalities);
+				return {
+					provider: model.provider,
+					id: model.id,
+					name: model.name,
+					...model.description === void 0 ? {} : { description: model.description },
+					...inputModalities === void 0 ? {} : { inputModalities }
+				};
+			});
+		}
+		/**
+		* Resolve and validate all metadata from the adapter that owns one exact
+		* route. The result is detached from adapter-owned objects; catalog
+		* membership remains advisory and does not control request routing.
+		* @param provider - registered provider route to inspect.
+		* @param model - exact model id passed to the adapter.
+		* @param signal - optional cancellation for adapter-owned asynchronous lookup.
+		* @returns exact model identity plus available context and reasoning metadata.
+		*/
+		async resolveModelInfo(provider, model, signal) {
+			return this.resolveModelInfoFor(this.registration(provider), model, signal);
+		}
+		async resolveModelInfoFor(registration, model, signal) {
+			const resolved = await registration.adapter.resolveModel(registration.provider.id, model, signal);
+			return this.normalizeModelInfo(registration, model, resolved);
+		}
+		/** Validate and detach one adapter-returned exact model result. */
+		normalizeModelInfo(registration, model, resolved) {
+			const provider = registration.provider.id;
+			if (typeof resolved.provider !== "string" || resolved.provider !== provider || typeof resolved.id !== "string" || resolved.id !== model || typeof resolved.name !== "string" || resolved.name.length === 0 || resolved.description !== void 0 && typeof resolved.description !== "string") throw new LlmError(`adapter returned invalid exact model metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_INFO");
+			const context = resolved.context;
+			if (context !== void 0 && (!Number.isInteger(context.contextWindow) || context.contextWindow <= 0)) throw new LlmError(`adapter returned invalid context metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_CONTEXT");
+			const inputModalities = this.detachedModalities(resolved.inputModalities);
+			const defaultMaxTokens = resolved.defaultMaxTokens;
+			if (defaultMaxTokens !== void 0 && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) throw new LlmError(`adapter returned invalid default maxTokens for provider "${provider}" model "${model}"`, "INVALID_MODEL_MAX_TOKENS");
+			const info = {
+				provider,
+				id: model,
+				name: resolved.name,
+				...resolved.description === void 0 ? {} : { description: resolved.description },
+				...inputModalities === void 0 ? {} : { inputModalities },
+				...context === void 0 ? {} : { context: { contextWindow: context.contextWindow } },
+				...defaultMaxTokens === void 0 ? {} : { defaultMaxTokens }
+			};
+			const reasoning = resolved.reasoning;
+			if (reasoning === void 0) return info;
+			if (reasoning.efforts.length === 0) throw new LlmError(`adapter returned invalid reasoning metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_REASONING");
+			const seen = /* @__PURE__ */ new Set();
+			const efforts = reasoning.efforts.map((effort) => {
+				if (typeof effort.id !== "string" || effort.id.length === 0 || typeof effort.name !== "string" || effort.name.length === 0 || effort.description !== void 0 && typeof effort.description !== "string" || seen.has(effort.id)) throw new LlmError(`adapter returned invalid or duplicate reasoning effort metadata for provider "${provider}" model "${model}"`, "INVALID_MODEL_REASONING");
+				seen.add(effort.id);
+				return {
+					id: effort.id,
+					name: effort.name,
+					...effort.description === void 0 ? {} : { description: effort.description }
+				};
+			});
+			if (reasoning.defaultEffort !== void 0 && !seen.has(reasoning.defaultEffort)) throw new LlmError(`adapter returned an unknown default reasoning effort for provider "${provider}" model "${model}"`, "INVALID_MODEL_REASONING");
+			return {
+				...info,
+				reasoning: {
+					efforts,
+					...reasoning.defaultEffort === void 0 ? {} : { defaultEffort: reasoning.defaultEffort }
+				}
+			};
+		}
+		/**
+		* Validate a conversation call config against its exact model capability and
+		* materialize adapter-configured defaults. Unsupported explicit efforts
+		* reject before provider I/O; no clamping or aliasing is performed. This
+		* standalone query does not bind a later dispatch; use {@link prepareCall}
+		* when logging and streaming must share one adapter registration.
+		* @param config - provider/model route and optional request controls.
+		* @param signal - optional cancellation for adapter-owned capability lookup.
+		* @returns a detached config only when a default must be materialized.
+		*/
+		async resolveCallConfig(config, signal) {
+			return (await this.resolveCallFor(this.registration(config.provider), config, signal)).config;
+		}
+		async resolveCallFor(registration, config, signal) {
+			const info = await this.resolveModelInfoFor(registration, config.model, signal);
+			return this.resolveCallWithInfo(config, info);
+		}
+		/** Validate request controls against one already-bound exact model result. */
+		resolveCallWithInfo(config, info) {
+			const defaulted = config.maxTokens === void 0 && info.defaultMaxTokens !== void 0 ? {
+				...config,
+				maxTokens: info.defaultMaxTokens
+			} : config;
+			const reasoning = info.reasoning;
+			const requested = defaulted.reasoningEffort;
+			let resolvedConfig = defaulted;
+			if (reasoning === void 0) {
+				if (requested !== void 0) throw new LlmError(`provider "${config.provider}" model "${config.model}" does not support reasoning effort "${requested}"`, "UNSUPPORTED_REASONING_EFFORT");
+			} else {
+				const effective = requested ?? reasoning.defaultEffort;
+				if (effective !== void 0) {
+					if (!reasoning.efforts.some((effort) => effort.id === effective)) throw new LlmError(`provider "${config.provider}" model "${config.model}" does not support reasoning effort "${effective}"`, "UNSUPPORTED_REASONING_EFFORT");
+					if (requested !== effective) resolvedConfig = {
+						...defaulted,
+						reasoningEffort: effective
+					};
+				}
+			}
+			return {
+				config: resolvedConfig,
+				...info.context === void 0 ? {} : { context: info.context },
+				modelInfo: info
+			};
+		}
+		/**
+		* Resolve one call under its current adapter registration. The returned
+		* one-shot handle keeps that registration across header logging and dispatch,
+		* so HMR cannot combine one adapter's capability result with another adapter.
+		* @param config - provider/model route and optional request controls.
+		* @param signal - optional cancellation for adapter-owned capability lookup.
+		* @returns a prepared config and its registration-bound stream entry point.
+		*/
+		async prepareCall(config, signal) {
+			const registration = this.registration(config.provider);
+			const adapterCall = await registration.adapter.prepareCall(config.provider, config.model, signal);
+			const modelInfo = this.normalizeModelInfo(registration, config.model, adapterCall.model);
+			const resolved = this.resolveCallWithInfo(config, modelInfo);
+			const resolvedConfig = deepFreeze(structuredClone(resolved.config));
+			const context = resolved.context === void 0 ? void 0 : deepFreeze(structuredClone(resolved.context));
+			const adapterDefaults = deepFreeze({
+				...config.reasoningEffort === void 0 && resolvedConfig.reasoningEffort !== void 0 ? { reasoningEffort: true } : {},
+				...config.maxTokens === void 0 && resolvedConfig.maxTokens !== void 0 ? { maxTokens: true } : {}
+			});
+			let dispatched = false;
+			return Object.freeze({
+				config: resolvedConfig,
+				retryPolicy: registration.retryPolicy,
+				adapterDefaults,
+				...context === void 0 ? {} : { context },
+				...modelInfo.inputModalities === void 0 ? {} : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },
+				stream: (options) => {
+					if (dispatched) throw new LlmError("a prepared LLM call can only be dispatched once", "INVALID_PREPARED_CALL");
+					if (!callConfigEquals(options, resolvedConfig)) throw new LlmError("prepared LLM call config changed before adapter dispatch", "INVALID_PREPARED_CALL");
+					dispatched = true;
+					return this.streamWithRegistration(options, {
+						registration,
+						config: resolvedConfig,
+						modelInfo,
+						dispatch: (options) => adapterCall.stream(options)
+					});
 				}
 			});
-		});
-		if (messages.every((message, index) => message === options.messages[index])) return options;
-		const filtered = {
-			...options,
-			messages
-		};
-		return Object.isFrozen(options) ? deepFreeze(filtered) : filtered;
-	}
-	/**
-	* Final adapter boundary. Adapter selection, dispatch, iterator construction,
-	* and iteration failures become one terminal failure chunk. Middleware and
-	* downstream consumer failures remain thrown plugin or consumer errors.
-	*/
-	async *adapterStream(options, prepared) {
-		let iterator;
-		try {
-			const registration = prepared?.registration ?? this.registration(options.provider);
-			const resolvedConfig = prepared === void 0 ? (await this.resolveCallFor(registration, options, options.signal)).config : prepared.config;
-			if (prepared !== void 0 && !callConfigEquals(options, resolvedConfig)) throw new LlmError("prepared LLM call config changed before adapter dispatch", "INVALID_PREPARED_CALL");
-			const resolvedOptions = callConfigEquals(options, resolvedConfig) ? options : Object.isFrozen(options) ? deepFreeze({
+		}
+		registration(provider) {
+			const registration = this.adapters.get(provider);
+			if (!registration) throw new LlmError(`no adapter registered for provider "${provider}"`, "NO_ADAPTER");
+			return registration;
+		}
+		/** Remove replay state whose historical route is owned by another adapter. */
+		forAdapter(options, adapter) {
+			const messages = options.messages.map((message) => {
+				const source = message.source;
+				if (message.role !== "assistant" || source.kind !== "model" || source.replayState === void 0) return message;
+				if (this.adapters.get(source.provider)?.adapter === adapter) return message;
+				return freezeMessage({
+					...message,
+					source: {
+						kind: "model",
+						provider: source.provider,
+						model: source.model
+					}
+				});
+			});
+			if (messages.every((message, index) => message === options.messages[index])) return options;
+			const filtered = {
 				...options,
-				...resolvedConfig
-			}) : {
-				...options,
-				...resolvedConfig
+				messages
 			};
-			const adapter = registration.adapter;
-			iterator = adapter.stream(this.forAdapter(resolvedOptions, adapter))[Symbol.asyncIterator]();
-		} catch (error) {
-			yield adapterFailureChunk(error, options.signal);
-			return;
+			return Object.isFrozen(options) ? deepFreeze(filtered) : filtered;
 		}
-		let completed = false;
-		try {
-			while (true) {
-				let item;
-				try {
-					const next = await iterator.next();
-					item = next.done ? { done: true } : {
-						done: false,
-						value: next.value
-					};
-				} catch (error) {
-					completed = true;
-					yield adapterFailureChunk(error, options.signal);
-					return;
+		/**
+		* Final adapter boundary. Adapter selection, dispatch, iterator construction,
+		* and iteration failures become one terminal failure chunk. Middleware and
+		* downstream consumer failures remain thrown plugin or consumer errors.
+		*/
+		async *adapterStream(options, prepared) {
+			let iterator;
+			try {
+				const registration = prepared?.registration ?? this.registration(options.provider);
+				const adapter = registration.adapter;
+				let modelInfo;
+				let resolvedConfig;
+				let dispatch;
+				if (prepared === void 0) {
+					const adapterCall = await adapter.prepareCall(options.provider, options.model, options.signal);
+					modelInfo = this.normalizeModelInfo(registration, options.model, adapterCall.model);
+					resolvedConfig = this.resolveCallWithInfo(options, modelInfo).config;
+					dispatch = (options) => adapterCall.stream(options);
+				} else {
+					modelInfo = prepared.modelInfo;
+					resolvedConfig = prepared.config;
+					dispatch = prepared.dispatch;
 				}
-				if (item.done) {
-					completed = true;
-					return;
-				}
-				yield item.value;
+				if (prepared !== void 0 && !callConfigEquals(options, resolvedConfig)) throw new LlmError("prepared LLM call config changed before adapter dispatch", "INVALID_PREPARED_CALL");
+				const resolvedOptions = callConfigEquals(options, resolvedConfig) ? options : Object.isFrozen(options) ? deepFreeze({
+					...options,
+					...resolvedConfig
+				}) : {
+					...options,
+					...resolvedConfig
+				};
+				const projectedOptions = modelInfo.inputModalities !== void 0 && !modelInfo.inputModalities.includes("image") && resolvedOptions.messages.some((message) => contentHasImage(message.content)) ? Object.isFrozen(resolvedOptions) ? deepFreeze({
+					...resolvedOptions,
+					messages: projectImagesForTextModel(resolvedOptions.messages)
+				}) : {
+					...resolvedOptions,
+					messages: projectImagesForTextModel(resolvedOptions.messages)
+				} : resolvedOptions;
+				iterator = dispatch(this.forAdapter(projectedOptions, adapter))[Symbol.asyncIterator]();
+			} catch (error) {
+				yield adapterFailureChunk(error, options.signal);
+				return;
 			}
-		} finally {
-			if (!completed) {
-				const close = iterator.return?.bind(iterator);
-				if (close) await close();
+			let completed = false;
+			try {
+				while (true) {
+					let item;
+					try {
+						const next = await iterator.next();
+						item = next.done ? { done: true } : {
+							done: false,
+							value: next.value
+						};
+					} catch (error) {
+						completed = true;
+						yield adapterFailureChunk(error, options.signal);
+						return;
+					}
+					if (item.done) {
+						completed = true;
+						return;
+					}
+					yield item.value;
+				}
+			} finally {
+				if (!completed) {
+					const close = iterator.return?.bind(iterator);
+					if (close) await close();
+				}
 			}
 		}
-	}
-	/**
-	* Stream one model call as raw chunks (token-level deltas). Replay state is
-	* retained only when the same adapter instance owns its historical provider
-	* and the target provider. Final adapter selection remains fixed through
-	* asynchronous exact-model resolution and dispatch. Adapter selection,
-	* dispatch, and iteration failures become terminal `error` or `aborted`
-	* finish chunks; middleware, nested-call, cleanup, and consumer failures
-	* remain thrown.
-	* @param options - the full request; `options.provider` selects the adapter.
-	* @returns the chunk stream, possibly wrapped by `llm/stream` listeners.
-	*/
-	stream(options) {
-		return this.streamWithRegistration(options);
-	}
-	streamWithRegistration(options, prepared) {
-		return this.ctx.waterfall(this, "llm/stream", options, () => this.adapterStream(options, prepared));
-	}
-};
+		/**
+		* Stream one model call as raw chunks (token-level deltas). Replay state is
+		* retained only when the same adapter instance owns its historical provider
+		* and the target provider. Final adapter selection remains fixed through
+		* asynchronous exact-model resolution and dispatch. Adapter selection,
+		* dispatch, and iteration failures become terminal `error` or `aborted`
+		* finish chunks; middleware, nested-call, cleanup, and consumer failures
+		* remain thrown.
+		* @param options - the full request; `options.provider` selects the adapter.
+		* @returns the chunk stream, possibly wrapped by `llm/stream` listeners.
+		*/
+		stream(options) {
+			return this.streamWithRegistration(options);
+		}
+		streamWithRegistration(options, prepared) {
+			return this.ctx.waterfall(this, "llm/stream", options, () => this.adapterStream(options, prepared));
+		}
+	};
+})();
 /** Convert one adapter throw into the stream protocol's terminal outcome. */
 function adapterFailureChunk(error, signal) {
 	const failure = normalizeLlmFailure(error);
@@ -1405,4 +1755,4 @@ function adapterFailureChunk(error, signal) {
 	};
 }
 //#endregion
-export { APP_IDENTITY, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, CallId, EMPTY_RESPONSE_CODE, HarnessError, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, assertNever, assertUsableApiKey, attributionHeaders, boundContextSummary, callConfigEquals, contentHasImage, createAssistantMessage, createMessage, createToolResultMessage, createUserMessage, deepFreeze, errorChain, freezeMessage, isAgentLoopRequest, isContextWindowExceededError, isHarnessError, isQuotaExceededError, isTokenDelta, markAgentLoopRequest, normalizeApiKey, resolveRetryPolicy, userAgent };
+export { APP_IDENTITY, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assertUsableApiKey, attributionHeaders, boundContextSummary, callConfigEquals, contentHasImage, createAssistantMessage, createMessage, createToolResultMessage, createUserMessage, errorChain, freezeMessage, isAgentLoopRequest, isContextWindowExceededError, isHarnessError, isQuotaExceededError, markAgentLoopRequest, normalizeApiKey, offloadRequestImagesWithPolicy, offloadedImagePrefixCount, offloadedImageText, projectImagesForTextModel, requestImageHandleText, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText, userAgent };

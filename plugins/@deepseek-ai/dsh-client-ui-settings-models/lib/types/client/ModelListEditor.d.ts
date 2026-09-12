@@ -14,14 +14,12 @@
  * rows the user can still fill in by hand.
  */
 import type { ReactNode } from 'react';
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client';
+import type { ModelsOperations } from './operations.ts';
 import type { DeepSeekModelDraft } from './DeepSeekModelsEditor.tsx';
 import type { en } from './locales.ts';
 /**
- * One configured model row. Structurally open, exactly like the DeepSeek
- * catalog editor's rows: a profile field this card does not edit — one a future
- * schema adds, or one hand-written in `settings.yaml` — has to survive being
- * edited here rather than being dropped by a rebuild.
+ * One configured model row. Fields this card does not edit must survive an
+ * edit rather than being dropped by a rebuild.
  */
 export type ModelDraft = DeepSeekModelDraft;
 /** What an interrogation needs, taken from the live form. */
@@ -60,8 +58,8 @@ export interface ModelListEditorProps {
      * told what the field already says.
      */
     probeBlocked?: keyof typeof en | undefined;
-    /** Wire face the fetch action calls. */
-    api: Pick<IApiClient, 'llm'>;
+    /** The Host operations whose interrogation answers the fetch action. */
+    operations: ModelsOperations;
     /** Section copy. */
     t: (key: keyof typeof en) => string;
     /** Disable every control (read-only deployment or a pending write). */

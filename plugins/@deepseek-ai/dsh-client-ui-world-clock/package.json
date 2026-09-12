@@ -1,0 +1,28 @@
+{
+  "name": "@deepseek-ai/dsh-client-ui-world-clock",
+  "version": "1.0.0",
+  "private": false,
+  "description": "侧栏常驻时钟 + 世界时钟面板：秒级本机时间、多时区对照、跨日标记与倒计时，纯前端零依赖",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js"
+  ],
+  "license": "MIT"
+}

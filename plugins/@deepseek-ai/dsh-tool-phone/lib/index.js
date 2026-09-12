@@ -196,7 +196,7 @@ async function assertImageCapableRoute(exec) {
   const active = await llm.resolveModelInfo(provider, model, exec?.signal);
   if (active?.inputModalities === void 0 || !active.inputModalities.includes("image")) {
     throw new Error(
-      `当前模型「${model}」不支持图像输入（phone_screenshot 只限多模态模型）；请切换到多模态模型（如 deepseek-v4-flash-vision-exp）后，截图才能直接发给模型查看。`,
+      `当前模型「${model}」不支持图像输入（phone_screenshot 只限多模态模型）；请切换到多模态模型（如 deepseek-flash）后，截图才能直接发给模型查看。`,
     );
   }
 }

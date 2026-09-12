@@ -99,21 +99,24 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region rpc
 		let rpcSeq = 0;
-		async function rpc(method, payload = {}) {
-			const res = await fetch("/api/" + method, {
+		// dsh 0.1.2-alpha.2 speaks the Typert gateway wire: the endpoint is
+		// `<namespace>/<method>` and the payload carries exactly one `args`
+		// field holding the Remote method's named wire arguments.
+		async function rpc(endpoint, args = {}) {
+			const res = await fetch("/api/" + endpoint, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ type: "client-request", rpcId: "dsob-" + String(++rpcSeq), method, payload })
+				body: JSON.stringify({ type: "client-request", rpcId: "dsob-" + String(++rpcSeq), method: endpoint, payload: { args } })
 			});
 			if (!res.ok) throw new Error("HTTP " + String(res.status));
 			const envelope = await res.json();
 			const result = envelope?.result;
-			if (result === undefined || result.ok !== true) throw new Error(result?.error?.message ?? method + " 调用失败");
+			if (result === undefined || result.ok !== true) throw new Error(result?.error?.message ?? endpoint + " 调用失败");
 			return result.value;
 		}
 		/** Check whether the DeepSeek API key credential is configured. */
 		async function checkApiKey() {
-			const value = await rpc("credentials.describe", { refs: ["DEEPSEEK_API_KEY"] });
+			const value = await rpc("credentials/describe", { refs: ["DEEPSEEK_API_KEY"] });
 			const entry = value?.credentials?.DEEPSEEK_API_KEY;
 			return entry?.configured === true;
 		}
@@ -181,7 +184,7 @@ window.__ModuleLoader__.load({
 	/** Read the durable finished marker through the settings wire. */
 	async function readPersistedDone() {
 		try {
-			const value = await rpc("settings.describe", {});
+			const value = await rpc("settings/describe", {});
 			const view = value?.namespaces?.find((candidate) => candidate.ns === PERSIST_NS);
 			if (view?.value?.[PERSIST_FIELD] === true) donePersisted = true;
 		} catch { /* fall back to local storage only */ }
@@ -189,7 +192,7 @@ window.__ModuleLoader__.load({
 	/** Persist the finished marker durably so it survives origin changes. */
 	async function persistDone() {
 		try {
-			await rpc("settings.mutate", {
+			await rpc("settings/mutate", {
 				ns: PERSIST_NS,
 				ops: [{ op: "set", path: [PERSIST_FIELD], value: true }]
 			});

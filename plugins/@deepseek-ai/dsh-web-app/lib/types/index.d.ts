@@ -5,8 +5,9 @@
  * the built frontend dist (workspace knowledge of this bundle, never user
  * config), mounts the `frontend-static` fallback owner over it, registers the
  * harness-source and web-surface prompt sections, the bash-visible web runtime
- * variable, and the URL line. App command-line values arrive through the
- * `webStartup` service expressions in the bundle patch.
+ * variable, the process-token URL line, and the default-browser handoff. The
+ * model and shell retain the clean URL. App command-line values arrive through
+ * the `webStartup` service expressions in the bundle patch.
  * @module @deepseek-ai/dsh-web-app
  */
 import type { Context } from '@deepseek-ai/cordis';
@@ -17,6 +18,8 @@ export declare const name = "web-app";
 export declare const inject: string[];
 /** Plugin config: composed deployment settings plus per-invocation command-line values. */
 export interface Config {
+    /** Permit default-browser handoff after the Loader tree settles; an SSH launch suppresses it. */
+    openBrowser: boolean;
     /** Print the URL line on activation; a non-interactive layer can turn it off. */
     printUrl: boolean;
     /**
@@ -48,13 +51,14 @@ export interface WebRuntimeValues {
  * @returns the LAN display addresses and invocation-derived fence authorities.
  */
 export declare function resolveLanTrust(bindHost: string, extra: readonly string[]): WebRuntimeValues;
-/** Test hook: hosts with no built frontend dist substitute the resolver; production never touches this. */
+/** Test hooks for the built dist and native browser handoff; production never mutates them. */
 export declare const internals: {
     resolveDistIndex: () => string;
+    openBrowser: (url: string) => Promise<void>;
 };
 /**
  * Mount the Web runtime: dist serving, surface prompt, the bash runtime
- * variable, and the URL line.
+ * variable, the URL line, and the default-browser handoff.
  * @param ctx - plugin context carrying the webServer service.
  * @param config - validated {@link Config}.
  */

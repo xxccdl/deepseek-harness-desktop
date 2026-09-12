@@ -8,10 +8,13 @@
 //     / output tokens), and converts them to CNY with DeepSeek's public
 //     deepseek-chat pricing. The running total and per-session replay position
 //     persist at $DSH_HOME/usage.json so the counter survives restarts.
-//  2. DeepSeek balance — calls GET https://api.deepseek.com/user/balance with
-//     the configured DEEPSEEK_API_KEY credential and returns the live balance
-//     (cached briefly). When the credential is absent or the call fails, the
-//     HTTP response reports configured:false and the UI hides the bar.
+//  2. Balance — resolves the ACTIVE session's provider route and queries that
+//     provider's balance endpoint (see BALANCE_PROVIDERS) with its configured
+//     credential, returning the live balance. Providers without a public
+//     balance endpoint (custom / self-hosted gateways, most third-party
+//     adapters) report configured:true with no numeric balance, so the UI keeps
+//     the bar and shows only the local spend estimate. When the credential is
+//     absent the HTTP response reports configured:false and the UI hides the bar.
 //
 // @module @deepseek-ai/dsh-tool-usage
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -31,6 +34,17 @@ const USAGE_HTTP_PATH = "/api/usage";
 const DEEPSEEK_API_KEY_REF = "DEEPSEEK_API_KEY";
 /** DeepSeek public API base. */
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+/** Provider balance lookup table: route key -> balance-endpoint spec.
+ *  Only providers with a public balance endpoint are listed. A route that names
+ *  no entry (custom / self-hosted gateways, most third-party adapters) has no
+ *  standard balance endpoint, so the bar degrades to the local spend estimate
+ *  only instead of hiding. */
+const BALANCE_PROVIDERS = {
+  deepseek: {
+    apiKeyRef: DEEPSEEK_API_KEY_REF,
+    url: `${DEEPSEEK_BASE_URL}/user/balance`
+  }
+};
 /** Persist throttle: coalesce rapid event bursts into one disk write. */
 const PERSIST_DELAY_MS = 4_000;
 /** DeepSeek deepseek-chat public pricing, CNY per 1M tokens (estimate). */
@@ -150,25 +164,41 @@ function apply(ctx) {
       + (t.output / 1e6) * PRICE_OUTPUT;
   };
 
-  /** Resolve the live DeepSeek balance plus the current spend estimate.
+  /** Provider route the active (latest) session runs, or undefined. */
+  const activeProvider = () => {
+    const sessions = ctx.get("sessions", false);
+    const list = sessions?.list?.() ?? [];
+    const current = list.length > 0 ? list[list.length - 1] : undefined;
+    return current?.requestHeader?.()?.config?.provider;
+  };
+
+  /** Resolve the live provider balance plus the current spend estimate.
    *  No caching: every /api/usage request re-queries the provider so the bar
    *  always reflects the latest balance. */
   const getPayload = async () => {
     const make = (value) => ({ ...value, spent: cost() });
     try {
       const credentials = ctx.get("credentials", false);
-      const resolved = credentials === undefined ? undefined : await credentials.resolve(DEEPSEEK_API_KEY_REF);
+      const provider = activeProvider() ?? "deepseek";
+      const spec = BALANCE_PROVIDERS[provider];
+      if (spec === undefined) {
+        // No public balance endpoint for this provider — keep the bar with the
+        // local spend estimate only (no numeric balance to display).
+        return make({ configured: true, provider });
+      }
+      const resolved = credentials === undefined ? undefined : await credentials.resolve(spec.apiKeyRef);
       const key = typeof resolved?.value === "string" ? resolved.value.trim() : "";
-      if (key === "") return make({ configured: false });
-      const res = await fetch(`${DEEPSEEK_BASE_URL}/user/balance`, {
+      if (key === "") return make({ configured: false, provider });
+      const res = await fetch(spec.url, {
         headers: { Authorization: `Bearer ${key}` },
         signal: AbortSignal.timeout(8000)
       });
-      if (!res.ok) return make({ configured: true, error: `HTTP ${res.status}` });
+      if (!res.ok) return make({ configured: true, provider, error: `HTTP ${res.status}` });
       const data = await res.json();
       const info = (data?.balance_infos ?? [])[0];
       return make({
         configured: true,
+        provider,
         isAvailable: data?.is_available === true,
         balance: Number(info?.total_balance ?? 0),
         granted: Number(info?.granted_balance ?? 0),

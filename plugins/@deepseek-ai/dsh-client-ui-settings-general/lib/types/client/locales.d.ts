@@ -7,6 +7,12 @@ export declare const zh: {
     openDocument: string;
     'openDocument.error': string;
     'general.nav': string;
+    'connection.error': string;
+    'connection.retry': string;
+    'connection.connecting': string;
+    'connection.connected': string;
+    'connection.reconnect': string;
+    'connection.restart': string;
 };
 /** The settings namespace key union. */
 export type SettingsKey = keyof typeof zh;
@@ -18,5 +24,11 @@ export declare const en: {
     openDocument: string;
     'openDocument.error': string;
     'general.nav': string;
+    'connection.error': string;
+    'connection.retry': string;
+    'connection.connecting': string;
+    'connection.connected': string;
+    'connection.reconnect': string;
+    'connection.restart': string;
 };
 //# sourceMappingURL=locales.d.ts.map

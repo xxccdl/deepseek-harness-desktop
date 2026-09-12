@@ -6,10 +6,11 @@
  * Export discipline:
  * packages/client/AGENTS.md.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { ModelsSettingsStore } from './store.ts';
 import { type ModelsKey } from './locales.ts';
 export type { ModelsSectionInjected, ModelsSectionProps } from './ModelsSection.tsx';
+export type { ModelsFooterOwnerProps, ProviderCardExtrasOwnerProps } from './slot-contract.ts';
 export type { ModelsKey } from './locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface LocaleNamespaceMap {
@@ -17,7 +18,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         'settings.models': ModelsKey;
     }
 }
-export type { ModelsSettingsState, ProviderRow } from './store.ts';
+export type { ModelsSettingsState, ProviderDirectoryEntry, ProviderRow, } from './store.ts';
+export type { ModelDiscoveryOutcome, ModelsOperations, SettingsWriteOutcome } from './operations.ts';
 /**
  * Refetch the page snapshot only after its first load: an unopened Models
  * page must not fetch on background invalidations.

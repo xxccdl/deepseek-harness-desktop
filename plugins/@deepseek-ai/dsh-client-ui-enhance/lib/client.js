@@ -55,17 +55,20 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region rpc
 		let rpcSeq = 0;
-		async function rpc(method, payload = {}) {
-			const res = await fetch("/api/" + method, {
+		// dsh 0.1.2-alpha.2 speaks the Typert gateway wire: the endpoint is
+		// `<namespace>/<method>` and the payload carries exactly one `args`
+		// field holding the Remote method's named wire arguments.
+		async function rpc(endpoint, args = {}) {
+			const res = await fetch("/api/" + endpoint, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ type: "client-request", rpcId: "dshe-" + String(++rpcSeq), method, payload })
+				body: JSON.stringify({ type: "client-request", rpcId: "dshe-" + String(++rpcSeq), method: endpoint, payload: { args } })
 			});
 			if (!res.ok) throw new Error("HTTP " + String(res.status));
 			const envelope = await res.json();
 			const result = envelope?.result;
 			if (result === undefined || result.ok !== true) {
-				throw new Error(result?.error?.message ?? method + " 调用失败");
+				throw new Error(result?.error?.message ?? endpoint + " 调用失败");
 			}
 			return result.value;
 		}
@@ -141,7 +144,7 @@ window.__ModuleLoader__.load({
 		let sessionCacheAt = 0;
 		async function loadSessions(force = false) {
 			if (!force && sessionCache !== undefined && Date.now() - sessionCacheAt < 30000) return sessionCache;
-			const value = await rpc("session.list", {});
+			const value = await rpc("session/list", { _request: {} });
 			const items = (value?.items ?? []).filter((item) => item.blank !== true);
 			sessionCache = items;
 			sessionCacheAt = Date.now();

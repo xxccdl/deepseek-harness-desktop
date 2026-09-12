@@ -68,7 +68,8 @@ const LOOPBACK = "127.0.0.1";
 
 // ── harness boot state ───────────────────────────────────────────────────────
 let ctx = undefined; // settled root context
-let serverUrl = undefined; // canonical GUI URL, set after boot
+let serverUrl = undefined; // canonical GUI URL (carries the launch token), set after boot
+let serverOrigin = undefined; // bare loopback origin for in-process calls; auth rides the session cookie
 let disposed = false;
 let quitting = false;
 /** Monotonic id for the pill's proxied RPC envelopes. */
@@ -91,11 +92,11 @@ async function disposeHarness() {
  * user layer, the home-level user layer, the shipped agent-presets root, and
  * the telemetry switch.
  */
-function composeWebProfile() {
+async function composeWebProfile() {
   const DSH_ANCHOR = dshAnchor();
   const SHIPPED_PRESET_ROOT = shippedPresetRoot();
-  healProfilesModuleFallback(DSH_ANCHOR);
   const profile = loadProfile(BIN_NAME, PROFILE_NAME, DSH_ANCHOR);
+  await healProfilesModuleFallback({ installAnchor: DSH_ANCHOR, profile });
   // Rewrite the empty root config: the Loader's tree write-back can bake
   // composed rows into it, which would duplicate bundle inserts on next boot.
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG);
@@ -129,12 +130,12 @@ function composeWebProfile() {
  * @returns the canonical local URL of the GUI.
  */
 async function bootHarness() {
-  const { profile, patches } = composeWebProfile();
+  const { profile, patches } = await composeWebProfile();
   const rootConfig = join(profile.dir, PROFILE_ROOT_FILENAME);
   ctx = await boot(BIN_NAME, rootConfig, patches, (hostCtx) => {
     hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(BIN_NAME));
     provideCmdline(hostCtx, {
-      args: ["--port", "0"],
+      args: ["--port", "0", "--no-open"],
       exit: (code) => {
         void disposeHarness().finally(() => app.exit(code));
       }
@@ -142,7 +143,12 @@ async function bootHarness() {
   });
   const port = ctx.get("webServer")?.port;
   if (port === undefined) throw new Error("dsh-desktop: webServer service did not bind a port");
-  return `http://${LOOPBACK}:${String(port)}/`;
+  const localUrl = `http://${LOOPBACK}:${String(port)}/`;
+  // The web surface requires its process-token URL; hand the shell the same
+  // authenticated form `dsh web` prints instead of the bare loopback origin.
+  const connection = ctx.get("connection");
+  serverOrigin = localUrl;
+  return connection === undefined ? localUrl : connection.authenticatedUrl(localUrl);
 }
 
 // ── window state persistence ─────────────────────────────────────────────────
@@ -424,7 +430,7 @@ function createMainWindow(serverUrl, startHidden = false) {
       setTimeout(() => { appReady = true; tryShowApp(); }, 2000);
     });
     win.webContents.once("did-finish-load", () => {
-      if (win.webContents.getURL().startsWith(serverUrl)) return; // already the app
+      if (win.webContents.getURL().startsWith(serverOrigin ?? serverUrl)) return; // already the app
       // The splash finished painting; treat the UI as ready so the 2s timer
       // alone gates the swap.
       appReady = true;
@@ -432,21 +438,22 @@ function createMainWindow(serverUrl, startHidden = false) {
     });
   }
 
-  // Re-apply persisted UI state every time the app page (re)loads: zoom level
-  // and always-on-top.
+  // Re-apply persisted UI state every time the app page (re)loads: the zoom
+  // level, and one migration — the window pin is gone, so an installation that
+  // had it on is released once instead of staying pinned with no way back.
   win.webContents.on("did-finish-load", () => {
-    if (win.isDestroyed() || !win.webContents.getURL().startsWith(serverUrl)) return;
+    if (win.isDestroyed() || !win.webContents.getURL().startsWith(serverOrigin ?? serverUrl)) return;
     void readDesktopSettings().then((settings) => {
       if (win.isDestroyed()) return;
       const zoom = typeof settings.zoomFactor === "number" ? settings.zoomFactor : 1;
       if (zoom !== 1) {
         try { win.webContents.setZoomFactor(Math.min(1.8, Math.max(0.6, zoom))); } catch { /* non-fatal */ }
       }
-      if (settings.alwaysOnTop === true) win.setAlwaysOnTop(true);
+      if (settings.alwaysOnTop === true) win.setAlwaysOnTop(false);
     });
   });
 
-  // In-app shortcuts: Ctrl+= / Ctrl+- / Ctrl+0 zoom, Ctrl+Alt+T pin toggle.
+  // In-app shortcuts: Ctrl+= / Ctrl+- / Ctrl+0 zoom.
   win.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
     const key = (input.key ?? "").toLowerCase();
@@ -461,9 +468,6 @@ function createMainWindow(serverUrl, startHidden = false) {
     } else if (key === "0" && !input.alt && !input.shift) {
       event.preventDefault();
       void applyZoom(win, "reset");
-    } else if (input.alt && key === "t") {
-      event.preventDefault();
-      void toggleAlwaysOnTop(win);
     }
   });
 
@@ -480,7 +484,7 @@ function createMainWindow(serverUrl, startHidden = false) {
   });
   // Guard the SPA origin: anything else opens externally.
   win.webContents.on("will-navigate", (event, url) => {
-    if (url.startsWith(serverUrl)) return;
+    if (url.startsWith(serverOrigin ?? serverUrl)) return;
     event.preventDefault();
     if (url.startsWith("http://") || url.startsWith("https://")) void shell.openExternal(url);
   });
@@ -625,19 +629,6 @@ async function applyZoom(win, delta) {
   try { win.webContents.setZoomFactor(next); } catch { /* non-fatal */ }
 }
 
-// ── always-on-top pin (title-bar button / Ctrl+Alt+T) ───────────────────────
-/** Toggle (or force) always-on-top for the main window; persist + push state. */
-async function toggleAlwaysOnTop(win, force) {
-  if (win === undefined || win.isDestroyed()) return false;
-  const next = force ?? !win.isAlwaysOnTop();
-  try { win.setAlwaysOnTop(next); } catch { /* non-fatal */ }
-  await writeDesktopSettings({ alwaysOnTop: next });
-  for (const w of BrowserWindow.getAllWindows()) {
-    if (!w.isDestroyed()) w.webContents.send("dsh:always-on-top", next);
-  }
-  return next;
-}
-
 // ── boss key (Ctrl+Alt+B: instantly hide everything) ─────────────────────────
 /** Toggle the boss-key hide: with tray → hide to tray; without → minimize. */
 function bossKeyToggle() {
@@ -759,12 +750,6 @@ function applyDesktopSettings(win, settings) {
     globalShortcut.register("Control+Alt+B", bossKeyToggle);
   } else if (settings.bossKey === false && globalShortcut.isRegistered("Control+Alt+B")) {
     globalShortcut.unregister("Control+Alt+B");
-  }
-
-  // Always-on-top restored from settings on apply (explicit values only).
-  if (win !== undefined && !win.isDestroyed()) {
-    if (settings.alwaysOnTop === true) win.setAlwaysOnTop(true);
-    else if (settings.alwaysOnTop === false) win.setAlwaysOnTop(false);
   }
 
   const hotkey = typeof settings.hotkey === "string" && settings.hotkey !== "" ? settings.hotkey : undefined;
@@ -918,8 +903,6 @@ function registerIpc() {
     else if (action === "toggle-maximize") {
       if (win.isMaximized()) win.unmaximize();
       else win.maximize();
-    } else if (action === "toggle-pin") {
-      void toggleAlwaysOnTop(win);
     } else if (action === "close") win.close();
   });
   // Clipboard history (last 50 text copies) for the Ctrl+Shift+V picker.
@@ -1031,11 +1014,13 @@ function registerIpc() {
   // The pill reads the dsh dark/light preference to match the app theme.
   ipcMain.handle("dsh:quickchat-theme", () => resolvePillTheme());
   // RPC proxy: the pill is a file:// page, so a browser fetch to the loopback
-  // harness is CORS-blocked. Node fetch has no such restriction.
+  // harness is CORS-blocked. Chromium's `net.fetch` runs in the default session,
+  // which carries the cookie the app page minted from its launch-token URL — so
+  // the bare origin authenticates where a Node fetch could not.
   ipcMain.handle("dsh:quickchat-rpc", async (_event, req) => {
     const method = req && typeof req.method === "string" ? req.method : undefined;
-    if (method === undefined || serverUrl === undefined) throw new Error("rpc unavailable");
-    const res = await fetch(serverUrl + "api/" + method, {
+    if (method === undefined || serverOrigin === undefined) throw new Error("rpc unavailable");
+    const res = await net.fetch(serverOrigin + "api/" + method, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "client-request", rpcId: "pill-" + String(++rpcSeq), method, payload: req.payload || {} })

@@ -1,0 +1,19 @@
+{
+  "name": "@deepseek-ai/dsh-host-shellpanel",
+  "description": "Shared PowerShell terminal bridge for the desktop bottom panel: the bottom panel and the agent's persistent pwsh tool drive one PTY session per session id",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/host/host-shellpanel"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/index.js"
+  ],
+  "license": "MIT"
+}

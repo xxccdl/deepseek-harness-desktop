@@ -11,24 +11,31 @@
  *
  * @module dsh-llm-pi-ai/catalog
  */
-import type { Api, Model, ModelThinkingLevel, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai';
+import type { AnthropicMessagesCompat, Api, BedrockCompat, ChatTemplateKwargValue, Model, ModelThinkingLevel, OpenAICompletionsCompat, OpenAIResponsesCompat, Provider } from '@earendil-works/pi-ai';
 /** One request modality a pi-ai model may accept. */
 export type PiAiModality = Model<Api>['input'][number];
 /** Every request modality a profile may declare. */
 export declare const MODALITIES: readonly PiAiModality[];
 /** Every pi-ai thinking level a profile may declare, in escalation order. */
 export declare const THINKING_LEVELS: readonly ModelThinkingLevel[];
-/** The `compat.thinkingFormat` spellings pi-ai accepts on an `openai-completions` model. */
-type PiThinkingFormat = NonNullable<OpenAICompletionsCompat['thinkingFormat']>;
-/**
- * pi-ai thinking formats a profile cannot name: both drive the request through
- * `chatTemplateKwargs`, which this configuration does not expose.
- */
-type WithheldThinkingFormat = 'chat-template' | 'qwen-chat-template';
 /** One reasoning-dispatch wire format a profile may name. */
-export type PiAiThinkingFormat = Exclude<PiThinkingFormat, WithheldThinkingFormat>;
+export type PiAiThinkingFormat = NonNullable<OpenAICompletionsCompat['thinkingFormat']>;
 /** Reasoning-dispatch wire formats a profile may name, most-reached first. */
 export declare const SUPPORTED_THINKING_FORMATS: readonly PiAiThinkingFormat[];
+/** The output-cap field spellings pi-ai accepts. */
+export type PiAiMaxTokensField = NonNullable<OpenAICompletionsCompat['maxTokensField']>;
+/** The output-cap field spellings a profile may name. */
+export declare const MAX_TOKENS_FIELDS: readonly PiAiMaxTokensField[];
+/** The prompt-cache marker conventions pi-ai accepts. */
+export type PiAiCacheControlFormat = NonNullable<OpenAICompletionsCompat['cacheControlFormat']>;
+/** The prompt-cache marker conventions a profile may name. */
+export declare const CACHE_CONTROL_FORMATS: readonly PiAiCacheControlFormat[];
+/** The request-state placeholders a `chat_template_kwargs` value may name. */
+export type PiAiChatTemplateVar = Extract<ChatTemplateKwargValue, {
+    $var: string;
+}>['$var'];
+/** The request-state placeholders a profile may name. */
+export declare const CHAT_TEMPLATE_VARS: readonly PiAiChatTemplateVar[];
 /**
  * The installed catalog provider for one route, when pi-ai ships one.
  * @param provider - provider route key.
@@ -40,23 +47,6 @@ export declare function catalogProvider(provider: string): Provider | undefined;
  * @returns the catalog provider ids.
  */
 export declare function catalogProviderIds(): readonly string[];
-/**
- * Whether the installed catalog provider for one route declares an api-key
- * method — the only authentication this adapter obtains on its own.
- *
- * A key is what the harness resolves through its own credential seam and hands
- * pi-ai per request. pi-ai's other method, OAuth, resolves from a *stored*
- * OAuth credential alone: `resolveProviderAuth` has no ambient path for it,
- * this adapter builds its `Models` collection with no credential store, and
- * nothing here runs a login flow. So a provider offering OAuth by itself
- * leaves nothing for this adapter to authenticate with, and the posture such a
- * provider invites — no key configured, credentials discovered by the provider
- * — fails every request with `Provider is not configured`.
- * @param provider - provider route key.
- * @returns whether the catalog provider takes an api key; false for a route
- *   pi-ai does not ship, which the caller answers for separately.
- */
-export declare function catalogProviderTakesApiKey(provider: string): boolean;
 /**
  * The installed catalog models for one route, indexed by model id.
  * @param provider - provider route key.
@@ -73,20 +63,181 @@ export declare function catalogModels(provider: string): Map<string, Model<Api>>
  */
 export type PiAiReasoningEfforts = Partial<Record<ModelThinkingLevel, string | null>>;
 /**
- * Reasoning-dispatch compatibility switches, set on the route (its models'
- * default) or per model (winning over the route). Only the switches pi-ai's
- * reasoning dispatch reads are offered; the rest of pi-ai's compat surface
- * keeps its baseURL-derived auto-detection. pi-ai types both fields only on
- * `OpenAICompletionsCompat` — the other wire protocols define their reasoning
- * fields in the protocol itself — so resolution rejects a model-level switch
- * anywhere else, while a route-level default skips past models it cannot fit.
+ * Disposition of every `OpenAICompletionsCompat` field. The `Record` key type
+ * is a drift gate: a pi-ai upgrade that adds a field fails compilation here
+ * until it is classified, so the offer never silently lags the upstream set.
+ */
+declare const COMPLETIONS_COMPAT_GATE: {
+    readonly supportsStore: "offer";
+    readonly supportsDeveloperRole: "offer";
+    readonly supportsReasoningEffort: "offer";
+    readonly supportsUsageInStreaming: "offer";
+    readonly supportsFinishReason: "offer";
+    readonly maxTokensField: "offer";
+    readonly requiresToolResultName: "offer";
+    readonly requiresAssistantAfterToolResult: "offer";
+    readonly requiresThinkingAsText: "offer";
+    readonly requiresReasoningContentOnAssistantMessages: "offer";
+    readonly thinkingFormat: "offer";
+    readonly chatTemplateKwargs: "offer";
+    readonly chatTemplateArgs: "offer";
+    readonly supportsThinkingTokenBudget: "offer";
+    readonly supportsStrictMode: "offer";
+    readonly cacheControlFormat: "offer";
+    readonly supportsLongCacheRetention: "offer";
+    readonly openRouterRouting: "withhold";
+    readonly vercelGatewayRouting: "withhold";
+    readonly zaiToolStream: "withhold";
+    readonly supportsOpenAIGrammarTools: "withhold";
+    readonly sendSessionAffinityHeaders: "withhold";
+    readonly deferredToolsMode: "withhold";
+    readonly sessionAffinityFormat: "withhold";
+};
+/** Disposition of every `OpenAIResponsesCompat` field; a drift gate like the one above. */
+declare const RESPONSES_COMPAT_GATE: {
+    readonly supportsDeveloperRole: "offer";
+    readonly supportsStrictMode: "offer";
+    readonly supportsLongCacheRetention: "offer";
+    readonly sessionAffinityFormat: "withhold";
+    readonly supportsOpenAIGrammarTools: "withhold";
+    readonly supportsAdditionalTools: "withhold";
+    readonly supportsToolSearch: "withhold";
+    readonly supportsExplicitPromptCacheMode: "withhold";
+};
+/** Disposition of every `AnthropicMessagesCompat` field; a drift gate like the one above. */
+declare const ANTHROPIC_COMPAT_GATE: {
+    readonly supportsEagerToolInputStreaming: "offer";
+    readonly supportsLongCacheRetention: "offer";
+    readonly supportsCacheControlOnTools: "offer";
+    readonly supportsTemperature: "offer";
+    readonly forceAdaptiveThinking: "offer";
+    readonly allowEmptySignature: "offer";
+    readonly supportsStrictTools: "offer";
+    readonly sendSessionAffinityHeaders: "withhold";
+    readonly supportsToolReferences: "withhold";
+};
+/** Disposition of every `BedrockCompat` field; a drift gate like the one above. */
+declare const BEDROCK_COMPAT_GATE: {
+    readonly supportsStrictMode: "offer";
+};
+/** The field names one gate offers. */
+type OfferedIn<G> = {
+    [K in keyof G]: G[K] extends 'offer' ? K : never;
+}[keyof G];
+/** Every compat field name a profile may set, on whichever protocol takes it. */
+type OfferedCompatField = OfferedIn<typeof COMPLETIONS_COMPAT_GATE> | OfferedIn<typeof RESPONSES_COMPAT_GATE> | OfferedIn<typeof ANTHROPIC_COMPAT_GATE> | OfferedIn<typeof BEDROCK_COMPAT_GATE>;
+/**
+ * pi-ai wire-compatibility switches, set on the route (its models' default) or
+ * per model (winning over the route, field by field).
+ *
+ * pi-ai decides each of these from the provider id and baseURL when no layer
+ * sets it, and a private gateway's URL says nothing: for an endpoint it does
+ * not recognize the detection answers as though it were OpenAI itself, which
+ * is wrong for most OpenAI-compatible gateways. So every field here is one a
+ * deployment must be able to state because nothing can infer it, while the
+ * fields pi-ai's catalog sets for a named vendor stay withheld.
+ *
+ * A field belongs to the protocols whose upstream compat type declares it: a
+ * model-level switch its protocol does not take fails resolution, and a
+ * route-level one skips past models it cannot fit. "The three Responses
+ * protocols" below means `openai-responses`, `azure-openai-responses`, and
+ * `openai-codex-responses`, which pi-ai gives one shared compat type, so a
+ * switch settable on one is settable on all three.
  */
 export interface PiAiCompatProfile {
-    /** Reasoning parameter format the endpoint expects; absent keeps the catalog entry's, then pi-ai's baseURL-derived guess. */
-    thinkingFormat?: PiAiThinkingFormat;
-    /** Whether the endpoint accepts `reasoning_effort`; absent keeps the catalog entry's, then pi-ai's baseURL-derived guess. */
+    /** Whether the endpoint accepts `store`; `openai-completions`. */
+    supportsStore?: boolean;
+    /**
+     * Whether the endpoint accepts the `developer` role for the system prompt,
+     * which pi-ai sends only to a reasoning model; `false` keeps `system`.
+     * `openai-completions` and the three Responses protocols.
+     */
+    supportsDeveloperRole?: boolean;
+    /** Whether the endpoint accepts `reasoning_effort`; `openai-completions`. */
     supportsReasoningEffort?: boolean;
+    /** Whether the endpoint accepts `stream_options: {include_usage: true}`; `openai-completions`. */
+    supportsUsageInStreaming?: boolean;
+    /**
+     * Whether streams include `finish_reason`; `false` lets pi-ai infer the
+     * terminal reason when the stream ends; `openai-completions`.
+     */
+    supportsFinishReason?: boolean;
+    /** Which output-cap field the endpoint reads; `openai-completions`. */
+    maxTokensField?: NonNullable<OpenAICompletionsCompat['maxTokensField']>;
+    /** Whether tool results must carry `name`; `openai-completions`. */
+    requiresToolResultName?: boolean;
+    /** Whether a user message after tool results needs an assistant message between; `openai-completions`. */
+    requiresAssistantAfterToolResult?: boolean;
+    /** Whether thinking blocks must travel as text in `<thinking>` delimiters; `openai-completions`. */
+    requiresThinkingAsText?: boolean;
+    /** Whether replayed assistant messages need an empty `reasoning_content` while reasoning is on; `openai-completions`. */
+    requiresReasoningContentOnAssistantMessages?: boolean;
+    /** Reasoning parameter format the endpoint expects; `openai-completions`. */
+    thinkingFormat?: PiAiThinkingFormat;
+    /**
+     * Kwargs sent as `chat_template_kwargs`, which pi-ai reads only under the
+     * two `chat-template` thinking formats; `openai-completions`. Nothing checks
+     * that pairing: the format in force may come from the installed catalog
+     * entry or from pi-ai's own baseURL detection, neither of which resolution
+     * can read, so kwargs set beside another format are sent nowhere.
+     */
+    chatTemplateKwargs?: NonNullable<OpenAICompletionsCompat['chatTemplateKwargs']>;
+    /** Arguments sent as `chat_template_args` under the `baseten` thinking format; `openai-completions`. */
+    chatTemplateArgs?: NonNullable<OpenAICompletionsCompat['chatTemplateArgs']>;
+    /** Whether the endpoint accepts `thinking_token_budget` to cap vLLM reasoning; `openai-completions`. */
+    supportsThinkingTokenBudget?: boolean;
+    /**
+     * Whether the endpoint accepts `strict` in tool definitions;
+     * `openai-completions`, the three Responses protocols, `bedrock-converse-stream`.
+     */
+    supportsStrictMode?: boolean;
+    /** Prompt-cache marker convention; `openai-completions`. */
+    cacheControlFormat?: NonNullable<OpenAICompletionsCompat['cacheControlFormat']>;
+    /**
+     * Whether the endpoint accepts long prompt-cache retention;
+     * `openai-completions`, the three Responses protocols, `anthropic-messages`.
+     */
+    supportsLongCacheRetention?: boolean;
+    /** Whether the endpoint accepts per-tool `eager_input_streaming`; `anthropic-messages`. */
+    supportsEagerToolInputStreaming?: boolean;
+    /** Whether the endpoint accepts `cache_control` on tool definitions; `anthropic-messages`. */
+    supportsCacheControlOnTools?: boolean;
+    /** Whether the endpoint accepts the `temperature` request field; `anthropic-messages`. */
+    supportsTemperature?: boolean;
+    /** Whether to force adaptive thinking regardless of model id; `anthropic-messages`. */
+    forceAdaptiveThinking?: boolean;
+    /** Whether to replay an empty thinking signature instead of converting thinking to text; `anthropic-messages`. */
+    allowEmptySignature?: boolean;
+    /** Whether the endpoint accepts Anthropic strict tool schemas; `anthropic-messages`. */
+    supportsStrictTools?: boolean;
 }
+/** Compile-time constraint that `T` is `never`. */
+type AssertNever<T extends never> = T;
+/**
+ * Proof that every documented field is one a gate offers. A field the profile
+ * declares past the gates fails compilation with its own name in the error.
+ */
+export type EveryProfileFieldIsOffered = AssertNever<Exclude<keyof PiAiCompatProfile, OfferedCompatField>>;
+/**
+ * Proof that every offered field is documented. A gate entry flipped to
+ * `offer` without a profile field fails compilation with its own name in the
+ * error, which is the half a schema alone cannot catch.
+ */
+export type EveryOfferedFieldIsDocumented = AssertNever<Exclude<OfferedCompatField, keyof PiAiCompatProfile>>;
+/** Compile-time constraint that `T` is `true`. */
+type AssertTrue<T extends true> = T;
+/** Every compat type a gate classifies, merged so one `Pick` reaches all offered fields. */
+type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & AnthropicMessagesCompat & BedrockCompat;
+/**
+ * Proof that each documented field carries its upstream type, not a hand-copied
+ * restatement of it. The name gates above pin *which* fields exist; this pins
+ * their types, in both directions because each catches a different drift. A
+ * profile field wider than upstream accepts a value the provider rejects, and
+ * `resolveModelCompat`'s cast to `ModelCompat` would hide it; a narrower one
+ * refuses a value the provider accepts, which is how an upgrade that widens a
+ * union would otherwise leave configuration silently behind.
+ */
+export type EveryProfileFieldMatchesUpstream = AssertTrue<PiAiCompatProfile extends Partial<Pick<UpstreamCompat, OfferedCompatField>> ? Partial<Pick<UpstreamCompat, OfferedCompatField>> extends PiAiCompatProfile ? true : false : false>;
 /** One configured model entry: an id plus the catalog fields it overrides. */
 export interface PiAiModelProfile {
     /** Model id sent to the provider and accepted by {@link GenerateOptions.model}. */
@@ -122,7 +273,7 @@ export interface PiAiModelProfile {
      * declares the offered levels and their wire spellings.
      */
     reasoningEfforts?: false | PiAiReasoningEfforts;
-    /** Reasoning-dispatch switches for this model, winning over the route's. */
+    /** pi-ai wire-compatibility switches for this model, winning over the route's per field; one its protocol does not declare is refused. */
     compat?: PiAiCompatProfile;
 }
 /**
@@ -145,7 +296,7 @@ export interface RouteCatalogRequest {
     models?: readonly PiAiModelProfile[];
     /** Installed-catalog customizations by model id; only meaningful while `models` is absent. */
     modelOverrides?: Readonly<Record<string, PiAiModelOverride>>;
-    /** Reasoning-dispatch switches for every `openai-completions` model on the route; entries override per field. */
+    /** Route-level wire-compatibility switches, landing on each model whose protocol declares them; entries override per field. */
     compat?: PiAiCompatProfile;
     /** Context capacity for a model neither the entry nor the catalog sizes. */
     defaultContextWindow: number;

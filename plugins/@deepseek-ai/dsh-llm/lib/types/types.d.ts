@@ -5,7 +5,7 @@
  */
 import type { Branded } from '@deepseek-ai/dsh-brand';
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
-import type { CallId, ProviderRequestId, ReasoningEffortId } from './brand.ts';
+import type { ToolCallId, ProviderRequestId, ReasoningEffortId } from './brand.ts';
 import type { Message } from './message.ts';
 declare module '@deepseek-ai/cordis' {
     interface Events {
@@ -49,7 +49,7 @@ export interface ReasoningBlock {
  * A durable raster image reference, valid in user or assistant content. The
  * block is deliberately role-neutral; assistant-side rendering is forward
  * compatibility — the current production adapters declare text-only output,
- * so only user content carries images today.
+ * so only user messages may carry images.
  */
 export interface ImageBlock {
     type: 'image';
@@ -60,7 +60,7 @@ export interface ImageBlock {
 export interface ToolCallBlock {
     type: 'tool-call';
     /** Provider-issued call id; correlates with the matching tool result. */
-    id: CallId;
+    id: ToolCallId;
     name: string;
     /** Raw JSON string as produced by the model. */
     arguments: string;
@@ -68,7 +68,7 @@ export interface ToolCallBlock {
 /** The result of a tool invocation, sent back to the model. */
 export interface ToolResultBlock {
     type: 'tool-result';
-    toolCallId: CallId;
+    toolCallId: ToolCallId;
     content: ContentBlock[];
     isError?: boolean;
 }
@@ -123,9 +123,45 @@ export type FinishReason = FinishReasonMap[keyof FinishReasonMap];
 export interface TokenUsage {
     inputTokens: number;
     outputTokens: number;
+    /**
+     * Exact full-call total including aggregate prompt and output tokens.
+     *
+     * Adapters preserve a provider total or derive it from authoritative
+     * aggregate prompt/output counters; they omit it when unavailable or
+     * inconsistent.
+     */
+    totalTokens?: number;
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
     reasoningTokens?: number;
+}
+/**
+ * Request price of one ordered image occurrence under one exact model route's
+ * request projection. Every occurrence resolves to the pair the wire actually
+ * carries: provider visual tokens for a retained image, plus the model-visible
+ * text sent with or instead of it (request-preview handle, offload placeholder,
+ * or text-only substitution). The caller prices `text` with its own text
+ * estimator so provider pricing never fixes a text tokenization.
+ */
+export interface LlmImageRequestPrice {
+    /** Provider visual tokens for the retained request image; 0 when only text represents this occurrence. */
+    visualTokens: number;
+    /** Model-visible text sent for this occurrence, to be priced by the caller's text estimator. */
+    text: string;
+}
+/**
+ * Provider-side request-image pricing for one exact model route. Implemented
+ * by adapters whose provider charges visual tokens; consumers (the token
+ * meter) resolve it synchronously per measurement, so implementations must not
+ * perform I/O.
+ */
+export interface LlmImageRequestPricing {
+    /**
+     * Price every image occurrence of one request projection.
+     * @param images - durable image references in request order, one entry per occurrence.
+     * @returns one price per occurrence, aligned by index with `images`.
+     */
+    priceImages(images: readonly ImageAttachmentRef[]): readonly LlmImageRequestPrice[];
 }
 /** Display metadata for one registered provider route. */
 export interface LlmProviderInfo {
@@ -192,8 +228,20 @@ export interface LlmModelDiscoveryRequest {
     api?: string;
     /** Credential for this interrogation alone; the harness never stores it. */
     apiKey?: string;
+}
+/** Provider-side discovery request with operation-local cancellation attached. */
+export interface LlmModelDiscoveryOperation extends LlmModelDiscoveryRequest {
     /** Caller cancellation; implementations must settle promptly after it aborts. */
     signal?: AbortSignal;
+}
+declare module '@deepseek-ai/dsh-typert-protocol' {
+    interface RemoteErrorDetailsMap {
+        /** A draft provider interrogation refused or failed. */
+        'llm/model-discovery-rejected': {
+            readonly settingsNs: string;
+            readonly baseURL?: string;
+        };
+    }
 }
 /**
  * One model an endpoint reports about itself. Every field but the id is
@@ -257,6 +305,26 @@ export interface LlmResolvedModelInfo extends LlmModelInfo {
     reasoning?: LlmModelReasoningInfo;
 }
 /**
+ * Adapter-private lossless-JSON state for replaying a successful response,
+ * carried by a terminal `finish` chunk and stored on the assembled assistant
+ * message's model source. Both halves stay opaque to the harness; only the
+ * split is shared vocabulary, so assembly can keep stored metadata aligned
+ * with stored content without reading either half.
+ */
+export interface ReplayEnvelope {
+    /** Response-level adapter-private metadata (ids, native stop reason). */
+    response: unknown;
+    /**
+     * Per-block adapter-private metadata, one entry per emitted block in
+     * first-seen stream order. When assembly drops a block it drops the entry at
+     * the same position; entries whose length does not match the emitted block
+     * count discard the whole envelope. An adapter whose metadata is independent
+     * of block structure omits this field and the envelope passes through
+     * assembly unchanged.
+     */
+    blocks?: readonly unknown[];
+}
+/**
  * Raw streaming protocol emitted by adapters.
  * Block indexes correlate interleaved deltas, and `block-end` carries the
  * assembled block. Adapters emit usage before the terminal finish and nothing
@@ -279,7 +347,7 @@ export type StreamChunk = {
 } | {
     type: 'tool-call-delta';
     index: number;
-    id: CallId;
+    id: ToolCallId;
     name?: string;
     argumentsDelta: string;
 } | {
@@ -292,8 +360,8 @@ export type StreamChunk = {
 } | {
     type: 'finish';
     reason: FinishReason;
-    /** Adapter-private lossless-JSON state for replaying a successful response. */
-    replayState?: unknown;
+    /** Replay metadata for a successful response; see {@link ReplayEnvelope}. */
+    replayState?: ReplayEnvelope;
 };
 /**
  * JSON-schema description of a tool, as sent to the model.

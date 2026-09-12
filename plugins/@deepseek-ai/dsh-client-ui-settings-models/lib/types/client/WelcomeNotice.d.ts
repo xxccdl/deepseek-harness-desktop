@@ -1,6 +1,6 @@
 /** Product-wide, versioned internal-testing notice. */
 import type { ReactNode } from 'react';
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client';
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store';
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
 import type { WelcomeNoticeState, WelcomeNoticeStore } from './welcome-store.ts';
 import type { en } from './locales.ts';

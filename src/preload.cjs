@@ -10,6 +10,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const TITLE_BAR_HEIGHT = 36;
 
+// The bar is a child of <body>, so the harness theme tokens applied there
+// resolve here too: the fill, text, and hover shades follow the active light or
+// dark palette instead of the dark-only literals this used to hardcode.
 const TITLE_BAR_CSS = `
 #dsh-titlebar {
   position: relative;
@@ -20,9 +23,9 @@ const TITLE_BAR_CSS = `
   align-items: center;
   box-sizing: border-box;
   padding-left: 12px;
-  background: rgba(15, 17, 23, 0.98);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.72);
+  background: var(--dsw-alias-bg-layer-2, #f7f8fa);
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(20, 24, 35, 0.08));
+  color: var(--dsw-alias-label-secondary, rgba(20, 24, 35, 0.7));
   font: 12px/1 system-ui, "Segoe UI", sans-serif;
   -webkit-app-region: drag;
   user-select: none;
@@ -43,8 +46,52 @@ const TITLE_BAR_CSS = `
 #dsh-titlebar .dsh-controls {
   margin-left: auto;
   display: flex;
+  align-items: center;
   height: 100%;
   -webkit-app-region: no-drag;
+}
+/* The market entry rides in the window-controls strip at the far right: the title
+   bar is the one piece of chrome that is always on screen, so it is where a
+   surface a person has to be able to find belongs. It deliberately does NOT wear
+   the dsh-btn class — that rule resets its box for the square window controls and
+   would fight this one. The press travels to the SPA as a document event (the
+   harness plugin owns the window, this file only announces the click). */
+#dsh-titlebar .dsh-market {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  align-self: center;
+  height: 24px;
+  margin: 0 8px 0 0;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(20, 24, 35, 0.7));
+  font: 12px/1 system-ui, "Segoe UI", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+#dsh-titlebar .dsh-market:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(20, 24, 35, 0.06));
+  color: var(--dsw-alias-label-primary, rgba(20, 24, 35, 0.9));
+}
+#dsh-titlebar .dsh-market:active {
+  background: var(--dsw-alias-interactive-bg-hover-solid, rgba(20, 24, 35, 0.1));
+}
+#dsh-titlebar .dsh-market svg {
+  display: block;
+  flex: none;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 #dsh-titlebar .dsh-btn {
   all: initial;
@@ -56,7 +103,7 @@ const TITLE_BAR_CSS = `
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.82) !important;
+  color: inherit !important;
   padding: 0 !important;
   margin: 0 !important;
   cursor: default;
@@ -65,20 +112,14 @@ const TITLE_BAR_CSS = `
   -webkit-app-region: no-drag;
 }
 #dsh-titlebar .dsh-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: var(--dsw-alias-interactive-bg-hover, rgba(20, 24, 35, 0.06)) !important;
 }
 #dsh-titlebar .dsh-btn:active {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: var(--dsw-alias-interactive-bg-hover-solid, rgba(20, 24, 35, 0.1)) !important;
 }
 #dsh-titlebar .dsh-btn.dsh-close:hover {
   background: #e81123 !important;
-}
-#dsh-titlebar .dsh-btn.dsh-pin {
-  width: 40px !important;
-}
-#dsh-titlebar .dsh-btn.dsh-pin.dsh-pinned {
-  color: #7c8cf8 !important;
-  background: rgba(124, 140, 248, 0.12) !important;
+  color: #fff !important;
 }
 #dsh-titlebar .dsh-btn svg {
   display: block;
@@ -109,8 +150,8 @@ const TITLE_BAR_CSS = `
 const ICONS = {
   minimize:
     '<svg viewBox="0 0 12 12"><path d="M1 6h10"/></svg>',
-  pin:
-    '<svg viewBox="0 0 12 12"><path d="M4.4 1.4h3.2l-.5 2.8 1.6 1.6v1H3.3v-1l1.6-1.6z"/><path d="M6 6.8V11"/></svg>',
+  market:
+    '<svg viewBox="0 0 12 12"><path d="M1.6 4.5h8.8"/><path d="M2.3 4.5 3.2 1.8h5.6l.9 2.7"/><path d="M2.5 4.5v5.7h7V4.5"/><path d="M4.7 10.2V7.5h2.6v2.7"/></svg>',
   maximize:
     '<svg class="dsh-max-full" viewBox="0 0 12 12"><rect x="1.4" y="1.4" width="9.2" height="9.2" rx="0.8"/></svg>' +
     '<svg class="dsh-max-restore" viewBox="0 0 12 12">' +
@@ -135,7 +176,7 @@ function injectTitleBar() {
       <span>DeepSeek Harness</span>
     </span>
     <div class="dsh-controls">
-      <button class="dsh-btn dsh-pin" data-action="toggle-pin" title="窗口置顶 (Ctrl+Alt+T)" aria-label="窗口置顶">${ICONS.pin}</button>
+      <button class="dsh-market" data-action="market" title="打开插件市场" aria-label="插件市场">${ICONS.market}<span>插件市场</span></button>
       <button class="dsh-btn" data-action="minimize" title="最小化" aria-label="最小化">${ICONS.minimize}</button>
       <button class="dsh-btn" data-action="toggle-maximize" title="最大化" aria-label="最大化">${ICONS.maximize}</button>
       <button class="dsh-btn dsh-close" data-action="close" title="关闭" aria-label="关闭">${ICONS.close}</button>
@@ -161,30 +202,41 @@ function injectTitleBar() {
       ipcRenderer.send("dsh:window-control", btn.dataset.action);
     });
   }
+  // The market button is an app action, not a window control: announce it in the
+  // page so the harness plugin that owns the market window can answer it.
+  bar.querySelector(".dsh-market")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    window.dispatchEvent(new CustomEvent("dsh:open-market"));
+  });
   // Double-click the drag region toggles maximize, like the native title bar.
   bar.addEventListener("dblclick", (event) => {
-    if (event.target.closest(".dsh-btn")) return;
+    if (event.target.closest(".dsh-btn, .dsh-market")) return;
     ipcRenderer.send("dsh:window-control", "toggle-maximize");
   });
 
   ipcRenderer.on("dsh:window-maximized", (_event, maximized) => {
     bar.classList.toggle("dsh-maximized", maximized);
   });
-
-  // Keep the pin button in sync with the actual always-on-top state.
-  const pinBtn = bar.querySelector(".dsh-pin");
-  ipcRenderer.on("dsh:always-on-top", (_event, pinned) => {
-    if (pinBtn) pinBtn.classList.toggle("dsh-pinned", pinned === true);
-  });
 }
 
-// The SPA is served over http; inject once its document is interactive. The
-// detached quick-chat mini window loads a local HTML (no #root) — skip there.
-if (document.readyState === "loading") {
-  window.addEventListener("DOMContentLoaded", () => { if (document.getElementById("root")) injectTitleBar(); }, { once: true });
-} else {
-  if (document.getElementById("root")) injectTitleBar();
+// The SPA is served over http, and its `#root` is created by the app's own
+// bootstrap — which may land AFTER DOMContentLoaded. Sampling once and giving up
+// there left the window with no title bar at all (and no drag region, and no
+// market entry), depending on which side won the race. Poll briefly instead.
+const ROOT_WAIT_MS = 100;
+const ROOT_WAIT_TRIES = 60;
+
+/** Inject the bar as soon as the SPA root exists, or give up after ~6s. */
+function installWhenRootReady(attempt = 0) {
+  if (document.getElementById("root") !== null) {
+    injectTitleBar();
+    return;
+  }
+  if (attempt >= ROOT_WAIT_TRIES) return;
+  setTimeout(() => installWhenRootReady(attempt + 1), ROOT_WAIT_MS);
 }
+
+installWhenRootReady();
 
 contextBridge.exposeInMainWorld("dshDesktop", {
   /** Platform facts and versions, resolved on demand from the main process. */

@@ -1,6 +1,7 @@
 /** State owner for the optional local settings-document action. */
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client';
-import { type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
+import { type SnapshotStore } from '@deepseek-ai/dsh-client-store';
+import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client';
 /** Browser state of the Host-owned settings document. */
 export interface SettingsDocumentState {
     /** Metadata-loading phase; unavailable means the provider has no local document or the read failed. */
@@ -10,19 +11,23 @@ export interface SettingsDocumentState {
     /** Last metadata/native-open diagnostic; UI exposes only localized copy. */
     error: string | null;
 }
-/** Loads local-document availability and invokes the pathless Host-owned open operation. */
+/** Derives local-document availability from the shared mirror and invokes the pathless Host-owned open operation. */
 export declare class SettingsDocumentStore {
-    private readonly api;
+    private readonly ctx;
+    private readonly describeFace;
     /** uSES-safe state source shared by the registered header action. */
     readonly store: SnapshotStore<SettingsDocumentState>;
-    private generation;
+    private following;
     /**
-     * @param api - loopback settings wire face that reports and opens the provider document.
+     * @param ctx - the plugin's context, whose loopback `remote.settings`
+     * namespace opens the provider document.
+     * @param describeFace - the shared mirror's describe face (`hasDocument` source).
      */
-    constructor(api: Pick<IApiClient, 'settings'>);
+    constructor(ctx: ClientContext, describeFace: SettingsDescribeFace);
     /**
-     * Load whether the current provider owns a local document.
-     * @returns after the latest metadata response updates the store.
+     * Begin following the mirror (idempotent) and reflect whether the current
+     * provider owns a local document.
+     * @returns settlement once the snapshot reflects the mirror.
      */
     load(): Promise<void>;
     /**
@@ -30,10 +35,8 @@ export declare class SettingsDocumentStore {
      * @returns after the native-open request settles, or immediately when unavailable/already opening.
      */
     open(): Promise<void>;
+    /** Stop following the mirror. */
+    dispose(): void;
+    private derive;
 }
-/**
- * Refresh document availability after reconnect only when a surface has already requested it.
- * @param controller - optional loopback document state owner.
- */
-export declare function refreshDocumentIfLoaded(controller: SettingsDocumentStore | undefined): void;
 //# sourceMappingURL=settings-document-store.d.ts.map

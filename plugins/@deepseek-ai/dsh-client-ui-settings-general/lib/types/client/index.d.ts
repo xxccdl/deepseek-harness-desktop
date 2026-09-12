@@ -7,7 +7,7 @@
  * Feature-owned rows and sections stay with their features.
  * Export discipline: packages/client/AGENTS.md.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { type SettingsKey } from './locales.ts';
 export type { CloseLabelProps, HeaderContentProps, TriggerContentProps, } from './chrome.tsx';
 export type { GeneralSectionComponentProps, } from './GeneralSection.tsx';

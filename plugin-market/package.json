@@ -1,0 +1,15 @@
+{
+  "name": "dsh-plugin-market",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DeepSeek Harness plugin market — catalogue API, package store and shop window on port 9009",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}

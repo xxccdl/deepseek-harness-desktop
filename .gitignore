@@ -4,6 +4,10 @@ dist/
 out/
 *.log
 
+# The plugin market's own store: published plugin records and package tarballs
+# are runtime state, never part of the source tree.
+plugin-market/data/
+
 # Downloaded runtime binaries (computer-use needs resources/runtime/uv/uv.exe;
 # download it from https://github.com/astral-sh/uv/releases)
 resources/runtime/

@@ -22,7 +22,6 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import z from "@deepseek-ai/schemastery";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { dshHomePath } from "@deepseek-ai/dsh-home-paths";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
@@ -34,7 +33,7 @@ const name = "task-notify";
 const inject = ["settings"];
 
 /** Settings namespace owned by the notify plugin. */
-const NOTIFY_SETTINGS_NS = settingsNamespace("notify");
+const NOTIFY_SETTINGS_NS = "notify";
 /** Durable notify settings; the harness Settings document edits it. */
 const NotifySettingsSchema = z.object({
   /** Master switch: when false, no notifications are emitted at all. */

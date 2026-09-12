@@ -2,28 +2,29 @@
  * dsh-llm's owned branded ids: tool-call correlation and provider request
  * diagnostics.
  *
- * The `Branded<B>` primitive itself lives in `@deepseek-ai/dsh-brand` (a
- * zero-dependency type-only package) so every owner of a cross-boundary id can
- * brand it without depending on dsh-llm; see that package's README for the
+ * The `Branded<B>` primitive and stateless constructor live in
+ * `@deepseek-ai/dsh-brand` so every owner of a cross-boundary id can brand it
+ * without depending on dsh-llm; see that package's README for the
  * nominal-typing policy.
  *
  * @module @deepseek-ai/dsh-llm/brand
  */
+import { brandString } from '@deepseek-ai/dsh-brand';
 /**
  * Brand a message identifier.
  * @param id - the opaque message identifier.
- * @returns the same string, branded; no validation is performed.
+ * @returns the same string with the message-id brand.
  */
 export function MessageId(id) {
-    return id;
+    return brandString(id);
 }
 /**
- * Brand a string as a {@link CallId}.
- * @param id - the provider-issued (or synthesized) call id.
- * @returns the same string, branded; no validation is performed.
+ * Brand a string as a {@link ToolCallId}.
+ * @param id - the provider-issued or synthesized call id.
+ * @returns the same string with the tool-call-id brand.
  */
-export function CallId(id) {
-    return id;
+export function ToolCallId(id) {
+    return brandString(id);
 }
 /**
  * Brand a provider-issued request identifier.
@@ -31,7 +32,7 @@ export function CallId(id) {
  * @returns the same string, branded; no validation is performed.
  */
 export function ProviderRequestId(id) {
-    return id;
+    return brandString(id);
 }
 /**
  * Brand an adapter-owned reasoning-effort identifier.
@@ -39,6 +40,6 @@ export function ProviderRequestId(id) {
  * @returns the same string, branded; no validation is performed.
  */
 export function ReasoningEffortId(id) {
-    return id;
+    return brandString(id);
 }
 //# sourceMappingURL=brand.js.map

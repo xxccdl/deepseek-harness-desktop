@@ -23,7 +23,7 @@ import { GoalError } from '@deepseek-ai/dsh-goal';
 // The settings/credentials seams: brand guards run at this wire boundary; the
 // service reads stay optional (`ctx.get`) so a composition without either
 // provider still serves every other domain.
-import { SettingsConflictError, settingsNamespace } from '@deepseek-ai/dsh-settings';
+import { SettingsConflictError } from '@deepseek-ai/dsh-settings';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 // Value edge: the rename impl narrows the title service's validation failure; the import also resolves `ctx.get('sessionTitle')`.
 import { SessionTitleInvalidError } from '@deepseek-ai/dsh-session-title';
@@ -1701,15 +1701,7 @@ export function createApiProxy(ctx, defaults) {
                 details: { ns },
             });
         };
-        let branded;
-        try {
-            branded = settingsNamespace(ns);
-        }
-        catch (error) {
-            // A malformed name is a client bug, reported as such; it could never be
-            // in the exposed set either, so naming the real fault costs no ground.
-            return rejected(error);
-        }
+        const branded = ns;
         if (!exposedNamespaces().has(ns))
             return notExposed(request, ns);
         try {

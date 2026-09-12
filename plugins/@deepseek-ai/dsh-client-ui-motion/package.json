@@ -1,0 +1,32 @@
+{
+  "name": "@deepseek-ai/dsh-client-ui-motion",
+  "description": "One motion vocabulary for the desktop fork: shared timing/easing tokens, a fade through theme switches, and the entrance motion of the conversation shell and its rows",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js"
+  ]
+}

@@ -50,13 +50,4 @@ export declare function markAgentLoopRequest<T extends GenerateOptions>(request:
  * @returns whether {@link markAgentLoopRequest} recorded this object.
  */
 export declare function isAgentLoopRequest(request: GenerateOptions): boolean;
-/**
- * Deep-freeze a value in place with an iterative traversal, guarding cycles,
- * so later mutation throws without imposing a JavaScript call-stack depth cap.
- * {@link AbortSignal} objects are deliberately skipped because they are the
- * request's live cancellation channel and freezing them breaks abort.
- * @param value - the value to freeze in place.
- * @returns the same value, frozen.
- */
-export declare function deepFreeze<T>(value: T): T;
 //# sourceMappingURL=call-config.d.ts.map

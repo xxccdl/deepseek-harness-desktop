@@ -14,7 +14,7 @@ import { WorkspaceId, WorkspaceMoveInvalidError, WorkspaceOrderInvalidError, Wor
 import { InvalidPresetIdError, PresetExistsError, PresetMountError, PresetNotWritableError, SETTINGS_NAMESPACE, UnknownPresetError, resolveSessionPreset } from "@deepseek-ai/dsh-agent-presets";
 import { Zip, ZipDeflate } from "fflate";
 import { GoalError } from "@deepseek-ai/dsh-goal";
-import { SettingsConflictError, settingsNamespace } from "@deepseek-ai/dsh-settings";
+import { SettingsConflictError } from "@deepseek-ai/dsh-settings";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { SessionTitleInvalidError } from "@deepseek-ai/dsh-session-title";
 import { z as z$1 } from "zod";
@@ -2451,12 +2451,7 @@ function createApiProxy(ctx, defaults) {
 				details: { ns }
 			});
 		};
-		let branded;
-		try {
-			branded = settingsNamespace(ns);
-		} catch (error) {
-			return rejected(error);
-		}
+		const branded = ns;
 		if (!exposedNamespaces().has(ns)) return notExposed(request, ns);
 		try {
 			if (mode === "update") await settings.update(branded, section, expectedRevision);

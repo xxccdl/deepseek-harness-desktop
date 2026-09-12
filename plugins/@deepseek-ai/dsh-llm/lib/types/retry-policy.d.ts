@@ -20,7 +20,7 @@ export interface BackoffConfig {
 export interface NormalRetryPolicyConfig {
     /** Retry only configured transient failure codes. */
     mode: 'normal';
-    /** Maximum eligible retries after the first request (default 2). */
+    /** Maximum eligible retries after the first request (default 5). */
     maxRetries?: number;
     /** Stable failure codes eligible for this policy. */
     retryableCodes?: string[];

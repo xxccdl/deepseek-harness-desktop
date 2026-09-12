@@ -7,7 +7,7 @@
  * the provider editor with extra fields: the route id is being *chosen* here,
  * and the settings address does not exist until it is. One `settings.mutate`
  * sets the whole profile at `providers.<route>`; the key travels separately
- * through `credentials.set` under the reference the profile records, exactly as
+ * through `credentials/set` under the reference the profile records, exactly as
  * an existing provider's key does.
  *
  * The three fields a hand-declared route cannot default — endpoint, protocol,
@@ -21,7 +21,7 @@
  * levels instead.
  */
 import type { ReactNode } from 'react';
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client';
+import type { ModelsOperations } from './operations.ts';
 import type { en } from './locales.ts';
 /** Props of {@link CustomProviderCard}. */
 export interface CustomProviderCardProps {
@@ -35,8 +35,8 @@ export interface CustomProviderCardProps {
      * than a silent overwrite of its whole profile.
      */
     revision: number;
-    /** Wire faces for the write and for interrogating the endpoint. */
-    api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>;
+    /** The Host operations this card writes and interrogates through. */
+    operations: ModelsOperations;
     /** Section copy. */
     t: (key: keyof typeof en) => string;
     /** Disable writes (read-only settings provider). */

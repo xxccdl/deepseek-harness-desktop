@@ -21,7 +21,7 @@
  *
  * @module dsh-llm-pi-ai/discovery
  */
-import type { LlmDiscoveredModel, LlmModelDiscoveryRequest } from '@deepseek-ai/dsh-llm';
+import type { LlmDiscoveredModel, LlmModelDiscoveryOperation } from '@deepseek-ai/dsh-llm';
 /**
  * Interrogate one draft provider endpoint for the models it advertises.
  * @param request - the endpoint, protocol, and one-shot credential to use.
@@ -34,5 +34,5 @@ import type { LlmDiscoveredModel, LlmModelDiscoveryRequest } from '@deepseek-ai/
  * @throws LlmError when the protocol has no readable listing, the endpoint
  *   refuses or fails the request, or the reply is not a model listing.
  */
-export declare function discoverModels(request: LlmModelDiscoveryRequest, storedApiKey?: () => Promise<string | undefined>): Promise<readonly LlmDiscoveredModel[]>;
+export declare function discoverModels(request: LlmModelDiscoveryOperation, storedApiKey?: () => Promise<string | undefined>): Promise<readonly LlmDiscoveredModel[]>;
 //# sourceMappingURL=discovery.d.ts.map

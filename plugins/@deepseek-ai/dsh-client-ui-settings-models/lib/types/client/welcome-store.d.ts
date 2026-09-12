@@ -1,36 +1,54 @@
-/** Welcome-notice state, durable when the browser may use Host settings. */
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client';
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client';
+/**
+ * Welcome-notice state derived from the welcome settings scope. The scope is
+ * the transport: a loopback browser follows the durable Host section, while a
+ * remote browser's memory-mode scope never answers and the acknowledgement
+ * stays process-local here.
+ */
+import { type SnapshotStore } from '@deepseek-ai/dsh-client-store';
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client';
 /** State rendered by the welcome step. */
 export interface WelcomeNoticeState {
     status: 'idle' | 'loading' | 'ready' | 'saving' | 'error';
     acknowledged: boolean;
     error: string | null;
 }
+/** The welcome section as the notice reads it. */
+export type WelcomeSection = Record<string, unknown>;
+/**
+ * Accept any object section verbatim; a malformed durable value reads as an
+ * empty section, so the notice treats it as unacknowledged instead of leaving
+ * the scope stuck on its previous value.
+ * @param section - the wire section value.
+ * @returns the section object, or an empty one for non-object values.
+ */
+export declare function decodeWelcomeSection(section: unknown): WelcomeSection;
 /** Coordinates durable Host acknowledgement or a process-local remote fallback. */
 export declare class WelcomeNoticeStore {
-    private readonly api;
-    private readonly persistence;
+    private readonly scope;
     /** uSES-safe state source shared by the registered welcome step. */
     readonly store: SnapshotStore<WelcomeNoticeState>;
-    private generation;
+    private localAcknowledged;
+    private saving;
+    private following;
     /**
-     * @param api - settings wire face used for durable reads and writes.
-     * @param persistence - remote browsers use memory because settings is loopback-only.
+     * @param scope - the welcome settings namespace scope; its memory mode is
+     * what keeps a remote browser process-local.
      */
-    constructor(api: Pick<IApiClient, 'settings'>, persistence?: 'host' | 'memory');
-    /** Load the acknowledgement from Host settings or initialize process-local state. */
+    constructor(scope: SettingsScope<WelcomeSection>);
+    /**
+     * Begin following the bound scope (idempotent) and publish its current answer.
+     * @returns settlement after the current answer is published.
+     */
     load(): Promise<void>;
     /**
-     * Persist this copy version, or advance only this process for a remote browser.
-     * @returns true when the selected persistence mode accepted the acknowledgement.
+     * Persist this copy version, or advance only this process for a remote
+     * browser. Success is judged against the state the write left behind, so a
+     * refused or failed write reports false after its recovery read settles.
+     * @returns true when the selected persistence mode holds the acknowledgement.
      */
     acknowledge(): Promise<boolean>;
+    /** Stop following the scope. */
+    dispose(): void;
+    private derive;
 }
-/**
- * Refresh only after welcome state has left idle. A memory-mode load retains
- * acknowledgement so reconnect does not reopen a process-local notice.
- * @param controller - welcome state owner whose current status decides whether to load.
- */
-export declare function refreshWelcomeIfLoaded(controller: WelcomeNoticeStore): void;
 //# sourceMappingURL=welcome-store.d.ts.map
