@@ -30,12 +30,14 @@ window.__ModuleLoader__.load({
 		//#region styles
 		const css = [
 			/* ── the publish strip ── */
-			".dspm-strip{display:flex;align-items:center;gap:10px;box-sizing:border-box;width:100%;max-width:var(--dsh-chat-content-width,680px);margin:8px auto 0;padding:6px 8px 6px 12px;border-radius:12px;background:linear-gradient(120deg,color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent),transparent 62%);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 22%,transparent);animation:dspmRise .38s cubic-bezier(.22,1,.36,1) backwards}",
+			".dspm-strip{display:flex;flex-direction:column;gap:6px;box-sizing:border-box;width:100%;max-width:var(--dsh-chat-content-width,680px);margin:8px auto 0;padding:8px 8px 8px 12px;border-radius:12px;background:linear-gradient(120deg,color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent),transparent 62%);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 22%,transparent);animation:dspmRise .38s cubic-bezier(.22,1,.36,1) backwards}",
+			".dspm-strip-head{display:flex;align-items:flex-start;gap:10px;min-width:0}",
 			".dspm-strip-icon{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);color:var(--dsw-alias-brand-primary)}",
 			".dspm-strip-icon svg{width:13px;height:13px}",
-			".dspm-strip-copy{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-secondary)}",
+			".dspm-strip-copy{flex:1 1 auto;min-width:0;font-size:12px;line-height:1.55;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}",
 			".dspm-strip-copy b{color:var(--dsw-alias-label-primary);font-weight:500}",
-			".dspm-strip-hintmeta{color:var(--dsw-alias-label-tertiary)}",
+			".dspm-strip-hintmeta{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}",
+			".dspm-strip-controls{display:flex;align-items:center;gap:8px;padding-left:32px;min-width:0}",
 			".dspm-publish{all:unset;display:inline-flex;align-items:center;gap:6px;flex:none;height:26px;padding:0 12px;border-radius:9px;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1);font-size:12px;font-weight:500;cursor:pointer;transition:filter .16s ease,transform .12s ease,opacity .16s ease}",
 			".dspm-publish svg{width:13px;height:13px}",
 			".dspm-publish:hover{filter:brightness(1.1)}",
@@ -45,9 +47,10 @@ window.__ModuleLoader__.load({
 			".dspm-publish:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}",
 			".dspm-strip-link{all:unset;flex:none;font-size:11.5px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:color .16s ease}",
 			".dspm-strip-link:hover{color:var(--dsw-alias-brand-primary)}",
-			".dspm-strip-input{all:unset;flex:0 1 auto;min-width:0;height:26px;width:118px;box-sizing:border-box;padding:0 9px;border-radius:9px;font-size:12px;color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:box-shadow .16s ease}",
+			".dspm-strip-input{all:unset;flex:0 1 auto;min-width:0;height:26px;width:110px;box-sizing:border-box;padding:0 9px;border-radius:9px;font-size:12px;color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:box-shadow .16s ease}",
 			".dspm-strip-input::placeholder{color:var(--dsw-alias-label-tertiary)}",
 			".dspm-strip-input:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,transparent)}",
+			".dspm-strip-input.dspm-strip-note{flex:1 1 auto;min-width:120px;width:auto}",
 			".dspm-strip-select{width:86px;padding:0 4px 0 8px;cursor:pointer;color:var(--dsw-alias-label-secondary)}",
 			".dspm-strip-select:disabled{opacity:.5;cursor:default}",
 			".dspm-strip-close{all:unset;flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:background .16s ease,color .16s ease}",
@@ -337,72 +340,82 @@ window.__ModuleLoader__.load({
 			return jsxs("div", {
 				className: "dspm-strip",
 				children: [
-					jsx("span", { className: "dspm-strip-icon", children: jsx(SparkIcon, {}) }),
-					jsx("span", {
-						className: "dspm-strip-copy",
-						children: error !== null ? error : jsxs(react.Fragment, {
-							children: [
-								jsx("b", { children: t("strip.creator") }),
-								t(sent ? "strip.sent" : running ? "strip.busy" : "strip.offered", { name }),
-								jsx("span", { className: "dspm-strip-hintmeta", children: hint.path === "" ? "" : ` · ${hint.path}` })
-							]
-						})
-					}),
-					jsx("select", {
-						className: "dspm-strip-input dspm-strip-select",
-						value: kind,
-						"aria-label": t("strip.kind"),
-						disabled: sent,
-						onChange: (event) => setKind(event.target.value),
+					jsxs("div", {
+						className: "dspm-strip-head",
 						children: [
-							jsx("option", { value: "", children: t("strip.kind.auto") }),
-							jsx("option", { value: "plugin", children: t("strip.kind.plugin") }),
-							jsx("option", { value: "skill", children: t("strip.kind.skill") })
+							jsx("span", { className: "dspm-strip-icon", children: jsx(SparkIcon, {}) }),
+							jsx("span", {
+								className: "dspm-strip-copy",
+								children: error !== null ? error : jsxs(react.Fragment, {
+									children: [
+										jsx("b", { children: t("strip.creator") }),
+										t(sent ? "strip.sent" : running ? "strip.busy" : "strip.offered", { name }),
+										jsx("span", { className: "dspm-strip-hintmeta", children: hint.path === "" ? "" : ` · ${hint.path}` })
+									]
+								})
+							}),
+							jsx("button", {
+								type: "button",
+								className: "dspm-strip-close",
+								"aria-label": t("strip.dismiss"),
+								title: t("strip.dismiss"),
+								onClick: () => setDismissed(callId),
+								children: jsx(CloseIcon, {})
+							})
 						]
 					}),
-					jsx("input", {
-						type: "text",
-						className: "dspm-strip-input",
-						value: version,
-						placeholder: t("strip.version"),
-						"aria-label": t("strip.version"),
-						spellCheck: false,
-						onChange: (event) => setVersion(event.target.value)
-					}),
-					jsx("input", {
-						type: "text",
-						className: "dspm-strip-input",
-						value: note,
-						placeholder: t("strip.note"),
-						"aria-label": t("strip.note"),
-						onChange: (event) => setNote(event.target.value)
-					}),
-					jsx("button", {
-						type: "button",
-						className: "dspm-strip-link",
-						onClick: onOpenMarket,
-						children: t("strip.market")
-					}),
-					jsx("button", {
-						type: "button",
-						className: "dspm-publish",
-						"data-sent": String(sent),
-						disabled: running || sent,
-						onClick: () => {
-							void publish();
-						},
+					jsxs("div", {
+						className: "dspm-strip-controls",
 						children: [
-							jsx(sent ? TickIcon : SparkIcon, {}),
-							jsx("span", { children: t(sent ? "strip.published" : "strip.publish") })
+							jsx("select", {
+								className: "dspm-strip-input dspm-strip-select",
+								value: kind,
+								"aria-label": t("strip.kind"),
+								disabled: sent,
+								onChange: (event) => setKind(event.target.value),
+								children: [
+									jsx("option", { value: "", children: t("strip.kind.auto") }),
+									jsx("option", { value: "plugin", children: t("strip.kind.plugin") }),
+									jsx("option", { value: "skill", children: t("strip.kind.skill") })
+								]
+							}),
+							jsx("input", {
+								type: "text",
+								className: "dspm-strip-input",
+								value: version,
+								placeholder: t("strip.version"),
+								"aria-label": t("strip.version"),
+								spellCheck: false,
+								onChange: (event) => setVersion(event.target.value)
+							}),
+							jsx("input", {
+								type: "text",
+								className: "dspm-strip-input dspm-strip-note",
+								value: note,
+								placeholder: t("strip.note"),
+								"aria-label": t("strip.note"),
+								onChange: (event) => setNote(event.target.value)
+							}),
+							jsx("button", {
+								type: "button",
+								className: "dspm-strip-link",
+								onClick: onOpenMarket,
+								children: t("strip.market")
+							}),
+							jsx("button", {
+								type: "button",
+								className: "dspm-publish",
+								"data-sent": String(sent),
+								disabled: running || sent,
+								onClick: () => {
+									void publish();
+								},
+								children: [
+									jsx(sent ? TickIcon : SparkIcon, {}),
+									jsx("span", { children: t(sent ? "strip.published" : "strip.publish") })
+								]
+							})
 						]
-					}),
-					jsx("button", {
-						type: "button",
-						className: "dspm-strip-close",
-						"aria-label": t("strip.dismiss"),
-						title: t("strip.dismiss"),
-						onClick: () => setDismissed(callId),
-						children: jsx(CloseIcon, {})
 					})
 				]
 			});
