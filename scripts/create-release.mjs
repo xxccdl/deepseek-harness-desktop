@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.6.0";
+const tag = process.argv[2] ?? "v1.6.1";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,19 +19,11 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
-  "## 1.6.0",
+  "## 1.6.1",
   "",
-  "- **插件市场**：应用内新增插件/技能商店，可浏览、安装、卸载，装完即用无需重启。安装会写入 profile 的 patch 层并通过 loader 热挂载，任一校验失败整体回滚，不影响正在运行的应用",
-  "- **发布技能**：市场同时收纳「技能」（只含 SKILL.md，不加载代码，安装后出现在技能列表）。发布时可显式指定**版本号**与**更新说明**，类型支持 插件 / 技能 / 留空自动判断",
-  "- **一键卸载**：详情抽屉与「管理」弹窗都提供卸载，两段式确认（首点变为「确认卸载？」，2.6 秒内再点才执行）；卸载会摘掉 patch 行、卸载运行时条目并删除目录",
-  "- **创造模式发布条**：AI 写完插件/技能后调用 `ask-publish-plugin` 询问，输入框上方出现发布条可选版本与类型；用户确认后 AI 才真正发布",
-  "- **侧栏时钟**：新增世界时钟插件（在插件市场可安装）——侧栏底部常驻秒级时间，点开可看多时区对照、跨日标记与倒计时",
-  "- **弹层配色跟随主题**：快捷指令、欢迎向导、代码片段三个弹层的配色改用 harness 设计令牌，浅色窗口下不再出现突兀的深色面板",
-  "- **上下文统计条**：输入框上方的统计条现在按 token 构成（缓存命中 / 新增输入 / 缓存写入 / 输出）着色，比例即真实用量",
-  "- **余额显示更准确**：修复 DeepSeek 提供方路由名不匹配导致余额取不到的问题；余额查询失败会在提示里说明原因，不再与「无余额接口」混淆，也不会把未上报的余额显示成 ¥0.00",
-  "- **同步上游**：桌面 fork 已 rebase 到 dsh 0.1.2-alpha.2",
-  "- **修复**：世界时钟与内置用量条争抢同一单占槽位，导致装上后毫无反应（现已移入列表槽位，与设置项并排）",
-  "- **修复**：插件市场提示条的图标未受尺寸约束，被拉伸成整屏大小的叉",
+  "- **修复启动失败（1.6.0 装不上）**：打包时只收集 `package.json` 的依赖闭包，安装包漏掉了 48 个 `@deepseek-ai` 包（`dsh-jobs`、`dsh-settings`，以及整个桌面插件层），启动即报 `plugin tree failed to load` / 「DeepSeek Harness failed to start」。现在构建会把缺失的包补齐，安装包里的插件集与开发树逐一对应",
+  "- **修复干净机器上的插件解析**：fork 挂载的 26 个行包（记忆、用量、视觉、插件市场、世界时钟等）不在任何 `package.json` 的依赖里，此前只有跑过 `scripts/install-plugins.mjs` 的开发机才解析得到。新增构建钩子 `scripts/after-pack.cjs`，把随包发布的插件集合写进打包后的 dsh 清单，启动时的 module fallback 会为所有 profile 行建立链接",
+  "- **修复发布条拥挤**：创造模式的「插件发布」条改为两行布局，提示文案可换行，版本号 / 类型 / 更新说明不再被截断",
   "",
   "安装包（NSIS）与便携版见下方 Assets。"
 ].join("\n");
