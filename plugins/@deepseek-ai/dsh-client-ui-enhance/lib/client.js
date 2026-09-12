@@ -6,43 +6,65 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		//#region styles
 		const css = [
-			".dshe-overlay{position:fixed;inset:0;z-index:9990;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);animation:dsheFade .14s ease}",
+			".dshe-overlay{position:fixed;inset:0;z-index:9990;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;background:rgba(0,0,0,.32);backdrop-filter:blur(4px);animation:dsheFade var(--dsm-t-fast,140ms) var(--dsm-ease-out,ease)}",
 			".dshe-overlay[hidden]{display:none}",
 			"@keyframes dsheFade{from{opacity:0}to{opacity:1}}",
-			".dshe-panel{width:min(640px,92vw);max-height:64vh;display:flex;flex-direction:column;background:#16181f;border:1px solid rgba(255,255,255,.1);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.5);overflow:hidden;color:#e6e9f0;font:14px/1.5 system-ui,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}",
-			".dshe-panel-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;color:rgba(230,233,240,.6)}",
-			".dshe-panel-header b{color:#e6e9f0;font-size:14px;font-weight:600}",
-			".dshe-panel-header .dshe-kbd{margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid rgba(255,255,255,.16);border-radius:6px;color:rgba(230,233,240,.55)}",
-			".dshe-input{margin:12px 16px 8px;padding:9px 12px;border:1px solid rgba(255,255,255,.14);border-radius:9px;background:rgba(255,255,255,.05);color:#e6e9f0;font:14px/1.4 inherit;outline:0;width:calc(100% - 32px);box-sizing:border-box}",
-			".dshe-input:focus{border-color:#7c8cf8}",
-			".dshe-list{overflow-y:auto;padding:4px 8px 10px;flex:1}",
-			".dshe-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;white-space:nowrap;overflow:hidden}",
-			".dshe-item:hover,.dshe-item.dshe-active{background:rgba(124,140,248,.14)}",
+			"@keyframes dsheRise{from{opacity:0;transform:translateY(-6px) scale(.99)}to{opacity:1;transform:none}}",
+			"@keyframes dsheToast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}",
+			".dshe-panel{box-sizing:border-box;width:min(640px,92vw);max-height:64vh;display:flex;flex-direction:column;background:var(--dsw-specific-menu);border:1px solid var(--dsw-alias-border-l1);border-radius:16px;box-shadow:var(--dsw-shadow-lv3);overflow:hidden;color:var(--dsw-alias-label-primary);font:14px/1.55 system-ui,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;animation:dsheRise var(--dsm-t-base,200ms) var(--dsm-ease-out,ease)}",
+			".dshe-panel-header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--dsw-alias-border-l2);font-size:13px;color:var(--dsw-alias-label-tertiary)}",
+			".dshe-panel-header b{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:600}",
+			".dshe-panel-header .dshe-kbd{margin-left:auto;font-size:11px;padding:3px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-tertiary)}",
+			".dshe-input{margin:12px 16px 8px;padding:9px 12px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-primary);font:14px/1.4 inherit;outline:0;width:calc(100% - 32px);box-sizing:border-box;transition:border-color var(--dsm-t-fast,140ms) ease,box-shadow var(--dsm-t-fast,140ms) ease}",
+			".dshe-input::placeholder{color:var(--dsw-alias-label-tertiary)}",
+			".dshe-input:focus{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-alias-state-business-primary) 16%,transparent)}",
+			".dshe-list{overflow-y:auto;padding:6px 8px 10px;flex:1}",
+			".dshe-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;white-space:nowrap;overflow:hidden;transition:background-color var(--dsm-t-fast,140ms) ease}",
+			".dshe-item:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+			".dshe-item.dshe-active{background:var(--dsw-alias-interactive-bg-hover);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1)}",
 			".dshe-item-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}",
-			".dshe-item-title{font-size:13.5px;color:#e6e9f0;overflow:hidden;text-overflow:ellipsis}",
-			".dshe-item-sub{font-size:11.5px;color:rgba(230,233,240,.45);overflow:hidden;text-overflow:ellipsis}",
-			".dshe-item-tag{flex:none;font-size:11px;color:#7c8cf8;background:rgba(124,140,248,.12);border-radius:6px;padding:2px 7px}",
-			".dshe-empty{padding:28px 0;text-align:center;color:rgba(230,233,240,.4);font-size:13px}",
+			".dshe-item-title{font-size:13.5px;color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis}",
+			".dshe-item-sub{font-size:11.5px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis}",
+			".dshe-item-tag{flex:none;font-size:11px;color:var(--dsw-alias-state-business-primary);background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 12%,transparent);border-radius:7px;padding:2px 7px}",
+			".dshe-empty{padding:30px 0;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:13px}",
 			".dshe-help{padding:8px 16px 16px;overflow-y:auto}",
-			".dshe-help-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px}",
+			".dshe-help-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l2);font-size:13.5px}",
 			".dshe-help-row:last-child{border-bottom:0}",
-			".dshe-help-keys{display:flex;gap:6px}",
-			".dshe-help-keys span{font-size:11.5px;padding:2px 8px;border:1px solid rgba(255,255,255,.16);border-radius:6px;color:#c9d2ff;background:rgba(124,140,248,.1)}",
-			".dshe-help-desc{color:rgba(230,233,240,.75)}",
-			".dshe-help-group{margin:14px 0 4px;font-size:11.5px;color:#7c8cf8;letter-spacing:.08em;text-transform:uppercase}",
+			".dshe-help-keys{display:flex;gap:6px;flex:none}",
+			".dshe-help-keys span{font:11.5px/1.5 var(--ds-font-family-code);padding:3px 8px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform)}",
+			".dshe-help-desc{color:var(--dsw-alias-label-secondary)}",
+			".dshe-help-group{margin:16px 0 4px;font-size:11.5px;color:var(--dsw-alias-state-business-primary);letter-spacing:.08em;text-transform:uppercase}",
 			/* code-block toolbar */
 			".dshe-pre{position:relative}",
-			".dshe-toolbar{position:absolute;top:6px;right:8px;display:flex;gap:4px;z-index:5;opacity:0;transition:opacity .15s ease}",
-			".dshe-pre:hover .dshe-toolbar{opacity:1}",
-			".dshe-tb-btn{all:initial;font:11px/1 system-ui,sans-serif !important;color:rgba(230,233,240,.75) !important;background:rgba(20,22,30,.85) !important;border:1px solid rgba(255,255,255,.14) !important;border-radius:6px !important;padding:4px 8px !important;cursor:pointer}",
-			".dshe-tb-btn:hover{color:#fff !important;border-color:#7c8cf8 !important}",
-			".dshe-pre.dshe-collapsed{max-height:72px;overflow:hidden}",
-			".dshe-pre.dshe-collapsed::after{content:'';position:absolute;inset:auto 0 0 0;height:44px;background:linear-gradient(transparent,#0d0f14)}",
+			".dshe-toolbar{position:absolute;top:8px;right:10px;z-index:5;display:flex;align-items:center;gap:6px;opacity:0;transform:translateY(-2px);transition:opacity var(--dsm-t-fast,140ms) ease,transform var(--dsm-t-fast,140ms) var(--dsm-ease-out,ease)}",
+			".dshe-pre:hover .dshe-toolbar,.dshe-toolbar:focus-within{opacity:1;transform:none}",
+			".dshe-tb-btn{all:initial;font:11.5px/1 system-ui,sans-serif !important;color:var(--dsw-alias-label-secondary) !important;background:var(--dsw-specific-menu) !important;border:1px solid var(--dsw-alias-border-l1) !important;border-radius:8px !important;padding:5px 9px !important;cursor:pointer;box-shadow:var(--dsw-shadow-lv1);transition:color var(--dsm-t-fast,140ms) ease,border-color var(--dsm-t-fast,140ms) ease,transform var(--dsm-t-fast,140ms) var(--dsm-ease-out,ease)}",
+			".dshe-tb-btn:hover{color:var(--dsw-alias-label-primary) !important;border-color:var(--dsw-alias-state-business-primary) !important}",
+			".dshe-tb-btn:active{transform:scale(.96)}",
+			".dshe-lang{position:absolute;top:9px;left:14px;font:11px/1 var(--ds-font-family-code);letter-spacing:.06em;text-transform:uppercase;color:var(--dsw-alias-label-tertiary);opacity:0;pointer-events:none;transition:opacity var(--dsm-t-fast,140ms) ease}",
+			".dshe-pre:hover .dshe-lang{opacity:1}",
+			".dshe-pre.dshe-collapsed{max-height:96px;overflow:hidden}",
+			".dshe-pre.dsche-collapsed::after{content:'';position:absolute;inset:auto 0 0 0;height:52px;background:linear-gradient(transparent,var(--dsw-alias-markdown-code-block))}",
 			/* mermaid */
-			".dshe-mermaid{border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;margin:8px 0;background:rgba(255,255,255,.02);overflow:auto;text-align:center}",
+			".dshe-mermaid{border:1px solid var(--dsw-alias-border-l1);border-radius:12px;padding:16px;margin:10px 0;background:var(--dsw-alias-bg-module-platform);overflow:auto;text-align:center}",
 			".dshe-mermaid svg{max-width:100%}",
-			".dshe-mermaid-err{font:12px/1.6 system-ui,sans-serif;color:#e08c8c;text-align:left}",
-			".dshe-src-toggle{all:initial;display:inline-flex;font:11px/1 system-ui,sans-serif !important;color:rgba(230,233,240,.6) !important;cursor:pointer;padding:6px 4px 0;user-select:none}"
+			".dshe-mermaid-err{font:12px/1.6 system-ui,sans-serif;color:var(--dsw-alias-state-error-primary);text-align:left}",
+			".dshe-src-toggle{all:initial;display:inline-flex;font:11.5px/1 system-ui,sans-serif !important;color:var(--dsw-alias-label-tertiary) !important;cursor:pointer;padding:6px 2px 0;user-select:none;transition:color var(--dsm-t-fast,140ms) ease}",
+			".dshe-src-toggle:hover{color:var(--dsw-alias-label-secondary) !important}",
+			/* export toast */
+			".dshe-toast{position:fixed;bottom:28px;left:50%;z-index:9999;display:flex;align-items:center;gap:9px;padding:10px 18px;border-radius:12px;background:var(--dsw-specific-menu);border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-primary);font:13px/1.4 system-ui,sans-serif;box-shadow:var(--dsw-shadow-lv3);animation:dsheToast var(--dsm-t-base,200ms) var(--dsm-ease-out,ease) both}",
+			".dshe-toast[data-tone='error']{border-color:var(--dsw-alias-state-error-primary)}",
+			/* Prose detail. The shell already owns the markdown scale (headings, list
+			   rhythm, rules), so these only add the affordances it leaves flat: a
+			   scannable table, a quote that reads as a quotation, media that is part
+			   of the column rather than pasted over it, and a link that admits it is
+			   one on approach. Selectors are the shell's own CSS-module names. */
+			"._markdown_1xv42_5 ._tableScroll_1xv42_174 th{background:var(--dsw-alias-bg-module-platform);font-weight:600;text-align:left}",
+			"._markdown_1xv42_5 ._tableScroll_1xv42_174 tbody tr:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+			"._markdown_1xv42_5 blockquote{background:var(--dsw-alias-bg-module-platform);border-radius:0 10px 10px 0;padding:2px 14px 2px 14px}",
+			"._markdown_1xv42_5 img{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--dsw-alias-border-l1)}",
+			"._markdown_1xv42_5 a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}",
+			"@media (prefers-reduced-motion: reduce){.dshe-overlay,.dshe-panel,.dshe-toast{animation:none}.dshe-toolbar,.dshe-input,.dshe-item,.dshe-tb-btn,.dshe-lang,.dshe-src-toggle{transition:none}}"
 		].join("");
 		const tagId = "@deepseek-ai/dsh-client-ui-enhance/styles";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
@@ -266,7 +288,6 @@ window.__ModuleLoader__.load({
 					{ keys: ["Ctrl", "E"], desc: "导出当前会话为 Markdown" },
 					{ keys: ["Ctrl", "D", "S"], desc: "呼出/隐藏快捷输入条（任意界面）" },
 					{ keys: ["Ctrl", "Alt", "B"], desc: "老板键：立即隐藏应用（再按恢复）" },
-					{ keys: ["Ctrl", "Alt", "T"], desc: "窗口置顶开关" },
 					{ keys: ["Ctrl", "+ / - / 0"], desc: "界面缩放 放大/缩小/重置" }
 				]
 			},
@@ -491,7 +512,8 @@ window.__ModuleLoader__.load({
 			text.textContent = error === undefined ? "会话已导出为 Markdown" : "导出失败: " + error;
 			panel.innerHTML = icon;
 			panel.appendChild(text);
-			panel.style.cssText = "position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:9px;padding:10px 18px;border-radius:10px;background:#1b1e27;border:1px solid rgba(255,255,255,.14);color:#e6e9f0;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.4)";
+			panel.className = "dshe-toast";
+			if (error !== undefined) panel.dataset.tone = "error";
 			document.body.appendChild(panel);
 			setTimeout(() => panel.remove(), 2600);
 		}
@@ -519,9 +541,12 @@ window.__ModuleLoader__.load({
 					script.async = true;
 					script.onload = () => {
 						if (window.mermaid === undefined) { index += 1; tryNext(); return; }
-						const dark = document.documentElement.getAttribute("data-theme") === "dark"
-							|| document.body.classList.contains("dark")
-							|| window.matchMedia("(prefers-color-scheme: dark)").matches;
+						// The harness states its resolved scheme in exactly two places —
+						// the root's colorScheme and the body's dark attribute (see the
+						// theme presenter). Class names and the OS preference are not
+						// it, which is why diagrams used to stay light inside a dark app.
+						const dark = document.documentElement.style.colorScheme === "dark"
+							|| document.body.hasAttribute("data-ds-dark-theme");
 						window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose", theme: dark ? "dark" : "default" });
 						resolve(window.mermaid);
 					};
@@ -591,6 +616,15 @@ window.__ModuleLoader__.load({
 				pre.dataset.dshe = "1";
 				pre.classList.add("dshe-pre");
 				const lang = langOf(code);
+				// A quiet label in the block's own top-left corner: it answers "what
+				// am I reading" without competing with the code, and it stays out of
+				// the way until the block is hovered.
+				if (lang !== "" && lang !== "mermaid") {
+					const chip = document.createElement("span");
+					chip.className = "dshe-lang";
+					chip.textContent = lang;
+					pre.appendChild(chip);
+				}
 				const toolbar = document.createElement("div");
 				toolbar.className = "dshe-toolbar";
 				const mkBtn = (label, onClick) => {

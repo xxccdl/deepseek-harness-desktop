@@ -3562,11 +3562,12 @@ window.__ModuleLoader__.load({
 		const css$2 = [
 			/* ── the strip ── */
 			".-NDN2W_root{display:flex;align-items:center;justify-content:center;gap:10px;max-width:var(--dsh-chat-content-width);box-sizing:border-box;width:100%;padding:5px calc(var(--dsh-composer-side-clearance) + 16px) 0px;margin:0 auto;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));color:var(--dsw-alias-label-tertiary);cursor:default}",
-			/* ── the one bar: how full the context window is ── */
-			".-NDN2W_bar{position:relative;flex:none;width:86px;height:5px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--dsw-alias-label-tertiary) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-label-tertiary) 12%,transparent);transition:box-shadow .3s ease}",
-			".-NDN2W_part{position:absolute;left:0;top:0;bottom:0;border-radius:999px;transition:width .52s cubic-bezier(.22,1,.36,1),background .3s ease,box-shadow .3s ease}",
-			".-NDN2W_bar[data-tone='warn'] .-NDN2W_part{box-shadow:0 0 8px color-mix(in srgb,var(--dsw-alias-state-warn-primary) 45%,transparent)}",
-			".-NDN2W_bar[data-tone='danger'] .-NDN2W_part{box-shadow:0 0 10px color-mix(in srgb,var(--dsw-alias-state-error-primary) 55%,transparent);animation:dshStatsBreath 2.2s ease-in-out infinite}",
+			/* ── the one bar: the token mix the legend names, in the same palette;
+			   the context reading it used to draw stays in the headline text ── */
+			".-NDN2W_bar{display:flex;position:relative;flex:none;width:110px;height:5px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--dsw-alias-label-tertiary) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-label-tertiary) 12%,transparent);transition:box-shadow .3s ease}",
+			".-NDN2W_part{flex:0 0 auto;height:100%;transition:width .52s cubic-bezier(.22,1,.36,1),background .3s ease}",
+			".-NDN2W_bar[data-tone='warn']{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-state-warn-primary) 35%,transparent),0 0 8px color-mix(in srgb,var(--dsw-alias-state-warn-primary) 45%,transparent)}",
+			".-NDN2W_bar[data-tone='danger']{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-state-error-primary) 40%,transparent),0 0 10px color-mix(in srgb,var(--dsw-alias-state-error-primary) 55%,transparent);animation:dshStatsBreath 2.2s ease-in-out infinite}",
 			".-NDN2W_bar[data-tone='danger']:after{content:'';position:absolute;inset:0;border-radius:999px;pointer-events:none;background:linear-gradient(100deg,transparent 28%,rgba(255,255,255,.6) 50%,transparent 72%);background-size:220% 100%;animation:dshStatsSheen 1.9s linear infinite}",
 			"@keyframes dshStatsBreath{0%,100%{opacity:1}50%{opacity:.6}}",
 			"@keyframes dshStatsSheen{from{background-position:170% 0}to{background-position:-170% 0}}",
@@ -3589,7 +3590,7 @@ window.__ModuleLoader__.load({
 			/* Everything above is decoration: with reduced motion the strip keeps its
 			   states and drops only the travel. */
 			"@keyframes dshStatsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}",
-			"@media (prefers-reduced-motion: reduce){.-NDN2W_part{transition:none}.-NDN2W_panel{animation:none}.-NDN2W_text{transition:none}.-NDN2W_bar[data-tone='danger'] .-NDN2W_part{animation:none}.-NDN2W_bar[data-tone='danger']:after{animation:none;opacity:0}}"
+			"@media (prefers-reduced-motion: reduce){.-NDN2W_part{transition:none}.-NDN2W_panel{animation:none}.-NDN2W_text{transition:none}.-NDN2W_bar[data-tone='danger']{animation:none}.-NDN2W_bar[data-tone='danger']:after{animation:none;opacity:0}}"
 		].join("");
 		const tagId$2 = "@deepseek-ai/dsh-client-ui-chat/StatsLine.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
@@ -3843,7 +3844,7 @@ window.__ModuleLoader__.load({
 				onMouseEnter: () => hover(true),
 				onMouseLeave: () => hover(false),
 				children: [
-					hasContext && (0, react_jsx_runtime.jsx)("span", {
+					hasContext && !hasMix && (0, react_jsx_runtime.jsx)("span", {
 						className: StatsLine_module_css_default.bar,
 						"data-tone": band,
 						"aria-hidden": true,
@@ -3854,6 +3855,21 @@ window.__ModuleLoader__.load({
 								background: `var(${tone})`
 							}
 						})
+					}),
+					hasMix && (0, react_jsx_runtime.jsx)("span", {
+						className: StatsLine_module_css_default.bar,
+						"data-tone": band,
+						"aria-hidden": true,
+						// The bar draws the same composition the panel's legend names:
+						// green cached prefix, blue fresh input, amber cache write,
+						// neutral output — proportional to the tokens actually spent.
+						children: buckets.map((bucket) => (0, react_jsx_runtime.jsx)("span", {
+							className: StatsLine_module_css_default.part,
+							style: {
+								width: `${String(bucket.value / bucketTotal * 100)}%`,
+								background: `var(${bucket.color})`
+							}
+						}, bucket.key))
 					}),
 					(0, react_jsx_runtime.jsx)("span", {
 						className: StatsLine_module_css_default.text,

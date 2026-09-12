@@ -24,7 +24,9 @@ const state = {
   embedded: false,
   bridged: false,
   theme: null,
-  pending: new Map()
+  pending: new Map(),
+  /** The plugin the drawer is showing, so its version list can be re-rendered. */
+  detail: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -45,10 +47,15 @@ const els = {
   detailMeta: $("detail-meta"),
   detailInstall: $("detail-install"),
   detailDownload: $("detail-download"),
+  detailUninstall: $("detail-uninstall"),
   detailStatus: $("detail-status"),
   detailStats: $("detail-stats"),
   detailReadme: $("detail-readme"),
+  versionSection: $("version-section"),
+  versionHint: $("version-hint"),
+  versions: $("detail-versions"),
   modal: $("manage-modal"),
+  manageInstalled: $("manage-installed"),
   toast: $("toast")
 };
 
@@ -177,6 +184,33 @@ function toast(text, tone = "") {
   toastTimer = setTimeout(() => { els.toast.hidden = true; }, tone === "bad" ? 6000 : 3600);
 }
 
+/** "3 天前" for a publish date, falling back to the date itself. */
+function sinceText(iso) {
+  const at = Date.parse(String(iso ?? ""));
+  if (!Number.isFinite(at)) return "—";
+  const minutes = Math.floor((Date.now() - at) / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  return new Date(at).toLocaleDateString("zh-CN");
+}
+
+/** Archive size, rounded the way a reader would say it. */
+function sizeText(bytes) {
+  const value = Number(bytes ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  return value < 1024 * 1024 ? `${Math.max(1, Math.round(value / 1024))} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** Save one archive (the latest by default) to disk. */
+function downloadVersion(id, version) {
+  const query = version === undefined || version === "" ? "" : `?version=${encodeURIComponent(version)}`;
+  location.href = `/api/plugins/${encodeURIComponent(id)}/download${query}`;
+}
+
 /** Installed record for an id, if the app told us about it. */
 function installedOf(id) {
   return state.installed.get(id);
@@ -209,6 +243,10 @@ function render() {
   renderFeatured();
   renderChips();
   renderGrid();
+  // The drawer's version list carries the "已安装" marker, so it is a derived
+  // view too — an install that finished while the drawer was open has to move
+  // the marker instead of leaving it on the old row.
+  if (!els.drawer.hidden && state.detail !== null) renderVersions();
   els.search.value = state.q;
   els.sort.value = state.sort;
   for (const tab of document.querySelectorAll(".tab")) {
@@ -270,9 +308,13 @@ function renderGrid() {
       const action = state_ === "installed"
         ? `<button class="install-btn" type="button" data-state="installed" data-install="${esc(plugin.id)}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>已安装</button>`
         : `<button class="install-btn" type="button" data-install="${esc(plugin.id)}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>${state_ === "update" ? "更新" : "安装"}</button>`;
-      const meta = [plugin.author ?? "匿名作者", `v${plugin.version}`, plugin.category ?? "其他", `${Number(plugin.downloads ?? 0)} 次下载`]
-        .map((piece) => `<span>${esc(piece)}</span>`)
-        .join("");
+      // The meta line answers "which one am I getting, and how far behind am I"
+      // before the reader has to open anything.
+      const pieces = [plugin.author ?? "匿名作者", `v${plugin.version}`];
+      if (Number(plugin.versionCount ?? 1) > 1) pieces.push(`${plugin.versionCount} 个版本`);
+      if (installed !== undefined) pieces.push(`已装 v${installed.version}`);
+      pieces.push(plugin.category ?? "其他", `${Number(plugin.downloads ?? 0)} 次下载`);
+      const meta = pieces.map((piece) => `<span>${esc(piece)}</span>`).join("");
       return `<article class="card" data-open="${esc(plugin.id)}" style="animation-delay:${Math.min(index, 12) * 24}ms;--tile-tint:${tintOf(plugin.category ?? "其他")}">
         <div class="card-icon" aria-hidden="true">${esc(glyphOf(plugin))}</div>
         <div class="card-body">
@@ -301,6 +343,8 @@ async function openDetail(id) {
   delete els.detailInstall.dataset.id;
   els.detailInstall.disabled = true;
   els.detailDownload.onclick = null;
+  els.detailUninstall.hidden = true;
+  disarm(els.detailUninstall, "卸载");
   els.detailReadme.innerHTML = "<p>正在读取…</p>";
   try {
     const response = await fetch(`/api/plugins/${encodeURIComponent(id)}`);
@@ -314,37 +358,124 @@ async function openDetail(id) {
   els.detailIcon.textContent = glyphOf(plugin);
   els.detailIcon.style.setProperty("--tile-tint", tintOf(plugin.category ?? "其他"));
   els.detailTitle.textContent = plugin.title;
-  els.detailMeta.textContent = `${plugin.packageName ?? id} · v${plugin.version} · ${plugin.category ?? "其他"} · ${plugin.author ?? "匿名作者"}`;
+  const count = Number(plugin.versionCount ?? (plugin.versions ?? []).length ?? 1);
+  const kindLabel = plugin.kind === "skill" ? "技能" : "插件";
+  els.detailMeta.textContent = [
+    kindLabel,
+    plugin.packageName ?? id,
+    `v${plugin.version}`,
+    count > 1 ? `${count} 个版本` : "",
+    plugin.category ?? "其他",
+    plugin.author ?? "匿名作者"
+  ].filter((piece) => piece !== "").join(" · ");
   const installed = installedOf(plugin.id);
   const same = installed !== undefined && installed.version === plugin.version;
-  els.detailInstall.textContent = same ? "已安装" : installed === undefined ? "安装" : `更新到 v${plugin.version}`;
+  els.detailInstall.textContent = same ? "已安装最新版" : installed === undefined ? "安装" : `更新到 v${plugin.version}`;
   els.detailInstall.dataset.state = same ? "installed" : "";
   els.detailInstall.disabled = false;
   els.detailInstall.dataset.id = plugin.id;
   els.detailInstall.dataset.version = plugin.version;
-  els.detailDownload.onclick = () => {
-    location.href = `/api/plugins/${encodeURIComponent(plugin.id)}/download`;
-  };
+  els.detailUninstall.hidden = installed === undefined;
+  els.detailUninstall.disabled = false;
+  els.detailUninstall.dataset.id = plugin.id;
+  disarm(els.detailUninstall, "卸载");
+  els.detailDownload.onclick = () => { downloadVersion(plugin.id, ""); };
   const stats = [
-    ["版本", `v${plugin.version}`],
+    ["最新版本", `v${plugin.version}`],
+    ["版本数", String(count)],
     ["下载", String(plugin.downloads ?? 0)],
-    ["体积", plugin.size === undefined ? "—" : `${Math.max(1, Math.round(plugin.size / 1024))} KB`],
+    ["体积", sizeText(plugin.size)],
     ["分类", plugin.category ?? "其他"],
     ["作者", plugin.author ?? "匿名作者"]
   ];
+  if (installed !== undefined) stats.push(["已安装", `v${installed.version}`]);
   if (plugin.homepage !== undefined && plugin.homepage !== "") stats.push(["主页", plugin.homepage]);
   els.detailStats.innerHTML = stats.map(([label, value]) => `<div><b>${esc(value)}</b>${esc(label)}</div>`).join("");
-  const versions = (plugin.versions ?? []).slice(-6).reverse();
-  els.detailReadme.innerHTML =
-    markdown(plugin.readme ?? plugin.description ?? "") +
-    (versions.length > 0 ? `<h4>版本历史</h4><ul>${versions.map((entry) => `<li>v${esc(entry.version)} · ${new Date(entry.publishedAt).toLocaleDateString("zh-CN")}${entry.note === "" || entry.note === undefined ? "" : ` — ${esc(entry.note)}`}</li>`).join("")}</ul>` : "");
+  state.detail = plugin;
+  const skillHint = plugin.kind === "skill"
+    ? "<p>这是一份<code>技能</code>：安装后出现在技能列表（<code>/</code> 可查看），由 SKILL.md 的 frontmatter 描述何时使用。它不加载代码，卸载即删目录。</p>"
+    : "";
+  els.detailReadme.innerHTML = skillHint + (markdown(plugin.readme ?? plugin.description ?? "") || "<p>作者还没有填写说明。</p>");
+  renderVersions();
   history.replaceState(null, "", `/plugin/${plugin.id}${location.search}`);
+}
+
+/**
+ * The version panel.
+ *
+ * The history is not decoration. A release that regresses has to be pinnable
+ * back to the previous one without waiting for the author, so every row carries
+ * its own install and download action, and the row the user is actually running
+ * says so rather than leaving them to compare numbers.
+ */
+function renderVersions() {
+  const plugin = state.detail;
+  const versions = Array.isArray(plugin?.versions) ? plugin.versions : [];
+  els.versionSection.hidden = versions.length === 0;
+  if (versions.length === 0) return;
+  const installed = installedOf(plugin.id);
+  els.versionHint.textContent = installed === undefined
+    ? `共 ${versions.length} 个版本`
+    : `共 ${versions.length} 个版本 · 已装 v${installed.version}`;
+  els.versions.innerHTML = versions
+    .map((entry) => {
+      const isLatest = entry.version === plugin.version;
+      const isInstalled = installed !== undefined && installed.version === entry.version;
+      const tags = [
+        isLatest ? '<em class="v-tag">最新</em>' : "",
+        isInstalled ? '<em class="v-tag v-on">当前安装</em>' : ""
+      ].join("");
+      const note = entry.note === undefined || entry.note === ""
+        ? ""
+        : `<p class="version-note">${esc(entry.note)}</p>`;
+      const facts = [sinceText(entry.publishedAt), sizeText(entry.size)];
+      if (Number(entry.files ?? 0) > 0) facts.push(`${entry.files} 个文件`);
+      return `<li class="version"${isInstalled ? ' data-on="1"' : ""}>
+        <div class="version-main">
+          <div class="version-line"><span class="version-no">v${esc(entry.version)}</span>${tags}</div>
+          <div class="version-sub">${facts.map((fact) => `<span>${esc(fact)}</span>`).join("")}</div>
+          ${note}
+        </div>
+        <div class="version-actions">
+          <button class="mini-btn" type="button" data-version-install="${esc(entry.version)}"${isInstalled ? " disabled" : ""}>${isInstalled ? "已安装" : "安装"}</button>
+          <button class="mini-btn" type="button" data-version-download="${esc(entry.version)}">下载</button>
+        </div>
+      </li>`;
+    })
+    .join("");
 }
 
 /** Close the detail drawer. */
 function closeDetail() {
   els.drawer.hidden = true;
+  state.detail = null;
   history.replaceState(null, "", location.pathname.replace(/^\/plugin\/[^/]+$/, "/") + location.search);
+}
+
+/**
+ * The manage modal's installed list: every market install, latest first by
+ * name, each with its own two-step uninstall. Titles come from the install
+ * record the host broadcast; when the host did not send one (an old context),
+ * the id stands in.
+ */
+function renderInstalled() {
+  const entries = [...state.installed.values()].sort((a, b) => a.id.localeCompare(b.id));
+  if (entries.length === 0) {
+    els.manageInstalled.innerHTML = '<p class="manage-empty">还没有从市场安装的插件或技能。</p>';
+    return;
+  }
+  els.manageInstalled.innerHTML = entries
+    .map((entry) => {
+      const kindLabel = entry.kind === "skill" ? "技能" : "插件";
+      return `<div class="manage-row">
+        <div class="manage-main">
+          <span class="manage-title">${esc(entry.title ?? entry.id)}</span>
+          <span class="manage-sub">${esc(kindLabel)} · v${esc(entry.version ?? "")}</span>
+        </div>
+        <button class="uninstall-btn" type="button" data-manage-uninstall="${esc(entry.id)}">卸载</button>
+      </div>`;
+    })
+    .join("");
 }
 
 /** Ask the host app to install a plugin. */
@@ -358,6 +489,54 @@ function install(id, version) {
   state.pending.set(id, version ?? "");
   post({ type: "dsh-market:install", id, version });
   toast(`正在安装 ${id}…`);
+}
+
+/**
+ * Ask the host app to uninstall a plugin or skill. The host drops the patch
+ * row, unmounts the live entry, and deletes the directory; a skill is just the
+ * directory. Results come back through {@link onMessage}.
+ */
+function uninstall(id) {
+  if (!state.embedded) {
+    toast("请在 DeepSeek Harness 客户端里打开插件市场再卸载", "bad");
+    return;
+  }
+  post({ type: "dsh-market:uninstall", id });
+  toast(`正在卸载 ${id}…`);
+}
+
+/**
+ * Two-step arm/confirm for a destructive button: the first click arms it
+ * ("确认卸载"), the second within the window acts, and arming decays so a
+ * stray click never deletes anything. Both the detail drawer and the manage
+ * list share this.
+ */
+const ARM_MS = 2600;
+const armTimers = new WeakMap();
+function armDestructive(button, onConfirm) {
+  if (button.dataset.arm === "1") {
+    button.dataset.arm = "";
+    const timer = armTimers.get(button);
+    if (timer !== undefined) clearTimeout(timer);
+    button.textContent = button.dataset.armLabel ?? "卸载";
+    onConfirm();
+    return;
+  }
+  button.dataset.arm = "1";
+  button.dataset.armLabel = button.textContent;
+  button.textContent = "确认卸载？";
+  armTimers.set(button, setTimeout(() => {
+    button.dataset.arm = "";
+    button.textContent = button.dataset.armLabel ?? "卸载";
+  }, ARM_MS));
+}
+
+/** Restore a button left armed (an outside render or a fresh detail opening). */
+function disarm(button, label) {
+  button.dataset.arm = "";
+  const timer = armTimers.get(button);
+  if (timer !== undefined) clearTimeout(timer);
+  if (label !== undefined) button.textContent = label;
 }
 
 /** Reflect an install state on every button that shows this id. */
@@ -434,7 +613,22 @@ function onMessage(event) {
     return;
   }
   if (action === "uninstall") {
-    if (ok === true) state.installed.delete(id);
+    if (ok === true) {
+      state.installed.delete(id);
+      if (state.detail?.id === id) {
+        els.detailInstall.textContent = "安装";
+        els.detailInstall.dataset.state = "";
+        els.detailUninstall.hidden = true;
+        disarm(els.detailUninstall, "卸载");
+        els.detailStatus.hidden = true;
+      }
+      // The version rows carry the "当前安装" tag and the manage list shows
+      // what is installed; both derive from state, so redraw them.
+      renderVersions();
+    } else {
+      disarm(els.detailUninstall, "卸载");
+    }
+    renderInstalled();
     toast(message ?? (ok === true ? `${id} 已卸载` : `${id} 卸载失败`), ok === true ? "ok" : "bad");
     render();
   }
@@ -488,7 +682,39 @@ function start() {
   });
   $("drawer-close").addEventListener("click", closeDetail);
   $("drawer-scrim").addEventListener("click", closeDetail);
-  $("manage-btn").addEventListener("click", () => { els.modal.hidden = false; });
+  // Version rows: install pins that exact release, download saves it.
+  els.versions.addEventListener("click", (event) => {
+    const id = state.detail?.id;
+    if (id === undefined) return;
+    const installBtn = event.target.closest("[data-version-install]");
+    if (installBtn !== null) {
+      install(id, installBtn.dataset.versionInstall ?? "");
+      return;
+    }
+    const downloadBtn = event.target.closest("[data-version-download]");
+    if (downloadBtn !== null) downloadVersion(id, downloadBtn.dataset.versionDownload ?? "");
+  });
+  $("manage-btn").addEventListener("click", () => {
+    renderInstalled();
+    els.modal.hidden = false;
+  });
+  els.manageInstalled.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-manage-uninstall]");
+    if (button === null) return;
+    if (!state.embedded) {
+      toast("请在 DeepSeek Harness 客户端里打开插件市场再卸载", "bad");
+      return;
+    }
+    armDestructive(button, () => uninstall(button.dataset.manageUninstall));
+  });
+  els.detailUninstall.addEventListener("click", () => {
+    if (els.detailUninstall.hidden || els.detailUninstall.dataset.id === undefined) return;
+    if (!state.embedded) {
+      toast("请在 DeepSeek Harness 客户端里打开插件市场再卸载", "bad");
+      return;
+    }
+    armDestructive(els.detailUninstall, () => uninstall(els.detailUninstall.dataset.id));
+  });
   els.modal.addEventListener("click", (event) => {
     if (event.target.closest("[data-close]") !== null) els.modal.hidden = true;
   });

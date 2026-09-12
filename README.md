@@ -1,5 +1,7 @@
 # DeepSeek Harness — Desktop
 
+**简体中文** · [English](README.en.md)
+
 将 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 Web 界面
 (`dsh web`) 打包为原生 Electron 桌面应用。
 
@@ -23,6 +25,7 @@
 
 - `src/`,`scripts/`,`resources/`,`package.json` — 桌面壳层与打包配置(本仓库主体)
 - `plugins/@deepseek-ai/<package>/` — 桌面 fork 新增/修改的 dsh 插件(见下)
+- `plugin-market/` — 插件市场服务端(目录 API + 商店页面,独立部署,不参与打包)
 
 桌面 fork 新增的插件已整理到 `plugins/@deepseek-ai/`,对应上游 npm 包的同名包:
 
@@ -38,11 +41,55 @@
 | `dsh-tool-computer-use` | Windows-MCP 电脑控制 |
 | `dsh-tool-notify` | 通知 + 定时任务调度 |
 | `dsh-tool-usage` | token 花费估算 + DeepSeek 实时余额 |
+| `dsh-client-ui-world-clock` | 侧边栏常驻时钟 + 世界时钟面板(多时区对照、跨日标记、倒计时) |
+| `dsh-client-ui-market` | 插件市场界面(在应用内打开的商店窗口) |
+| `dsh-host-plugin-market` | 市场宿主桥:安装/卸载/发布的落盘与热挂载 |
+| `dsh-tool-plugin-market` | 发布工具:`plugin_publish` / `ask-publish-plugin` |
 
 修改过的上游包(同样在 `plugins/@deepseek-ai/` 提供完整副本):
 `dsh-client-ui-sidebar`(新增 footer.status 槽位)、`dsh-client-ui-settings-general`(分区图标)、
 `dsh-client-ui-settings-models`、`dsh-client-ui-agent-preset`、`dsh-web-app`(注册插件)、
 `dsh-base`(注册后端插件)。
+
+## 插件市场
+
+一个自托管的插件/技能商店:在应用内打开商店窗口浏览、安装、卸载,或用 AI 把刚写好的
+插件/技能一键发布上去。仓库内由四部分组成:
+
+| 部分 | 路径 | 职责 |
+|------|------|------|
+| 服务端 | `plugin-market/` | 目录 API + 商店页面(默认 9009 端口),独立部署 |
+| 商店界面 | `plugins/@deepseek-ai/dsh-client-ui-market` | 应用内的市场窗口(iframe 承载商店页面) |
+| 宿主桥 | `plugins/@deepseek-ai/dsh-host-plugin-market` | 校验/落盘/热挂载,`/api/market/*` 四条路由 |
+| AI 工具 | `plugins/@deepseek-ai/dsh-tool-plugin-market` | `plugin_publish`(发布)与 `ask-publish-plugin`(询问用户后发布) |
+
+**安装**:包下载到本地后写入 profile 的 patch 层(`$DSH_HOME/profiles/<profile>/cordis.patch.yml`),
+同时通过 loader 热挂载,界面部分刷新即可见;任何校验失败都整体回滚,不影响运行中的应用。
+
+**卸载**:商店窗口的详情抽屉与管理弹窗都提供卸载,两段式确认(首点变为「确认卸载?」,
+2.6 秒内再点才执行);宿主桥会摘掉 patch 行、卸载运行时条目并删除目录。
+
+**发布**:在创造模式里让 AI 写好插件(含 `package.json`)或技能(含 `SKILL.md`),
+AI 调用 `plugin_publish` 打包上传;也可以直接调接口:
+
+```bash
+curl -X POST http://<market>/api/plugins \
+  -H "X-Market-Meta: $(echo -n '{"title":"我的插件","category":"开发工具"}' | base64 -w0)" \
+  --data-binary @my-plugin.tgz
+```
+
+发布支持指定**版本号**与**更新说明**,并可显式指定类型(`plugin` / `skill`,或留空自动判断)。
+仓库里还提供打包发布脚本:
+
+```bash
+node plugin-market/tools/publish.mjs <插件目录> --market http://<market> [--token <t>]
+```
+
+**部署服务端**:
+
+```bash
+node plugin-market/server.js   # env: MARKET_PORT(9009) / MARKET_DATA(./data) / MARKET_ADMIN_TOKEN
+```
 
 ## 复现 / 构建
 
@@ -89,6 +136,7 @@ npm run dist:portable # 仅 portable exe
 - **快捷对话**:`Ctrl+D+S` 唤起玻璃拟态 mini 对话框(4 个模式:标准/PTC/极简/创造),
   含快捷对话与任务列表两个页面
 - **预算血条**:侧边栏左下角(设置上方)显示 token 花费估算与 DeepSeek 实时余额
+- **侧栏时钟**:侧边栏底部(设置旁)常驻秒级时间,点击展开世界时钟面板(多时区对照、跨日标记、倒计时)
 - **preload bridge**:SPA 可通过 `window.dshDesktop` 调用
   `getAppInfo()` / `getServerUrl()` / `openExternal()` / `showItemInFolder()` / `openPath()`
 
@@ -100,6 +148,7 @@ src/preload.cjs    contextBridge 桥(沙箱开启,仅暴露白名单 API)
 resources/icon.svg 应用图标源(DeepSeek 鲸鱼)
 scripts/make-icon.mjs 由 SVG 生成 PNG 图标
 plugins/@deepseek-ai/<pkg>/ 桌面 fork 的插件源码(复制到 node_modules 使用)
+plugin-market/     插件市场服务端(独立部署,不参与打包)
 ```
 
 ## 工作原理(为什么不需要改前端)

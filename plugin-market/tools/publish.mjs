@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Publish a plugin directory to a market server.
+// Publish a plugin or a skill to a market server.
 //
-//   node tools/publish.mjs <plugin-dir> [--market http://127.0.0.1:9009] [--token <t>]
-//                          [--title t] [--summary s] [--category c] [--icon 🧩]
+//   node tools/publish.mjs <dir> [--market http://127.0.0.1:9009] [--token <t>]
+//                          [--kind plugin|skill] [--version x.y.z]
+//                          [--title t] [--summary s] [--category c] [--icon ▣]
 //                          [--tags a,b] [--author a] [--note "…"]
 //
-// The directory must hold a package.json with name/version/entry; everything
-// else is packaging detail. The archive is built with the same writer the
-// server reads (lib/tar.js), so no system tar is required.
+// A plugin directory holds a package.json with name/version/entry. A skill
+// directory holds a SKILL.md whose frontmatter names it — it needs no
+// package.json, and the server synthesises one. Everything else is packaging
+// detail: the archive is built with the same writer the server reads
+// (lib/tar.js), so no system tar is required.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { packTarGz } from "../lib/tar.js";
@@ -51,13 +54,26 @@ if (dir === undefined) {
 }
 
 const files = walk(dir);
+const manifest = files.find((file) => file.name === "package.json");
+const hasSkillFile = files.some((file) => file.name === "SKILL.md");
+// An explicit --kind wins; otherwise a directory that only has a SKILL.md is
+// read as the skill it obviously is rather than refused for the manifest it
+// never needed.
+const kind = flags.kind === "skill" || flags.kind === "plugin"
+  ? flags.kind
+  : manifest === undefined && hasSkillFile ? "skill" : "plugin";
+// Kind-specific refusal comes before the empty-directory one, so an empty
+// `--kind skill` directory says what is actually missing.
+if (kind === "skill" && !hasSkillFile) {
+  console.error("技能目录里没有 SKILL.md");
+  process.exit(2);
+}
 if (files.length === 0) {
   console.error("目录为空");
   process.exit(2);
 }
-const manifest = files.find((file) => file.name === "package.json");
-if (manifest === undefined) {
-  console.error("目录里没有 package.json");
+if (kind === "plugin" && manifest === undefined) {
+  console.error("目录里没有 package.json（纯技能目录请放 SKILL.md）");
   process.exit(2);
 }
 
@@ -68,7 +84,8 @@ for (const key of ["title", "summary", "description", "category", "icon", "autho
 }
 if (flags.tags !== undefined) meta.tags = flags.tags.split(",").map((tag) => tag.trim()).filter((tag) => tag !== "");
 if (flags.readme !== undefined) meta.readme = readFileSync(flags.readme, "utf8");
-meta.kind = flags.kind ?? "plugin";
+if (flags.version !== undefined) meta.version = flags.version;
+meta.kind = kind;
 
 const base = (flags.market ?? process.env.DSH_MARKET_URL ?? "http://127.0.0.1:9009").replace(/\/$/, "");
 const response = await fetch(`${base}/api/plugins`, {
@@ -85,6 +102,14 @@ if (payload.ok !== true) {
   console.error(`发布失败：${payload.error ?? response.status}`);
   process.exit(1);
 }
-console.log(`已发布 ${payload.name}@${payload.version}（${(archive.length / 1024).toFixed(1)} KB）`);
+// Say which of the two things happened, and where the version moved from: an
+// update that prints the same line as a first release leaves the publisher
+// unsure whether they replaced anything.
+if (payload.created === true) {
+  console.log(`已发布 ${payload.name}@${payload.version}（${(archive.length / 1024).toFixed(1)} KB）`);
+} else {
+  const from = typeof payload.previousVersion === "string" && payload.previousVersion !== "" ? `${payload.previousVersion} → ` : "";
+  console.log(`已更新 ${payload.name} ${from}${payload.version}（${(archive.length / 1024).toFixed(1)} KB）`);
+}
 console.log(`详情：${base}${payload.url}`);
 if (payload.token !== undefined) console.log(`发布令牌（后续更新需要）：${payload.token}`);

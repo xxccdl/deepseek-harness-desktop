@@ -38,13 +38,16 @@ const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
  *  Only providers with a public balance endpoint are listed. A route that names
  *  no entry (custom / self-hosted gateways, most third-party adapters) has no
  *  standard balance endpoint, so the bar degrades to the local spend estimate
- *  only instead of hiding. */
+ *  only instead of hiding. The key is the route name the adapter registers,
+ *  which for the direct DeepSeek adapter is `deepseek-official`. */
 const BALANCE_PROVIDERS = {
-  deepseek: {
+  "deepseek-official": {
     apiKeyRef: DEEPSEEK_API_KEY_REF,
     url: `${DEEPSEEK_BASE_URL}/user/balance`
   }
 };
+/** Route queried when no Session has run yet and no provider can be resolved. */
+const DEFAULT_BALANCE_PROVIDER = "deepseek-official";
 /** Persist throttle: coalesce rapid event bursts into one disk write. */
 const PERSIST_DELAY_MS = 4_000;
 /** DeepSeek deepseek-chat public pricing, CNY per 1M tokens (estimate). */
@@ -179,7 +182,7 @@ function apply(ctx) {
     const make = (value) => ({ ...value, spent: cost() });
     try {
       const credentials = ctx.get("credentials", false);
-      const provider = activeProvider() ?? "deepseek";
+      const provider = activeProvider() ?? DEFAULT_BALANCE_PROVIDER;
       const spec = BALANCE_PROVIDERS[provider];
       if (spec === undefined) {
         // No public balance endpoint for this provider — keep the bar with the
@@ -196,6 +199,13 @@ function apply(ctx) {
       if (!res.ok) return make({ configured: true, provider, error: `HTTP ${res.status}` });
       const data = await res.json();
       const info = (data?.balance_infos ?? [])[0];
+      // A response that names no balance entry is not a zero balance: reporting
+      // 0 would print "¥0.00" against an account the provider simply did not
+      // report, so the numeric fields stay absent and the bar degrades to the
+      // spend estimate alone.
+      if (info === undefined) {
+        return make({ configured: true, provider, isAvailable: data?.is_available === true });
+      }
       return make({
         configured: true,
         provider,

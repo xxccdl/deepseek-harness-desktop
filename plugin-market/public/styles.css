@@ -18,8 +18,14 @@
   --brand: #4a6cf7;
   --brand-soft: rgba(74, 108, 247, 0.1);
   --ok: #16a06a;
+  --ok-soft: rgba(22, 160, 106, 0.1);
   --warn: #c9821a;
   --danger: #d4483f;
+  /* The page is a solid colour plus one very faint wash of the accent, so the
+     elevation of a card is legible without a second background colour. */
+  --wash: radial-gradient(1200px 520px at 12% -8%, rgba(74, 108, 247, 0.07), transparent 62%);
+  /* Sticky chrome reads as glass over the content it scrolls past. */
+  --glass: rgba(246, 247, 249, 0.78);
   --shadow-1: 0 1px 2px rgba(16, 20, 32, 0.05);
   --shadow-2: 0 10px 30px -12px rgba(16, 20, 32, 0.18), 0 2px 6px rgba(16, 20, 32, 0.05);
   --shadow-3: 0 26px 60px -20px rgba(16, 20, 32, 0.3), 0 4px 12px rgba(16, 20, 32, 0.08);
@@ -43,6 +49,9 @@
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.16);
   --brand-soft: rgba(122, 148, 255, 0.16);
+  --ok-soft: rgba(52, 199, 123, 0.16);
+  --wash: radial-gradient(1200px 520px at 12% -8%, rgba(122, 148, 255, 0.1), transparent 62%);
+  --glass: rgba(19, 20, 23, 0.72);
   --shadow-2: 0 14px 34px -16px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-3: 0 30px 70px -22px rgba(0, 0, 0, 0.8), 0 6px 16px rgba(0, 0, 0, 0.45);
 }
@@ -64,6 +73,8 @@ html, body { margin: 0; padding: 0; }
 
 body {
   background: var(--bg);
+  background-image: var(--wash);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
@@ -83,7 +94,7 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  animation: rise 0.4s var(--ease) both;
+  animation: rise 0.4s var(--ease) backwards;
 }
 
 .topbar h1 {
@@ -123,13 +134,23 @@ body {
 .ghost-btn svg { width: 15px; height: 15px; flex: none; }
 
 /* ── toolbar: tabs + search ──────────────────────────────────────────────── */
+/* The controls follow the reader down the shelf. Glass rather than a solid bar:
+   a card passing underneath should still be visible, just out of focus. */
 .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin: 30px 0 22px;
-  animation: rise 0.44s var(--ease) 0.03s both;
+  margin: 30px -8px 22px;
+  padding: 10px 8px;
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-radius: var(--radius);
+  animation: rise 0.44s var(--ease) 0.03s backwards;
 }
 
 .tabs {
@@ -207,7 +228,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  animation: rise 0.48s var(--ease) 0.06s both;
+  animation: rise 0.48s var(--ease) 0.06s backwards;
 }
 
 .feature {
@@ -282,7 +303,7 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin: 26px 0 20px;
-  animation: rise 0.5s var(--ease) 0.09s both;
+  animation: rise 0.5s var(--ease) 0.09s backwards;
 }
 
 .chip {
@@ -335,47 +356,55 @@ body {
 }
 #sort:hover { color: var(--text); }
 
+/* Cards are surfaces, not a table: each one carries its own hairline and a
+   shadow that only deepens on approach, so a full grid reads as a shelf of
+   objects rather than as a page of rows. */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 0;
-  row-gap: 0;
-  border-top: 1px solid var(--line);
+  gap: 16px;
 }
 
 .card {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 20px 22px 20px 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
+  gap: 13px;
+  padding: 18px 18px 17px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: inset 0 0 0 1px var(--line), var(--shadow-1);
   text-align: left;
   cursor: pointer;
-  animation: rise 0.42s var(--ease) both;
+  overflow: hidden;
+  /* `backwards`, never `both`: a filled animation keeps applying its last
+     keyframe, and an animation outranks a normal declaration — which would
+     silently disable the hover lift below. */
+  animation: rise 0.42s var(--ease) backwards;
+  transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease);
 }
 
-.card:not(:nth-child(3n + 1)) { padding-left: 22px; border-left: 1px solid var(--line); }
+.card:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 1px var(--line-strong), var(--shadow-2); }
+.card:active { transform: translateY(-1px) scale(0.996); }
 
 .card-icon {
   flex: none;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 13px;
   background: color-mix(in oklab, var(--tile-tint, var(--brand)) 13%, var(--tile));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tile-tint, var(--brand)) 20%, transparent);
   color: color-mix(in oklab, var(--tile-tint, var(--brand)) 76%, var(--text));
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1;
   transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease);
 }
 
-.card:hover .card-icon { transform: translateY(-2px); box-shadow: var(--shadow-1); }
+.card:hover .card-icon { transform: translateY(-2px) scale(1.03); }
 
 .card-body { flex: 1 1 auto; min-width: 0; }
 .card-title { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 14.5px; font-weight: 600; letter-spacing: -0.005em; }
@@ -390,6 +419,7 @@ body {
   background: var(--brand-soft);
   color: var(--brand);
 }
+.card-title em + em { background: var(--ok-soft); color: var(--ok); }
 .card-summary {
   margin: 0;
   color: var(--text-2);
@@ -416,7 +446,7 @@ body {
   vertical-align: middle;
 }
 
-.card-action { flex: none; padding-top: 2px; }
+.card-action { flex: none; padding-top: 1px; }
 
 .install-btn {
   display: inline-flex;
@@ -441,7 +471,138 @@ body {
 .install-btn[data-state="busy"] { color: var(--text-3); cursor: progress; }
 .install-btn[data-state="failed"] { color: var(--danger); box-shadow: inset 0 0 0 1px rgba(212, 72, 63, 0.3); }
 
-.empty { margin: 40px 0; text-align: center; color: var(--text-3); }
+.empty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin: 56px 0;
+  text-align: center;
+  color: var(--text-3);
+}
+.empty::before {
+  content: "";
+  width: 46px;
+  height: 46px;
+  margin-bottom: 6px;
+  border-radius: 15px;
+  background: var(--bg-sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+  /* A magnifier drawn with gradients: no asset, no dependency. */
+  background-image: radial-gradient(circle at 50% 50%, transparent 7px, var(--text-3) 7px 8.5px, transparent 8.5px), linear-gradient(var(--text-3), var(--text-3));
+  background-size: 100% 100%, 9px 1.5px;
+  background-position: 0 0, 26px 30px;
+  background-repeat: no-repeat;
+  opacity: 0.75;
+}
+.empty p { margin: 0; }
+
+/* ── version history ─────────────────────────────────────────────────────── */
+.versions { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+
+.version {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius);
+  transition: background-color 0.18s ease;
+}
+.version:hover { background: var(--bg-sunken); }
+.version[data-on="1"] { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.version-main { flex: 1 1 auto; min-width: 0; }
+.version-line { display: flex; align-items: center; gap: 7px; }
+.version-no { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.version-sub { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; color: var(--text-3); font-size: 11.5px; }
+.version-sub span + span::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin: 0 7px 2px 0;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  vertical-align: middle;
+}
+.version-note { margin: 5px 0 0; color: var(--text-2); font-size: 12.5px; }
+.version-actions { flex: none; display: flex; gap: 6px; }
+
+.v-tag {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.v-tag.v-on { background: var(--ok-soft); color: var(--ok); }
+
+.mini-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
+}
+.mini-btn:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.mini-btn:active:not(:disabled) { transform: scale(0.96); }
+.mini-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── uninstall ──────────────────────────────────────────────────────────────
+   Destructive actions wear the danger colour quietly (outline), and only turn
+   solid once the two-step confirm is armed — the armed state is the moment the
+   next click actually removes something. */
+.ghost-btn.danger { color: var(--danger); }
+.ghost-btn.danger:hover { box-shadow: inset 0 0 0 1px var(--danger), var(--shadow-1); }
+.ghost-btn[data-arm="1"],
+.ghost-btn[data-arm="1"]:hover {
+  background: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
+  color: #fff;
+}
+
+.manage-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 4px; }
+.manage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--tile);
+}
+.manage-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.manage-title { font-weight: 600; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manage-sub { font-size: 11.5px; color: var(--text-3); }
+.uninstall-btn {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
+}
+.uninstall-btn:hover { color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+.uninstall-btn:active { transform: scale(0.96); }
+.uninstall-btn[data-arm="1"],
+.uninstall-btn[data-arm="1"]:hover {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+.manage-empty { color: var(--text-3); font-size: 12.5px; margin: 8px 0 12px; }
 
 .foot {
   display: flex;
@@ -457,17 +618,25 @@ body {
 
 /* ── detail drawer ───────────────────────────────────────────────────────── */
 .drawer { position: fixed; inset: 0; z-index: 40; }
-.drawer-scrim { position: absolute; inset: 0; background: rgba(12, 14, 20, 0.34); animation: fade 0.24s ease both; }
+.drawer-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 14, 20, 0.38);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: fade 0.24s ease both;
+}
 
 .drawer-panel {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(560px, 92vw);
+  width: min(640px, 94vw);
   display: flex;
   flex-direction: column;
   background: var(--bg-elevated);
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   box-shadow: var(--shadow-3);
   animation: slide-in 0.34s var(--ease) both;
 }
@@ -545,19 +714,46 @@ body {
 .detail-status[data-tone="ok"] { color: var(--ok); }
 .detail-status[data-tone="bad"] { color: var(--danger); }
 
+/* The stats read as one hairlined strip rather than as a grey slab: the values
+   are the point, so the surface stays quiet. */
 .detail-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 1px;
   margin: 18px 0 4px;
-  padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--bg-sunken);
-  color: var(--text-2);
-  font-size: 12.5px;
+  overflow: hidden;
+  background: var(--line);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-3);
+  font-size: 11.5px;
 }
-.detail-stats b { display: block; color: var(--text); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.detail-stats > div { padding: 11px 14px; background: var(--bg-elevated); min-width: 0; }
+.detail-stats b {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .detail-stats:empty { display: none; }
+
+/* ── detail sections ─────────────────────────────────────────────────────── */
+.detail-section { margin-top: 24px; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+}
+.section-head h4 { margin: 0; color: var(--text); font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
+.section-hint { color: var(--text-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 
 /* ── markdown ────────────────────────────────────────────────────────────── */
 .markdown { color: var(--text-2); font-size: 13px; }
@@ -631,8 +827,6 @@ body {
 @media (max-width: 1000px) {
   .featured { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .card:not(:nth-child(3n + 1)) { padding-left: 0; border-left: 0; }
-  .card:not(:nth-child(2n + 1)) { padding-left: 22px; border-left: 1px solid var(--line); }
 }
 
 @media (max-width: 700px) {
@@ -640,8 +834,9 @@ body {
   .toolbar { flex-direction: column; align-items: stretch; }
   .search { max-width: none; }
   .grid { grid-template-columns: 1fr; }
-  .card, .card:not(:nth-child(2n + 1)) { padding-left: 0; border-left: 0; }
   .feature-art { display: none; }
+  .drawer-panel { width: 100vw; border-radius: 0; }
+  .version-actions { flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {

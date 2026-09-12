@@ -416,8 +416,12 @@ window.__ModuleLoader__.load({
 					minutes: "m"
 				}
 			}), "ui-world-clock: dictionaries");
-			ctx.slots.inject("sidebar.footer.status", () => ctx.slots.register({
-				name: "sidebar.footer.status",
+			// The foot sits in the list slot beside Settings: `sidebar.footer.status`
+			// is a single slot owned by the shipped usage bar, and a second
+			// same-priority registration there throws (the failure surfaces only in
+			// the console, so the plugin would look installed but render nothing).
+			ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
+				name: "sidebar.footer.action",
 				id: "world-clock",
 				order: 30,
 				locale: NS

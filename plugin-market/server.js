@@ -153,6 +153,9 @@ async function route(req, res, url) {
       id: result.record.id,
       name: result.record.packageName,
       version: result.record.latest,
+      // What this publish replaced, so the publisher sees the move it made
+      // ("1.0.0 → 1.0.1") instead of just the version it ended on.
+      previousVersion: result.previousVersion,
       url: `/plugin/${result.record.id}`,
       // Handed back once, on first publish.
       token: result.created ? result.token : undefined,
@@ -168,7 +171,7 @@ async function route(req, res, url) {
       json(res, 404, { ok: false, error: `没有这个插件：${detail[1]}` });
       return;
     }
-    json(res, 200, { ok: true, plugin: store.summary(record) });
+    json(res, 200, { ok: true, plugin: store.summary(record, { history: true }) });
     return;
   }
 

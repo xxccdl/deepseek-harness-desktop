@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-world-clock",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "description": "侧栏常驻时钟 + 世界时钟面板：秒级本机时间、多时区对照、跨日标记与倒计时，纯前端零依赖",
   "type": "module",

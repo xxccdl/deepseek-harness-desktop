@@ -79,10 +79,23 @@
           <div class="detail-actions">
             <button class="primary-btn" id="detail-install" type="button">安装</button>
             <button class="ghost-btn" id="detail-download" type="button">下载 .tgz</button>
+            <button class="ghost-btn danger" id="detail-uninstall" type="button" hidden>卸载</button>
           </div>
           <p class="detail-status" id="detail-status" hidden></p>
           <div class="detail-stats" id="detail-stats"></div>
-          <div class="markdown" id="detail-readme"></div>
+
+          <section class="detail-section" id="version-section" hidden>
+            <div class="section-head">
+              <h4>版本</h4>
+              <span class="section-hint" id="version-hint"></span>
+            </div>
+            <ul class="versions" id="detail-versions"></ul>
+          </section>
+
+          <section class="detail-section">
+            <div class="section-head"><h4>说明</h4></div>
+            <div class="markdown" id="detail-readme"></div>
+          </section>
         </div>
       </div>
     </aside>
@@ -97,6 +110,8 @@
           </button>
         </div>
         <div class="modal-body markdown">
+          <h4>已安装</h4>
+          <div class="manage-list" id="manage-installed"></div>
           <h4>安装</h4>
           <p>在 DeepSeek Harness 里打开本页，点<strong>安装</strong>即可：包会下载到本地 <code>plugins/@deepseek-ai/&lt;id&gt;</code>，写入 profile 的 patch 层，热重载后立即可用。若校验不通过，安装会整体回滚，不会影响正在运行的应用。</p>
           <h4>发布</h4>

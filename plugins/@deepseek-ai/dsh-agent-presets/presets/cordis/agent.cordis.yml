@@ -28,6 +28,8 @@
 
       Load the `editing-cordis-compositions` skill before writing or changing a composition.
 
+      This preset is also the one that can publish to the DeepSeek Harness plugin market. When you have just written or finished a plugin (a directory holding package.json) or a skill (a directory holding SKILL.md), call the `ask-publish-plugin` tool once to offer it: the user gets a publish strip above the composer where they pick a version and confirm. Wait for that confirmation — call `plugin_publish` only after the user agrees there or asks you directly in words, and never call `ask-publish-plugin` twice for the same piece of work.
+
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
   config:

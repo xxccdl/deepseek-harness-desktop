@@ -42,6 +42,44 @@ export function slugOf(rawName) {
   return slug;
 }
 
+/**
+ * Compare two `x.y.z[-pre]` versions — semver enough to order a history:
+ * numeric on the triple, a release above any prerelease of it, then the
+ * prerelease text. A history ordered by "when it was uploaded" would put a
+ * late fix of an old line above the current release, which is exactly the
+ * order a reader cannot use.
+ */
+function compareVersions(a, b) {
+  const split = (value) => {
+    const [core, pre = ""] = String(value).split("-", 2);
+    return { parts: core.split(".").map((part) => Number(part) || 0), pre };
+  };
+  const left = split(a);
+  const right = split(b);
+  for (let index = 0; index < 3; index += 1) {
+    const diff = (left.parts[index] ?? 0) - (right.parts[index] ?? 0);
+    if (diff !== 0) return diff > 0 ? 1 : -1;
+  }
+  if (left.pre === right.pre) return 0;
+  if (left.pre === "") return 1;
+  if (right.pre === "") return -1;
+  return left.pre.localeCompare(right.pre);
+}
+
+/**
+ * The version to publish when the package itself names none — a first release,
+ * or the next patch after whatever is already on the shelf.
+ *
+ * A skill has no version of its own (its identity is the frontmatter name), and
+ * making an author invent one for every wording fix is how "publish the skill
+ * again" turns into a puzzle. Plugin archives always declare a version, so this
+ * never overrides one.
+ */
+function suggestedVersion(record) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(record?.latest ?? ""));
+  return match === null ? "1.0.0" : `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
+
 /** Store on disk, with a small in-memory catalogue cache. */
 export class MarketStore {
   constructor(root) {
@@ -86,14 +124,26 @@ export class MarketStore {
     return record;
   }
 
-  /** Public shape of a record: the publish token never leaves the server. */
-  summary(record) {
+  /**
+   * Public shape of a record: the publish token never leaves the server.
+   *
+   * The version history travels only when asked for. It is public — a reader
+   * needs it to install an older release on purpose — but a catalogue of forty
+   * plugins should not carry forty histories just to render forty version
+   * numbers.
+   * @param record - the stored record.
+   * @param options - `{ history }` — include the full version list.
+   */
+  summary(record, { history = false } = {}) {
     const { token, versions, ...rest } = record;
+    const list = Array.isArray(versions) ? versions : [];
+    const latest = list.find((entry) => entry.version === record.latest);
     return {
       ...rest,
       version: record.latest,
-      versionCount: Array.isArray(versions) ? versions.length : 0,
-      size: Array.isArray(versions) ? versions.find((entry) => entry.version === record.latest)?.size ?? 0 : 0
+      versionCount: list.length,
+      size: latest?.size ?? 0,
+      ...(history ? { versions: [...list].sort((a, b) => compareVersions(b.version, a.version)) } : {})
     };
   }
 
@@ -166,41 +216,67 @@ export class MarketStore {
     } catch (error) {
       throw new PublishError(error instanceof TarError ? error.message : `无法读取压缩包：${String(error)}`);
     }
-    const manifestBytes = files.get("package.json");
-    if (manifestBytes === undefined) throw new PublishError("压缩包根目录缺少 package.json");
+    const rawManifest = files.get("package.json");
     let manifest;
-    try {
-      manifest = JSON.parse(manifestBytes.toString("utf8"));
-    } catch (error) {
-      throw new PublishError(`package.json 不是合法 JSON：${String(error)}`);
+    if (rawManifest === undefined) {
+      // A skill is a directory with a SKILL.md, not an npm package. Its manifest
+      // is synthesised below so the stored record, the archive and the installer
+      // still agree on one identity and one version.
+      manifest = {};
+    } else {
+      try {
+        manifest = JSON.parse(rawManifest.toString("utf8"));
+      } catch (error) {
+        throw new PublishError(`package.json 不是合法 JSON：${String(error)}`);
+      }
+      if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) throw new PublishError("package.json 必须是对象");
     }
-    if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) throw new PublishError("package.json 必须是对象");
-    const id = slugOf(manifest.name);
-    const version = String(manifest.version ?? "").trim();
-    if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new PublishError(`package.json 的 version 必须是 x.y.z：${version || "（空）"}`);
+
+    const marketJson = readMarketJson(files);
+    const merged = { ...marketJson, ...meta };
+    const kind = KINDS.has(merged.kind) ? merged.kind : text(manifest.dsh?.market?.kind) === "skill" ? "skill" : "plugin";
+    // A skill is named by its own frontmatter (that name is what the harness
+    // loads it under), a plugin by its package name.
+    const skill = kind === "skill" ? readSkill(files) : undefined;
+    const id = slugOf(skill === undefined ? text(manifest.name) ?? text(merged.name) : skill.name);
+    const existing = this.get(id);
+    // Captured before the record is mutated below: a publish that reuses the
+    // stored record would otherwise report the version it just wrote as the one
+    // it replaced.
+    const previousVersion = typeof existing?.latest === "string" ? existing.latest : "";
+    const declaredVersion = String(manifest.version ?? merged.version ?? "").trim();
+    const version = declaredVersion === "" ? suggestedVersion(existing) : declaredVersion;
+    if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new PublishError(`version 必须是 x.y.z：${version || "（空）"}`);
     for (const field of ["dependencies", "devDependencies", "optionalDependencies", "bundledDependencies"]) {
       const declared = manifest[field];
       if (declared !== undefined && typeof declared === "object" && Object.keys(declared).length > 0) {
         throw new PublishError(`插件市场不支持需要 npm 安装的依赖（package.json 里的 ${field}），请把依赖代码一起打包`);
       }
     }
-    const entryField = typeof manifest.exports?.["."] === "string" ? manifest.exports["."] : typeof manifest.main === "string" ? manifest.main : "lib/index.js";
-    const entry = entryField.replace(/^\.\//, "");
-    if (files.get(entry) === undefined) throw new PublishError(`入口文件不存在：${entry}`);
-    await this.checkSyntax(files, id);
-
-    // A package is fetched once and installed as `plugins/@deepseek-ai/<id>`, so
-    // the name is rewritten to that scope here rather than at install time.
-    const packageName = `@deepseek-ai/${id}`;
-    if (manifest.name !== packageName) {
-      manifest.name = packageName;
-      files.set("package.json", Buffer.from(JSON.stringify(manifest, null, 2) + "\n", "utf8"));
+    let entry;
+    if (skill !== undefined) {
+      // A skill ships Markdown and assets; it has no entry script to check, but
+      // any script it does ship must still parse.
+      entry = skill.entry;
+      await this.checkSyntax(files, id, { requireScripts: false });
+    } else {
+      const entryField = typeof manifest.exports?.["."] === "string" ? manifest.exports["."] : typeof manifest.main === "string" ? manifest.main : "lib/index.js";
+      entry = entryField.replace(/^\.\//, "");
+      if (files.get(entry) === undefined) throw new PublishError(`入口文件不存在：${entry}`);
+      await this.checkSyntax(files, id);
     }
 
-    const existing = this.get(id);
+    // A package is fetched once and installed under `@deepseek-ai/<id>`, so the
+    // name is rewritten to that scope here rather than at install time.
+    const packageName = `@deepseek-ai/${id}`;
+    manifest.name = packageName;
+    manifest.version = version;
+    if (manifest.description === undefined && skill !== undefined) manifest.description = skill.description;
+    files.set("package.json", Buffer.from(JSON.stringify(manifest, null, 2) + "\n", "utf8"));
+
     if (existing !== undefined) {
       if (typeof existing.token === "string" && existing.token !== "" && existing.token !== token) {
-        throw new PublishError(`插件 ${id} 已存在，更新需要发布令牌（安装 dsh 后由发布工具自动携带）`);
+        throw new PublishError(`${id} 已存在，更新需要发布令牌（发布工具会自动携带）`);
       }
       if ((existing.versions ?? []).some((item) => item.version === version)) {
         throw new PublishError(`${id}@${version} 已发布过，请提升 version`);
@@ -209,8 +285,6 @@ export class MarketStore {
 
     const archive = packTarGz([...files.entries()].map(([name, data]) => ({ name, data })));
     const sha256 = createHash("sha256").update(archive).digest("hex");
-    const marketJson = readMarketJson(files);
-    const merged = { ...marketJson, ...meta };
     const readme = files.get("README.md")?.toString("utf8") ?? files.get("readme.md")?.toString("utf8") ?? "";
     const now = new Date().toISOString();
     const record = existing ?? {
@@ -222,15 +296,15 @@ export class MarketStore {
       versions: []
     };
     record.packageName = packageName;
-    record.title = text(merged.title) ?? text(manifest.dsh?.market?.title) ?? id;
-    record.summary = text(merged.summary) ?? text(manifest.description) ?? "";
-    record.description = text(merged.description) ?? text(merged.summary) ?? text(manifest.description) ?? "";
+    record.title = text(merged.title) ?? text(manifest.dsh?.market?.title) ?? (skill === undefined ? id : skill.name);
+    record.summary = text(merged.summary) ?? text(manifest.description) ?? skill?.description ?? "";
+    record.description = text(merged.description) ?? text(merged.summary) ?? text(manifest.description) ?? skill?.description ?? "";
     record.category = text(merged.category) ?? "其他";
-    record.kind = KINDS.has(merged.kind) ? merged.kind : text(manifest.dsh?.market?.kind) === "skill" ? "skill" : "plugin";
+    record.kind = kind;
     record.tags = Array.isArray(merged.tags) ? merged.tags.filter((tag) => typeof tag === "string").slice(0, 12) : [];
     record.author = text(merged.author) ?? text(manifest.author) ?? "匿名作者";
     record.homepage = text(merged.homepage) ?? text(manifest.homepage) ?? "";
-    record.icon = text(merged.icon) ?? "🧩";
+    record.icon = text(merged.icon) ?? (kind === "skill" ? "◇" : "🧩");
     record.latest = version;
     record.updatedAt = now;
     record.readme = text(merged.readme) ?? readme;
@@ -248,7 +322,7 @@ export class MarketStore {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, `${version}.tgz`), archive);
     this.save(record);
-    return { record, created: existing === undefined, token: record.token };
+    return { record, created: existing === undefined, token: record.token, previousVersion };
   }
 
   /**
@@ -259,9 +333,14 @@ export class MarketStore {
    * file, which Node happily parses as CommonJS and can accept things that are
    * not valid modules — it actually fails on broken code.
    */
-  async checkSyntax(files, id) {
+  async checkSyntax(files, id, { requireScripts = true } = {}) {
     const scripts = [...files.keys()].filter((name) => CHECK_EXTENSIONS.includes(name.slice(name.lastIndexOf("."))));
-    if (scripts.length === 0) throw new PublishError("压缩包里没有可执行的 .js 文件");
+    if (scripts.length === 0) {
+      // A skill ships Markdown and assets, so having no script is not a defect;
+      // a plugin with no script is one.
+      if (requireScripts) throw new PublishError("压缩包里没有可执行的 .js 文件");
+      return;
+    }
     if (scripts.length > 64) throw new PublishError(`脚本文件过多（${scripts.length}，上限 64）`);
     for (const name of scripts) {
       if (files.get(name).length > MAX_FILE_BYTES) throw new PublishError(`脚本过大：${name}`);
@@ -307,6 +386,51 @@ function readMarketJson(files) {
   } catch {
     return {};
   }
+}
+
+/**
+ * Read and check the SKILL.md a skill package must carry.
+ *
+ * The harness silently ignores a skill file whose frontmatter is missing a name
+ * or a description, and its name is what the skill is later loaded under — so
+ * both are gated here. Accepting one without them would publish something that
+ * installs cleanly and then never appears.
+ * @param files - the package's file map.
+ * @returns `{ entry, name, description }`.
+ */
+function readSkill(files) {
+  const entry = files.has("SKILL.md")
+    ? "SKILL.md"
+    : [...files.keys()].find((name) => name.endsWith("/SKILL.md"));
+  if (entry === undefined) throw new PublishError("技能包根目录缺少 SKILL.md");
+  const front = readFrontmatter(files.get(entry).toString("utf8"));
+  if (front === undefined) throw new PublishError("SKILL.md 缺少 YAML frontmatter（文件开头用 --- 包住的头部）");
+  const name = text(front.name);
+  const description = text(front.description);
+  if (name === undefined) throw new PublishError("SKILL.md 的 frontmatter 缺少 name");
+  if (description === undefined) throw new PublishError("SKILL.md 的 frontmatter 缺少 description");
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) throw new PublishError(`技能名不合法：${name}（小写字母、数字、连字符，不能有下划线或空格）`);
+  return { entry, name, description };
+}
+
+/** The scalar fields of a Markdown file's YAML frontmatter.
+ *
+ * The market is dependency-free and the fields it must check are always plain
+ * scalars, so this reads `key: value` lines between the fences and stops there;
+ * nested blocks (metadata:) are simply not needed here.
+ */
+function readFrontmatter(raw) {
+  const lines = String(raw).replace(/\r\n/g, "\n").split("\n");
+  if (lines[0]?.trim() !== "---") return undefined;
+  const data = {};
+  for (const line of lines.slice(1)) {
+    if (line.trim() === "---") return data;
+    const match = /^([A-Za-z0-9_.-]+)\s*:\s*(.*)$/.exec(line);
+    if (match === null) continue;
+    const value = match[2].trim().replace(/^(["'])(.*)\1$/, "$2");
+    if (value !== "") data[match[1]] = value;
+  }
+  return undefined;
 }
 
 /** Trimmed non-empty string, or undefined. */

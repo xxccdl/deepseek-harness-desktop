@@ -2,10 +2,14 @@
 //
 // Two surfaces:
 //
-//   1. `conversation.composer.dock` — the 「插件发布」strip. It only appears in
-//      creation mode (the Cordis preset) because that is the mode whose agent can
-//      author a plugin; pressing it hands the model one explicit instruction, and
-//      the model's `plugin_publish` call does the rest.
+//   1. `conversation.composer.dock` — the 「插件发布」strip. It is not a
+//      fixture of creation mode: the model lights it up by calling the
+//      `ask-publish-plugin` tool once it has written a plugin or skill, and the
+//      host folds that call into the `publishHint` projection this strip reads.
+//      A hint carries the package path and kind; the strip adds a version
+//      number and an optional release note, and pressing publish hands the
+//      model one explicit instruction whose `plugin_publish` call clears the
+//      hint again.
 //   2. `conversation.session.header.utilities` + `shell.overlay` — the market
 //      itself, in an embedded window: it browses the deployed shop and installs
 //      through the host bridge. The page and this surface talk over
@@ -31,6 +35,7 @@ window.__ModuleLoader__.load({
 			".dspm-strip-icon svg{width:13px;height:13px}",
 			".dspm-strip-copy{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-secondary)}",
 			".dspm-strip-copy b{color:var(--dsw-alias-label-primary);font-weight:500}",
+			".dspm-strip-hintmeta{color:var(--dsw-alias-label-tertiary)}",
 			".dspm-publish{all:unset;display:inline-flex;align-items:center;gap:6px;flex:none;height:26px;padding:0 12px;border-radius:9px;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1);font-size:12px;font-weight:500;cursor:pointer;transition:filter .16s ease,transform .12s ease,opacity .16s ease}",
 			".dspm-publish svg{width:13px;height:13px}",
 			".dspm-publish:hover{filter:brightness(1.1)}",
@@ -40,6 +45,14 @@ window.__ModuleLoader__.load({
 			".dspm-publish:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}",
 			".dspm-strip-link{all:unset;flex:none;font-size:11.5px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:color .16s ease}",
 			".dspm-strip-link:hover{color:var(--dsw-alias-brand-primary)}",
+			".dspm-strip-input{all:unset;flex:0 1 auto;min-width:0;height:26px;width:118px;box-sizing:border-box;padding:0 9px;border-radius:9px;font-size:12px;color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:box-shadow .16s ease}",
+			".dspm-strip-input::placeholder{color:var(--dsw-alias-label-tertiary)}",
+			".dspm-strip-input:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,transparent)}",
+			".dspm-strip-select{width:86px;padding:0 4px 0 8px;cursor:pointer;color:var(--dsw-alias-label-secondary)}",
+			".dspm-strip-select:disabled{opacity:.5;cursor:default}",
+			".dspm-strip-close{all:unset;flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:background .16s ease,color .16s ease}",
+			".dspm-strip-close:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
+			".dspm-strip-close svg{width:11px;height:11px}",
 			"@keyframes dspmRise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}",
 			/* ── the market window ── */
 			".dspm-layer{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:26px}",
@@ -59,6 +72,10 @@ window.__ModuleLoader__.load({
 			".dspm-entry:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l2)}",
 			".dspm-entry:active{transform:scale(.97)}",
 			".dspm-entry[data-active='true']{color:var(--dsw-alias-brand-primary);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 42%,transparent)}",
+			/* An installed count of updates is the only reason the pill has to be
+			   loud: everything else about the market can wait to be opened. */
+			".dspm-entry-badge{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:var(--dsw-alias-brand-primary);color:#fff;font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums}",
+			".dspm-entry[data-updates='true']{color:var(--dsw-alias-brand-primary);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 42%,transparent)}",
 			".dspm-icon-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
 			".dspm-icon-btn[data-active='true']{color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-interactive-bg-hover)}",
 			".dspm-icon-btn:active{transform:scale(.92)}",
@@ -68,6 +85,8 @@ window.__ModuleLoader__.load({
 			".dspm-btn:active{transform:scale(.97)}",
 			".dspm-btn svg{width:13px;height:13px}",
 			".dspm-notice{display:flex;align-items:center;gap:10px;flex:none;padding:8px 16px;background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 12%,transparent);color:var(--dsw-alias-label-primary);font-size:12px;animation:dspmRise .3s cubic-bezier(.22,1,.36,1) both}",
+			".dspm-notice[data-tone='bad']{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 12%,transparent)}",
+			".dspm-notice svg{width:14px;height:14px;flex:none}",
 			".dspm-frame{flex:1 1 auto;width:100%;border:0;background:var(--dsw-alias-bg-base)}",
 			".dspm-empty{display:grid;place-items:center;flex:1 1 auto;padding:40px;text-align:center;color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.7}",
 			"@keyframes dspmFade{from{opacity:0}to{opacity:1}}",
@@ -215,26 +234,55 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 		//#region publish strip
+		/** Loose semver — enough to stop a typo before it reaches the model. */
+		const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+
 		/**
-		* The instruction handed to the model when 「插件发布」 is pressed. It is
-		* written as a checklist on purpose: the packaging, the market metadata and
-		* the shipped README are all things a plugin needs to be findable, and the
-		* model is the only one who knows what it just wrote.
+		* The instruction handed to the model when the strip's 「插件发布」 is
+		* pressed. The offer itself (`ask-publish-plugin`) already names the
+		* directory, so this prompt pins down what the user chose here: the type
+		* (pinned, or left for the model to judge), the version, and the note.
+		* @param hint - the `publishHint` projection value (path/kind/title).
+		* @param kind - the user-pinned type: "plugin", "skill", or "" for auto.
+		* @param version - the user's version number, or "" to let the market pick.
+		* @param note - the user's release note, or "".
 		*/
-		const PUBLISH_PROMPT = [
-			"[插件发布] 请把刚才写好的插件发布到 DeepSeek Harness 插件市场（plugin market）。",
-			"",
-			"步骤：",
-			"1. 确认插件包目录：工作区里含 package.json（并有 lib/index.js）的那一层；不确定就找最近修改的那个。",
-			"2. 调用 plugin_publish 工具发布，path 传该目录；同时给出 title（中文展示名）、summary（一句话简介）、category（开发工具/效率提升/内容创作/数据分析/界面美化/其他）、tags（2-5 个）、author。",
-			"3. 如果包内还没有 README.md，先补一份简短说明再发布。",
-			"4. 发布成功后，把返回的市场链接原样告诉我。",
-			"",
-			"注意：插件包不要声明 npm 依赖（市场不支持安装依赖），所有 .js 必须能通过 node --check。"
-		].join("\n");
+		function publishPrompt(hint, kind, version, note) {
+			const skill = kind === "skill";
+			const typeLine = skill
+				? "类型：技能（已确定）。plugin_publish 的 kind 传 skill；SKILL.md 的 frontmatter 必须有 name（小写字母/数字/连字符）和 description。"
+				: kind === "plugin"
+					? "类型：插件（已确定）。plugin_publish 的 kind 传 plugin（或不传 kind）。"
+					: "类型：自动判断——目录里有 package.json 是插件，只有 SKILL.md 是技能；plugin_publish 的 kind 按此传。";
+			return [
+				"[插件发布] 请把刚写好的成果发布到 DeepSeek Harness 插件市场（plugin market）。",
+				"",
+				`包目录：${hint.path === "" ? "（未提供，请自动定位刚写好的那一层）" : hint.path}`,
+				typeLine,
+				version === ""
+					? "版本号：不指定，由市场自动决定（技能重复发布自动递增 patch）。"
+					: `版本号：使用 ${version}。`,
+				...(note === "" ? [] : [`更新说明：${note}`]),
+				"",
+				"步骤：",
+				"1. 调用 plugin_publish 发布：path 传上面的包目录，kind 按上面的类型；同时给出 title（中文展示名）、summary（一句话简介）、category（开发工具/效率提升/内容创作/数据分析/界面美化/其他）、tags（2-5 个）、author。",
+				"2. 如果包内还没有 README.md，先补一份简短说明再发布。",
+				"3. 发布成功后，把返回的市场链接原样告诉我。",
+				"",
+				"注意：插件包不要声明 npm 依赖（市场不支持安装依赖），所有 .js 必须能通过 node --check。"
+			].join("\n");
+		}
 
 		/**
 		* The creation-mode strip above the control panel.
+		*
+		* It is not a fixture: the model lights it up by calling
+		* `ask-publish-plugin` after it has written something, and the host folds
+		* that call into the `publishHint` projection this strip reads. No hint,
+		* no strip. When a hint is present the user picks a version (empty means
+		* the market decides), optionally a release note, and pressing publish
+		* hands the model one explicit instruction whose `plugin_publish` call
+		* clears the hint — the strip retires itself.
 		*
 		* Whether this Session is in creation mode is read from the `agentPreset`
 		* Session PROJECTION, not from the Session summary: a preset is a committed
@@ -244,29 +292,48 @@ window.__ModuleLoader__.load({
 		function PublishStrip({ sessionId, sessions, useSessions, useProjection, t, onOpenMarket }) {
 			const session = useSessions((state) => sessionId === null || state?.byId === undefined ? undefined : state.byId[sessionId]);
 			const preset = useProjection("agentPreset");
+			const hint = useProjection("publishHint");
 			const [sent, setSent] = react.useState(false);
 			const [error, setError] = react.useState(null);
+			const [kind, setKind] = react.useState("");
+			const [version, setVersion] = react.useState("");
+			const [note, setNote] = react.useState("");
+			const [dismissed, setDismissed] = react.useState(null);
+			const callId = hint !== null && hint !== undefined ? hint.callId : "";
 			react.useEffect(() => {
 				setSent(false);
 				setError(null);
-			}, [sessionId]);
+				// A fresh offer resets the choices; the type starts on whatever the
+				// model committed to in the offer (「自动判断」 when it did not).
+				setKind(hint !== null && hint !== undefined ? hint.kind : "");
+				setVersion("");
+				setNote("");
+			}, [sessionId, callId]);
 			if (preset !== CREATOR_PRESET) return null;
+			if (hint === null || hint === undefined) return null;
+			if (dismissed !== null && dismissed === callId) return null;
 			const running = session?.running === true;
 			const publish = async () => {
 				if (running || sent) return;
+				const trimmed = version.trim();
+				if (trimmed !== "" && !VERSION_PATTERN.test(trimmed)) {
+					setError(t("strip.badVersion"));
+					return;
+				}
 				const binding = sessions?.binding?.(sessionId);
 				if (binding?.session === undefined) {
 					setError(t("error.noSession"));
 					return;
 				}
 				try {
-					await binding.session.prompt([{ type: "text", text: PUBLISH_PROMPT }], "queue");
+					await binding.session.prompt([{ type: "text", text: publishPrompt(hint, kind, trimmed, note.trim()) }], "queue");
 					setSent(true);
 					setError(null);
 				} catch (failure) {
 					setError(failure instanceof Error ? failure.message : String(failure));
 				}
 			};
+			const name = hint.title === "" ? t(hint.kind === "skill" ? "strip.skill" : "strip.plugin") : `「${hint.title}」`;
 			return jsxs("div", {
 				className: "dspm-strip",
 				children: [
@@ -274,8 +341,41 @@ window.__ModuleLoader__.load({
 					jsx("span", {
 						className: "dspm-strip-copy",
 						children: error !== null ? error : jsxs(react.Fragment, {
-							children: [jsx("b", { children: t("strip.creator") }), t(sent ? "strip.sent" : running ? "strip.busy" : "strip.hint")]
+							children: [
+								jsx("b", { children: t("strip.creator") }),
+								t(sent ? "strip.sent" : running ? "strip.busy" : "strip.offered", { name }),
+								jsx("span", { className: "dspm-strip-hintmeta", children: hint.path === "" ? "" : ` · ${hint.path}` })
+							]
 						})
+					}),
+					jsx("select", {
+						className: "dspm-strip-input dspm-strip-select",
+						value: kind,
+						"aria-label": t("strip.kind"),
+						disabled: sent,
+						onChange: (event) => setKind(event.target.value),
+						children: [
+							jsx("option", { value: "", children: t("strip.kind.auto") }),
+							jsx("option", { value: "plugin", children: t("strip.kind.plugin") }),
+							jsx("option", { value: "skill", children: t("strip.kind.skill") })
+						]
+					}),
+					jsx("input", {
+						type: "text",
+						className: "dspm-strip-input",
+						value: version,
+						placeholder: t("strip.version"),
+						"aria-label": t("strip.version"),
+						spellCheck: false,
+						onChange: (event) => setVersion(event.target.value)
+					}),
+					jsx("input", {
+						type: "text",
+						className: "dspm-strip-input",
+						value: note,
+						placeholder: t("strip.note"),
+						"aria-label": t("strip.note"),
+						onChange: (event) => setNote(event.target.value)
 					}),
 					jsx("button", {
 						type: "button",
@@ -295,6 +395,14 @@ window.__ModuleLoader__.load({
 							jsx(sent ? TickIcon : SparkIcon, {}),
 							jsx("span", { children: t(sent ? "strip.published" : "strip.publish") })
 						]
+					}),
+					jsx("button", {
+						type: "button",
+						className: "dspm-strip-close",
+						"aria-label": t("strip.dismiss"),
+						title: t("strip.dismiss"),
+						onClick: () => setDismissed(callId),
+						children: jsx(CloseIcon, {})
 					})
 				]
 			});
@@ -313,7 +421,9 @@ window.__ModuleLoader__.load({
 			const [baseUrl, setBaseUrl] = react.useState(FALLBACK_BASE);
 			const [status, setStatus] = react.useState("loading");
 			const [notice, setNotice] = react.useState(null);
+			const [failed, setFailed] = react.useState(false);
 			const [installed, setInstalled] = react.useState(0);
+			const [updates, setUpdates] = react.useState(0);
 			const [reload, setReload] = react.useState(false);
 			/** Send one message into the embedded page. */
 			const postToFrame = react.useCallback((message) => {
@@ -324,11 +434,14 @@ window.__ModuleLoader__.load({
 			react.useEffect(() => {
 				if (!open) return undefined;
 				let cancelled = false;
+				setFailed(false);
 				bridge("/api/market/state")
 					.then((payload) => {
 						if (cancelled) return;
 						setBaseUrl(String(payload.baseUrl ?? FALLBACK_BASE).replace(/\/$/, ""));
-						setInstalled(Array.isArray(payload.installed) ? payload.installed.length : 0);
+						const list = Array.isArray(payload.installed) ? payload.installed : [];
+						setInstalled(list.length);
+						setUpdates(list.filter((entry) => entry.hasUpdate === true).length);
 						setStatus(payload.market?.reachable === true ? "ready" : "unreachable");
 					})
 					.catch((failure) => {
@@ -365,9 +478,16 @@ window.__ModuleLoader__.load({
 							const payload = await bridge("/api/market/install", { id: data.id, version: data.version });
 							answer({ type: "dsh-market:result", action: "install", id: data.id, ok: true, version: payload.version, message: payload.message });
 							setReload(true);
+							setFailed(false);
 							setNotice(payload.message ?? null);
 						} catch (failure) {
-							answer({ type: "dsh-market:result", action: "install", id: data.id, ok: false, message: failure instanceof Error ? failure.message : String(failure) });
+							const message = failure instanceof Error ? failure.message : String(failure);
+							answer({ type: "dsh-market:result", action: "install", id: data.id, ok: false, message });
+							// A refused install must not be silent out here: the iframe
+							// toasts it, but the window itself owns the durable banner.
+							setReload(false);
+							setFailed(true);
+							setNotice(message);
 						}
 						return;
 					}
@@ -376,9 +496,15 @@ window.__ModuleLoader__.load({
 							const payload = await bridge("/api/market/uninstall", { id: data.id });
 							answer({ type: "dsh-market:result", action: "uninstall", id: data.id, ok: true, message: payload.message });
 							setReload(true);
+							setFailed(false);
+							setNotice(payload.message ?? null);
 							setInstalled((value) => Math.max(0, value - 1));
 						} catch (failure) {
-							answer({ type: "dsh-market:result", action: "uninstall", id: data.id, ok: false, message: failure instanceof Error ? failure.message : String(failure) });
+							const message = failure instanceof Error ? failure.message : String(failure);
+							answer({ type: "dsh-market:result", action: "uninstall", id: data.id, ok: false, message });
+							setReload(false);
+							setFailed(true);
+							setNotice(message);
 						}
 					}
 				};
@@ -436,7 +562,14 @@ window.__ModuleLoader__.load({
 								children: [
 									jsx("span", { className: "dspm-head-icon", children: jsx(MarketIcon, {}) }),
 									jsx("span", { className: "dspm-head-title", children: t("market.title") }),
-									jsx("span", { className: "dspm-head-hint", children: t("market.subtitle") }),
+									jsx("span", {
+										className: "dspm-head-hint",
+										children: installed === 0
+											? t("market.subtitle")
+											: updates > 0
+												? t("market.summaryUpdates", { installed: String(installed), updates: String(updates) })
+												: t("market.summary", { installed: String(installed) })
+									}),
 									jsx("span", { className: "dspm-spacer" }),
 									jsx("button", {
 										type: "button",
@@ -456,20 +589,28 @@ window.__ModuleLoader__.load({
 									})
 								]
 							}),
-							reload ? jsxs("div", {
+							(reload || failed) && jsxs("div", {
 								className: "dspm-notice",
+								"data-tone": failed ? "bad" : "ok",
 								children: [
-									jsx(TickIcon, {}),
-									jsx("span", { children: notice ?? t("market.installed") }),
+									jsx(failed ? CloseIcon : TickIcon, {}),
+									jsx("span", { children: notice ?? (failed ? t("error.noSession") : t("market.installed")) }),
 									jsx("span", { className: "dspm-spacer" }),
-									jsx("button", {
+									reload && !failed && jsx("button", {
 										type: "button",
 										className: "dspm-btn",
 										onClick: () => location.reload(),
 										children: [jsx(ReloadIcon, {}), jsx("span", { children: t("market.applyNow") })]
+									}),
+									failed && jsx("button", {
+										type: "button",
+										className: "dspm-icon-btn",
+										"aria-label": t("market.close"),
+										onClick: () => setFailed(false),
+										children: jsx(CloseIcon, {})
 									})
 								]
-							}) : null,
+							}),
 							status === "unreachable"
 								? jsx("div", {
 									className: "dspm-empty",
@@ -544,6 +685,32 @@ window.__ModuleLoader__.load({
 		}
 
 		/**
+		* How many installed market plugins sit behind their published version.
+		*
+		* Re-asked whenever the market window opens or closes, which is exactly
+		* when the answer can have changed: browsing it is how an update gets
+		* installed. A market that cannot be reached reports nothing rather than
+		* zero, so the badge never claims "up to date" on a failed check.
+		*/
+		function useUpdates(active) {
+			const [count, setCount] = react.useState(0);
+			react.useEffect(() => {
+				let cancelled = false;
+				bridge("/api/market/state")
+					.then((payload) => {
+						if (cancelled) return;
+						const list = Array.isArray(payload.installed) ? payload.installed : [];
+						setCount(list.filter((entry) => entry.hasUpdate === true).length);
+					})
+					.catch(() => { /* an unreachable market has nothing to report */ });
+				return () => {
+					cancelled = true;
+				};
+			}, [active]);
+			return count;
+		}
+
+		/**
 		* The header entry. It is a labelled pill rather than a bare icon because
 		* the market is the one surface a person has to be able to find without
 		* knowing it exists; the icon alone was easy to read as decoration.
@@ -551,15 +718,21 @@ window.__ModuleLoader__.load({
 		function HeaderEntry(props) {
 			const t = props.t ?? ((key) => key);
 			const open = windowStore.use();
+			const updates = useUpdates(open);
 			const label = t("market.title");
 			return jsx("button", {
 				type: "button",
 				className: "dspm-entry",
 				"data-active": String(open),
+				"data-updates": String(updates > 0),
 				"aria-label": label,
-				title: label,
+				title: updates > 0 ? t("market.updates", { count: String(updates) }) : label,
 				onClick: () => windowStore.set(!open),
-				children: [jsx(MarketIcon, {}), jsx("span", { children: label })]
+				children: [
+					jsx(MarketIcon, {}),
+					jsx("span", { children: label }),
+					updates > 0 ? jsx("span", { className: "dspm-entry-badge", children: String(updates) }) : null
+				]
 			});
 		}
 
@@ -580,11 +753,21 @@ window.__ModuleLoader__.load({
 		//#region dictionaries
 		const zh = {
 			"strip.creator": "创造模式",
-			"strip.hint": " · 写好的插件可以一键上架",
+			"strip.offered": " · {name}已写好，可选择版本号后发布",
+			"strip.plugin": "一个插件",
+			"strip.skill": "一个技能",
 			"strip.busy": " · AI 正在工作，等它停下再发布",
 			"strip.sent": " · 已请 AI 打包发布，结果会出现在对话里",
 			"strip.publish": "插件发布",
 			"strip.published": "已请求发布",
+			"strip.version": "版本号（留空自动）",
+			"strip.note": "更新说明（可选）",
+			"strip.kind": "发布类型",
+			"strip.kind.auto": "类型：自动",
+			"strip.kind.plugin": "类型：插件",
+			"strip.kind.skill": "类型：技能",
+			"strip.badVersion": "版本号格式应为 x.y.z",
+			"strip.dismiss": "暂不发布",
 			"strip.market": "插件市场",
 			"market.title": "插件市场",
 			"market.subtitle": "装完即用，无需重启",
@@ -592,16 +775,29 @@ window.__ModuleLoader__.load({
 			"market.close": "关闭",
 			"market.installed": "插件已安装。界面插件需要刷新页面才会出现。",
 			"market.applyNow": "立即刷新",
+			"market.summary": "已装 {installed} 个插件",
+			"market.summaryUpdates": "已装 {installed} 个插件 · {updates} 个可更新",
+			"market.updates": "{count} 个插件有新版本，打开插件市场更新",
 			"market.unreachable": "连不上插件市场服务器。",
 			"error.noSession": "当前会话还没准备好，请稍后再试"
 		};
 		const en = {
 			"strip.creator": "Creation mode",
-			"strip.hint": " · ship the plugin you just wrote",
+			"strip.offered": " · {name} is ready — pick a version and publish",
+			"strip.plugin": "a plugin",
+			"strip.skill": "a skill",
 			"strip.busy": " · the model is working — publish when it settles",
 			"strip.sent": " · asked the model to package and publish it",
 			"strip.publish": "Publish plugin",
 			"strip.published": "Publish requested",
+			"strip.version": "version (auto if empty)",
+			"strip.note": "release note (optional)",
+			"strip.kind": "Publish as",
+			"strip.kind.auto": "Auto",
+			"strip.kind.plugin": "Plugin",
+			"strip.kind.skill": "Skill",
+			"strip.badVersion": "version must look like x.y.z",
+			"strip.dismiss": "Not now",
 			"strip.market": "Plugin market",
 			"market.title": "Plugin market",
 			"market.subtitle": "install and use, no restart",
@@ -609,6 +805,9 @@ window.__ModuleLoader__.load({
 			"market.close": "Close",
 			"market.installed": "Installed. Interface plugins appear after a page reload.",
 			"market.applyNow": "Reload now",
+			"market.summary": "{installed} plugin(s) installed",
+			"market.summaryUpdates": "{installed} plugin(s) installed · {updates} update(s)",
+			"market.updates": "{count} plugin(s) have a newer version — open the market to update",
 			"market.unreachable": "The plugin market is unreachable.",
 			"error.noSession": "This session is not ready yet"
 		};

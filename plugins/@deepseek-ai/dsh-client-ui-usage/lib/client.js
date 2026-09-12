@@ -81,7 +81,12 @@ window.__ModuleLoader__.load({
 			const fill = { width: `${Math.round(remaining * 100)}%`, background: `hsl(${hue} 72% 52%)` };
 			const currency = hasBalance && typeof data.currency === "string" ? data.currency : "CNY";
 			const money = (v) => `${currency === "CNY" ? "¥" : ""}${v.toFixed(2)}`;
-			const tip = hasBalance ? t("tooltip") : t("tooltipNoBalance");
+			// A dash has more than one cause, and the tooltip is the only place the
+			// bar can say which: the route has no balance endpoint, or the query
+			// itself failed. Reporting the second as the first hides a real error.
+			const tip = hasBalance
+				? t("tooltip")
+				: typeof data.error === "string" ? t("tooltipError", { error: data.error }) : t("tooltipNoBalance");
 
 			if (wide === false) {
 				return jsx("div", {
@@ -116,14 +121,16 @@ window.__ModuleLoader__.load({
 					"balance": "余额",
 					"noBalance": "—",
 					"tooltip": "按 token 用量估算的花费与 DeepSeek 实时余额（血条越长越接近用尽）",
-					"tooltipNoBalance": "按 token 用量估算的花费（当前模型提供商无公开余额接口，仅显示已用）"
+					"tooltipNoBalance": "按 token 用量估算的花费（当前模型提供商无公开余额接口，仅显示已用）",
+					"tooltipError": "按 token 用量估算的花费；余额查询失败：{error}"
 				},
 				en: {
 					"spent": "Used",
 					"balance": "Balance",
 					"noBalance": "—",
 					"tooltip": "Estimated spend from token usage and live DeepSeek balance (bar fills as you approach empty)",
-					"tooltipNoBalance": "Estimated spend from token usage (current provider exposes no public balance endpoint)"
+					"tooltipNoBalance": "Estimated spend from token usage (current provider exposes no public balance endpoint)",
+					"tooltipError": "Estimated spend from token usage; the balance query failed: {error}"
 				}
 			}), "ui-usage: dictionaries");
 			boundT = ctx.locale.bind(NS);
