@@ -38,6 +38,54 @@ const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tre
 `;
 /** The session-telemetry row id the DSH_TELEMETRY_DISABLED switch targets. */
 const TELEMETRY_ROW_ID = "session-telemetry-otel";
+/** Id prefix the plugin market gives the rows it owns in the patch layers. */
+const MARKET_ROW_PREFIX = "market-";
+
+/**
+ * The two plugin trees THIS deployment resolves out of, matching the roots the
+ * market itself installs into: `node_modules/@deepseek-ai` for a packaged app,
+ * plus the source tree beside it for a checkout.
+ */
+function deploymentPluginDirs() {
+  const scope = dirname(dshAnchor()); // <root>/node_modules/@deepseek-ai
+  return [scope, join(dirname(scope), "..", "plugins", "@deepseek-ai")];
+}
+
+/**
+ * Whether a market row names a package this deployment can actually import.
+ *
+ * `$DSH_HOME` is shared: a source checkout and the packaged app compose the
+ * same profile patch layers, while a market install only lands in the
+ * `node_modules` of the app that ran it. A row left by the other deployment —
+ * or by the previous version, after an upgrade replaced `resources/app` —
+ * names a package that cannot be imported here, and the Loader aborts the whole
+ * composition on it, which leaves the app unstartable with no way back except
+ * hand-editing the patch file. The row is dropped instead: the plugin stays
+ * listed as installed in the market, which can reinstall it in one click.
+ */
+function marketRowUsable(row, dirs) {
+  const name = typeof row.name === "string" ? row.name : "";
+  if (name === "") return false;
+  const leaf = name.startsWith("@deepseek-ai/") ? name.slice("@deepseek-ai/".length) : name;
+  return dirs.some((dir) => existsSync(join(dir, leaf)));
+}
+
+/**
+ * Drop unusable market rows from a patch list, in place.
+ *
+ * The market's rows arrive as `{ insert: [{ id, name }] }` patches; anything
+ * whose package this deployment cannot import is removed so the Loader never
+ * sees it. Rows from other sources (bundles, presets, the user's own edits)
+ * pass through untouched.
+ */
+function sanitizeMarketRows(patches, dirs) {
+  for (const patch of patches) {
+    if (patch === null || typeof patch !== "object" || !Array.isArray(patch.insert)) continue;
+    patch.insert = patch.insert.filter((row) =>
+      !(typeof row?.id === "string" && row.id.startsWith(MARKET_ROW_PREFIX)) || marketRowUsable(row, dirs));
+  }
+  return patches;
+}
 
 /**
  * Absolute anchor: the @deepseek-ai/dsh package.json.
@@ -102,6 +150,10 @@ async function composeWebProfile() {
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG);
   const homePatches = loadOptionalPatches(BIN_NAME, join(resolveDshHome(), PROFILE_PATCH_FILENAME)) ?? [];
   const bundlePatches = profile.layers.flatMap((layer) => layer.patches);
+  const pluginDirs = deploymentPluginDirs();
+  sanitizeMarketRows(bundlePatches, pluginDirs);
+  sanitizeMarketRows(profile.patches, pluginDirs);
+  sanitizeMarketRows(homePatches, pluginDirs);
   const rows = new Map();
   for (const row of composeEntries([bundlePatches, profile.patches, homePatches])) {
     if (typeof row.id === "string") rows.set(row.id, row);

@@ -249,7 +249,10 @@ function writeState(state) {
  */
 function renderBlock(installed) {
   const rows = Object.entries(installed)
-    .filter(([, entry]) => entry !== null && typeof entry === "object")
+    // A skill is discovered from its directory and owns no loader row; writing
+    // one would name a package that does not exist and the Loader would refuse
+    // the whole composition at the next start.
+    .filter(([, entry]) => entry !== null && typeof entry === "object" && entry.kind !== "skill")
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([id, entry]) => {
       const packageName = typeof entry.packageName === "string" && entry.packageName !== "" ? entry.packageName : `@deepseek-ai/${id}`;
