@@ -27,9 +27,13 @@ export interface PiAiReplayResponse {
     version: 2;
     api: Api;
     provider: string;
+    /** Requested model identity, matching the durable assistant source. */
     model: string;
+    /** Provider-reported model; only Anthropic replays it as the native model (reported in `message.model`, not `message.responseModel`). */
     responseModel?: string;
     responseId?: string;
+    /** Provider-native effort for historical replay; absence is preserved. */
+    providerThinkingLevel?: string;
     stopReason: AssistantMessage['stopReason'];
 }
 /**
@@ -38,9 +42,10 @@ export interface PiAiReplayResponse {
  * order), so `BlockAssembler` prunes an entry with its block whenever assembly
  * removes one.
  * @param message - completed native pi-ai assistant response.
+ * @param requestedModel - request identity stored in the assistant source; defaults to the native model.
  * @returns the versioned lossless-JSON replay projection.
  */
-export declare function toPiReplayState(message: AssistantMessage): ReplayEnvelope;
+export declare function toPiReplayState(message: AssistantMessage, requestedModel?: string): ReplayEnvelope;
 /**
  * Convert one durable Harness assistant message into pi-ai history.
  *

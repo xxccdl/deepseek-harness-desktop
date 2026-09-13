@@ -1,7 +1,7 @@
 /** Content-block structure helpers. @module @deepseek-ai/dsh-llm/content */
 import type { ContentBlock } from './types.ts';
 import type { Message } from './message.ts';
-import type { AttachmentStore, ImageAttachmentRef, RequestImageAttachment } from '@deepseek-ai/dsh-attachment';
+import type { AttachmentStore, FileAttachmentRef, ImageAttachmentRef, RequestImageAttachment } from '@deepseek-ai/dsh-attachment';
 /** Execution-world path that model tools can use to read one normalized attachment. */
 export interface ImageAttachmentAccess {
     /** Absolute path to immutable normalized bytes; callers must treat it as read-only. */
@@ -57,6 +57,32 @@ export declare function offloadedImageText(ref: ImageAttachmentRef, access?: Ima
  * @returns whether any nested block is an image.
  */
 export declare function contentHasImage(content: readonly ContentBlock[]): boolean;
+/**
+ * True when typed model content contains a file block, walking nested
+ * tool-result content on the same recursion every file policy shares.
+ * Reads current content on every call without retaining scan results.
+ * @param content - typed model content blocks.
+ * @returns whether any nested block is a file.
+ */
+export declare function contentHasFile(content: readonly ContentBlock[]): boolean;
+/**
+ * Stable model-facing handle for one durable file reference: the address of
+ * the verbatim stored copy and the instruction to read it on demand. This is
+ * the only representation a provider ever receives for a file.
+ * @param ref - durable verbatim file reference.
+ * @param readonlyPath - execution-world path of the stored copy, when resolvable.
+ * @returns deterministic handle text naming the file, its size, and its address.
+ */
+export declare function fileHandleText(ref: FileAttachmentRef, readonlyPath: string | undefined): string;
+/**
+ * Project durable file history into deterministic handle text for every model
+ * route. Unlike images, no provider receives file blocks natively, so this
+ * projection is unconditional in request assembly.
+ * @param messages - complete request history.
+ * @param resolvePath - resolve one reference's current execution-world read path.
+ * @returns the original list without files, otherwise shallow message copies with handle text.
+ */
+export declare function projectFilesToText(messages: readonly Message[], resolvePath: (ref: FileAttachmentRef) => string | undefined): readonly Message[];
 /** Byte accounting and quantized removal policy for one request representation. */
 export interface RequestImageOffloadPolicy {
     /** Image count accepted by the route; omission leaves count unbounded. */

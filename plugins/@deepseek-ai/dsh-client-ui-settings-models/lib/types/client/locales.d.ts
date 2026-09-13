@@ -69,6 +69,8 @@ export declare const en: {
     fetchEmpty: string;
     fetchTitle: string;
     fetchDescription: string;
+    fetchSearch: string;
+    fetchNoMatches: string;
     fetchSelectAll: string;
     fetchDeselectAll: string;
     fetchAdopt: string;
@@ -83,6 +85,7 @@ export declare const en: {
     customApi: string;
     customApiUnset: string;
     customNeedsBaseUrl: string;
+    customBaseUrlInvalid: string;
     customNeedsModels: string;
     customBaseUrlPlaceholder: string;
     settingsPathUnresolvable: string;

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import z from "@deepseek-ai/schemastery";
 import { addHarnessSourceSection } from "@deepseek-ai/dsh-app-boot";
 import * as FrontendStatic from "@deepseek-ai/dsh-host-frontend-static";
-import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
+import { launchEnvironmentOf, launchedThroughSsh } from "@deepseek-ai/dsh-launch-environment";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 //#region lib/types/index.js
 /**
@@ -41,14 +41,6 @@ const DSH_WEB_URL = "DSH_WEB_URL";
 const LOOPBACK_HOST = "127.0.0.1";
 /** The webserver schema's all-interfaces bind literal. */
 const ALL_INTERFACES_HOST = "0.0.0.0";
-/** Whether this process was launched through SSH, including a forwarded-port session. */
-function launchedThroughSsh(ctx) {
-	const environment = launchEnvironmentOf(ctx);
-	return ["SSH_CONNECTION", "SSH_TTY"].some((name) => {
-		const value = environment.getFrom(name, ["process"])?.value;
-		return value !== void 0 && value !== "";
-	});
-}
 const BROWSER_OPENER_MODULE = import.meta.resolve("open");
 const BROWSER_OPENER_PROGRAM = `
 try {
@@ -184,7 +176,7 @@ const internals = {
 */
 function apply(ctx, config) {
 	const runtime = resolveLanTrust(ctx.webServer.host, config.trustedHosts);
-	const handoffBrowser = config.openBrowser && !launchedThroughSsh(ctx);
+	const handoffBrowser = config.openBrowser && !launchedThroughSsh(launchEnvironmentOf(ctx));
 	ctx.provide(WEB_RUNTIME_SERVICE, runtime);
 	ctx.plugin(FrontendStatic, { distIndex: internals.resolveDistIndex() });
 	if (config.surfaceContext) {

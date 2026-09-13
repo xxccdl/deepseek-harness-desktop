@@ -1,4 +1,10 @@
 /** Instance-owned concurrency bound for native image transformations. */
+/**
+ * Preserve Error rejections and normalize non-Error native binding values.
+ * @param reason - rejection reason returned by a compression task.
+ * @returns an Error suitable for promise rejection.
+ */
+export declare function compressionFailure(reason: unknown): Error;
 /** FIFO limiter for asynchronous compression work. */
 export declare class CompressionLimiter {
     readonly concurrency: number;

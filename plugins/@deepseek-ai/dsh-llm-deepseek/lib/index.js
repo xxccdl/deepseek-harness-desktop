@@ -1164,6 +1164,20 @@ function mapUsage(usage) {
 		...reasoning !== void 0 ? { reasoningTokens: reasoning } : {}
 	};
 }
+/**
+* Accept one streamed identity field for a tool call. `id` and `name` are
+* identity, not accumulation: the wire sends each once, on the call's first
+* delta. A continuation delta that re-sends the field empty — or `null`, which
+* some OpenAI-compatible gateways fill in — means "no update", never "clear".
+* @param current - the identity established by an earlier delta of this call.
+* @param incoming - the field as parsed from this delta. The wire type is a
+*   claim about a remote encoder, so anything but a non-empty string leaves the
+*   established value alone rather than overwriting it.
+* @returns the identity in force after this delta.
+*/
+function acceptIdentity(current, incoming) {
+	return typeof incoming === "string" && incoming.length > 0 ? incoming : current;
+}
 /** Assemble the final ContentBlock for one open block. */
 function closeBlock(block) {
 	switch (block.kind) {
@@ -1285,8 +1299,8 @@ async function* translate(payloads) {
 						blockType: "tool-call"
 					};
 				}
-				if (call.id !== void 0) block.callId = call.id;
-				if (call.function?.name !== void 0) block.name = call.function.name;
+				block.callId = acceptIdentity(block.callId, call.id);
+				block.name = acceptIdentity(block.name, call.function?.name);
 				const fragment = call.function?.arguments ?? "";
 				block.text += fragment;
 				yield {
@@ -1573,6 +1587,7 @@ var DeepSeekAdapter = class extends LlmAdapter {
 			} : modelInfo(provider, configured),
 			context: { contextWindow },
 			defaultMaxTokens: configured?.maxTokens ?? connection.maxTokens,
+			...configured?.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: configured.systemPromptUpdate },
 			...connection.defaults.thinking === "disabled" ? { reasoning: {
 				efforts: OFF_ONLY_REASONING_EFFORTS,
 				defaultEffort: OFF_REASONING_EFFORT
@@ -1827,6 +1842,15 @@ const DEFAULT_MODELS = [
 	{
 		id: "deepseek-flash",
 		name: "DeepSeek-V4.1-Flash",
+		contextWindow: DEFAULT_CONTEXT_WINDOW,
+		inputModalities: ["text", "image"],
+		imagePixelBudget: DEFAULT_REQUEST_IMAGE_PIXEL_BUDGET,
+		imageMaxBytes: DEFAULT_REQUEST_IMAGE_MAX_BYTES,
+		systemPromptUpdate: "in-history"
+	},
+	{
+		id: "deepseek-v4-flash",
+		name: "DeepSeek-V4-Flash",
 		description: "Fast, efficient, and economical; suited to focused, routine, or parallel tasks.",
 		contextWindow: DEFAULT_CONTEXT_WINDOW,
 		inputModalities: ["text", "image"],
@@ -1849,7 +1873,8 @@ const catalogModel = z.object({
 	maxTokens: z.number().step(1).min(1),
 	inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(["text"]),
 	imagePixelBudget: z.union([z.number().step(1).min(1), "low"]),
-	imageMaxBytes: z.number().step(1).min(1)
+	imageMaxBytes: z.number().step(1).min(1),
+	systemPromptUpdate: z.const("in-history")
 });
 const Config = z.object({
 	apiKeyEnv: z.string().role("credential-ref").default(DEFAULT_API_KEY_ENV),
@@ -1898,6 +1923,8 @@ function resolveModels(models) {
 		if (!hasImage && (model.imagePixelBudget !== void 0 || model.imageMaxBytes !== void 0)) throw new Error(`llm-deepseek: text-only catalog model "${model.id}" cannot declare image request limits`);
 		if (model.imagePixelBudget !== void 0 && model.imagePixelBudget !== "low" && (!Number.isSafeInteger(model.imagePixelBudget) || model.imagePixelBudget <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" imagePixelBudget must be "low" or a positive safe integer`);
 		if (model.imageMaxBytes !== void 0 && (!Number.isSafeInteger(model.imageMaxBytes) || model.imageMaxBytes <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" imageMaxBytes must be a positive safe integer`);
+		const systemPromptUpdate = model.systemPromptUpdate;
+		if (systemPromptUpdate !== void 0 && systemPromptUpdate !== "in-history") throw new Error(`llm-deepseek: catalog model "${model.id}" systemPromptUpdate must be "in-history" when present`);
 		if (seen.has(model.id)) throw new Error(`llm-deepseek: duplicate catalog model "${model.id}"`);
 		seen.add(model.id);
 		return {
@@ -1906,6 +1933,7 @@ function resolveModels(models) {
 			...model.description === void 0 ? {} : { description: model.description },
 			...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
 			...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
+			...model.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: model.systemPromptUpdate },
 			inputModalities: [...inputModalities],
 			...hasImage ? {
 				imagePixelBudget: model.imagePixelBudget === "low" ? DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET : model.imagePixelBudget ?? 64e4,

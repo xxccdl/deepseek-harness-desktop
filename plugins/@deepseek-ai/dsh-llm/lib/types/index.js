@@ -47,13 +47,14 @@ import { callConfigEquals } from "./call-config.js";
 import { HarnessError, INVALID_CREDENTIAL_CODE } from "./error.js";
 import { normalizeLlmFailure } from "./adapter-failure.js";
 import { normalizeApiKey } from "./api-key.js";
-import { contentHasImage, projectImagesForTextModel } from "./content.js";
+import { contentHasFile, contentHasImage, fileHandleText, projectFilesToText, projectImagesForTextModel, } from "./content.js";
 export * from "./attribution.js";
 export * from "./brand.js";
 export * from "./error.js";
 export * from "./api-key.js";
 export * from "./types.js";
 export * from "./content.js";
+export * from "./assistant-stream.js";
 export * from "./message.js";
 export * from "./retry-policy.js";
 export { BlockAssembler } from "./assembler.js";
@@ -529,6 +530,15 @@ let LlmRuntime = (() => {
         imageRequestPricing(provider, model) {
             return this.adapters.get(provider)?.adapter.imageRequestPricing(provider, model);
         }
+        /**
+         * Resolve the exact text one durable file occurrence contributes to every
+         * provider request in the current execution environment.
+         * @param ref - durable verbatim file reference from model history.
+         * @returns the same deterministic handle text used at adapter dispatch.
+         */
+        fileRequestText(ref) {
+            return fileHandleText(ref, this.fileReadPath(ref));
+        }
         /** Detach typed adapter-owned modality metadata. */
         detachedModalities(modalities) {
             return modalities === undefined ? undefined : [...modalities];
@@ -600,6 +610,11 @@ let LlmRuntime = (() => {
             // Capability metadata rides through: an explicit modality omission is
             // negative capability downstream preflights act on (image admission).
             const inputModalities = this.detachedModalities(resolved.inputModalities);
+            // Widened: adapters derive this mode from catalog config, so the value is checked as a string.
+            const systemPromptUpdate = resolved.systemPromptUpdate;
+            if (systemPromptUpdate !== undefined && systemPromptUpdate !== 'in-history') {
+                throw new LlmError(`adapter returned invalid system prompt update mode for provider "${provider}" model "${model}"`, 'INVALID_MODEL_INFO');
+            }
             const defaultMaxTokens = resolved.defaultMaxTokens;
             if (defaultMaxTokens !== undefined
                 && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) {
@@ -613,6 +628,7 @@ let LlmRuntime = (() => {
                 ...inputModalities === undefined ? {} : { inputModalities },
                 ...context === undefined ? {} : { context: { contextWindow: context.contextWindow } },
                 ...defaultMaxTokens === undefined ? {} : { defaultMaxTokens },
+                ...resolved.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },
             };
             const reasoning = resolved.reasoning;
             if (reasoning === undefined)
@@ -728,6 +744,7 @@ let LlmRuntime = (() => {
                 ...modelInfo.inputModalities === undefined
                     ? {}
                     : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },
+                ...modelInfo.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: modelInfo.systemPromptUpdate },
                 stream: (options) => {
                     if (dispatched) {
                         throw new LlmError('a prepared LLM call can only be dispatched once', 'INVALID_PREPARED_CALL');
@@ -770,6 +787,27 @@ let LlmRuntime = (() => {
             return Object.isFrozen(options) ? deepFreeze(filtered) : filtered;
         }
         /**
+         * Resolve the current execution-world read path of one durable file
+         * reference through the mounted attachment and filesystem providers.
+         */
+        fileReadPath(ref) {
+            let hostPath;
+            try {
+                hostPath = this.ctx.get('attachments')?.fileHostPath(ref);
+            }
+            catch {
+                // A malformed durable reference degrades this occurrence to the no-path
+                // handle instead of failing every later request over the same log.
+                return undefined;
+            }
+            if (hostPath === undefined)
+                return undefined;
+            // Structural face: dsh-llm cannot depend on the filesystem package, and
+            // only this one mapping method is consumed.
+            const fs = this.ctx.get('fs');
+            return fs?.processPathFromHostPath(hostPath);
+        }
+        /**
          * Final adapter boundary. Adapter selection, dispatch, iterator construction,
          * and iteration failures become one terminal failure chunk. Middleware and
          * downstream consumer failures remain thrown plugin or consumer errors.
@@ -801,13 +839,21 @@ let LlmRuntime = (() => {
                     : Object.isFrozen(options)
                         ? deepFreeze({ ...options, ...resolvedConfig })
                         : { ...options, ...resolvedConfig };
-                const projectedOptions = modelInfo.inputModalities !== undefined
+                // Files are never dispatched natively: every route receives handle text.
+                let projectedMessages = resolvedOptions.messages;
+                if (projectedMessages.some(message => contentHasFile(message.content))) {
+                    projectedMessages = projectFilesToText(projectedMessages, ref => this.fileReadPath(ref));
+                }
+                if (modelInfo.inputModalities !== undefined
                     && !modelInfo.inputModalities.includes('image')
-                    && resolvedOptions.messages.some(message => contentHasImage(message.content))
-                    ? Object.isFrozen(resolvedOptions)
-                        ? deepFreeze({ ...resolvedOptions, messages: projectImagesForTextModel(resolvedOptions.messages) })
-                        : { ...resolvedOptions, messages: projectImagesForTextModel(resolvedOptions.messages) }
-                    : resolvedOptions;
+                    && projectedMessages.some(message => contentHasImage(message.content))) {
+                    projectedMessages = projectImagesForTextModel(projectedMessages);
+                }
+                const projectedOptions = projectedMessages === resolvedOptions.messages
+                    ? resolvedOptions
+                    : Object.isFrozen(resolvedOptions)
+                        ? deepFreeze({ ...resolvedOptions, messages: projectedMessages })
+                        : { ...resolvedOptions, messages: projectedMessages };
                 const stream = dispatch(this.forAdapter(projectedOptions, adapter));
                 iterator = stream[Symbol.asyncIterator]();
             }

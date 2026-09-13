@@ -35,6 +35,14 @@ export function ProviderRequestId(id) {
     return brandString(id);
 }
 /**
+ * Brand one loop-owned streaming attempt identifier.
+ * @param id - the opaque Agent-lifecycle-local identifier.
+ * @returns the same string with the attempt-id brand.
+ */
+export function LlmAttemptId(id) {
+    return brandString(id);
+}
+/**
  * Brand an adapter-owned reasoning-effort identifier.
  * @param id - the opaque identifier exposed by one model capability.
  * @returns the same string, branded; no validation is performed.

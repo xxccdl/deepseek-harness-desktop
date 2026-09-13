@@ -19,6 +19,7 @@ export interface ProviderDirectoryEntry {
     readonly settingsPath: readonly string[];
     readonly active: boolean;
     readonly declared?: boolean;
+    readonly error?: string;
 }
 /**
  * Join declared configurable providers with the currently registered routes.

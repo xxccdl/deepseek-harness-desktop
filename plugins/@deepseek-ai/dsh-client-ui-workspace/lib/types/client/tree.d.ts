@@ -9,6 +9,13 @@ import type { SessionPendingInteractionBase } from '@deepseek-ai/dsh-client-ui-s
 import type { SessionId } from '@deepseek-ai/dsh-session/types';
 /** Group key for Sessions outside every Workspace. */
 export declare const UNGROUPED_KEY = "";
+/**
+ * Resolve the Workspace browser group that owns one Session.
+ * @param workspaces - authoritative Workspace membership.
+ * @param sessionId - Session whose browser group is required.
+ * @returns owning Workspace id, or {@link UNGROUPED_KEY} when no Workspace accounts for it.
+ */
+export declare function owningGroupKey(workspaces: readonly WorkspaceView[], sessionId: SessionId): string;
 /** Pending interaction kinds with dedicated Workspace-row presentation. */
 export type SessionPendingInteractionStatus = 'approval' | 'plan-review' | 'question';
 type SessionPendingInteractions = ReadonlyMap<SessionId, SessionPendingInteractionBase>;

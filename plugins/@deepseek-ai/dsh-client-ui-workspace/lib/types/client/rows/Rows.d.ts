@@ -77,12 +77,13 @@ export declare function SearchResultItem({ result, currentId, onOpen, t }: {
  * @param props.onRename - open the session rename dialog (id + current title).
  * @param props.onFork - fork a session at its last completed turn.
  * @param props.onArchive - archive a session by id.
+ * @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
  * @param props.drag - optional draggable-row wiring.
  * @param props.flat - omit the empty status slot in the hierarchy-free flat list.
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-export declare function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, drag, flat, t }: {
+export declare function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, onReveal, drag, flat, t, }: {
     node: SessionNode;
     currentId: string | undefined;
     now: number;
@@ -93,6 +94,8 @@ export declare function SessionNodeItem({ node, currentId, now, onOpen, onRename
     onFork: (id: SessionNode['id']) => void;
     /** Archive this session (row menu action; commits without a dialog). */
     onArchive: (id: SessionNode['id']) => void;
+    /** Scroll this row into view after search navigation, then acknowledge it. */
+    onReveal?: (() => void) | undefined;
     /** Present only on draggable rows (workspace-group sessions outside search). */
     drag?: RowDragProps | undefined;
     /** The row is rendered without a parent Workspace header. */

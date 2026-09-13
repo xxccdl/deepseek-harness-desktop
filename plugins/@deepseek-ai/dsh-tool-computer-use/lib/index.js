@@ -152,14 +152,22 @@ const computerUseSkill = {
     "",
     "You can control this Windows machine through Windows-MCP. Its tools are exposed under the `mcp__windows__` namespace (e.g. `mcp__windows__click`, `mcp__windows__type`, `mcp__windows__screenshot`, `mcp__windows__app`, `mcp__windows__shortcut`, `mcp__windows__powershell`, `mcp__windows__file`, `mcp__windows__clipboard`, `mcp__windows__process`, `mcp__windows__snapshot`).",
     "",
-    "## Workflow",
-    "- Before acting on a screen you have not seen, capture context first: `mcp__windows__screenshot` (visual) and/or `mcp__windows__snapshot` (structured UI elements with coordinates).",
-    "- A screenshot comes back as an image attached to the conversation: look at it yourself — no `vision_analyze` round-trip is needed for a model that accepts image input.",
-    "- Click by element label when available; otherwise use coordinates from the screenshot/snapshot.",
+    "## Look first — vision drives the work",
+    "- `mcp__windows__snapshot` is the first call before acting on any screen you have not seen: one call returns the desktop picture together with the interactive elements and their coordinates. Pass `use_vision=True` — without it you get the element tree and no image at all.",
+    "- Leave `use_annotation` at its default (true): the capture draws a box around every detected element, so you can look at the target on the picture and read that same element's coordinate from the list in one step.",
+    "- When the layout is dense and you need to read positions more finely, pass `width_reference_line` and `height_reference_line` (e.g. 100, 100) to overlay a measuring grid.",
+    "- `mcp__windows__screenshot` is the cheap path when you only need the picture; it skips element extraction.",
+    "- Read the capture metadata: it reports the cursor position, the screen size, and — when the capture itself downscaled the image — a `Screenshot Coordinate Scale` that undoes exactly that step.",
+    "",
+    "## Turning what you see into a click",
+    "- Prefer the coordinates the element list reports for the element you recognised on screen: those are screen coordinates already, so nothing has to be converted.",
+    "- For a target that has no element row (canvas, game, icon grid, custom-drawn surface), click it by relative position. Read how far across and how far down the target sits in the picture — its fraction of the image, e.g. 40% / 25% — and multiply that by the screen size in the metadata. With `Screenshot Size: 1536x864`, 40% / 25% becomes (614, 216).",
+    "- Never pass raw image pixels to `Click`. Every image is downscaled before it reaches you: first by the capture (undone by the `Screenshot Coordinate Scale` the metadata prints) and then by the harness, which fits images to the model's pixel budget. Relative positions survive both scalings; absolute image pixels do not.",
     "- Type text with `mcp__windows__type`; press shortcuts with `mcp__windows__shortcut` (e.g. `ctrl`, `s`).",
     "- Launch or switch apps with `mcp__windows__app`; manage windows with its resize/switch modes.",
     "- Use `mcp__windows__powershell` for shell/system operations, `mcp__windows__process` for processes, `mcp__windows__file` for filesystem actions, `mcp__windows__clipboard` for clipboard read/write.",
-    "- After an action, verify with a screenshot or snapshot before reporting success.",
+    "- Look again after every action — snapshot or screenshot — and confirm the screen changed the way you intended before reporting success.",
+    "- If a capture arrives as text instead of an image — `[image unavailable: …]` — the current model cannot accept images: call `vision_analyze` (on desktop it captures the screen itself when `image_path` is omitted) or tell the user to switch to a model that declares image input.",
     "",
     "## Safety",
     "- These tools act as the current Windows user with full permissions — operate only what the user asked for.",
@@ -171,7 +179,7 @@ const computerUseSkill = {
 const COMPUTER_USE_PROMPT_SECTION = {
   name: "computer-use:capability",
   order: -88,
-  text: "【电脑控制】你已可控制本机 Windows 桌面（Windows-MCP，工具前缀 mcp__windows__）：点击、输入、快捷键、打开/管理应用与窗口、截图、文件与剪贴板、进程。截图会作为图片直接附到对话中，你可以直接看到画面，无需再用 vision_analyze。操作前先截图/snapshot 确认屏幕，操作后截图核验；只做用户要求的操作。"
+  text: "【电脑控制】你已可控制本机 Windows 桌面（Windows-MCP，前缀 mcp__windows__）：点击、输入、快捷键、应用与窗口、截图、文件、剪贴板、进程。以视觉为主：动手前先 mcp__windows__snapshot 看清屏幕——传 use_vision=True，否则只返回元素树没有画面；use_annotation 保持默认开启，它会在识别到的元素上画框，便于对着画面认目标；布局密集需要更精细读数时传 width_reference_line/height_reference_line 叠加参考网格。看着画面判断该点哪里、界面处于什么状态，操作后重新截图核验；只做用户要求的操作。落点坐标优先取元素列表里给出的屏幕坐标（本身就是屏幕坐标，无需换算）；目标没有元素条目时（画布/游戏/图标网格/自绘界面），按它在画面中的相对位置（横向、纵向各占图片的百分之多少）乘以元数据报出的屏幕尺寸换算，例如元数据为 Screenshot Size: 1536x864、目标在 40%/25% 处 → 点 (614, 216)。不要直接把在图上量到的像素值当坐标：图片到达你之前会被缩放两次（采集时一次，用元数据里的 Screenshot Coordinate Scale 抵消；进入上下文前 harness 还会按模型像素预算再缩一次），相对位置不受缩放影响。若你收到的是一条 `[image unavailable: …]` 文本而不是图片，说明当前模型不支持图片输入，此时改用 vision_analyze 查看屏幕（桌面端不传 image_path 会自动截屏），或让用户切换到声明了图片输入的模型。"
 };
 
 // ── HTTP status (settings viewer) ────────────────────────────────────────────

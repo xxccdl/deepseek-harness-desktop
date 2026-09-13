@@ -20,10 +20,11 @@ export interface PiImageRequestContext {
 /**
  * Convert text-only harness history to a synchronous pi-ai Context. Tool
  * result names are recovered from preceding assistant tool calls.
- * @param options - the harness request; `options.system` maps to pi-ai's single `systemPrompt` slot.
+ * @param options - the harness request; `options.system`, else a leading `system` message, maps to pi-ai's single `systemPrompt` slot.
  * @param images - absent; selects the synchronous conversion.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.
  * @returns the pi-ai context; `tools` is omitted when the request declares none.
+ * @throws {LlmError} `UNSUPPORTED_CONTENT` for images in any history role, including a leading system message.
  */
 export declare function toPiContext(options: GenerateOptions, images?: undefined, onReplayDegrade?: (reason: string) => void): PiContext;
 /**
@@ -32,7 +33,7 @@ export declare function toPiContext(options: GenerateOptions, images?: undefined
  * the accumulated base64 image payload exceeds `maxRequestImageBytes`, the
  * oldest images are replaced by text placeholders until the request fits, so
  * an image-heavy session keeps clearing gateway request-size caps.
- * @param options - the harness request; `options.system` maps to pi-ai's single `systemPrompt` slot.
+ * @param options - the harness request; `options.system`, else a leading `system` message, maps to pi-ai's single `systemPrompt` slot.
  * @param images - attachment provider, current path resolver, and request limits.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.
  * @returns the asynchronously resolved pi-ai context.

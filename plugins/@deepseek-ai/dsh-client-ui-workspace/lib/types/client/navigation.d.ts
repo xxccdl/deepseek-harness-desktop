@@ -7,6 +7,24 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types';
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
     /**
+     * Select a Session and show its Conversation as one UI navigation action.
+     * @param sessionId - listed or retained Session to display.
+     */
+    openSession(sessionId: SessionId): void;
+    /**
+     * Connect a Workspace and open its Session unless a later navigation supersedes it.
+     * @param workspaceId - target Workspace.
+     * @param beforeOpen - optional synchronous preparation for the selected Session, skipped after supersession.
+     * @returns completion; a superseded request may create a Session but does not open it.
+     */
+    openWorkspace(workspaceId: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void): Promise<void>;
+    /**
+     * Fork a Session and open the child unless a later navigation supersedes it.
+     * @param sessionId - source Session.
+     * @returns completion; a superseded request leaves its child available without selecting it.
+     */
+    forkSession(sessionId: SessionId): Promise<void>;
+    /**
      * Resolve the reusable or newly created blank Session for a Workspace.
      * @param workspaceId - target Workspace.
      * @returns a Session already addressable through the Session Controller.
@@ -61,6 +79,7 @@ declare class UiWorkspaceService extends Service implements UiWorkspace {
     private readonly workspaces;
     private readonly sessions;
     private readonly connecting;
+    private readonly lifetime;
     /**
      * @param ctx - Client root Context.
      * @param directoryPicker - the directory-picking Remote namespace.
@@ -69,6 +88,9 @@ declare class UiWorkspaceService extends Service implements UiWorkspace {
      */
     constructor(ctx: Context, directoryPicker: ClientRemote['directoryPicker'], workspaces: IWorkspaces, sessions: ISessions);
     connectWorkspace(workspaceId: WorkspaceId): Promise<SessionId>;
+    openSession(sessionId: SessionId): void;
+    openWorkspace(workspaceId: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void): Promise<void>;
+    forkSession(sessionId: SessionId): Promise<void>;
     startSession(workspaceId?: WorkspaceId): void;
     archiveSession(sessionId: SessionId): Promise<void>;
     pickDirectory(): Promise<string | null>;

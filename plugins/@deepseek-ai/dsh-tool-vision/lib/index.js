@@ -8,8 +8,11 @@
 // Images are sent as base64 data URLs to the DeepSeek chat-completions API.
 //
 // @module @deepseek-ai/dsh-tool-vision
-import { readFile } from "node:fs/promises";
-import { extname, resolve } from "node:path";
+import { readFile, rm } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
@@ -72,11 +75,81 @@ async function captureScreenshot() {
   }
 }
 
+/**
+ * Capture the Windows desktop into a temporary PNG.
+ *
+ * The screen has to become a real file for this tool: Windows-MCP and the
+ * mobile bridge both hand the picture back as an image block, which is exactly
+ * what a text-only route cannot receive — the same route that is the only
+ * caller of `vision_analyze`. So this grabs the screen through the system's own
+ * .NET imaging classes and writes one to the temp directory.
+ *
+ * @returns the temporary PNG's absolute path (the caller owns deleting it).
+ */
+async function captureDesktopFile() {
+  const file = join(tmpdir(), `dsh-vision-${randomUUID()}.png`);
+  const script = [
+    "Add-Type -AssemblyName System.Windows.Forms,System.Drawing",
+    "$b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds",
+    "$bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height",
+    "$g = [System.Drawing.Graphics]::FromImage($bmp)",
+    "$g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)",
+    // A PowerShell single-quoted literal is the only safe quoting here:
+    // double quotes would leave JSON's escaped backslashes in the path.
+    `$bmp.Save('${file.replaceAll("'", "''")}', [System.Drawing.Imaging.ImageFormat]::Png)`,
+    "$g.Dispose()",
+    "$bmp.Dispose()"
+  ].join("; ");
+  await new Promise((resolveRun, reject) => {
+    const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+      windowsHide: true,
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error("桌面截屏超时"));
+    }, 15000);
+    child.stderr?.on("data", (chunk) => { stderr += String(chunk); });
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolveRun();
+      else reject(new Error(`桌面截屏失败（PowerShell 退出码 ${code}）：${stderr.trim().slice(0, 200) || "无输出"}`));
+    });
+  });
+  return file;
+}
+
 /** Read an image file and return base64 + media type. */
 async function readImage(filePath) {
   const absPath = resolve(process.cwd(), filePath);
   const buf = await readFile(absPath);
   return { base64: buf.toString("base64"), mediaType: mediaTypeFor(absPath) };
+}
+
+/**
+ * Resolve the screen to analyze when the caller supplied no file: the native
+ * bridge first (it captures the phone's screen on mobile), then a local Windows
+ * capture, so the desktop has the same single-argument path as mobile.
+ *
+ * @returns the source path plus its base64 payload and media type.
+ */
+async function captureScreen() {
+  try {
+    return { path: "(screenshot)", ...(await captureScreenshot()) };
+  } catch (bridgeError) {
+    if (process.platform !== "win32") throw bridgeError;
+    const file = await captureDesktopFile();
+    try {
+      return { path: file, ...(await readImage(file)) };
+    } finally {
+      await rm(file, { force: true }).catch(() => {});
+    }
+  }
 }
 
 /** Call DeepSeek chat-completions with a vision message. */
@@ -146,7 +219,8 @@ function apply(ctx, config) {
     description:
       "分析图片内容（识别图片中的文字、UI界面、图标、图表、物体、配色、整体布局等）。" +
       "优先直接看图：当当前模型支持图像输入（如 deepseek-flash）时，请**直接用 read_image 工具读取本地图片**（截图类场景用对应的 screenshot 工具）——图片会附到对话中，你能直接看到画面，无需再调用本工具。" +
-      "本工具仅用于：① 当前模型不支持图像输入（纯文本模型）时，借助独立视觉模型 API 代看图片；② 移动端不传 image_path 时自动截屏。桌面端必须提供 image_path 参数指定图片文件路径（支持 png/jpg/jpeg/webp/gif）。",
+      "本工具仅用于：① 当前模型不支持图像输入（纯文本模型）时，借助独立视觉模型 API 代看图片；② 不传 image_path 时自动截屏——移动端走原生截屏桥，Windows 桌面端直接截取本机屏幕，所以桌面端也能不带参数调用本工具查看当前屏幕。" +
+      "已有图片文件时请用 image_path 指定路径（支持 png/jpg/jpeg/webp/gif），避免重复截屏。",
     parameters: {
       prompt: {
         type: "string",
@@ -154,7 +228,7 @@ function apply(ctx, config) {
       },
       image_path: {
         type: "string",
-        description: "图片文件的绝对路径或相对于工作区的路径（支持 png/jpg/jpeg/webp/gif）。桌面端必填；移动端不填则自动截屏。",
+        description: "图片文件的绝对路径或相对于工作区的路径（支持 png/jpg/jpeg/webp/gif）。不填则自动截屏（Windows 桌面端截取本机屏幕，移动端走原生截屏桥）。",
       },
     },
     output: {
@@ -177,7 +251,7 @@ function apply(ctx, config) {
         : "请详细描述这张图片的内容。";
       const source = typeof args?.image_path === "string" && args.image_path.trim()
         ? { path: args.image_path.trim(), ...(await readImage(args.image_path.trim())) }
-        : { path: "(screenshot)", ...(await captureScreenshot()) };
+        : await captureScreen();
       const result = await callVisionAPI({
         apiKey: cfg.apiKey,
         baseURL: cfg.baseURL,

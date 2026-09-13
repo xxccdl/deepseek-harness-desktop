@@ -2,7 +2,7 @@
 import { Context } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
 import { AttachmentStore } from '@deepseek-ai/dsh-attachment';
-import type { ImageAttachmentLimits, ImageAttachmentRef, ImageRequestPolicy, RequestImageAttachment, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment';
+import type { FileAttachmentRef, ImageAttachmentLimits, ImageAttachmentRef, ImageRequestPolicy, RequestImageAttachment, SaveFileAttachment, SaveFileStreamAttachment, SaveImageAttachment, StoredImageAttachment } from '@deepseek-ai/dsh-attachment';
 import type { NormalizationPolicy } from './normalization.ts';
 export { canPassThroughNormalization, normalizeImage } from './normalization.ts';
 export type { NormalizedImage, NormalizationPolicy } from './normalization.ts';
@@ -79,6 +79,10 @@ export declare class LocalAttachmentStore extends AttachmentStore {
     saveImage(input: SaveImageAttachment): Promise<ImageAttachmentRef>;
     readImage(ref: ImageAttachmentRef, signal?: AbortSignal): Promise<StoredImageAttachment>;
     imageHostPath(ref: ImageAttachmentRef): string;
+    saveFile(input: SaveFileAttachment): Promise<FileAttachmentRef>;
+    saveFileStream(input: SaveFileStreamAttachment): Promise<FileAttachmentRef>;
+    readFileStream(ref: FileAttachmentRef, signal?: AbortSignal): AsyncIterable<Uint8Array>;
+    fileHostPath(ref: FileAttachmentRef): string;
     readImageRequest(ref: ImageAttachmentRef, policy: ImageRequestPolicy, signal?: AbortSignal): Promise<RequestImageAttachment>;
     private requestVersion;
 }

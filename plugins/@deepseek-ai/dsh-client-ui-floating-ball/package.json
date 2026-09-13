@@ -1,0 +1,28 @@
+{
+  "name": "@deepseek-ai/dsh-client-ui-floating-ball",
+  "version": "1.0.0",
+  "private": false,
+  "description": "悬浮球：界面右下角一颗可拖拽、自动吸边的快捷操作球（新建会话 / 回到顶部·底部 / 深浅色切换 / 藏起来）",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js"
+  ],
+  "license": "MIT"
+}

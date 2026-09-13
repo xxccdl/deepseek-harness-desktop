@@ -4,7 +4,7 @@
  * mapped interfaces make the content, source, and finish unions extensible.
  */
 import type { Branded } from '@deepseek-ai/dsh-brand';
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
+import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
 import type { ToolCallId, ProviderRequestId, ReasoningEffortId } from './brand.ts';
 import type { Message } from './message.ts';
 declare module '@deepseek-ai/cordis' {
@@ -56,6 +56,18 @@ export interface ImageBlock {
     /** Immutable bytes and intrinsic display metadata owned by the attachment service. */
     attachment: ImageAttachmentRef;
 }
+/**
+ * A durable verbatim file reference, valid in user content. Files never reach
+ * a provider natively: request assembly projects every occurrence to
+ * deterministic handle text (name, byte size, and the read-only saved path),
+ * so adapters and providers see text in its place while the durable log keeps
+ * the structured reference for presentation and authorization.
+ */
+export interface FileBlock {
+    type: 'file';
+    /** Immutable verbatim bytes and display metadata owned by the attachment service. */
+    attachment: FileAttachmentRef;
+}
 /** A tool invocation requested by the model. */
 export interface ToolCallBlock {
     type: 'tool-call';
@@ -80,6 +92,7 @@ export interface ContentBlockMap {
     'text': TextBlock;
     'reasoning': ReasoningBlock;
     'image': ImageBlock;
+    'file': FileBlock;
     'tool-call': ToolCallBlock;
     'tool-result': ToolResultBlock;
 }
@@ -204,6 +217,8 @@ export interface LlmConfigurableProvider {
      * from outside.
      */
     declared?: boolean;
+    /** Configuration diagnostic for repair; unaffected models may remain serviceable. */
+    error?: string;
 }
 /**
  * One interrogation of a provider endpoint that configuration has not stored
@@ -295,6 +310,13 @@ export interface LlmModelReasoningInfo {
      */
     defaultEffort?: ReasoningEffortId;
 }
+/**
+ * How a model applies a system prompt that changes mid-conversation.
+ * `'in-history'`: the model reads the latest `system` message at any position
+ * of `messages` as the complete effective system prompt, so a changed prompt
+ * can follow the cached history instead of rewriting message 0.
+ */
+export type SystemPromptUpdate = 'in-history';
 /** Exact-route model metadata resolved by its owning adapter. */
 export interface LlmResolvedModelInfo extends LlmModelInfo {
     /** Provider-owned context capacity when known. */
@@ -303,6 +325,8 @@ export interface LlmResolvedModelInfo extends LlmModelInfo {
     defaultMaxTokens?: number;
     /** Adapter-owned selectable reasoning levels when exposed. */
     reasoning?: LlmModelReasoningInfo;
+    /** Declared mid-conversation system prompt handling; absent means only a leading system message is read. */
+    systemPromptUpdate?: SystemPromptUpdate;
 }
 /**
  * Adapter-private lossless-JSON state for replaying a successful response,
@@ -384,12 +408,16 @@ export interface GenerateOptions {
     /** Adapter-owned reasoning effort selected for this exact model. */
     reasoningEffort?: ReasoningEffortId;
     /**
-     * Ordered conversation messages, exactly as the provider sees them (after
-     * the `system` slot). A loop-built request assembles them as
-     * the derived history (dsh-agent-loop); a hand-built one-shot passes any list.
+     * Ordered conversation messages, exactly as the provider sees them. A
+     * loop-built request passes the derived history (dsh-agent-loop), whose
+     * leading system-role message carries the system prompt; a hand-built
+     * one-shot passes any list.
      */
     messages: Message[];
-    /** System prompt text (adapters map to the provider's system slot). */
+    /**
+     * System prompt text for one-shot callers; adapters map it to the provider's
+     * system slot ahead of `messages`. Loop-built requests leave it undefined.
+     */
     system?: string;
     /** Tool schemas (adapters map to the provider's `tools` field). */
     tools?: ToolSchema[];

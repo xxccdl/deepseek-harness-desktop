@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-llm",
   "description": "Provider-neutral LLM service interface for the DeepSeek Harness",
-  "version": "0.1.2-alpha.2",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -34,6 +34,10 @@
       "types": "./lib/types/message.d.ts",
       "default": "./lib/types/message.js"
     },
+    "./assistant-stream": {
+      "types": "./lib/types/assistant-stream.d.ts",
+      "default": "./lib/types/assistant-stream.js"
+    },
     "./typert": {
       "types": "./lib/typert.host.d.ts",
       "default": "./lib/typert.host.js"
@@ -61,16 +65,16 @@
   },
   "dependencies": {
     "zod": "^4.4.3",
-    "@deepseek-ai/dsh-util-crypto": "^0.1.2-alpha.2",
-    "@deepseek-ai/schemastery": "^3.18.2",
-    "@deepseek-ai/dsh-timeout": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-brand": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-util-values": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-typert-protocol": "^0.1.2-alpha.2"
+    "@deepseek-ai/dsh-timeout": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-brand": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-util-crypto": "^0.1.5-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.2"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-attachment": "^0.1.2-alpha.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-alpha.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-attachment": "^0.1.5-rc.2",
     "@deepseek-ai/cordis": "^4.0.2"
   }
 }

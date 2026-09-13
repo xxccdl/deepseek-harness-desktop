@@ -8,7 +8,7 @@
  * @module dsh-llm-deepseek/adapter
  */
 import { LlmAdapter } from '@deepseek-ai/dsh-llm';
-import type { GenerateOptions, ImageAttachmentAccess, LlmModelInfo, LlmProviderInfo, PreparedAdapterCall, LlmResolvedModelInfo, ModelModality, ResolvedRetryPolicy, StreamChunk } from '@deepseek-ai/dsh-llm';
+import type { GenerateOptions, ImageAttachmentAccess, LlmModelInfo, LlmProviderInfo, PreparedAdapterCall, LlmResolvedModelInfo, ModelModality, ResolvedRetryPolicy, StreamChunk, SystemPromptUpdate } from '@deepseek-ai/dsh-llm';
 import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials';
 import type { AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id';
@@ -35,6 +35,12 @@ export interface DeepSeekCatalogModel {
     imagePixelBudget?: number | 'low';
     /** Encoded-byte target for one deterministic request preview; the smallest quality-ladder output is used when no quality fits. */
     imageMaxBytes?: number;
+    /**
+     * `'in-history'` declares that the endpoint reads the latest `system`
+     * message at any position of the conversation as the complete effective
+     * system prompt; omission means only a leading system message is read.
+     */
+    systemPromptUpdate?: SystemPromptUpdate;
 }
 /**
  * Validated connection facts for one operation. The plugin's

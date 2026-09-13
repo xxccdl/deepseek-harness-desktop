@@ -64,6 +64,20 @@ export function createAssistantMessage(input) {
     });
 }
 /**
+ * Create and freeze one identified system-role message holding a rendered
+ * system prompt.
+ * @param text - the complete rendered prompt; `''` records "no system prompt".
+ * @param plugin - the plugin that assembled the prompt.
+ * @returns an immutable system message with a fresh stable identity.
+ */
+export function createSystemMessage(text, plugin) {
+    return createMessage({
+        role: 'system',
+        content: text.length === 0 ? [] : [{ type: 'text', text }],
+        source: { kind: 'plugin', plugin },
+    });
+}
+/**
  * Create and freeze one identified tool-result message.
  * @param input - call identity, raw result blocks, and outcome.
  * @returns an immutable user-role tool-result message.

@@ -7,17 +7,19 @@
  */
 import { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
-import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmImageRequestPricing, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, ModelModality, StreamChunk } from './types.ts';
+import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmImageRequestPricing, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, ModelModality, StreamChunk, SystemPromptUpdate } from './types.ts';
 import type { ResolvedRetryPolicy } from './retry-policy.ts';
 import type { ProviderRequestId } from './brand.ts';
 import type { LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
 import { HarnessError } from './error.ts';
+import type { FileAttachmentRef } from '@deepseek-ai/dsh-attachment';
 export * from './attribution.ts';
 export * from './brand.ts';
 export * from './error.ts';
 export * from './api-key.ts';
 export * from './types.ts';
 export * from './content.ts';
+export * from './assistant-stream.ts';
 export * from './message.ts';
 export * from './retry-policy.ts';
 export { BlockAssembler } from './assembler.ts';
@@ -95,6 +97,8 @@ export interface PreparedLlmCall {
     readonly context?: LlmModelContext;
     /** Exact model modalities captured with the adapter dispatch generation. */
     readonly inputModalities?: readonly ModelModality[];
+    /** Exact model system prompt update mode captured with the adapter dispatch generation. */
+    readonly systemPromptUpdate?: SystemPromptUpdate;
     /** Config fields materialized by the captured adapter rather than proposed by the caller. */
     readonly adapterDefaults: LlmCallConfigAdapterDefaults;
     /**
@@ -322,6 +326,13 @@ export declare class LlmRuntime extends TypertRemoteService {
      * @returns the owning adapter's image pricing for the route, when declared.
      */
     imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;
+    /**
+     * Resolve the exact text one durable file occurrence contributes to every
+     * provider request in the current execution environment.
+     * @param ref - durable verbatim file reference from model history.
+     * @returns the same deterministic handle text used at adapter dispatch.
+     */
+    fileRequestText(ref: FileAttachmentRef): string;
     /** Detach typed adapter-owned modality metadata. */
     private detachedModalities;
     /**
@@ -370,6 +381,11 @@ export declare class LlmRuntime extends TypertRemoteService {
     private registration;
     /** Remove replay state whose historical route is owned by another adapter. */
     private forAdapter;
+    /**
+     * Resolve the current execution-world read path of one durable file
+     * reference through the mounted attachment and filesystem providers.
+     */
+    private fileReadPath;
     /**
      * Final adapter boundary. Adapter selection, dispatch, iterator construction,
      * and iteration failures become one terminal failure chunk. Middleware and

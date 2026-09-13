@@ -20,6 +20,7 @@ const _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema = z.array
   'settingsNs': z.string(),
   'settingsPath': z.array(z.string()),
   'declared': z.boolean().optional(),
+  'error': z.string().optional(),
 }))
 const _deepseek_ai_dsh_llm_llm_listProviders_result$schema = z.array(z.object({
   'id': z.string(),
@@ -67,7 +68,7 @@ export const TYPERT = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/discoverModels:result',
         schema: _deepseek_ai_dsh_llm_llm_discoverModels_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":621,"column":9},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":628,"column":9},
     },
     {
       id: '@deepseek-ai/dsh-llm#llm/listConfigurableProviders',
@@ -82,7 +83,7 @@ export const TYPERT = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/listConfigurableProviders:result',
         schema: _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":534,"column":3},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":541,"column":3},
     },
     {
       id: '@deepseek-ai/dsh-llm#llm/listProviders',
@@ -97,7 +98,7 @@ export const TYPERT = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/listProviders:result',
         schema: _deepseek_ai_dsh_llm_llm_listProviders_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":462,"column":3},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":469,"column":3},
     },
   ],
   model: {
@@ -175,6 +176,13 @@ export const TYPERT = {
           },
           {
             "kind": "method",
+            "name": "fileRequestText",
+            "signature": "fileRequestText(ref: FileAttachmentRef): string",
+            "summary": "Resolve the exact text one durable file occurrence contributes to every provider request in the current execution environment.",
+            "jsDoc": "/**\n * Resolve the exact text one durable file occurrence contributes to every\n * provider request in the current execution environment.\n * @param ref - durable verbatim file reference from model history.\n * @returns the same deterministic handle text used at adapter dispatch.\n */"
+          },
+          {
+            "kind": "method",
             "name": "listModels",
             "signature": "async listModels(provider: string): Promise<LlmModelInfo[]>",
             "summary": "Discover models advertised by one registered provider.",
@@ -215,6 +223,10 @@ export const TYPERT = {
             "declaration": "export interface AdapterRegistrationHandle {\n    (): void;\n    replace(providers: string[]): void;\n}"
           },
           {
+            "name": "AgentMessageSource",
+            "declaration": "export interface AgentMessageSource {\n    readonly kind: 'agent-message';\n    readonly form: 'relay';\n    readonly senderSessionId: SessionId;\n}"
+          },
+          {
             "name": "AssistantProvenance",
             "declaration": "export interface AssistantProvenance {\n    provider: string;\n    model: string;\n    replayState?: unknown;\n}"
           },
@@ -227,12 +239,16 @@ export const TYPERT = {
             "declaration": "export type Branded<B extends string> = string & { readonly [BRAND]: B; };"
           },
           {
+            "name": "BrandedNumber",
+            "declaration": "export type BrandedNumber<B extends string> = number & { readonly [BRAND]: B; };"
+          },
+          {
             "name": "ContentBlock",
             "declaration": "export type ContentBlock = ContentBlockMap[ContentBlockType];"
           },
           {
             "name": "ContentBlockMap",
-            "declaration": "export interface ContentBlockMap {\n    text: TextBlock;\n    reasoning: ReasoningBlock;\n    image: ImageBlock;\n    'tool-call': ToolCallBlock;\n    'tool-result': ToolResultBlock;\n}"
+            "declaration": "export interface ContentBlockMap {\n    text: TextBlock;\n    reasoning: ReasoningBlock;\n    image: ImageBlock;\n    file: FileBlock;\n    'tool-call': ToolCallBlock;\n    'tool-result': ToolResultBlock;\n}"
           },
           {
             "name": "ContentBlockType",
@@ -247,12 +263,16 @@ export const TYPERT = {
             "declaration": "export interface ContextSnapshotSection {\n    readonly name: string;\n    readonly text: string;\n}"
           },
           {
-            "name": "CoordinatorMessageSource",
-            "declaration": "export interface CoordinatorMessageSource {\n    readonly kind: 'coordinator';\n    readonly form: 'relay';\n    readonly senderSessionId: SessionId;\n}"
-          },
-          {
             "name": "DirectoryRegistrationHandle",
             "declaration": "export interface DirectoryRegistrationHandle {\n    (): void;\n    replace(entries: readonly LlmConfigurableProvider[]): void;\n}"
+          },
+          {
+            "name": "FileAttachmentRef",
+            "declaration": "export interface FileAttachmentRef {\n    attachmentId: AttachmentId;\n    name: string;\n    bytes: number;\n}"
+          },
+          {
+            "name": "FileBlock",
+            "declaration": "export interface FileBlock {\n    type: 'file';\n    attachment: FileAttachmentRef;\n}"
           },
           {
             "name": "FinishReason",
@@ -300,7 +320,7 @@ export const TYPERT = {
           },
           {
             "name": "LlmConfigurableProvider",
-            "declaration": "export interface LlmConfigurableProvider {\n    provider: string;\n    displayName: string;\n    settingsNs: string;\n    settingsPath: readonly string[];\n    declared?: boolean;\n}"
+            "declaration": "export interface LlmConfigurableProvider {\n    provider: string;\n    displayName: string;\n    settingsNs: string;\n    settingsPath: readonly string[];\n    declared?: boolean;\n    error?: string;\n}"
           },
           {
             "name": "LlmDiscoveredModel",
@@ -344,7 +364,7 @@ export const TYPERT = {
           },
           {
             "name": "LlmResolvedModelInfo",
-            "declaration": "export interface LlmResolvedModelInfo extends LlmModelInfo {\n    context?: LlmModelContext;\n    defaultMaxTokens?: number;\n    reasoning?: LlmModelReasoningInfo;\n}"
+            "declaration": "export interface LlmResolvedModelInfo extends LlmModelInfo {\n    context?: LlmModelContext;\n    defaultMaxTokens?: number;\n    reasoning?: LlmModelReasoningInfo;\n    systemPromptUpdate?: SystemPromptUpdate;\n}"
           },
           {
             "name": "Message",
@@ -360,7 +380,7 @@ export const TYPERT = {
           },
           {
             "name": "MessageSourceMap",
-            "declaration": "export interface MessageSourceMap {\n    user: { kind: 'user'; };\n    plugin: { kind: 'plugin'; plugin: string; } & ContextFormed;\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n    'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string; };\n    coordinator: CoordinatorMessageSource;\n    'subagent-report': SubagentReportMessageSource;\n    'subagent-settled': SubagentSettledMessageSource;\n    'skill-invocation': SkillInvocationSource;\n    'team-message': TeamMessageSource;\n    goal: GoalMessageSource;\n    'session-reference': SessionReferenceSource;\n}"
+            "declaration": "export interface MessageSourceMap {\n    user: { kind: 'user'; };\n    plugin: { kind: 'plugin'; plugin: string; } & ContextFormed;\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n    'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string; };\n    'agent-message': AgentMessageSource;\n    'subagent-settled': SubagentSettledMessageSource;\n    'skill-invocation': SkillInvocationSource;\n    'team-message': TeamMessageSource;\n    goal: GoalMessageSource;\n    'session-reference': SessionReferenceSource;\n}"
           },
           {
             "name": "ModelMessageSource",
@@ -375,12 +395,16 @@ export const TYPERT = {
             "declaration": "export interface ModelModalityMap {\n    text: 'text';\n    image: 'image';\n}"
           },
           {
+            "name": "OptionalSessionSeq",
+            "declaration": "export type OptionalSessionSeq = SessionSeq | null;"
+          },
+          {
             "name": "PreparedAdapterCall",
             "declaration": "export interface PreparedAdapterCall {\n    readonly model: LlmResolvedModelInfo;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
           },
           {
             "name": "PreparedLlmCall",
-            "declaration": "export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
+            "declaration": "export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly systemPromptUpdate?: SystemPromptUpdate;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
           },
           {
             "name": "ProviderRequestId",
@@ -420,11 +444,15 @@ export const TYPERT = {
           },
           {
             "name": "SessionReferenceSource",
-            "declaration": "export interface SessionReferenceSource {\n    kind: 'session-reference';\n    form: 'recall';\n    version: 1;\n    references: { sessionId: string; label: string; capturedThroughSeq: number | null; compacted: boolean; originalMessages: number; retainedMessages: number; omittedMessages: number; omittedBytes: number; truncated: boolean; inputIndex: number; }[];\n}"
+            "declaration": "export interface SessionReferenceSource {\n    kind: 'session-reference';\n    form: 'recall';\n    version: 1;\n    references: { sessionId: string; label: string; capturedFormatVersion?: number; capturedThroughSeq: OptionalSessionSeq; compacted: boolean; originalMessages: number; retainedMessages: number; omittedMessages: number; omittedBytes: number; truncated: boolean; inputIndex: number; }[];\n}"
           },
           {
             "name": "SessionRequestId",
             "declaration": "export type SessionRequestId = Branded<'session-request-id'>;"
+          },
+          {
+            "name": "SessionSeq",
+            "declaration": "export type SessionSeq = BrandedNumber<'SessionSeq'>;"
           },
           {
             "name": "SkillInvocationSource",
@@ -435,12 +463,12 @@ export const TYPERT = {
             "declaration": "export type StreamChunk = { type: 'block-start'; index: number; blockType: ContentBlockType; } | { type: 'text-delta'; index: number; text: string; } | { type: 'reasoning-delta'; index: number; text: string; } | { type: 'tool-call-delta'; index: number; id: ToolCallId; name?: string; argumentsDelta: string; } | { type: 'block-end'; index: number; block: ContentBlock; } | { type: 'usage'; usage: TokenUsage; } | { type: 'finish'; reason: FinishReason; replayState?: ReplayEnvelope; };"
           },
           {
-            "name": "SubagentReportMessageSource",
-            "declaration": "export interface SubagentReportMessageSource {\n    readonly kind: 'subagent-report';\n    readonly form: 'relay';\n    readonly senderSessionId: SessionId;\n}"
-          },
-          {
             "name": "SubagentSettledMessageSource",
             "declaration": "export interface SubagentSettledMessageSource {\n    readonly kind: 'subagent-settled';\n    readonly form: 'notice';\n    readonly summary: string;\n    readonly senderSessionId: SessionId;\n}"
+          },
+          {
+            "name": "SystemPromptUpdate",
+            "declaration": "export type SystemPromptUpdate = 'in-history';"
           },
           {
             "name": "TeamId",

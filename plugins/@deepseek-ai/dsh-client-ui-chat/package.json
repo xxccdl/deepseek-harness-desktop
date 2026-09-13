@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-chat",
   "description": "Chat Conversation target, node definitions, renderers, and details surface — forked for the redesigned token strip: a context-occupancy bar, a token-composition bar, and a hover panel with the full statistics",
-  "version": "0.1.0",
+  "version": "0.1.5-rc.2",
   "publishConfig": {
     "access": "public"
   },

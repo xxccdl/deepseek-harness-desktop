@@ -6,10 +6,9 @@
  * A route key is not required to name an installed pi-ai provider. When it does,
  * that provider's endpoint, protocol, display name, and model catalog are the
  * profile's defaults and the profile overrides them field by field; when it does
- * not, the profile is the whole provider declaration. Resolution therefore ends
- * in a built pi-ai `Provider` per route: everything a request needs is decided
- * once, while the configuration key that made a route unserviceable can still be
- * named in the failure.
+ * not, the profile is the whole provider declaration. Stored reads retain
+ * catalog diagnostics beside serviceable models; writes validate every changed
+ * provider before persistence. Self-contained profile constraints apply to both.
  *
  * @module dsh-llm-pi-ai/config
  */
@@ -110,7 +109,7 @@ export interface PiAiProviderProfile {
      * to answer instead.
      */
     defaultInput?: PiAiModality[];
-    /** Provider request headers; Harness attribution wins reserved names. */
+    /** Provider request headers, validated against Fetch when the profile resolves; Harness attribution wins reserved names. */
     headers?: Record<string, string>;
     /** Provider-neutral pi-ai reasoning level. */
     reasoning?: ModelThinkingLevel;
@@ -162,12 +161,14 @@ export interface ResolvedPiAiProviderProfile extends Omit<PiAiProviderProfile, '
     /** Immutable retry policy captured with this provider route. */
     retryPolicy: ResolvedRetryPolicy;
     /**
-     * The pi-ai provider this route registers, built from the resolved models.
-     * Construction happens here so an unserviceable protocol or an underspecified
-     * model fails with the rest of resolution, leaving the last good route set
-     * serving requests.
+     * The pi-ai provider containing this route's serviceable models. Absent when
+     * a stored route cannot be constructed; its configuration remains editable.
      */
-    piProvider: Provider;
+    piProvider?: Provider;
+    /** First model diagnostic, or the route failure when no model diagnostic is available. */
+    catalogError?: string;
+    /** Per-model failures reported before attempting a request. */
+    modelErrors: ReadonlyMap<string, string>;
     /**
      * Per-request output caps this profile explicitly configured, by model id.
      * The seam materializes one only into a request that names no cap of its
@@ -187,25 +188,21 @@ export interface Config {
 /** Runtime schema for {@link Config}. */
 export declare const Config: z<Config>;
 /**
- * Reject a section this adapter could not serve. Registered as the settings
- * namespace's validator, so an unserviceable profile is refused where it is
- * *written* — `settings.mutate` answers `settings-rejected` with the offending
- * route and model named — instead of being stored and then quietly disabling
- * every route in the namespace. It stays a validator rather than a schema
- * transform because the schema is also the shape a configuration surface
- * renders and the value an absent section resolves to; wrapping it would break
- * both.
+ * Reject new or changed provider profiles that cannot be served. Unchanged
+ * stored profiles may need repair after a catalog upgrade and do not block
+ * edits to another provider. Removed profiles require no catalog validation.
  * @param config - the resolved section to check.
- * @throws Error naming the route and model that cannot be served.
+ * @param previous - current resolved section; omission checks every provider.
+ * @throws Error naming the route and configuration entry that cannot be served.
  */
-export declare function assertServiceable(config: Config): void;
+export declare function assertServiceable(config: Config, previous?: Config): void;
 /**
- * Validate profiles and return a detached route-keyed map suitable for
- * per-request reads. This is the one explicit resolve step, so an omitted dict
- * resolves to the empty (dormant) route set here rather than through a hidden
- * fallback, and each route's models and pi-ai provider are materialized once.
+ * Resolve scalar defaults and materialize each route's serviceable models.
+ * Deferred catalog validation retains diagnostics without deleting configured
+ * routes. An omitted dict resolves to the empty, dormant route set.
  * @param providers - configured provider profiles keyed by route.
+ * @param validation - writes require a complete catalog; stored reads retain catalog diagnostics.
  * @returns validated profiles in configuration order.
  */
-export declare function resolveProfiles(providers: Readonly<Record<string, PiAiProviderProfile>> | undefined): Map<string, ResolvedPiAiProviderProfile>;
+export declare function resolveProfiles(providers: Readonly<Record<string, PiAiProviderProfile>> | undefined, validation?: 'strict' | 'deferred'): Map<string, ResolvedPiAiProviderProfile>;
 //# sourceMappingURL=config.d.ts.map

@@ -13,16 +13,18 @@
 * object's first pointer.
 */
 /**
-* Read a NUL-terminated UTF-16 string at a native address. koffi's
-* `_Out_ void **` out-params surface a raw address, and
-* `koffi.decode(addr, 'str16')` would dereference it as a pointer — crash
-* on real Windows — so view the memory directly instead.
+* Read a valid NUL-terminated UTF-16 allocation without an external buffer.
+* Generic `koffi.decode(..., 'str16')` expects a pointer variable, so the
+* buffer holds the string address rather than the string bytes.
+* @param koffi - the loaded koffi binding.
+* @param address - the string address surfaced by the `_Out_ void **` param.
+* @param pointerSize - the process's pointer width (`koffi.sizeof('void *')`).
+* @returns the decoded UTF-16 path.
 */
-function readUtf16(koffi, address) {
-	const bytes = Buffer.from(koffi.view(address, 32768));
-	let end = 0;
-	while (end + 1 < bytes.length && !(bytes[end] === 0 && bytes[end + 1] === 0)) end += 2;
-	return bytes.toString("utf16le", 0, end);
+function readUtf16(koffi, address, pointerSize) {
+	const pointer = Buffer.alloc(8);
+	pointer.writeBigUInt64LE(BigInt(address));
+	return koffi.decode(pointer.subarray(0, pointerSize), "str16");
 }
 const COINIT_APARTMENTTHREADED = 2;
 const CLSCTX_INPROC_SERVER = 1;
@@ -39,6 +41,10 @@ const DPI_AWARENESS_CONTEXTS = [
 	-3,
 	-2
 ];
+/** `VK_MENU`: the synthesized Alt press's virtual key. */
+const VK_MENU = 18;
+/** `KEYEVENTF_KEYUP`: the synthesized Alt press's release flag. */
+const KEYEVENTF_KEYUP = 2;
 /** IFileOpenDialog vtable slots (IUnknown 0-2, IModalWindow 3, IFileDialog 4+). */
 const SLOT_RELEASE = 2;
 const SLOT_SHOW = 3;
@@ -84,6 +90,12 @@ async function loadWin32DialogBindings() {
 	]);
 	const coTaskMemFree = ole32.func("__stdcall", "CoTaskMemFree", "void", ["void *"]);
 	const getCurrentThreadId = kernel32.func("__stdcall", "GetCurrentThreadId", "uint32", []);
+	const keybdEvent = user32.func("__stdcall", "keybd_event", "void", [
+		"uint8",
+		"uint8",
+		"uint32",
+		"uintptr"
+	]);
 	const protoShow = koffi.proto("int32 __stdcall DshDialogShow(void *self, void *owner)");
 	const protoSetOptions = koffi.proto("int32 __stdcall DshDialogSetOptions(void *self, uint32 options)");
 	const protoSetTitle = koffi.proto("int32 __stdcall DshDialogSetTitle(void *self, str16 title)");
@@ -111,6 +123,10 @@ async function loadWin32DialogBindings() {
 			coUninitialize();
 		},
 		currentThreadId: () => getCurrentThreadId(),
+		pressAltForForeground: () => {
+			keybdEvent(VK_MENU, 0, 0, 0);
+			keybdEvent(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+		},
 		createFolderDialog: () => {
 			const out = Buffer.alloc(pointerSize);
 			const created = coCreateInstance(CLSID_FILE_OPEN_DIALOG, null, CLSCTX_INPROC_SERVER, IID_IFILE_OPEN_DIALOG, out);
@@ -129,7 +145,7 @@ async function loadWin32DialogBindings() {
 						const nameOut = [null];
 						const gotName = method(item, SLOT_GET_DISPLAY_NAME, protoGetDisplayName)(SIGDN_FILESYSPATH, nameOut);
 						if (gotName < 0) return { hr: gotName };
-						const path = readUtf16(koffi, nameOut[0]);
+						const path = readUtf16(koffi, nameOut[0], pointerSize);
 						coTaskMemFree(nameOut[0]);
 						return {
 							hr: gotName,
@@ -175,6 +191,7 @@ function runFolderDialog(bindings, title, onShowing) {
 			check(dialog.setOptions(104), "SetOptions");
 			check(dialog.setTitle(title), "SetTitle");
 			onShowing(bindings.currentThreadId());
+			bindings.pressAltForForeground();
 			const shown = dialog.show();
 			if (shown === -2147023673) return null;
 			check(shown, "Show");
@@ -193,9 +210,12 @@ function runFolderDialog(bindings, title, onShowing) {
 /**
 * Child-process entry for the Win32 folder dialog: blocks THIS process
 * inside the modal `Show` so the host event loop stays live, reporting over
-* the IPC channel. Spawned as a child process (not a worker thread) so the
-* dialog is the process's first window and Windows activates it without a
-* manual foreground call. Protocol: `{kind:'showing',threadId}` right
+* the IPC channel. Spawned as a child process (not a worker thread) so a
+* native fault stays contained and the modal call never wedges the host.
+* A background host (the web GUI server) leaves this process without
+* foreground rights, so `runFolderDialog` synthesizes an Alt press
+* immediately before `Show` and the dialog then activates as foreground.
+* Protocol: `{kind:'showing',threadId}` right
 * before the blocking call (the driver's abort lever needs the native
 * thread id), then exactly one of `{kind:'done',path}` or
 * `{kind:'error',message}`.

@@ -37,6 +37,14 @@ export type ProviderRequestId = Branded<'ProviderRequestId'>;
  * @returns the same string, branded; no validation is performed.
  */
 export declare function ProviderRequestId(id: string): ProviderRequestId;
+/** Identity of one model streaming attempt, unique within one Agent lifecycle. */
+export type LlmAttemptId = Branded<'LlmAttemptId'>;
+/**
+ * Brand one loop-owned streaming attempt identifier.
+ * @param id - the opaque Agent-lifecycle-local identifier.
+ * @returns the same string with the attempt-id brand.
+ */
+export declare function LlmAttemptId(id: string): LlmAttemptId;
 /** Adapter-owned identifier for one model's selectable reasoning effort. */
 export type ReasoningEffortId = Branded<'ReasoningEffortId'>;
 /**

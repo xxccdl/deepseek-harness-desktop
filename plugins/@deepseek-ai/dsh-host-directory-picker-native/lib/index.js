@@ -64,9 +64,10 @@ async function closeThreadWindows(threadId) {
 /**
 * Spawn the dialog child process. Built consumers launch the bundled CJS
 * entry next to this module under plain node; unbuilt (source) consumers
-* bootstrap tsx first, mirroring the dsh CLI's source launch. The dialog is
-* the child's first window, so Windows activates it without a foreground
-* call.
+* bootstrap tsx first, mirroring the dsh CLI's source launch. The child
+* opens its dialog as foreground on its own: `runFolderDialog` synthesizes
+* an Alt press before `Show`, which matters when a background host spawned
+* the child.
 * @param data - the child payload (dialog title).
 * @returns the spawned child process.
 */
@@ -283,7 +284,9 @@ async function pickNativeDirectory(signal, internals = {}) {
 * with the `native` capability, opening one native OS chooser on the host
 * display per pick (macOS `osascript`, Linux Zenity with a KDialog fallback;
 * Windows opens the modern `IFileOpenDialog` in a spawned child process — a
-* koffi-driven COM conversation on the child's main thread). Only viable when
+* koffi-driven COM conversation on the child's main thread, preceded by a
+* synthesized Alt press so the dialog activates as foreground even when a
+* background host spawned the child). Only viable when
 * the operator sits at the host's screen; remote deployments compose the
 * browse backend instead.
 * @module @deepseek-ai/dsh-host-directory-picker-native

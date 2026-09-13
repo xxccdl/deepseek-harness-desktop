@@ -11,6 +11,8 @@
 export declare const zh: {
     'command.description': string;
     'option.loadError': string;
+    'option.deepseekV4Flash.description': string;
+    'option.deepseekV4Pro.description': string;
     'trigger.fallback': string;
     'trigger.loading': string;
     'trigger.selectAria': string;
@@ -34,6 +36,8 @@ export type ModelKey = keyof typeof zh;
 export declare const en: {
     'command.description': string;
     'option.loadError': string;
+    'option.deepseekV4Flash.description': string;
+    'option.deepseekV4Pro.description': string;
     'trigger.fallback': string;
     'trigger.loading': string;
     'trigger.selectAria': string;

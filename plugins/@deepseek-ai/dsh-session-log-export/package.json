@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-session-log-export",
   "description": "Web Session-log export command and shared download dialog (desktop fork: the trigger lives in the session toolbar's overflow menu, not its own header capsule)",
-  "version": "0.1.2-alpha.2",
+  "version": "0.1.5-rc.2",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -3,11 +3,19 @@ import z from "@deepseek-ai/schemastery";
 import { AttachmentError, AttachmentId, AttachmentStore, ImageVariantId, requestImageDimensions } from "@deepseek-ai/dsh-attachment";
 import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
 import { createHash, randomUUID } from "node:crypto";
-import { constants } from "node:fs";
+import { constants, createReadStream } from "node:fs";
 import { chmod, link, mkdir, open, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 //#region lib/types/compression-limiter.js
 /** Instance-owned concurrency bound for native image transformations. */
+/**
+* Preserve Error rejections and normalize non-Error native binding values.
+* @param reason - rejection reason returned by a compression task.
+* @returns an Error suitable for promise rejection.
+*/
+function compressionFailure(reason) {
+	return reason instanceof Error ? reason : new Error("Image compression task rejected with a non-Error value.", { cause: reason });
+}
 /** FIFO limiter for asynchronous compression work. */
 var CompressionLimiter = class {
 	concurrency;
@@ -37,7 +45,7 @@ var CompressionLimiter = class {
 					resolve(value);
 				}, (error) => {
 					release();
-					reject(error instanceof Error ? error : new Error("Image compression task rejected with a non-Error value.", { cause: error }));
+					reject(compressionFailure(error));
 				});
 			};
 			if (this.active < this.concurrency) start();
@@ -525,56 +533,168 @@ async function commitPreparedImageFile(root, prepared) {
 	const normalized = prepared.data;
 	const sha256 = ensureReference(prepared.ref);
 	if (digest$1(normalized) !== sha256 || normalized.byteLength !== prepared.ref.bytes) throw new AttachmentError("Prepared attachment bytes do not match their reference.", "ATTACHMENT_CORRUPT");
-	const bucket = join(root, "objects", sha256.slice(0, 2));
+	await publishImmutableObject(root, normalizedImagePath(root, prepared.ref), normalized, sha256);
+	return prepared.ref;
+}
+/**
+* Publish one immutable content-addressed object below a versioned attachment
+* root: staged write, fsync, hard-link into place, digest-verified EEXIST
+* deduplication, read-only mode, and durable directory entries from the
+* target's parent up to (excluding) `root`.
+* @param root - absolute `DSH_HOME/attachments/v1` root.
+* @param target - absolute final object path below `root`.
+* @param data - exact object bytes whose digest is `sha256`.
+* @param sha256 - hex digest the stored bytes must match on deduplication.
+*/
+async function publishImmutableObject(root, target, data, sha256) {
+	const staged = await stageImmutableObject(root, (function* () {
+		yield data;
+	})());
+	if (staged.sha256 !== sha256) {
+		await removeTemporary(staged.path);
+		throw new AttachmentError("Attachment bytes do not match their publication digest.", "ATTACHMENT_CORRUPT");
+	}
+	await publishStagedObject(root, target, staged);
+}
+/**
+* Stream one immutable object from bounded chunks into a staging file, then
+* publish it at a digest-derived target without collecting the complete object in memory.
+* @param root - absolute `DSH_HOME/attachments/v1` root.
+* @param data - exact object bytes in order.
+* @param targetFor - derive the final absolute target from the completed digest and byte count.
+* @param signal - optional cancellation for source reads and storage writes.
+* @returns digest and exact byte count of the published object.
+*/
+async function publishImmutableObjectStream(root, data, targetFor, signal) {
+	const staged = await stageImmutableObject(root, data, signal);
+	let target;
+	try {
+		target = targetFor(staged.sha256, staged.bytes);
+	} catch (error) {
+		/* v8 ignore start -- The local target callback constructs a validated reference from this function's digest. */
+		await removeTemporary(staged.path);
+		throw error;
+	}
+	await publishStagedObject(root, target, staged);
+	return {
+		sha256: staged.sha256,
+		bytes: staged.bytes
+	};
+}
+/**
+* Publish another durable hard-link name for an existing immutable object.
+* @param root - absolute versioned attachment root.
+* @param source - existing content-addressed object below `root`.
+* @param target - new alias below `root`.
+* @param sha256 - expected object digest for an existing-target race.
+*/
+async function publishImmutableAlias(root, source, target, sha256) {
+	const parent = dirname(target);
+	try {
+		await ensureDurableDirectory(parent, await ensureDurableHome(dirname(dirname(resolve(root)))));
+		try {
+			await link(source, target);
+		} catch (error) {
+			/* v8 ignore next -- Private same-filesystem directories make EEXIST the only recoverable link race. */
+			if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+			if (await digestFile(target) !== sha256) throw new AttachmentError("Stored attachment failed integrity verification.", "ATTACHMENT_CORRUPT");
+		}
+		await chmod(target, 256);
+		const stop = resolve(root);
+		for (let level = parent; level !== stop; level = dirname(level)) {
+			await syncDirectory(level);
+			/* v8 ignore next -- filesystem-root guard: targets sit below root, so the walk reaches `stop` first. */
+			if (dirname(level) === level) break;
+		}
+	} catch (error) {
+		if (error instanceof AttachmentError) throw error;
+		throw new AttachmentError("Unable to persist attachment.", "ATTACHMENT_WRITE_FAILED", { cause: error });
+	}
+}
+async function stageImmutableObject(root, data, signal) {
 	const staging = join(root, "tmp");
 	const boundary = await ensureDurableHome(dirname(dirname(resolve(root))));
-	await ensureDurableDirectory(bucket, boundary);
 	await ensureDurableDirectory(staging, boundary);
 	const temporary = join(staging, randomUUID());
-	const target = normalizedImagePath(root, prepared.ref);
 	let handle;
 	try {
 		handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 384);
-		await handle.writeFile(normalized);
+		const hash = createHash("sha256");
+		let bytes = 0;
+		for await (const chunk of data) {
+			signal?.throwIfAborted();
+			await handle.writeFile(chunk);
+			hash.update(chunk);
+			bytes += chunk.byteLength;
+		}
+		signal?.throwIfAborted();
 		await handle.sync();
+		signal?.throwIfAborted();
 		await handle.close();
 		handle = void 0;
-		try {
-			await link(temporary, target);
-		} catch (error) {
-			const code = error instanceof Error && "code" in error ? error.code : void 0;
-			if (code === "EEXIST") {
-				if (digest$1(new Uint8Array(await readFile(target))) !== sha256) throw new AttachmentError("Stored attachment failed integrity verification.", "ATTACHMENT_CORRUPT");
-			} else if (code === "EACCES" || code === "EPERM" || code === "ENOSYS" || code === "EXDEV") {
-				// Android SELinux forbids hard links: fall back to an atomic same-directory
-				// rename; the temporary is consumed by the rename, so the unlink below
-				// becomes a no-op (its ENOENT is swallowed).
-				await rename(temporary, target);
-			} else {
-				throw error;
-			}
-		}
-		await unlink(temporary).catch(() => {});
-		await chmod(target, 256);
-		await syncDirectory(bucket);
-		await syncDirectory(join(root, "objects"));
+		return {
+			path: temporary,
+			boundary,
+			sha256: hash.digest("hex"),
+			bytes
+		};
 	} catch (error) {
-		/* v8 ignore next -- A descriptor can remain open only when the underlying write/sync/close operation fails. */
+		/* v8 ignore next -- A descriptor remains open only when write, sync, or close fails. */
 		if (handle !== void 0) await handle.close().catch(
 			/* v8 ignore next -- Close failure is superseded by the storage operation that entered cleanup. */
 			() => {}
 		);
-		await unlink(temporary).catch(
-			/* v8 ignore next -- The callback requires a second independent staging-unlink failure. */
-			(cleanupError) => {
-				/* v8 ignore next -- Cleanup is best-effort only for a staging file already removed by a failed operation. */
-				if (!(cleanupError instanceof Error && "code" in cleanupError && cleanupError.code === "ENOENT")) throw cleanupError;
-			}
-		);
-		if (error instanceof AttachmentError) throw error;
-		throw new AttachmentError("Unable to persist image attachment.", "ATTACHMENT_WRITE_FAILED", { cause: error });
+		await removeTemporary(temporary);
+		if (error instanceof AttachmentError || signal?.aborted === true) throw error;
+		throw new AttachmentError("Unable to persist attachment.", "ATTACHMENT_WRITE_FAILED", { cause: error });
 	}
-	return prepared.ref;
+}
+async function publishStagedObject(root, target, staged) {
+	const parent = dirname(target);
+	try {
+		await ensureDurableDirectory(parent, staged.boundary);
+		try {
+			await link(staged.path, target);
+		} catch (error) {
+			const code = error instanceof Error && "code" in error ? error.code : void 0;
+			if (code === "EEXIST") {
+				if (await digestFile(target) !== staged.sha256) throw new AttachmentError("Stored attachment failed integrity verification.", "ATTACHMENT_CORRUPT");
+			} else if (code === "EACCES" || code === "EPERM" || code === "ENOSYS" || code === "EXDEV") {
+				// Android SELinux forbids hard links: fall back to an atomic same-directory
+				// rename; the temporary is consumed by the rename, so the unlink below
+				// becomes a no-op (its ENOENT is swallowed).
+				await rename(staged.path, target);
+			} else {
+				throw error;
+			}
+		}
+		await unlink(staged.path).catch(() => {});
+		await chmod(target, 256);
+		const stop = resolve(root);
+		for (let level = parent; level !== stop; level = dirname(level)) {
+			await syncDirectory(level);
+			/* v8 ignore next -- filesystem-root guard: targets sit below root, so the walk reaches `stop` first. */
+			if (dirname(level) === level) break;
+		}
+	} catch (error) {
+		await removeTemporary(staged.path);
+		if (error instanceof AttachmentError) throw error;
+		throw new AttachmentError("Unable to persist attachment.", "ATTACHMENT_WRITE_FAILED", { cause: error });
+	}
+}
+async function digestFile(path) {
+	const hash = createHash("sha256");
+	for await (const chunk of createReadStream(path)) hash.update(chunk);
+	return hash.digest("hex");
+}
+async function removeTemporary(path) {
+	await unlink(path).catch(
+		/* v8 ignore next -- Cleanup can observe a staging name already removed after successful linking. */
+		(cleanupError) => {
+			/* v8 ignore next -- Any cleanup failure except an absent staging name must remain visible. */
+			if (!(cleanupError instanceof Error && "code" in cleanupError && cleanupError.code === "ENOENT")) throw cleanupError;
+		}
+	);
 }
 /**
 * Decode and normalize one image once, then publish the prepared object.
@@ -615,6 +735,137 @@ async function readImageFile(root, ref, signal) {
 		ref,
 		data
 	};
+}
+//#endregion
+//#region lib/types/file-store.js
+/** Verbatim content-addressed local file storage. @module @deepseek-ai/dsh-attachment-local/file-store */
+const FILE_ID_PATTERN = /^sha256:([a-f0-9]{64})$/;
+const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/iu;
+function isWindowsDeviceName(name) {
+	const dot = name.indexOf(".");
+	const stem = (dot < 0 ? name : name.slice(0, dot)).replace(/[. ]+$/u, "");
+	return WINDOWS_DEVICE_NAME.test(stem);
+}
+function utf8Prefix(value, maxBytes) {
+	let bytes = 0;
+	let prefix = "";
+	for (const character of Buffer.from(value).toString("utf8")) {
+		const characterBytes = Buffer.byteLength(character);
+		if (bytes + characterBytes > maxBytes) break;
+		prefix += character;
+		bytes += characterBytes;
+	}
+	return prefix;
+}
+/**
+* Sanitize one caller display name into a safe stored leaf name. Both
+* separator styles are stripped by hand: a POSIX host treats `\` as an
+* ordinary character, so path.basename would keep a Windows client's full
+* local path and leak it into the reference and the session log. Characters
+* Windows refuses in file names become `_` so one reference stays valid on
+* every supported host.
+* @param value - caller-declared display name, possibly a full client path.
+* @returns a non-empty leaf name safe to store on every supported filesystem.
+*/
+function fileLeafName(value) {
+	if (value === void 0) return "file";
+	let clean = value.slice(Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\")) + 1).replace(/[\u0000-\u001f\u007f]/g, "").replace(/[<>:"|?*]/g, "_").trim().replace(/[. ]+$/u, "");
+	if (isWindowsDeviceName(clean)) clean = `_${clean}`;
+	clean = utf8Prefix(clean, 255).replace(/[. ]+$/u, "");
+	return clean === "" || clean === "." || clean === ".." ? "file" : clean;
+}
+function ensureFileReference(ref) {
+	const match = FILE_ID_PATTERN.exec(String(ref.attachmentId));
+	if (match?.[1] === void 0 || ref.name !== fileLeafName(ref.name)) throw new AttachmentError("File attachment reference is invalid.", "INVALID_ATTACHMENT_REF");
+	return match[1];
+}
+/**
+* Derive the absolute immutable-object path for one stored file. The digest
+* names a directory so the sanitized display name stays the stored leaf name,
+* giving models and users a path that ends in the real filename.
+* @param root - absolute `DSH_HOME/attachments/v1` root.
+* @param ref - durable file reference from the session log or an upload receipt.
+* @returns provider-local path without reading the object.
+* @throws an AttachmentError when the reference digest or name is invalid.
+*/
+function storedFilePath(root, ref) {
+	const sha256 = ensureFileReference(ref);
+	return join(root, "files", sha256.slice(0, 2), sha256, ref.name);
+}
+/** Canonical object path shared by every display name for one digest. */
+function storedFileObjectPath(root, sha256) {
+	return join(root, "file-objects", sha256.slice(0, 2), sha256);
+}
+/**
+* Commit one file byte-for-byte below a versioned attachment root.
+* @param root - absolute `DSH_HOME/attachments/v1` root.
+* @param input - exact bytes and optional display name.
+* @returns the durable content-addressed file reference.
+*/
+async function saveFileVerbatim(root, input) {
+	const sha256 = createHash("sha256").update(input.data).digest("hex");
+	const ref = {
+		attachmentId: AttachmentId(`sha256:${sha256}`),
+		name: fileLeafName(input.name),
+		bytes: input.data.byteLength
+	};
+	const objectPath = storedFileObjectPath(root, sha256);
+	await publishImmutableObject(root, objectPath, input.data, sha256);
+	await publishImmutableAlias(root, objectPath, storedFilePath(root, ref), sha256);
+	return ref;
+}
+/**
+* Commit one file byte-for-byte from bounded chunks below a versioned attachment root.
+* @param root - absolute `DSH_HOME/attachments/v1` root.
+* @param input - ordered exact bytes, optional cancellation, and display name.
+* @returns the durable content-addressed file reference.
+*/
+async function saveFileStreamVerbatim(root, input) {
+	const name = fileLeafName(input.name);
+	const stored = await publishImmutableObjectStream(root, input.data, (sha256) => storedFileObjectPath(root, sha256), input.signal);
+	const ref = {
+		attachmentId: AttachmentId(`sha256:${stored.sha256}`),
+		name,
+		bytes: stored.bytes
+	};
+	input.signal?.throwIfAborted();
+	await publishImmutableAlias(root, storedFileObjectPath(root, stored.sha256), storedFilePath(root, ref), stored.sha256);
+	input.signal?.throwIfAborted();
+	return ref;
+}
+/**
+* Read one stored file in bounded chunks and verify its byte count and digest.
+* @param root - absolute `DSH_HOME/attachments/v1` root.
+* @param ref - durable file reference from the session log.
+* @param signal - optional cancellation for filesystem reads.
+* @returns exact stored bytes in order; integrity failures reject after the final chunk.
+*/
+async function* readFileStreamVerbatim(root, ref, signal) {
+	signal?.throwIfAborted();
+	const sha256 = ensureFileReference(ref);
+	const stream = createReadStream(storedFilePath(root, ref), {
+		highWaterMark: 65536,
+		...signal === void 0 ? {} : { signal }
+	});
+	const hash = createHash("sha256");
+	let bytes = 0;
+	try {
+		for await (const chunk of stream) {
+			signal?.throwIfAborted();
+			const data = chunk;
+			hash.update(data);
+			bytes += data.byteLength;
+			yield data;
+		}
+	} catch (error) {
+		signal?.throwIfAborted();
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") throw new AttachmentError("File attachment object is missing.", "ATTACHMENT_NOT_FOUND");
+		throw new AttachmentError("Unable to read file attachment.", "ATTACHMENT_READ_FAILED", { cause: error });
+	} finally {
+		stream.destroy();
+	}
+	signal?.throwIfAborted();
+	if (bytes !== ref.bytes || hash.digest("hex") !== sha256) throw new AttachmentError("Stored file attachment failed integrity verification.", "ATTACHMENT_CORRUPT");
 }
 //#endregion
 //#region lib/types/request-image.js
@@ -838,7 +1089,7 @@ var SharedRequest = class {
 			}, (error) => {
 				signal.removeEventListener("abort", abort);
 				release(false);
-				reject(error);
+				reject(compressionFailure(error));
 			});
 		});
 	}
@@ -915,6 +1166,18 @@ var LocalAttachmentStore = class extends AttachmentStore {
 	}
 	imageHostPath(ref) {
 		return normalizedImagePath(this.root, ref);
+	}
+	async saveFile(input) {
+		return saveFileVerbatim(this.root, input);
+	}
+	async saveFileStream(input) {
+		return saveFileStreamVerbatim(this.root, input);
+	}
+	readFileStream(ref, signal) {
+		return readFileStreamVerbatim(this.root, ref, signal);
+	}
+	fileHostPath(ref) {
+		return storedFilePath(this.root, ref);
 	}
 	async readImageRequest(ref, policy, signal) {
 		return this.requestVersion(ref, policy, void 0, signal);

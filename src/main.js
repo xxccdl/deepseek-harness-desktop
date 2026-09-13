@@ -412,27 +412,30 @@ function createMainWindow(serverUrl, startHidden = false) {
     // show the window. The tray (forced on in this mode) is the way back in.
     void win.loadURL(serverUrl);
   } else {
-    // Splash: show a calm "Made by xxccdl" animation immediately at launch, then
-    // swap in the app once it has played (2s) and the UI is ready — never sooner.
+    // Splash: hold the black "Made by xxccdl" wordmark — its light band sweeping
+    // through the glyphs — immediately at launch, then swap in the app once it has
+    // played and the UI is ready. 2.6s matches the mobile splash's minimum, so the
+    // sweep is always seen in full rather than cut mid-pass.
+    const SPLASH_MIN_MS = 2600;
     const splashUrl = pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
     const appStartedAt = Date.now();
     let appReady = false;
     let shown = false;
     const tryShowApp = () => {
       if (!appReady || shown || win.isDestroyed()) return;
-      if (Date.now() - appStartedAt < 2000) return;
+      if (Date.now() - appStartedAt < SPLASH_MIN_MS) return;
       shown = true;
       void win.loadURL(serverUrl);
     };
     void win.loadURL(splashUrl);
     win.once("ready-to-show", () => {
       win.show();
-      setTimeout(() => { appReady = true; tryShowApp(); }, 2000);
+      setTimeout(() => { appReady = true; tryShowApp(); }, SPLASH_MIN_MS);
     });
     win.webContents.once("did-finish-load", () => {
       if (win.webContents.getURL().startsWith(serverOrigin ?? serverUrl)) return; // already the app
-      // The splash finished painting; treat the UI as ready so the 2s timer
-      // alone gates the swap.
+      // The splash finished painting; treat the UI as ready so the minimum-hold
+      // timer alone gates the swap.
       appReady = true;
       tryShowApp();
     });

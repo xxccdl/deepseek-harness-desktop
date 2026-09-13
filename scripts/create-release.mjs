@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.6.4";
+const tag = process.argv[2] ?? "v1.6.5";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,12 +19,14 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
-  "## 1.6.4",
+  "## 1.6.5",
   "",
-  "- **修复插件市场无法安装**：打包版里 `plugins/` 与 `node_modules/` 折叠成同一个目录，而安装流程无条件把包从前者复制到后者——源和目标是同一路径，直接报 `写入插件目录失败: src and dest cannot be the same`。现在两个根指向同一目录时跳过这步镜像复制，安装、更新、卸载都已在打包布局下实测通过",
-  "- **1.6.3 的启动修复一并包含**：`node_modules` 以真实目录发布（关闭 asar），打包版不再出现「plugin tree failed to load」",
-  "- **修复「选择文件夹」报错**：目录选择器与内置浏览器打开改用子进程级 `ELECTRON_RUN_AS_NODE`，不再因单实例锁报 `win32 folder dialog worker exited before reporting a result`",
-  "- **插件市场接入 CDN**：市场域名 `https://dsh-plugin-market.xxccdl.cn`，商店外壳走边缘缓存（`max-age=60`），目录/状态/下载接口保持 `no-store`",
+  "- **同步上游 dsh 到 0.1.5-rc.2**：核心依赖从 `0.1.2-alpha.2` 升级。18 个上游派生 fork 包已重基到新版本，零改动的 `dsh-llm` / `dsh-mcp-client` 归还上游，自研插件保持不变。随上游本版带进来的还有：模型菜单改为 portal + 实测定位、侧栏新增面板列表、`llm-deepseek` 模型表扩到 4 个（`deepseek-flash` 变为多模态 + `systemPromptUpdate: in-history`）、设置页描边/圆角重整、新增会话格式迁移系列包",
+  "- **开机动画改为与手机版同一套**：纯黑背景、居中的 `Made by xxccdl`、光带裁剪进文字笔画内扫过；去掉光晕与涟漪环，最短展示 2.6 秒，服务未就绪则继续循环而不是淡出",
+  "- **推理等级面板优化**：档位中文化（关闭/低/高/最高）、二级面板补上「返回」、进入/退回改为方向化滑动过渡、每次落档都有一次反馈脉冲、悬停时圆点放大提示可拖",
+  "- **电脑控制改为视觉优先**：讲清 `Snapshot` 必须传 `use_vision=True` 才有画面（默认只返回元素树）、默认开启的元素外框与参考网格怎么用；坐标给出「元素列表坐标优先，否则按相对位置 × 元数据屏幕尺寸换算」的规则——图片进上下文前会被缩放两次，图上量到的绝对像素不能直接用",
+  "- **`vision_analyze` 支持桌面自动截屏**：Windows 桌面端不传 `image_path` 时直接截取本机屏幕（移动端仍走原生截屏桥），纯文本模型也能看屏幕",
+  "- **修复**：模型下拉的重试按钮此前显示成英文字面量 `retry`，现在正确显示「重新加载」",
   "",
   "安装包（NSIS）与便携版见下方 Assets。"
 ].join("\n");
