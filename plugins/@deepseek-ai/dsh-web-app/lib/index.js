@@ -130,7 +130,12 @@ function spawnBrowserLauncher(url) {
 		"--",
 		url
 	], {
-		env: scrubbedParentEnv(),
+		// The desktop fork runs inside packaged Electron, where `process.execPath`
+		// is the app binary: without this switch the launcher boots the full app
+		// (its script arguments become plain argv) instead of evaluating the
+		// opener program. Scoped to this spawn — a process-wide export would
+		// break the renderer and GPU children.
+		env: { ...scrubbedParentEnv(), ELECTRON_RUN_AS_NODE: "1" },
 		stdio: [
 			"ignore",
 			"inherit",
