@@ -23,9 +23,17 @@ const SCOPE = "@deepseek-ai";
 /** The installed package whose manifest seeds the module-fallback closure. */
 const ANCHOR = "dsh";
 
-/** Absolute path of the packed app's unpacked node_modules/@deepseek-ai. */
+/**
+ * Absolute path of the packed app's node_modules/@deepseek-ai.
+ *
+ * Packed with an asar the tree lives beside it (`app.asar.unpacked`, kept
+ * unpacked so the harness can junction real directories); packed without one
+ * (`asar: false`) it is the app directory itself.
+ */
 function packedScope(appOutDir) {
-  return join(appOutDir, "resources", "app.asar.unpacked", "node_modules", ...SCOPE.split("/"));
+  const resources = join(appOutDir, "resources");
+  const root = existsSync(join(resources, "app.asar")) ? join(resources, "app.asar.unpacked") : join(resources, "app");
+  return join(root, "node_modules", ...SCOPE.split("/"));
 }
 
 /** Read one package manifest, or undefined when it is not a package. */
