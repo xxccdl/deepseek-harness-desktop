@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
 
 		//#region shared
 		/** Market the window opens before the host reports its own. */
-		const FALLBACK_BASE = "http://175.27.141.172:9009";
+		const FALLBACK_BASE = "https://dsh-plugin-market.xxccdl.cn";
 		/** Creation mode's preset id. */
 		const CREATOR_PRESET = "cordis";
 		/** Icon: a shop front, drawn here so the strip needs no dependency. */

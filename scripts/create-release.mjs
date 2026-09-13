@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.6.1";
+const tag = process.argv[2] ?? "v1.6.2";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,11 +19,10 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
-  "## 1.6.1",
+  "## 1.6.2",
   "",
-  "- **修复启动失败（1.6.0 装不上）**：打包时只收集 `package.json` 的依赖闭包，安装包漏掉了 48 个 `@deepseek-ai` 包（`dsh-jobs`、`dsh-settings`，以及整个桌面插件层），启动即报 `plugin tree failed to load` / 「DeepSeek Harness failed to start」。现在构建会把缺失的包补齐，安装包里的插件集与开发树逐一对应",
-  "- **修复干净机器上的插件解析**：fork 挂载的 26 个行包（记忆、用量、视觉、插件市场、世界时钟等）不在任何 `package.json` 的依赖里，此前只有跑过 `scripts/install-plugins.mjs` 的开发机才解析得到。新增构建钩子 `scripts/after-pack.cjs`，把随包发布的插件集合写进打包后的 dsh 清单，启动时的 module fallback 会为所有 profile 行建立链接",
-  "- **修复发布条拥挤**：创造模式的「插件发布」条改为两行布局，提示文案可换行，版本号 / 类型 / 更新说明不再被截断",
+  "- **插件市场接入 CDN**：市场域名换成 `https://dsh-plugin-market.xxccdl.cn`（边缘节点 + TLS），应用内的市场窗口、安装下载、`plugin_publish` 发布全部走这个域名，不再直连裸 IP。仍可用环境变量 `DSH_MARKET_URL` 或 `$DSH_HOME/plugin-market.json` 的 `baseUrl` 覆盖",
+  "- **源站缓存头修正**：商店外壳（`index.html` / `app.js`）由 `no-cache` 改为 `public, max-age=60`，边缘现在会真正缓存它（同一 URL 第二次请求即 `EO-Cache-Status: HIT`）；目录与状态接口保持 `no-store`。下载接口刻意保持 `no-store`——前置 CDN 的缓存键不含查询串，`?version=` 会被折叠成同一个键，可能把别的版本发出去，且 `X-Market-Sha256` 也来自同一份缓存，客户端的完整性校验会照过",
   "",
   "安装包（NSIS）与便携版见下方 Assets。"
 ].join("\n");

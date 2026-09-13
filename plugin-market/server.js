@@ -95,6 +95,10 @@ function metadataOf(req) {
  * The shell is revalidated on every load rather than cached: the market is an
  * embedded surface, and a stale `app.js` would outlive an update to it. A weak
  * ETag from size+mtime keeps the revalidation cheap.
+ *
+ * `max-age=60` is what lets the CDN in front of this service actually hold the
+ * shell: a `no-cache` here makes the edge return every request to the origin,
+ * which is both slow and what made conditional requests useless through it.
  */
 function serveStatic(req, res, pathname) {
   const relative = normalize(pathname).replace(/^([/\\])+/, "");
@@ -107,7 +111,7 @@ function serveStatic(req, res, pathname) {
   const info = statSync(target);
   const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
   if (req.headers["if-none-match"] === etag) {
-    res.writeHead(304, { ETag: etag, "Cache-Control": "no-cache" });
+    res.writeHead(304, { ETag: etag, "Cache-Control": "public, max-age=60" });
     res.end();
     return true;
   }
@@ -115,7 +119,7 @@ function serveStatic(req, res, pathname) {
   res.writeHead(200, {
     "Content-Type": TYPES[extname(target).toLowerCase()] ?? "application/octet-stream",
     "Content-Length": body.length,
-    "Cache-Control": "no-cache",
+    "Cache-Control": "public, max-age=60",
     ETag: etag
   });
   res.end(body);
@@ -183,6 +187,12 @@ async function route(req, res, url) {
     res.writeHead(200, {
       "Content-Type": "application/gzip",
       "Content-Length": buffer.length,
+      // Never cache an archive at the edge. The CDN in front of this service
+      // keys its cache without the query string, so `?version=1.0.0` and
+      // `?version=1.0.1` collapse onto one entry: the wrong bytes would be
+      // served — with the matching `X-Market-Sha256` of that other version,
+      // which the client's integrity check would happily accept. Archives are
+      // a few kilobytes, so the missed caching win costs little.
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": "*",
       "X-Market-Id": record.id,

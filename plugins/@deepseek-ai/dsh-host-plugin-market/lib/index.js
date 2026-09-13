@@ -33,7 +33,7 @@ const name = "plugin-market";
 const inject = [];
 
 /** Market the bridge talks to unless the state file or env overrides it. */
-const DEFAULT_BASE_URL = process.env.DSH_MARKET_URL ?? "http://175.27.141.172:9009";
+const DEFAULT_BASE_URL = process.env.DSH_MARKET_URL ?? "https://dsh-plugin-market.xxccdl.cn";
 /** Script extensions we syntax-check before mounting a package. */
 const CHECK_EXTENSIONS = [".js", ".mjs", ".cjs"];
 /** Service key other plugins resolve this bridge by. */
