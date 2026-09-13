@@ -580,6 +580,12 @@ function createBridge(ctx) {
     const roots = resolveRoots();
     const target = join(roots.plugins, id);
     const deployed = join(roots.modules, id);
+    // A source checkout keeps two trees — `plugins/` is the fork's source and
+    // `node_modules/` the deployed mirror — but a packaged app resolves both
+    // roots onto one node_modules directory. Copying a directory onto itself is
+    // an error rather than a no-op, so the mirror step is skipped when the two
+    // paths coincide.
+    const mirror = deployed !== target;
     const backup = join(dshHome(), "plugin-market-backup", id);
     const had = existsSync(target);
     if (had) {
@@ -589,7 +595,7 @@ function createBridge(ctx) {
     }
     try {
       removeAny(target);
-      removeAny(deployed);
+      if (mirror) removeAny(deployed);
       const scratch = `${target}.staging`;
       removeAny(scratch);
       for (const [file, data] of files) {
@@ -598,25 +604,28 @@ function createBridge(ctx) {
         writeFileSync(full, data);
       }
       renameSync(scratch, target);
-      cpSync(target, deployed, { recursive: true });
+      if (mirror) cpSync(target, deployed, { recursive: true });
       linkFallback(id, deployed);
-      return { target, deployed, backup, had, roots };
+      return { target, deployed, backup, had, roots, mirror };
     } catch (error) {
       // Put the previous package back before surfacing the failure.
       removeAny(target);
-      if (had) cpSync(backup, target, { recursive: true });
+      if (had) {
+        cpSync(backup, target, { recursive: true });
+        if (mirror) cpSync(target, deployed, { recursive: true });
+      }
       throw new MarketError(`写入插件目录失败：${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
   /** Undo a placement. */
-  const unplace = ({ target, deployed, backup, had, roots }) => {
+  const unplace = ({ target, deployed, backup, had, roots, mirror }) => {
     removeAny(target);
-    removeAny(deployed);
+    if (mirror) removeAny(deployed);
     removeAny(join(fallbackDir(), target.split(sep).pop()));
     if (had) {
       cpSync(backup, target, { recursive: true });
-      cpSync(target, deployed, { recursive: true });
+      if (mirror) cpSync(target, deployed, { recursive: true });
       linkFallback(target.split(sep).pop(), deployed);
     }
     return roots;
