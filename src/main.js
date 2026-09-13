@@ -371,7 +371,60 @@ async function saveWindowState(win) {
 }
 
 // ── window creation ──────────────────────────────────────────────────────────
-function createMainWindow(serverUrl, startHidden = false) {
+/** Minimum airing for the launch splash. It goes up before the harness boots, so
+ *  this is a floor rather than a delay: a slow boot keeps it on screen past this. */
+const SPLASH_MIN_MS = 2600;
+let splashStartedAt = 0;
+
+function splashUrl() {
+  return pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
+}
+
+/**
+ * Swap the splash for the served app. The splash is already on screen, so this
+ * only waits out whatever is left of its minimum airing — the harness boot it
+ * ran alongside has usually covered that in full.
+ * @param win - the main window currently showing the splash.
+ * @param url - canonical GUI URL.
+ */
+function revealApp(win, url) {
+  const remaining = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashStartedAt));
+  const swap = () => {
+    if (win.isDestroyed()) return;
+    void win.loadURL(url);
+  };
+  if (remaining === 0) swap();
+  else setTimeout(swap, remaining);
+}
+
+/**
+ * Resolve once the window's first frame has been handed to the compositor. The
+ * harness boot below runs on this same process and blocks its event loop for
+ * seconds, so the show request has to be dealt with first — otherwise the splash
+ * only reaches the screen once the boot has already finished. Capped so a
+ * renderer that never paints cannot hold the launch hostage.
+ * @param win - the window whose first paint to wait for.
+ * @param timeoutMs - upper bound on the wait.
+ * @returns a promise settling with the paint or the timeout, whichever is first.
+ */
+function firstPaint(win, timeoutMs = 4000) {
+  return new Promise((done) => {
+    const finish = () => {
+      clearTimeout(timer);
+      done();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    if (win.isDestroyed()) finish();
+    else win.once("ready-to-show", finish);
+  });
+}
+
+/**
+ * @param url - app URL to load straight away (the harness is already up);
+ *   omitted on launch, where the splash goes first and revealApp() swaps it out.
+ * @param startHidden - auto-launch instance: the window is never shown.
+ */
+function createMainWindow({ url, startHidden = false } = {}) {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -407,38 +460,18 @@ function createMainWindow(serverUrl, startHidden = false) {
     if (state.maximized) win.maximize();
   });
 
-  if (startHidden) {
-    // Silent start (auto-launch with --hidden): load the app directly, never
-    // show the window. The tray (forced on in this mode) is the way back in.
-    void win.loadURL(serverUrl);
-  } else {
-    // Splash: hold the black "Made by xxccdl" wordmark — its light band sweeping
-    // through the glyphs — immediately at launch, then swap in the app once it has
-    // played and the UI is ready. 2.6s matches the mobile splash's minimum, so the
-    // sweep is always seen in full rather than cut mid-pass.
-    const SPLASH_MIN_MS = 2600;
-    const splashUrl = pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
-    const appStartedAt = Date.now();
-    let appReady = false;
-    let shown = false;
-    const tryShowApp = () => {
-      if (!appReady || shown || win.isDestroyed()) return;
-      if (Date.now() - appStartedAt < SPLASH_MIN_MS) return;
-      shown = true;
-      void win.loadURL(serverUrl);
-    };
-    void win.loadURL(splashUrl);
-    win.once("ready-to-show", () => {
-      win.show();
-      setTimeout(() => { appReady = true; tryShowApp(); }, SPLASH_MIN_MS);
-    });
-    win.webContents.once("did-finish-load", () => {
-      if (win.webContents.getURL().startsWith(serverOrigin ?? serverUrl)) return; // already the app
-      // The splash finished painting; treat the UI as ready so the minimum-hold
-      // timer alone gates the swap.
-      appReady = true;
-      tryShowApp();
-    });
+  if (url !== undefined) {
+    // Re-activation with the tree already up: nothing to wait for.
+    void win.loadURL(url);
+    win.once("ready-to-show", () => win.show());
+  } else if (!startHidden) {
+    // The splash goes up NOW, before the harness boots. Booting the cordis tree
+    // is the slow part of launch, and holding the wordmark back until it settled
+    // left the user looking at nothing for the whole of it. `revealApp` swaps the
+    // app in once the tree is up.
+    splashStartedAt = Date.now();
+    void win.loadURL(splashUrl());
+    win.once("ready-to-show", () => win.show());
   }
 
   // Re-apply persisted UI state every time the app page (re)loads: the zoom
@@ -1066,11 +1099,18 @@ if (!gotLock) {
       // Install the same fail-loud guard the CLI installs: a late unhandled
       // rejection becomes one labelled diagnostic, tree dispose, and exit(1).
       installFailLoud(BIN_NAME, process, () => disposeHarness());
-      serverUrl = await bootHarness();
       // Silent start: the auto-launched instance boots straight into the app
       // without a window (the tray, forced on below, is the way back in).
       const startHidden = process.argv.includes("--hidden");
-      win = createMainWindow(serverUrl, startHidden);
+      // The window — and with it the splash — comes up first: booting the tree
+      // below is the slow half of launch, and it used to run with a blank screen.
+      win = createMainWindow({ startHidden });
+      // …and it has to be on screen before that boot takes the event loop, or the
+      // paint request waits behind it and the splash arrives only at the end.
+      if (!startHidden) await firstPaint(win);
+      serverUrl = await bootHarness();
+      if (startHidden) void win.loadURL(serverUrl);
+      else revealApp(win, serverUrl);
     } catch (error) {
       console.error("dsh-desktop: boot failed", error);
       await disposeHarness();
@@ -1144,7 +1184,7 @@ if (!gotLock) {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0 && ctx !== undefined) {
       const port = ctx.get("webServer")?.port;
-      if (port !== undefined) createMainWindow(`http://${LOOPBACK}:${String(port)}/`);
+      if (port !== undefined) createMainWindow({ url: `http://${LOOPBACK}:${String(port)}/` });
     }
   });
 }
