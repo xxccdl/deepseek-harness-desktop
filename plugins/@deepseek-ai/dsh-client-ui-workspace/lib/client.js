@@ -27,6 +27,7 @@ window.__ModuleLoader__.load({
 			workspaces;
 			sessions;
 			connecting = /* @__PURE__ */ new Map();
+			lifetime = new AbortController();
 			/**
 			* @param ctx - Client root Context.
 			* @param directoryPicker - the directory-picking Remote namespace.
@@ -57,6 +58,26 @@ window.__ModuleLoader__.load({
 				this.connecting.set(workspaceId, attempt);
 				return attempt;
 			}
+			openSession(sessionId) {
+				this.sessions.open(sessionId);
+				this.ctx.layout.selectPanel(null);
+			}
+			async openWorkspace(workspaceId, beforeOpen) {
+				const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal]);
+				const isCurrent = () => !navigation.aborted;
+				const sessionId = await this.connectWorkspace(workspaceId);
+				if (!isCurrent()) return;
+				beforeOpen?.(sessionId);
+				if (isCurrent()) this.openSession(sessionId);
+			}
+			async forkSession(sessionId) {
+				const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal]);
+				const childId = await this.sessions.fork({
+					sessionId,
+					increaseTitle: true
+				});
+				if (!navigation.aborted) this.openSession(childId);
+			}
 			startSession(workspaceId) {
 				const workspace = this.workspaces.list.getSnapshot();
 				const sessions = this.sessions.list.getSnapshot();
@@ -66,11 +87,10 @@ window.__ModuleLoader__.load({
 				const target = workspaceId ?? currentWorkspaceId ?? recent;
 				if (target === void 0) {
 					this.sessions.clear();
+					this.ctx.layout.selectPanel(null);
 					return;
 				}
-				this.connectWorkspace(target).then((sessionId) => {
-					this.sessions.open(sessionId);
-				}, (reason) => {
+				this.openWorkspace(target).catch((reason) => {
 					console.warn("new session failed:", reason);
 				});
 			}
@@ -94,9 +114,8 @@ window.__ModuleLoader__.load({
 			}
 			watchNavigation() {
 				let initial = "waiting";
-				let disposed = false;
 				const reconcile = () => {
-					if (disposed) return;
+					if (this.lifetime.signal.aborted) return;
 					if (this.clearArchivedCurrent()) return;
 					if (initial !== "waiting") return;
 					const workspace = this.workspaces.list.getSnapshot();
@@ -113,11 +132,11 @@ window.__ModuleLoader__.load({
 					}
 					initial = "connecting";
 					this.connectWorkspace(target).then((sessionId) => {
-						if (disposed) return;
+						if (this.lifetime.signal.aborted) return;
 						if (this.sessions.list.getSnapshot().current === void 0) this.sessions.open(sessionId);
 						initial = "done";
 					}, (reason) => {
-						if (disposed) return;
+						if (this.lifetime.signal.aborted) return;
 						initial = "waiting";
 						console.warn("initial workspace selection failed:", reason);
 					});
@@ -126,7 +145,7 @@ window.__ModuleLoader__.load({
 				const disposeSessions = this.sessions.list.subscribe(reconcile);
 				reconcile();
 				return () => {
-					disposed = true;
+					this.lifetime.abort();
 					disposeSessions();
 					disposeWorkspaces();
 				};
@@ -179,10 +198,9 @@ window.__ModuleLoader__.load({
 					orderBy: "updated",
 					groupExpansion: {},
 					sessionOrderByAccount: {},
-					sessionUpdatedAtByAccount: {},
-					pinned: []
+					sessionUpdatedAtByAccount: {}
 				}),
-				persist: "dsh.workspace.view.v6",
+				persist: "dsh.workspace.view.v5",
 				actions: {
 					setGroupBy: (d, mode) => {
 						d.groupBy = mode;
@@ -192,9 +210,6 @@ window.__ModuleLoader__.load({
 					},
 					setGroupExpanded: (d, key, expanded) => {
 						d.groupExpansion[key] = expanded;
-					},
-					togglePinned: (d, sessionId) => {
-						d.pinned = d.pinned.includes(sessionId) ? d.pinned.filter((id) => id !== sessionId) : [...d.pinned, sessionId];
 					},
 					retainAccountKeys: (d, workspaceKeys) => {
 						const retained = new Set(workspaceKeys);
@@ -229,10 +244,6 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../../util/workspace-path/src/index.ts
-		/**
-		* Browser-safe Workspace path and display helpers.
-		* @module @deepseek-ai/dsh-util-workspace-path
-		*/
 		/** Whether a path uses a Windows drive or UNC prefix. */
 		function isWindowsStylePath(value) {
 			return /^[A-Za-z]:[/\\]/.test(value) || value.startsWith("\\\\");
@@ -294,6 +305,15 @@ window.__ModuleLoader__.load({
 			return indexed;
 		}
 		/**
+		* Resolve the Workspace browser group that owns one Session.
+		* @param workspaces - authoritative Workspace membership.
+		* @param sessionId - Session whose browser group is required.
+		* @returns owning Workspace id, or {@link UNGROUPED_KEY} when no Workspace accounts for it.
+		*/
+		function owningGroupKey(workspaces, sessionId) {
+			return workspaces.find((workspace) => workspace.sessionIds.includes(sessionId))?.workspaceId ?? "";
+		}
+		/**
 		* Directory display label: basename of the path (both separators accepted).
 		* Ungrouped-bucket fallback for surfaces without a workspace title.
 		* @param cwd - directory path, or undefined for the ungrouped bucket.
@@ -308,17 +328,6 @@ window.__ModuleLoader__.load({
 		function byRecency(a, b) {
 			if (b.updatedAt !== a.updatedAt) return b.updatedAt - a.updatedAt;
 			return a.id < b.id ? -1 : 1;
-		}
-		/** Reorder a session array so pinned sessions float to the top, each partition keeping its order. */
-		function pinFirst(sessions, pinned) {
-			const set = new Set(pinned);
-			const pinnedRows = [];
-			const rest = [];
-			for (const session of sessions) {
-				if (set.has(session.id)) pinnedRows.push(session);
-				else rest.push(session);
-			}
-			return pinnedRows.concat(rest);
 		}
 		/**
 		* Ordinary sessions are visible; among blank sessions, only the current one
@@ -342,7 +351,7 @@ window.__ModuleLoader__.load({
 			return (session.projectionValues?.schedule?.length ?? 0) > 0;
 		}
 		/** Build one group without projecting session lineage into presentation. */
-		function buildGroup(key, workspaceId, cwd, createdAt, label, members, order, pinned) {
+		function buildGroup(key, workspaceId, cwd, createdAt, label, members, order) {
 			const sessions = [...members];
 			if (order === "recency") sessions.sort(byRecency);
 			return {
@@ -351,7 +360,7 @@ window.__ModuleLoader__.load({
 				cwd,
 				createdAt,
 				label,
-				sessions: pinFirst(sessions, pinned)
+				sessions
 			};
 		}
 		/** Apply a stored Ungrouped order and append newly loose Sessions by recency. */
@@ -377,7 +386,7 @@ window.__ModuleLoader__.load({
 		* outside every Workspace trail in the browser-local Ungrouped order, which
 		* falls back to recency before that order is initialized.
 		*/
-		function groupByWorkspace(list, workspaces, archived, ungroupedOrder, pinned) {
+		function groupByWorkspace(list, workspaces, archived, ungroupedOrder) {
 			const groups = [];
 			const accounted = /* @__PURE__ */ new Set();
 			for (const workspace of workspaces) {
@@ -389,10 +398,10 @@ window.__ModuleLoader__.load({
 					if (!sessionVisible(summary, list.current, archived)) continue;
 					members.push(summary);
 				}
-				groups.push(buildGroup(workspace.workspaceId, workspace.workspaceId, workspace.path, Date.parse(workspace.createdAt), workspace.title, members, "account", pinned));
+				groups.push(buildGroup(workspace.workspaceId, workspace.workspaceId, workspace.path, Date.parse(workspace.createdAt), workspace.title, members, "account"));
 			}
 			const stray = list.ids.map((id) => list.byId[id]).filter((s) => s !== void 0 && !accounted.has(s.id) && sessionVisible(s, list.current, archived));
-			if (stray.length > 0) groups.push(buildGroup("", void 0, void 0, void 0, "", ungroupedOrder === void 0 ? stray : orderedUngrouped(stray, ungroupedOrder), ungroupedOrder === void 0 ? "recency" : "account", pinned));
+			if (stray.length > 0) groups.push(buildGroup("", void 0, void 0, void 0, "", ungroupedOrder === void 0 ? stray : orderedUngrouped(stray, ungroupedOrder), ungroupedOrder === void 0 ? "recency" : "account"));
 			return groups;
 		}
 		/** Keep navigation presentation independent from domain-owned interaction objects. */
@@ -404,7 +413,7 @@ window.__ModuleLoader__.load({
 				default: return;
 			}
 		}
-		function sessionNode(s, descendants, pendingInteractions, pinned) {
+		function sessionNode(s, descendants, pendingInteractions) {
 			const pendingInteraction = visiblePendingKind(pendingInteractions.get(s.id)?.kind);
 			return {
 				id: s.id,
@@ -415,7 +424,6 @@ window.__ModuleLoader__.load({
 				completed: s.completed === true,
 				hasActiveSchedule: hasActiveSchedule(s),
 				updatedAt: s.updatedAt,
-				pinned: pinned !== void 0 && pinned.includes(s.id),
 				...pendingInteraction === void 0 ? {} : { pendingInteraction }
 			};
 		}
@@ -434,13 +442,13 @@ window.__ModuleLoader__.load({
 		* @param view - local expansion arrays.
 		* @returns group sections in render order.
 		*/
-		function deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, view, pinned) {
+		function deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, view) {
 			const archived = new Set(archivedSessionIds);
 			const expandedGroups = new Set(view.expandedGroups);
 			const descendants = indexSubagentDescendants(list.byId);
-			const currentGroup = list.current === void 0 ? void 0 : workspaces.find((w) => w.sessionIds.includes(list.current))?.workspaceId ?? "";
+			const currentGroup = list.current === void 0 ? void 0 : owningGroupKey(workspaces, list.current);
 			const groups = [];
-			for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, pinned)) {
+			for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
 				const expanded = expandedGroups.has(g.key);
 				groups.push({
 					key: g.key,
@@ -451,7 +459,7 @@ window.__ModuleLoader__.load({
 					sessionCount: g.sessions.length,
 					expanded,
 					containsCurrent: g.key === currentGroup,
-					sessions: expanded ? g.sessions.map((session) => sessionNode(session, descendants, pendingInteractions, pinned)) : []
+					sessions: expanded ? g.sessions.map((session) => sessionNode(session, descendants, pendingInteractions)) : []
 				});
 			}
 			return groups;
@@ -466,7 +474,7 @@ window.__ModuleLoader__.load({
 		* @param pendingInteractions - pending UI interactions by Session.
 		* @returns flat rows in render order.
 		*/
-		function deriveFlat(list, archivedSessionIds, pendingInteractions, pinned) {
+		function deriveFlat(list, archivedSessionIds, pendingInteractions) {
 			const archived = new Set(archivedSessionIds);
 			const descendants = indexSubagentDescendants(list.byId);
 			const rows = [];
@@ -476,7 +484,7 @@ window.__ModuleLoader__.load({
 				rows.push(s);
 			}
 			rows.sort(byRecency);
-			return pinFirst(rows, pinned).map((session) => sessionNode(session, descendants, pendingInteractions, pinned));
+			return rows.map((session) => sessionNode(session, descendants, pendingInteractions));
 		}
 		/**
 		* Merge immediate title/Workspace substring matches with ranked Host content
@@ -544,7 +552,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-workspace/src/client/rows/Rows.module.css.mjs
-		const css$2 = ".YDXeBa_projectRow,.YDXeBa_sessionRow{cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary);border-radius:8px;align-items:center;gap:6px;padding:0 8px;display:flex}.YDXeBa_projectRow:hover,.YDXeBa_sessionRow:hover,.YDXeBa_sessionRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultRow{box-sizing:border-box;cursor:pointer;text-align:left;width:100%;min-height:48px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:8px;flex-direction:column;align-items:stretch;padding:4px 8px;display:flex}.YDXeBa_searchResultRow:hover,.YDXeBa_searchResultRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultHeading{align-items:center;min-width:0;display:flex}.YDXeBa_searchResultTitle{text-overflow:ellipsis;white-space:nowrap;flex:0 auto;min-width:0;margin-left:4px;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_searchResultMeta{align-items:center;gap:6px;min-width:0;margin-left:20px;display:flex}.YDXeBa_searchResultWorkspace,.YDXeBa_searchResultSnippet{text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:17px;overflow:hidden}.YDXeBa_searchResultWorkspace{max-width:40%;color:var(--dsw-alias-label-tertiary);flex:none}.YDXeBa_searchResultSnippet{min-width:0;color:var(--dsw-alias-label-secondary);flex:1}.YDXeBa_projectRow{box-sizing:border-box;align-items:center;height:34px}.YDXeBa_projectRow .YDXeBa_rowActions{height:20px}.YDXeBa_sessionRow{height:32px;animation:YDXeBa_row-in .15s var(--ds-ease-in-out);gap:0}.YDXeBa_sessionRow .YDXeBa_title{margin:0 6px 0 4px}.YDXeBa_flatSessionRowWithoutStatus .YDXeBa_title{margin-left:0}@keyframes YDXeBa_row-in{0%{opacity:0}}.YDXeBa_slot{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.YDXeBa_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.YDXeBa_folderActive{color:var(--dsw-alias-state-business-primary)}.YDXeBa_projectRow .YDXeBa_chevron{display:none}.YDXeBa_projectRow:hover .YDXeBa_chevron{display:inline-flex}.YDXeBa_projectRow:hover .YDXeBa_folder{display:none}.YDXeBa_arrow{transition:transform .15s var(--ds-ease-in-out)}.YDXeBa_arrowOpen{transform:rotate(90deg)}.YDXeBa_projectText{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.YDXeBa_title{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_renameInput{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-elevated-fill);min-width:0;color:inherit;border-radius:4px;outline:none;padding:0 2px;font-size:14px;line-height:20px}.YDXeBa_sessionRow .YDXeBa_title{flex:1}.YDXeBa_meta{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow:hidden}.YDXeBa_time{color:var(--dsw-alias-label-tertiary);flex:none;font-size:12px;line-height:20px}.YDXeBa_scheduleIndicator{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex}.YDXeBa_searchScheduleIndicator{margin-left:4px;margin-right:0}.YDXeBa_dot{flex:none}.YDXeBa_rowActions{flex:none;align-items:center;gap:12px;display:none}.YDXeBa_projectRow:hover .YDXeBa_rowActions,.YDXeBa_sessionRow:hover .YDXeBa_rowActions,.YDXeBa_projectRow.YDXeBa_menuOpen .YDXeBa_rowActions,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_rowActions{display:inline-flex}.YDXeBa_sessionRow:hover .YDXeBa_time,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_time{display:none}.YDXeBa_projectRow.YDXeBa_menuOpen,.YDXeBa_sessionRow.YDXeBa_menuOpen{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_sessionRow.YDXeBa_dropBefore,.YDXeBa_sessionRow.YDXeBa_dropAfter{position:relative}.YDXeBa_sessionRow.YDXeBa_dropBefore:before,.YDXeBa_sessionRow.YDXeBa_dropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:4px}.YDXeBa_sessionRow.YDXeBa_dropBefore:before{top:-7px}.YDXeBa_sessionRow.YDXeBa_dropAfter:after{bottom:-7px}.YDXeBa_hoverContent{flex-direction:column;gap:8px;display:flex}.YDXeBa_hoverTitle{color:#fff;overflow-wrap:break-word;font-size:14px;line-height:20px}.YDXeBa_hoverPath{color:#cfd3d6;word-break:break-all;font-size:12px;line-height:16px}.YDXeBa_hoverTime{color:#cfd3d6;font-size:12px;line-height:16px}.YDXeBa_hoverStatus{color:#adb2b8;align-items:center;gap:8px;font-size:12px;line-height:20px;display:flex}.YDXeBa_iconButton{cursor:pointer;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.YDXeBa_iconButton:hover{color:var(--dsw-alias-label-primary)}.YDXeBa_pinned,.YDXeBa_pinned:hover{color:var(--dsw-static-blue-600)}.YDXeBa_chevron{color:var(--dsw-alias-label-caption)}@media (prefers-reduced-motion:reduce){.YDXeBa_sessionRow,.YDXeBa_arrow{transition:none;animation:none}}";
+		const css$2 = ".YDXeBa_projectRow,.YDXeBa_sessionRow{cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary);border-radius:8px;align-items:center;gap:6px;padding:0 8px;display:flex}.YDXeBa_projectRow:hover,.YDXeBa_sessionRow:hover,.YDXeBa_sessionRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultRow{box-sizing:border-box;cursor:pointer;text-align:left;width:100%;min-height:48px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:8px;flex-direction:column;align-items:stretch;padding:4px 8px;display:flex}.YDXeBa_searchResultRow:hover,.YDXeBa_searchResultRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultHeading{align-items:center;min-width:0;display:flex}.YDXeBa_searchResultTitle{text-overflow:ellipsis;white-space:nowrap;flex:0 auto;min-width:0;margin-left:4px;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_searchResultMeta{align-items:center;gap:6px;min-width:0;margin-left:20px;display:flex}.YDXeBa_searchResultWorkspace,.YDXeBa_searchResultSnippet{text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:17px;overflow:hidden}.YDXeBa_searchResultWorkspace{max-width:40%;color:var(--dsw-alias-label-tertiary);flex:none}.YDXeBa_searchResultSnippet{min-width:0;color:var(--dsw-alias-label-secondary);flex:1}.YDXeBa_projectRow{box-sizing:border-box;align-items:center;height:34px}.YDXeBa_projectRow .YDXeBa_rowActions{height:20px}.YDXeBa_sessionRow{height:32px;animation:YDXeBa_row-in .15s var(--ds-ease-in-out);gap:0}.YDXeBa_sessionRow .YDXeBa_title{margin:0 6px 0 4px}.YDXeBa_flatSessionRowWithoutStatus .YDXeBa_title{margin-left:0}@keyframes YDXeBa_row-in{0%{opacity:0}}.YDXeBa_slot{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.YDXeBa_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.YDXeBa_folderActive{color:var(--dsw-alias-state-business-primary)}.YDXeBa_projectRow .YDXeBa_chevron{display:none}.YDXeBa_projectRow:hover .YDXeBa_chevron{display:inline-flex}.YDXeBa_projectRow:hover .YDXeBa_folder{display:none}.YDXeBa_arrow{transition:transform .15s var(--ds-ease-in-out)}.YDXeBa_arrowOpen{transform:rotate(90deg)}.YDXeBa_projectText{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.YDXeBa_title{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_renameInput{border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-button-elevated-fill);min-width:0;color:inherit;border-radius:4px;outline:none;padding:0 2px;font-size:14px;line-height:20px}.YDXeBa_sessionRow .YDXeBa_title{flex:1}.YDXeBa_meta{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow:hidden}.YDXeBa_time{color:var(--dsw-alias-label-tertiary);flex:none;font-size:12px;line-height:20px}.YDXeBa_scheduleIndicator{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex}.YDXeBa_searchScheduleIndicator{margin-left:4px;margin-right:0}.YDXeBa_dot{flex:none}.YDXeBa_rowActions{flex:none;align-items:center;gap:12px;display:none}.YDXeBa_projectRow:hover .YDXeBa_rowActions,.YDXeBa_sessionRow:hover .YDXeBa_rowActions,.YDXeBa_projectRow.YDXeBa_menuOpen .YDXeBa_rowActions,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_rowActions{display:inline-flex}.YDXeBa_sessionRow:hover .YDXeBa_time,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_time{display:none}.YDXeBa_projectRow.YDXeBa_menuOpen,.YDXeBa_sessionRow.YDXeBa_menuOpen{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_sessionRow.YDXeBa_dropBefore,.YDXeBa_sessionRow.YDXeBa_dropAfter{position:relative}.YDXeBa_sessionRow.YDXeBa_dropBefore:before,.YDXeBa_sessionRow.YDXeBa_dropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:4px}.YDXeBa_sessionRow.YDXeBa_dropBefore:before{top:-7px}.YDXeBa_sessionRow.YDXeBa_dropAfter:after{bottom:-7px}.YDXeBa_hoverContent{flex-direction:column;gap:8px;display:flex}.YDXeBa_hoverTitle{color:#fff;overflow-wrap:break-word;font-size:14px;line-height:20px}.YDXeBa_hoverPath{color:#cfd3d6;word-break:break-all;font-size:12px;line-height:16px}.YDXeBa_hoverTime{color:#cfd3d6;font-size:12px;line-height:16px}.YDXeBa_hoverStatus{color:#adb2b8;align-items:center;gap:8px;font-size:12px;line-height:20px;display:flex}.YDXeBa_iconButton{cursor:pointer;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.YDXeBa_iconButton:hover{color:var(--dsw-alias-label-primary)}.YDXeBa_chevron{color:var(--dsw-alias-label-caption)}@media (prefers-reduced-motion:reduce){.YDXeBa_sessionRow,.YDXeBa_arrow{transition:none;animation:none}}";
 		const tagId$2 = "@deepseek-ai/dsh-client-ui-workspace/Rows.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
 			const tag = document.createElement("style");
@@ -571,7 +579,6 @@ window.__ModuleLoader__.load({
 			"iconButton": "YDXeBa_iconButton",
 			"menuOpen": "YDXeBa_menuOpen",
 			"meta": "YDXeBa_meta",
-			"pinned": "YDXeBa_pinned",
 			"projectRow": "YDXeBa_projectRow",
 			"projectText": "YDXeBa_projectText",
 			"renameInput": "YDXeBa_renameInput",
@@ -919,31 +926,25 @@ window.__ModuleLoader__.load({
 		* @param props.onRename - open the session rename dialog (id + current title).
 		* @param props.onFork - fork a session at its last completed turn.
 		* @param props.onArchive - archive a session by id.
-		* @param props.onTogglePinned - pin or unpin a session by id.
+		* @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
 		* @param props.drag - optional draggable-row wiring.
 		* @param props.flat - omit the empty status slot in the hierarchy-free flat list.
 		* @param props.t - the browser root's locale seat.
 		* @returns the session row.
 		*/
-		/** Pushpin icon for the session pin/unpin row action. */
-		function PinIcon() {
-			return (0, react_jsx_runtime.jsx)("svg", {
-				viewBox: "0 0 24 24",
-				fill: "currentColor",
-				width: 14,
-				height: 14,
-				children: (0, react_jsx_runtime.jsx)("path", {
-					d: "M16 3a1 1 0 0 1 .7 1.7l-3.8 3.8L14 15l-1.5 1.5-2.5-2.5-4 4H3v-3l4-4-2.5-2.5L6 7l6.5-1.3 3.8-3.8A1 1 0 0 1 16 3z"
-				})
-			});
-		}
-		function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, onTogglePinned, drag, flat = false, t }) {
+		function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, onReveal, drag, flat = false, t }) {
 			const row = node;
 			const title = displayTitle(node, t);
 			const selected = node.id === currentId;
 			const statuses = sessionStatuses(node, t);
 			const showStatus = statuses[0].state !== "done" || row.completed;
 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
+			const rowRef = (0, react.useRef)(null);
+			(0, react.useEffect)(() => {
+				if (onReveal === void 0) return;
+				rowRef.current?.scrollIntoView({ block: "nearest" });
+				onReveal();
+			}, [onReveal]);
 			const sessionMenuItems = [
 				{
 					id: "rename",
@@ -963,6 +964,7 @@ window.__ModuleLoader__.load({
 			];
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.HoverCard, {
 				anchor: (0, react_jsx_runtime.jsxs)("div", {
+					ref: rowRef,
 					className: clsx(Rows_module_css_default.sessionRow, selected && Rows_module_css_default.selected, menuOpen && Rows_module_css_default.menuOpen, flat && !showStatus && Rows_module_css_default.flatSessionRowWithoutStatus, drag?.marker === "before" && Rows_module_css_default.dropBefore, drag?.marker === "after" && Rows_module_css_default.dropAfter),
 					role: "treeitem",
 					"aria-selected": selected,
@@ -1003,17 +1005,7 @@ window.__ModuleLoader__.load({
 						}),
 						!row.blank && (0, react_jsx_runtime.jsx)("span", {
 							className: Rows_module_css_default.rowActions,
-							children: [(0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: clsx(Rows_module_css_default.iconButton, row.pinned === true && Rows_module_css_default.pinned),
-								"aria-label": row.pinned ? t("session.unpin") : t("session.pin"),
-								title: row.pinned ? t("session.unpin") : t("session.pin"),
-								onClick: (e) => {
-									e.stopPropagation();
-									if (onTogglePinned !== void 0) onTogglePinned(node.id);
-								},
-								children: (0, react_jsx_runtime.jsx)(PinIcon, {})
-							}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
 								open: menuOpen,
 								onClose: () => {
 									setMenuOpen(false);
@@ -1037,7 +1029,7 @@ window.__ModuleLoader__.load({
 									},
 									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEllipsisOutline16, {})
 								})
-							})]
+							})
 						})
 					]
 				}),
@@ -1224,7 +1216,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css.mjs
-		const css = ".bhn1Oq_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:8px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}.bhn1Oq_root.bhn1Oq_rail{padding-right:0}.bhn1Oq_iconButton{cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_sectionHeader{box-sizing:border-box;height:36px;color:var(--dsw-alias-label-tertiary);border-radius:12px;flex:none;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:4px;padding-left:4px;display:flex;overflow:hidden}.bhn1Oq_root:not(.bhn1Oq_rail) .bhn1Oq_sectionHeader{margin-top:2px;margin-right:-4px}.bhn1Oq_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%;transition:max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;line-height:20px;overflow:hidden}.bhn1Oq_sectionLabelHidden{opacity:0;visibility:hidden;max-width:0;margin-right:-4px;transition-delay:0s,0s,0s,0s,.18s;transform:translate(-4px)}.bhn1Oq_searchSlot{box-sizing:border-box;min-width:0;max-width:28px;transition:max-width .18s var(--ds-ease-in-out), padding-left .18s var(--ds-ease-in-out);flex:1;align-items:center;margin-left:auto;padding-left:0;display:flex}.bhn1Oq_searchSlotExpanded{max-width:100%;padding-left:0}.bhn1Oq_headerActions{opacity:1;visibility:visible;max-width:60px;transition:max-width .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;align-items:center;gap:4px;display:flex;overflow:hidden}.bhn1Oq_headerActionsHidden{opacity:0;visibility:hidden;pointer-events:none;max-width:0;transition-delay:0s,0s,0s,.18s;transform:translate(4px)}.bhn1Oq_search{box-sizing:border-box;cursor:text;width:100%;height:28px;color:var(--dsw-alias-label-secondary);transition:width .18s var(--ds-ease-in-out), padding .18s var(--ds-ease-in-out), border-color .18s var(--ds-ease-in-out), background-color .18s var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;flex:none;align-items:center;gap:0;margin:0;padding:0;display:flex;overflow:hidden}.bhn1Oq_searchExpanded{border:1px solid var(--dsw-alias-border-l2);width:calc(100% + 4px);height:30px;color:var(--dsw-alias-label-caption);background:0 0;border-radius:10px;margin-inline:-2px;padding:0 4px 0 0}.bhn1Oq_searchButton{cursor:pointer;width:28px;height:28px;color:inherit;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_searchExpanded .bhn1Oq_searchButton{width:28px;height:30px}.bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_searchExpanded .bhn1Oq_searchButton:hover{background:0 0}.bhn1Oq_searchInput{opacity:0;pointer-events:none;width:0;min-width:0;color:var(--dsw-alias-label-primary);transition:opacity .12s var(--ds-ease-in-out);background:0 0;border:none;outline:none;flex:1;font-size:13px;line-height:18px}.bhn1Oq_searchExpanded .bhn1Oq_searchInput{opacity:1;pointer-events:auto;margin-left:-2px}.bhn1Oq_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}.bhn1Oq_clearButton{cursor:pointer;width:24px;height:24px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_clearButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_rail .bhn1Oq_sectionHeader{justify-content:flex-start;gap:0;margin-bottom:12px;padding-left:0}.bhn1Oq_rail .bhn1Oq_headerActions{max-width:none}.bhn1Oq_rail .bhn1Oq_iconButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_search{background:0 0;border-color:#0000;gap:0;width:36px;height:36px;margin:0 0 12px;padding:0}.bhn1Oq_rail .bhn1Oq_searchButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}.bhn1Oq_rail .bhn1Oq_listArea{margin-left:0;margin-right:0;padding-left:0}.bhn1Oq_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.bhn1Oq_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}.bhn1Oq_wide{animation:bhn1Oq_wide-in .2s var(--ds-ease-in-out)}@keyframes bhn1Oq_wide-in{0%{opacity:0}}.bhn1Oq_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}.bhn1Oq_flatList>*+*,.bhn1Oq_searchTree>[role=treeitem]+[role=treeitem],.bhn1Oq_groupSection>*+*{margin-top:2px}.bhn1Oq_searchStatus,.bhn1Oq_searchWarning{color:var(--dsw-alias-label-tertiary);padding:10px 12px;font-size:12px;line-height:18px}.bhn1Oq_searchWarning{color:var(--dsw-alias-label-secondary)}.bhn1Oq_groupSection{position:relative}.bhn1Oq_groupSection+.bhn1Oq_groupSection{margin-top:4px}.bhn1Oq_listTopDropIndicator,.bhn1Oq_workspaceDropBefore:before,.bhn1Oq_workspaceDropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:0}.bhn1Oq_listTopDropIndicator{top:-8px;left:0;right:var(--dsh-session-list-edge-inset)}.bhn1Oq_listTopDropActive>.bhn1Oq_workspaceDropBefore:first-child:before{display:none}.bhn1Oq_workspaceDropBefore:before{top:-8px}.bhn1Oq_workspaceDropAfter:after{bottom:-8px}.bhn1Oq_sessionOverflowButton{cursor:pointer;text-align:left;width:100%;height:28px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:8px;padding:0 12px 0 28px;font-size:12px}.bhn1Oq_groupSection>.bhn1Oq_sessionOverflowButton{margin-top:0}.bhn1Oq_sessionOverflowButton:hover{color:var(--dsw-alias-label-secondary);background:0 0}.bhn1Oq_empty{color:var(--dsw-alias-label-tertiary);padding:16px 12px;font-size:13px}.bhn1Oq_renameInput{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);width:100%;height:44px;color:var(--dsw-alias-label-primary);background:0 0;border-radius:22px;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}.bhn1Oq_renameInput:disabled{color:var(--dsw-alias-label-dimmed)}.bhn1Oq_renameError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px;line-height:18px}.bhn1Oq_deleteAction:not(:disabled){color:var(--dsw-alias-state-error-primary)}.bhn1Oq_deleteStatus{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}@media (prefers-reduced-motion:reduce){.bhn1Oq_wide{animation:none}.bhn1Oq_search,.bhn1Oq_sectionLabel,.bhn1Oq_searchSlot,.bhn1Oq_searchInput,.bhn1Oq_headerActions{transition:none}}";
+		const css = ".bhn1Oq_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:8px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}.bhn1Oq_root.bhn1Oq_rail{padding-right:0}.bhn1Oq_iconButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_sectionHeader{box-sizing:border-box;height:36px;color:var(--dsw-alias-label-tertiary);border-radius:12px;flex:none;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:4px;padding-left:4px;display:flex;overflow:hidden}.bhn1Oq_root:not(.bhn1Oq_rail) .bhn1Oq_sectionHeader{margin-top:2px;margin-right:-4px}.bhn1Oq_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%;transition:max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;line-height:20px;overflow:hidden}.bhn1Oq_sectionLabelHidden{opacity:0;visibility:hidden;max-width:0;margin-right:-4px;transition-delay:0s,0s,0s,0s,.18s;transform:translate(-4px)}.bhn1Oq_searchSlot{box-sizing:border-box;min-width:0;max-width:28px;transition:max-width .18s var(--ds-ease-in-out), padding-left .18s var(--ds-ease-in-out);flex:1;align-items:center;margin-left:auto;padding-left:0;display:flex}.bhn1Oq_searchSlotExpanded{max-width:100%;padding-left:0}.bhn1Oq_headerActions{opacity:1;visibility:visible;max-width:60px;transition:max-width .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;align-items:center;gap:4px;display:flex;overflow:hidden}.bhn1Oq_headerActionsHidden{opacity:0;visibility:hidden;pointer-events:none;max-width:0;transition-delay:0s,0s,0s,.18s;transform:translate(4px)}.bhn1Oq_search{box-sizing:border-box;corner-shape:round;cursor:text;width:100%;height:28px;color:var(--dsw-alias-label-secondary);transition:width .18s var(--ds-ease-in-out), padding .18s var(--ds-ease-in-out), border-color .18s var(--ds-ease-in-out), background-color .18s var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;flex:none;align-items:center;gap:0;margin:0;padding:0;display:flex;overflow:hidden}.bhn1Oq_searchExpanded{border:.5px solid var(--dsw-alias-border-l4);width:calc(100% + 4px);height:30px;color:var(--dsw-alias-label-caption);background:0 0;border-radius:10px;margin-inline:-2px;padding:0 4px 0 0}.bhn1Oq_searchButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:inherit;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_searchExpanded .bhn1Oq_searchButton{width:28px;height:30px}.bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_searchExpanded .bhn1Oq_searchButton:hover{background:0 0}.bhn1Oq_searchInput{opacity:0;pointer-events:none;width:0;min-width:0;color:var(--dsw-alias-label-primary);transition:opacity .12s var(--ds-ease-in-out);background:0 0;border:none;outline:none;flex:1;font-size:13px;line-height:18px}.bhn1Oq_searchExpanded .bhn1Oq_searchInput{opacity:1;pointer-events:auto;margin-left:-2px}.bhn1Oq_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}.bhn1Oq_clearButton{corner-shape:round;cursor:pointer;width:24px;height:24px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_clearButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_rail .bhn1Oq_sectionHeader{justify-content:flex-start;gap:0;margin-bottom:12px;padding-left:0}.bhn1Oq_rail .bhn1Oq_headerActions{max-width:none}.bhn1Oq_rail .bhn1Oq_iconButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_search{background:0 0;border-color:#0000;gap:0;width:36px;height:36px;margin:0 0 12px;padding:0}.bhn1Oq_rail .bhn1Oq_searchButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}.bhn1Oq_rail .bhn1Oq_listArea{margin-left:0;margin-right:0;padding-left:0}.bhn1Oq_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.bhn1Oq_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}.bhn1Oq_wide{animation:bhn1Oq_wide-in .2s var(--ds-ease-in-out)}@keyframes bhn1Oq_wide-in{0%{opacity:0}}.bhn1Oq_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}.bhn1Oq_flatList>*+*,.bhn1Oq_searchTree>[role=treeitem]+[role=treeitem],.bhn1Oq_groupSection>*+*{margin-top:2px}.bhn1Oq_searchStatus,.bhn1Oq_searchWarning{color:var(--dsw-alias-label-tertiary);padding:10px 12px;font-size:12px;line-height:18px}.bhn1Oq_searchWarning{color:var(--dsw-alias-label-secondary)}.bhn1Oq_groupSection{position:relative}.bhn1Oq_groupSection+.bhn1Oq_groupSection{margin-top:4px}.bhn1Oq_listTopDropIndicator,.bhn1Oq_workspaceDropBefore:before,.bhn1Oq_workspaceDropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:0}.bhn1Oq_listTopDropIndicator{top:-8px;left:0;right:var(--dsh-session-list-edge-inset)}.bhn1Oq_listTopDropActive>.bhn1Oq_workspaceDropBefore:first-child:before{display:none}.bhn1Oq_workspaceDropBefore:before{top:-8px}.bhn1Oq_workspaceDropAfter:after{bottom:-8px}.bhn1Oq_sessionOverflowButton{cursor:pointer;text-align:left;width:100%;height:28px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:8px;padding:0 12px 0 28px;font-size:12px}.bhn1Oq_groupSection>.bhn1Oq_sessionOverflowButton{margin-top:0}.bhn1Oq_sessionOverflowButton:hover{color:var(--dsw-alias-label-secondary);background:0 0}.bhn1Oq_empty{color:var(--dsw-alias-label-tertiary);padding:16px 12px;font-size:13px}.bhn1Oq_renameInput{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);width:100%;height:44px;color:var(--dsw-alias-label-primary);background:0 0;border-radius:22px;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}.bhn1Oq_renameInput:disabled{color:var(--dsw-alias-label-dimmed)}.bhn1Oq_renameError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px;line-height:18px}.bhn1Oq_deleteAction:not(:disabled){color:var(--dsw-alias-state-error-primary)}.bhn1Oq_deleteStatus{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}@media (prefers-reduced-motion:reduce){.bhn1Oq_wide{animation:none}.bhn1Oq_search,.bhn1Oq_sectionLabel,.bhn1Oq_searchSlot,.bhn1Oq_searchInput,.bhn1Oq_headerActions{transition:none}}";
 		const tagId = "@deepseek-ai/dsh-client-ui-workspace/WorkspaceBrowser.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1469,10 +1461,12 @@ window.__ModuleLoader__.load({
 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
 		}
 		/** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
-		function SessionTree({ useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, insertWorkspaceBefore, insertSessionBefore, orderBy, groupExpansion, setGroupExpanded, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, pinnedSessions, onTogglePinned, home, t }) {
+		function SessionTree({ useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds, workspaceReady, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, insertWorkspaceBefore, insertSessionBefore, orderBy, groupExpansion, setGroupExpanded, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t, revealSessionId, onSessionRevealed }) {
+			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const list = useSessions((s) => s);
 			const pendingInteractions = useSessionPendingInteraction((s) => s);
-			const current = list.current;
+			const current = panelActive ? void 0 : list.current;
+			const revealGroup = revealSessionId === void 0 || !workspaceReady ? void 0 : owningGroupKey(workspaces, revealSessionId);
 			const [expandedSessionGroups, setExpandedSessionGroups] = (0, react.useState)([]);
 			const [drag, setDrag] = (0, react.useState)(null);
 			const sessionDropCommitted = (0, react.useRef)(false);
@@ -1480,7 +1474,7 @@ window.__ModuleLoader__.load({
 			const workspaceDropCommitted = (0, react.useRef)(false);
 			const previousOrderBy = (0, react.useRef)(orderBy);
 			useNativeDragAcceptance(drag !== null || workspaceDrag !== null);
-			const currentGroup = current === void 0 ? void 0 : workspaces.find((w) => w.sessionIds.includes(current))?.workspaceId ?? "";
+			const currentGroup = current === void 0 || !workspaceReady ? void 0 : owningGroupKey(workspaces, current);
 			(0, react.useEffect)(() => {
 				if (current === void 0 || currentGroup === void 0 || Object.hasOwn(groupExpansion, currentGroup)) return;
 				setGroupExpanded(currentGroup, true);
@@ -1541,14 +1535,32 @@ window.__ModuleLoader__.load({
 			const groups = (0, react.useMemo)(() => deriveGroups(list, orderedWorkspaces, archivedSessionIds, pendingInteractions, {
 				expandedGroups,
 				...sessionOrderByAccount[""] === void 0 ? {} : { ungroupedOrder: sessionOrderByAccount[""] }
-			}, pinnedSessions), [
+			}), [
 				list,
 				orderedWorkspaces,
 				archivedSessionIds,
 				pendingInteractions,
 				expandedGroups,
-				sessionOrderByAccount,
-				pinnedSessions
+				sessionOrderByAccount
+			]);
+			(0, react.useEffect)(() => {
+				if (revealGroup === void 0 || groupExpansion[revealGroup] === true) return;
+				setGroupExpanded(revealGroup, true);
+			}, [
+				groupExpansion,
+				revealGroup,
+				setGroupExpanded
+			]);
+			(0, react.useEffect)(() => {
+				if (revealSessionId === void 0 || revealGroup === void 0) return;
+				const group = groups.find((candidate) => candidate.key === revealGroup);
+				if (group === void 0 || !group.expanded || !group.sessions.some((row) => row.id === revealSessionId)) return;
+				if (collapsedSessionRows(group.sessions).rows.some((row) => row.id === revealSessionId)) return;
+				setExpandedSessionGroups((keys) => keys.includes(revealGroup) ? keys : [...keys, revealGroup]);
+			}, [
+				groups,
+				revealGroup,
+				revealSessionId
 			]);
 			const now = Date.now();
 			const commitSessionDrag = (activeDrag, over) => {
@@ -1702,6 +1714,41 @@ window.__ModuleLoader__.load({
 									}),
 									(sessionsExpanded ? group.sessions : collapsed.rows).map((node) => {
 										const sameGroupDrag = drag !== null && drag.accountKey === group.key;
+										const dragProps = {
+											start: () => {
+												sessionDropCommitted.current = false;
+												setDrag({
+													accountKey: group.key,
+													sessionId: node.id,
+													over: null
+												});
+											},
+											active: sameGroupDrag,
+											marker: sameGroupDrag && drag.over?.id === node.id ? drag.over.half : null,
+											hover: (half) => {
+												/* v8 ignore next -- narrowing guard: Rows gates hover on `active`, which is false while the drag state is null. */
+												setDrag((d) => d === null ? d : {
+													...d,
+													over: {
+														id: node.id,
+														half
+													}
+												});
+											},
+											drop: (half) => {
+												/* v8 ignore next -- narrowing guard: Rows gates drop on `active`, which is false while the drag state is null. */
+												if (drag === null) return;
+												commitSessionDrag(drag, {
+													id: node.id,
+													half
+												});
+											},
+											end: () => {
+												if (drag?.over !== null && drag?.over !== void 0) commitSessionDrag(drag, drag.over);
+												else setDrag(null);
+												sessionDropCommitted.current = false;
+											}
+										};
 										return (0, react_jsx_runtime.jsx)(SessionNodeItem, {
 											node,
 											currentId: current,
@@ -1710,42 +1757,10 @@ window.__ModuleLoader__.load({
 											onRename: onSessionRename,
 											onFork: forkSession,
 											onArchive: onSessionArchive,
-											onTogglePinned,
-											drag: {
-												start: () => {
-													sessionDropCommitted.current = false;
-													setDrag({
-														accountKey: group.key,
-														sessionId: node.id,
-														over: null
-													});
-												},
-												active: sameGroupDrag,
-												marker: sameGroupDrag && drag.over?.id === node.id ? drag.over.half : null,
-												hover: (half) => {
-													/* v8 ignore next -- narrowing guard: Rows gates hover on `active`, which is false while the drag state is null. */
-													setDrag((d) => d === null ? d : {
-														...d,
-														over: {
-															id: node.id,
-															half
-														}
-													});
-												},
-												drop: (half) => {
-													/* v8 ignore next -- narrowing guard: Rows gates drop on `active`, which is false while the drag state is null. */
-													if (drag === null) return;
-													commitSessionDrag(drag, {
-														id: node.id,
-														half
-													});
-												},
-												end: () => {
-													if (drag?.over !== null && drag?.over !== void 0) commitSessionDrag(drag, drag.over);
-													else setDrag(null);
-													sessionDropCommitted.current = false;
-												}
-											},
+											onReveal: node.id === revealSessionId && group.key === revealGroup ? () => {
+												onSessionRevealed(node.id);
+											} : void 0,
+											drag: dragProps,
 											t
 										}, node.id);
 									}),
@@ -1767,14 +1782,14 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** The flat "In one list" body: every session is one draggable top-level row. */
-		function FlatList({ useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, pinnedSessions, onTogglePinned, t }) {
+		function FlatList({ useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds, usePanelInfo, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, revealSessionId, onSessionRevealed, t }) {
+			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const list = useSessions((s) => s);
 			const pendingInteractions = useSessionPendingInteraction((s) => s);
-			const baseRows = (0, react.useMemo)(() => deriveFlat(list, archivedSessionIds, pendingInteractions, pinnedSessions), [
+			const baseRows = (0, react.useMemo)(() => deriveFlat(list, archivedSessionIds, pendingInteractions), [
 				list,
 				archivedSessionIds,
-				pendingInteractions,
-				pinnedSessions
+				pendingInteractions
 			]);
 			const sessionIds = (0, react.useMemo)(() => baseRows.map((row) => row.id), [baseRows]);
 			const previousOrderBy = (0, react.useRef)(orderBy);
@@ -1803,15 +1818,14 @@ window.__ModuleLoader__.load({
 			]);
 			const rows = (0, react.useMemo)(() => {
 				const byId = new Map(baseRows.map((row) => [row.id, row]));
-				return pinFirst(reconciledSessionOrder(sessionIds, sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]).flatMap((id) => {
+				return reconciledSessionOrder(sessionIds, sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]).flatMap((id) => {
 					const row = byId.get(id);
 					return row === void 0 ? [] : [row];
-				}), pinnedSessions);
+				});
 			}, [
 				baseRows,
 				sessionOrderByAccount,
-				sessionIds,
-				pinnedSessions
+				sessionIds
 			]);
 			const [drag, setDrag] = (0, react.useState)(null);
 			const dropCommitted = (0, react.useRef)(false);
@@ -1846,13 +1860,15 @@ window.__ModuleLoader__.load({
 						const active = drag !== null;
 						return (0, react_jsx_runtime.jsx)(SessionNodeItem, {
 							node,
-							currentId: list.current,
+							currentId: panelActive ? void 0 : list.current,
 							now,
 							onOpen: open,
 							onRename: onSessionRename,
 							onFork: forkSession,
 							onArchive: onSessionArchive,
-							onTogglePinned,
+							onReveal: node.id === revealSessionId ? () => {
+								onSessionRevealed(node.id);
+							} : void 0,
 							flat: true,
 							drag: {
 								start: () => {
@@ -1893,7 +1909,8 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** Flat search body: local metadata matches plus the current Host result page. */
-		function SearchResults({ useSessions, useSessionPendingInteraction, open, workspaces, archivedSessionIds, query, remote, resultLimit, t }) {
+		function SearchResults({ useSessions, useSessionPendingInteraction, open, workspaces, archivedSessionIds, query, remote, resultLimit, usePanelInfo, t }) {
+			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const list = useSessions((s) => s);
 			const pendingInteractions = useSessionPendingInteraction((s) => s);
 			const currentRemote = remote.query === query ? remote : {
@@ -1924,7 +1941,7 @@ window.__ModuleLoader__.load({
 							"aria-label": t("search.results.aria"),
 							children: results.items.map((result) => (0, react_jsx_runtime.jsx)(SearchResultItem, {
 								result,
-								currentId: list.current,
+								currentId: panelActive ? void 0 : list.current,
 								onOpen: open,
 								t
 							}, result.id))
@@ -1956,10 +1973,11 @@ window.__ModuleLoader__.load({
 		* @param props - composed slot props (shell owner share + store + injected actions).
 		* @returns the region element tree.
 		*/
-		function WorkspaceBrowser({ wide, expandSidebar, useSessions, useSessionPendingInteraction, useWorkspaces, useStore, actions, startSession, open, renameSession, forkSession, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, archiveSession, insertSessionBefore, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, renderSlot, t }) {
+		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionPendingInteraction, useWorkspaces, useStore, actions, startSession, open, renameSession, forkSession, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, archiveSession, insertSessionBefore, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, renderSlot, t }) {
 			const home = useHostInfo((info) => info.home);
 			const workspaces = useWorkspaces((state) => state.items);
 			const workspacePhase = useWorkspaces((state) => state.phase);
+			const workspaceStreamState = useWorkspaces((state) => state.state);
 			const archivedSessionIds = useWorkspaces((state) => state.archivedSessionIds);
 			const directoryFlowAvailable = useDirectoryFlow((occupied) => occupied);
 			const groupBy = useStore((s) => s.groupBy);
@@ -1967,12 +1985,11 @@ window.__ModuleLoader__.load({
 			const groupExpansion = useStore((s) => s.groupExpansion);
 			const sessionOrderByAccount = useStore((s) => s.sessionOrderByAccount);
 			const sessionUpdatedAtByAccount = useStore((s) => s.sessionUpdatedAtByAccount);
-			const pinnedSessions = useStore((s) => s.pinned);
 			const currentBlankSessionId = useSessions((state) => {
 				const current = state.current;
 				return current !== void 0 && state.byId[current]?.blank === true ? current : void 0;
 			});
-			const currentBlankAccount = currentBlankSessionId === void 0 ? void 0 : workspaces.find((workspace) => workspace.sessionIds.includes(currentBlankSessionId))?.workspaceId ?? "";
+			const currentBlankAccount = currentBlankSessionId === void 0 || workspacePhase !== "ready" ? void 0 : owningGroupKey(workspaces, currentBlankSessionId);
 			const promotedBlank = (0, react.useRef)(void 0);
 			(0, react.useEffect)(() => {
 				if (currentBlankSessionId === void 0 || currentBlankAccount === void 0) {
@@ -2009,6 +2026,7 @@ window.__ModuleLoader__.load({
 			]);
 			const [query, setQuery] = (0, react.useState)("");
 			const [searchExpanded, setSearchExpanded] = (0, react.useState)(false);
+			const [revealSessionId, setRevealSessionId] = (0, react.useState)(void 0);
 			const normalizedQuery = sanitizeSearchQuery(query).trim();
 			const [remoteSearch, setRemoteSearch] = (0, react.useState)({
 				query: "",
@@ -2021,6 +2039,18 @@ window.__ModuleLoader__.load({
 			const [wsPickerOpen, setWsPickerOpen] = (0, react.useState)(false);
 			const wsPlusRef = (0, react.useRef)(null);
 			const composingRef = (0, react.useRef)(false);
+			const openSearchResult = (sessionId) => {
+				setRevealSessionId(sessionId);
+				setQuery("");
+				setSearchExpanded(false);
+				open(sessionId);
+			};
+			const acknowledgeSessionReveal = (sessionId) => {
+				setRevealSessionId((current) => current === sessionId ? void 0 : current);
+			};
+			(0, react.useEffect)(() => {
+				if (normalizedQuery !== "") setRevealSessionId(void 0);
+			}, [normalizedQuery]);
 			const [searchOnExpand, setSearchOnExpand] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				if (wide && searchOnExpand) {
@@ -2325,9 +2355,10 @@ window.__ModuleLoader__.load({
 					(0, react_jsx_runtime.jsx)("div", {
 						className: WorkspaceBrowser_module_css_default.listArea,
 						children: wide && (normalizedQuery !== "" ? (0, react_jsx_runtime.jsx)(SearchResults, {
+							usePanelInfo,
 							useSessions,
 							useSessionPendingInteraction,
-							open,
+							open: openSearchResult,
 							workspaces,
 							archivedSessionIds,
 							query: normalizedQuery,
@@ -2335,6 +2366,7 @@ window.__ModuleLoader__.load({
 							resultLimit: searchResultLimit,
 							t
 						}) : groupBy === "flat" ? (0, react_jsx_runtime.jsx)(FlatList, {
+							usePanelInfo,
 							useSessions,
 							useSessionPendingInteraction,
 							open,
@@ -2347,30 +2379,32 @@ window.__ModuleLoader__.load({
 							sessionUpdatedAtByAccount,
 							syncSessionOrderAccount: actions.syncSessionOrderAccount,
 							setSessionOrder: actions.setSessionOrder,
-							pinnedSessions,
-							onTogglePinned: actions.togglePinned,
+							revealSessionId,
+							onSessionRevealed: acknowledgeSessionReveal,
 							t
 						}) : (0, react_jsx_runtime.jsx)(SessionTree, {
+							usePanelInfo,
 							useSessions,
 							useSessionPendingInteraction,
 							onSessionRename,
 							onSessionArchive,
 							forkSession,
 							workspaces,
+							workspaceReady: workspacePhase === "ready" && workspaceStreamState !== "loading",
 							groupExpansion,
 							setGroupExpanded: actions.setGroupExpanded,
 							sessionOrderByAccount,
 							sessionUpdatedAtByAccount,
 							syncSessionOrderAccount: actions.syncSessionOrderAccount,
 							setSessionOrder: actions.setSessionOrder,
-							pinnedSessions,
-							onTogglePinned: actions.togglePinned,
 							archivedSessionIds,
 							startSession,
 							open,
 							insertWorkspaceBefore,
 							insertSessionBefore,
 							orderBy,
+							revealSessionId,
+							onSessionRevealed: acknowledgeSessionReveal,
 							home,
 							t,
 							onRenameRequest: (workspaceId, currentTitle) => {
@@ -2534,8 +2568,6 @@ window.__ModuleLoader__.load({
 		const zh = {
 			"group.ungrouped": "未分组",
 			"session.new": "新会话",
-			"session.pin": "置顶会话",
-			"session.unpin": "取消置顶",
 			"section.workspaces": "工作区",
 			"section.sessions": "会话",
 			"viewOptions.label": "视图选项",
@@ -2602,8 +2634,6 @@ window.__ModuleLoader__.load({
 		const en = {
 			"group.ungrouped": "Ungrouped",
 			"session.new": "New Session",
-			"session.pin": "Pin session",
-			"session.unpin": "Unpin session",
 			"section.workspaces": "Workspaces",
 			"section.sessions": "Sessions",
 			"viewOptions.label": "View options",
@@ -2684,7 +2714,8 @@ window.__ModuleLoader__.load({
 			"workspaces",
 			"locale",
 			"remote",
-			"remote.directoryPicker"
+			"remote.directoryPicker",
+			"layout"
 		];
 		/**
 		* Register the browser and picker once their slot declarations are on the
@@ -2716,13 +2747,14 @@ window.__ModuleLoader__.load({
 				subscribe: (listener) => ctx.on("connection/reset", listener)
 			};
 			const pickerFlowSource = flowSource("conversation.hero.workspace.directoryFlow");
+			const openSession = (sessionId) => {
+				uiWorkspace.openSession(sessionId);
+			};
 			const browserInjected = () => ({
 				startSession: (workspaceId) => {
 					uiWorkspace.startSession(workspaceId);
 				},
-				open: (sessionId) => {
-					sessions.open(sessionId);
-				},
+				open: openSession,
 				searchSessions,
 				searchResultLimit: sessions.searchResultLimit,
 				renameSession: async (sessionId, title) => {
@@ -2732,12 +2764,7 @@ window.__ModuleLoader__.load({
 					if (!result.ok) throw new Error(result.error.message);
 				},
 				forkSession: (sessionId) => {
-					sessions.fork({
-						sessionId,
-						increaseTitle: true
-					}).then((childId) => {
-						sessions.open(childId);
-					}).catch(() => {});
+					uiWorkspace.forkSession(sessionId).catch(() => {});
 				},
 				renameWorkspace: async (workspaceId, title) => {
 					await workspaces.rename(workspaceId, title);
