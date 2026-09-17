@@ -21,7 +21,9 @@ const token = tokenLine.slice("password=".length);
 const body = [
   "## 1.6.7",
   "",
-  "- **修复：装过插件市场插件的应用无法启动**。插件市场把已装插件写成 profile 补丁层里的挂载行，而 `$DSH_HOME` 是所有部署共享的：源码checkout、已安装版、以及一次**应用更新**（会整体替换 `resources/app`）看到的都是同一份行。只要某行指向的包在当前部署里不存在（比如装完插件后应用升了级，或开发版与安装版共用一个 home），Loader 就拒绝整个组合，应用直接弹「DeepSeek Harness failed to start」，除了手改补丁文件没有别的恢复办法。现在启动时会先核对每个市场行指向的包在本部署里是否真的存在，不存在的行跳过而不是让它拖死整个启动；插件在市场「已安装」列表里保留，一键重装即可",
+  "- **修复：终端类工具全线不可用**。表现是 Pwsh / Grep / Glob 都报 `Windows Job runner exited with exit code 0 before proving its managed range empty`。在打包后的 Electron 里 `process.execPath` 就是应用本体，而子进程运行器正是用它去跑一个 Node 脚本：少了 `ELECTRON_RUN_AS_NODE`，那个子进程会**把整个应用再启动一遍**，第二个实例拿不到单实例锁，于是干净地退出（退出码 0），运行器还没来得及回报任何结果。凡是走这条通道的工具（Pwsh、Grep、Glob、常驻终端）因此全部失败。现在该包纳入 `plugins/` 并补上这个开关——与本项目其它 Node 辅助进程（目录选择器、浏览器启动器）一致，且只作用于这一次 spawn；目标命令的环境仍经由 IPC 单独下发，所以从命令里启动别的 Electron 应用不受影响",
+  "- **修复：工作区选择报「workspaceNavigation.openWorkspace is not a function」**。0.1.5-rc.2 那次上游重基刷新了绝大部分插件的前端构建，只有 `dsh-client-ui-workspace` 的 `lib/client.js` 还留在 0.1.2 时期的旧构建。它自己的类型声明、以及 rc.2 的 `dsh-client-ui-conversation`，都要求 `uiWorkspace.openWorkspace` / `openSession` / `forkSession`，而旧构建里根本没有这几个方法——于是「选择工作区」、以及文件夹出错后点「重新选择」，都会直接弹「无法打开文件夹」而不是完成跳转。现在该文件与上游 0.1.5-rc.2 的发布产物逐字节一致，服务实现与其调用方的接口对齐",
+  "- **修复：装过插件市场插件的应用无法启动**。插件市场把已装插件写成 profile 补丁层里的挂载行，而 `$DSH_HOME` 是所有部署共享的：源码 checkout、已安装版、以及一次**应用更新**（会整体替换 `resources/app`）看到的都是同一份行。只要某行指向的包在当前部署里不存在（比如装完插件后应用升了级，或开发版与安装版共用一个 home），Loader 就拒绝整个组合，应用直接弹「DeepSeek Harness failed to start」，除了手改补丁文件没有别的恢复办法。现在启动时会先核对每个市场行指向的包在本部署里是否真的存在，不存在的行跳过而不是让它拖死整个启动；插件在市场「已安装」列表里保留，一键重装即可",
   "- **插件市场不再给技能写挂载行**：技能由目录发现，本来就没有 loader 行；此前给技能也写了行，同样会在下次启动时命中上面的崩溃路径",
   "",
   "## 1.6.6",
