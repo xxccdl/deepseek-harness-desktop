@@ -1613,6 +1613,21 @@ function validateNoNullByte(property, value, argument = false) {
 	if (value.includes("\0")) throwNullByteError(property, value, argument);
 }
 /**
+* Whether two program paths name the same executable.
+*
+* Windows paths are case-insensitive and the same binary reaches this code with
+* different casing (`d:` from one caller, `D:` from another), so an exact string
+* comparison silently misses — which is how a confined target ends up treated as
+* an ordinary program and boots the app instead of running as Node.
+* @param left - candidate program path.
+* @param right - program path to compare against.
+* @returns whether both name the same file.
+*/
+function isSameProgram(left, right) {
+	if (typeof left !== "string" || typeof right !== "string") return false;
+	return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+/**
 * Materialize and synchronously validate the final target environment.
 * @param spec - final target argv, cwd, and environment overrides.
 * @returns complete target environment after Node-equivalent validation.
@@ -1623,6 +1638,19 @@ function targetEnvironment(spec) {
 	});
 	validateNoNullByte("options.cwd", spec.cwd);
 	const env = Object.fromEntries(Object.entries(childEnv(spec.env)).filter((entry) => entry[1] !== void 0));
+	// A target that IS the app binary carrying a JavaScript entry only runs as the
+	// script it names when Electron is told to act as Node — this is the shape the
+	// Windows sandbox confines an argv into (`process.execPath` + its ACL runner,
+	// the profile's own program being the `--` tail). Without the switch the child
+	// boots the whole desktop app as a second instance, loses the single-instance
+	// lock, and exits at once: a confined tool reports success with no output and
+	// the shared terminal dies with "PTY shell exited during startup". Targets
+	// that are anything else keep their environment untouched, so a command that
+	// launches another Electron app still starts an app.
+	if (process.versions.electron !== void 0 && isSameProgram(spec.argv[0], process.execPath)) {
+		for (const key of Object.keys(env)) if (key.toUpperCase() === "ELECTRON_RUN_AS_NODE") Reflect.deleteProperty(env, key);
+		env.ELECTRON_RUN_AS_NODE = "1";
+	}
 	for (const [key, value] of Object.entries(env)) {
 		validateNoNullByte(`options.env['${key}']`, key);
 		validateNoNullByte(`options.env['${key}']`, value);
