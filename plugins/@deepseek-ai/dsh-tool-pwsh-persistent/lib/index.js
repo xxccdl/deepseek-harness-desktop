@@ -5,10 +5,6 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 //#region lib/types/index.js
 /**
 * Model-facing persistent `pwsh` tool over the owner-scoped PTY seam.
-*
-* Desktop fork: the tool adopts (and otherwise publishes) the owner-local shell
-* named `panel`, which is the one the bottom panel's terminal bridge opens, so
-* the person and the model share a single PowerShell process.
 * @module @deepseek-ai/dsh-tool-pwsh-persistent
 */
 var __addDisposableResource = function(env, value, async) {
@@ -290,7 +286,13 @@ async function executeCommand(ctx, shells, owner, command, config, upstream) {
 	};
 	try {
 		const commandDeadline = __addDisposableResource(env_1, deadline(upstream, config.timeoutMs, TIMEOUT_CODE), false);
-		const id = await shells.get(owner, commandDeadline.signal);
+		let id;
+		try {
+			id = await shells.get(owner, commandDeadline.signal);
+		} catch (error) {
+			if (upstream.aborted && error === upstream.reason) return "";
+			throw error;
+		}
 		const marker = markers();
 		const wrapped = wrapCommand(command, marker);
 		let first = true;
@@ -332,7 +334,7 @@ async function executeCommand(ctx, shells, owner, command, config, upstream) {
 			}
 			if (commandDeadline.signal.aborted) {
 				await shells.reset(owner, "persistent pwsh command aborted");
-				commandDeadline.signal.throwIfAborted();
+				return "";
 			}
 			if (latest.text.includes(marker.end)) {
 				const complete = commandOutput(retainedScrollback(ctx, owner, id, latest), marker, wrapped);
@@ -387,7 +389,7 @@ function registerPersistentPwsh(ctx, config) {
 			const owner = exec.agent;
 			if (owner === void 0) throw new Error("pwsh requires an owning agent session");
 			return serialized(owner, async () => {
-				exec.signal.throwIfAborted();
+				if (exec.signal.aborted) return "";
 				return executeCommand(ctx, shells, owner, args.command, config, exec.signal);
 			});
 		},

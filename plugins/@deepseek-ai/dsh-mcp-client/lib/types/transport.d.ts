@@ -5,7 +5,7 @@
  *
  * @module
  */
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { Transport } from '@modelcontextprotocol/client';
 import type { Config } from './index.ts';
 /**
  * Create an MCP transport from the resolved plugin config.

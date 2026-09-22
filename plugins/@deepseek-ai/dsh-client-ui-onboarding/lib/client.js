@@ -183,7 +183,7 @@ window.__ModuleLoader__.load({
 	* SPA on a fresh loopback port each launch, so the localStorage origin (and
 	* with it the done flag) changes between runs. Persisting here survives that.
 	*/
-	const PERSIST_NS = "ui-onboarding";
+	const PERSIST_NS = "ui-settings-general";
 	const PERSIST_FIELD = "dshOnboardingDone";
 	/** Whether the durable settings marker says onboarding is finished. */
 	let donePersisted = false;

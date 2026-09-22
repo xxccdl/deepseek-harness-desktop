@@ -1,6 +1,6 @@
 // Host half of dsh-client-ui-panel. The browser half (lib/client.js) owns the
-// bottom drawer, the session header toolbar, and the pricing hint. The shared
-// PowerShell it displays is served by `@deepseek-ai/dsh-host-shellpanel`.
+// DeepSeek peak/off-peak pricing chip in the composer dock. The drawer, its
+// toggles and the header toolbar the package used to carry are gone.
 /** Cordis plugin name. */
 const name = "ui-panel";
 /** No host services are required. */

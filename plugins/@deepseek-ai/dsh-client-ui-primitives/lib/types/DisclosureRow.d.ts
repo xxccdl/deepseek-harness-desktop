@@ -6,6 +6,8 @@ export interface DisclosureRowProps {
     open: boolean;
     expandable: boolean;
     onToggle: () => void;
+    /** Animate the title while its owning operation is running. */
+    running?: boolean | undefined;
     /** Makes the complete title row the disclosure target. */
     expandOnRowClick?: boolean | undefined;
     /** Replaces the collapsed icon with a chevron while the row is hovered. */
@@ -22,8 +24,9 @@ export interface DisclosureRowProps {
 }
 /**
  * Render one disclosure header and its controlled expanded content.
+ * Shallow prop comparison requires stable callbacks and React nodes to skip unchanged renders.
  * @param props - Visual content, controlled state, and interaction policy.
  * @returns the disclosure row.
  */
-export declare function DisclosureRow({ icon, title, open, expandable, onToggle, expandOnRowClick, previewChevron, keepContentWhenOpen, collapsedContent, children, className, rowClassName, leadingClassName, chevronClassName, titleClassName, }: DisclosureRowProps): import("react").JSX.Element;
+export declare const DisclosureRow: import("react").MemoExoticComponent<({ icon, title, open, expandable, onToggle, running, expandOnRowClick, previewChevron, keepContentWhenOpen, collapsedContent, children, className, rowClassName, leadingClassName, chevronClassName, titleClassName, }: DisclosureRowProps) => import("react").JSX.Element>;
 //# sourceMappingURL=DisclosureRow.d.ts.map

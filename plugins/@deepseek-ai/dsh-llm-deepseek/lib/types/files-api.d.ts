@@ -1,4 +1,4 @@
-/** OpenAI-compatible DeepSeek Files API transport. @module dsh-llm-deepseek/files-api */
+/** DeepSeek Files API transport. @module dsh-llm-deepseek/files-api */
 import { LlmError } from '@deepseek-ai/dsh-llm';
 import type { ImageMediaType } from '@deepseek-ai/dsh-attachment';
 import type { DeepSeekFileId as DeepSeekFileIdType } from './file-id.ts';
@@ -12,13 +12,13 @@ export declare const MAX_FILE_UPLOAD_BYTES: number;
 export declare const MAX_STORED_FILE_COUNT = 10000;
 /** Current per-key storage quota. */
 export declare const MAX_STORED_FILE_BYTES: number;
-/** Validated file object returned by the OpenAI-compatible endpoint. */
+/** Validated provider file metadata. */
 export interface DeepSeekFileObject {
     id: DeepSeekFileIdType;
     bytes: number;
     createdAt: number;
     filename: string;
-    purpose: 'user_data';
+    /** Upload-time reuse deadline; list and retrieve responses omit this field. */
     expiresAt?: number;
 }
 /** One page returned by `GET /files`. */
@@ -48,11 +48,14 @@ export declare function isFilesQuotaError(error: unknown): error is DeepSeekFile
 interface FilesApiOptions {
     baseURL: string;
     apiKey: string;
+    /** Use the DSH account header; omitted for ordinary API keys. */
+    accountCredential?: boolean;
     fetch?: typeof fetch;
 }
-/** Direct client for the OpenAI-compatible `/files` endpoints. */
+/** Direct Files client retaining the configured URL root and refusing redirects before credentials can leave its origin. */
 export declare class DeepSeekFilesClient {
     private readonly baseURL;
+    private readonly accountCredential;
     private readonly apiKey;
     private readonly fetchImpl;
     /**
@@ -63,7 +66,8 @@ export declare class DeepSeekFilesClient {
     /**
      * Upload one image with an explicit expiry.
      * @param input - deterministic request-version bytes, media type, filename, lifetime, and cancellation.
-     * @returns the validated provider file object, including `expires_at`.
+     * @returns the validated file and reuse deadline. Messages omits expiry metadata;
+     *   its deadline uses upload creation plus the requested lifetime.
      */
     upload(input: {
         data: Uint8Array;
@@ -75,14 +79,13 @@ export declare class DeepSeekFilesClient {
         expiresAt: number;
     }>;
     /**
-     * List one ascending or descending page of user-data files.
-     * @param options - pagination, ordering, and cancellation.
-     * @returns the validated page.
+     * List one provider-ordered page of files.
+     * @param options - pagination and cancellation.
+     * @returns the validated page with null cursors omitted.
      */
     list(options?: {
         after?: DeepSeekFileIdType;
         limit?: number;
-        order?: 'asc' | 'desc';
         signal?: AbortSignal;
     }): Promise<DeepSeekFilePage>;
     /**

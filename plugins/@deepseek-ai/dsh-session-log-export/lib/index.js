@@ -135,18 +135,14 @@ function fileEntryPath(ref) {
 	return `files/${digest.slice(0, 2)}/${digest}/${safeName}`;
 }
 /**
-* Collect every attachment reference inside one content array, descending into
-* nested tool results the way the live attachment route does.
-* @param content - an event content array (or nested tool-result content).
+* Collect direct attachment blocks from one declared V4 content array.
+* @param content - an event or message content array.
 * @param images - image dedupe map keyed by attachment id.
 * @param files - file dedupe map keyed by attachment id and stored name.
 */
 function collectAttachmentRefs(content, images, files) {
 	if (!Array.isArray(content)) return;
-	const pending = [];
-	for (const item of content) pending.push(item);
-	while (pending.length > 0) {
-		const value = pending.pop();
+	for (const value of content) {
 		if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
 		const block = value;
 		if (block.type === "image" && typeof block.attachment === "object" && block.attachment !== null) {
@@ -157,24 +153,51 @@ function collectAttachmentRefs(content, images, files) {
 			const ref = block.attachment;
 			files.set(`${String(ref.attachmentId)}\u0000${ref.name}`, ref);
 		}
-		if (Array.isArray(block.content)) for (const item of block.content) pending.push(item);
 	}
 }
 /**
-* Collect every attachment reference one session event carries, across the same
-* carriers the live attachment route scans (direct content, message content,
-* inserted messages, and completed blocks in embedded Assistant streams).
+* Collect references only from declared first-party content fields and completed
+* Assistant blocks. Unknown events and unrelated payload fields remain opaque.
 * @param event - one parsed JSONL event object.
 * @param images - image dedupe map keyed by attachment id.
 * @param files - file dedupe map keyed by attachment id and stored name.
 */
 function collectEventAttachmentRefs(event, images, files) {
-	const data = event.data;
+	if (typeof event !== "object" || event === null || Array.isArray(event)) return;
+	const row = event;
+	const data = row.data;
 	if (typeof data !== "object" || data === null) return;
 	const carrier = data;
-	collectAttachmentRefs(carrier.content, images, files);
-	if (carrier.message !== void 0) collectAttachmentRefs(carrier.message.content, images, files);
-	if (carrier.inserted !== void 0) for (const message of carrier.inserted) collectAttachmentRefs(message.content, images, files);
+	switch (row.type) {
+		case "user/message":
+		case "tool/ptc-dispatch":
+			collectAttachmentRefs(carrier.content, images, files);
+			return;
+		case "system/message":
+		case "developer/message":
+		case "tool/result":
+		case "team/message/queued":
+			collectAttachmentRefs(carrier.message?.content, images, files);
+			return;
+		case "agent/inbox/spliced": {
+			const messages = carrier.inserted;
+			if (!Array.isArray(messages)) return;
+			for (const message of messages) {
+				if (typeof message !== "object" || message === null || Array.isArray(message)) continue;
+				collectAttachmentRefs(message.content, images, files);
+			}
+			return;
+		}
+		case "compaction/summary":
+			collectAttachmentRefs(carrier.summary, images, files);
+			collectAttachmentRefs(carrier.rawOutput, images, files);
+			return;
+		case "assistant/message":
+			collectAttachmentRefs(carrier.message?.content, images, files);
+			break;
+		case "assistant/attempt": break;
+		default: return;
+	}
 	if (carrier.stream !== void 0) {
 		for (const record of carrier.stream) if (record.type === "chunk" && record.chunk?.type === "block-end") collectAttachmentRefs([record.chunk.block], images, files);
 	}
@@ -455,12 +478,20 @@ function streamSessionLogZip(deps, rootContent, sessionId, includeDescendants, c
 	});
 }
 //#endregion
+//#region lib/types/routes.js
+/**
+* The absolute pathname the Host registers the export under and the
+* document-relative form the browser addresses; see
+* .agents/notes/implemented/architecture/2026-09-14-web-document-relative-app-routes.md.
+*/
+/** Absolute registration path for the ZIP download route. */
+const SESSION_LOG_EXPORT_PATH = "/api/session.export";
+SESSION_LOG_EXPORT_PATH.slice(1);
+//#endregion
 //#region lib/types/index.js
 /** Session-log download command and Host-owned streaming route. */
 const name = "session-log-download";
 const inject = ["commands", "connection"];
-/** Stable browser download path retained across the transport migration. */
-const SESSION_LOG_EXPORT_PATH = "/api/session.export";
 /** Validate Session-log archive configuration. */
 const Config = Schema.object({ compressionLevel: Schema.number().step(1).min(0).max(9).default(6) });
 const REQUESTED = {
@@ -474,6 +505,7 @@ const REQUESTED = {
 */
 function apply(ctx, config = {}) {
 	ctx.effect(() => ctx.commands.register({
+		definitionId: brandString("@deepseek-ai/dsh-session-log-export"),
 		name: "export",
 		description: "Download this Session log as a ZIP archive",
 		handler: (invocation) => Promise.resolve(invocation.rawInput.trim() === "" ? REQUESTED : {

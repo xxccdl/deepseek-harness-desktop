@@ -3,6 +3,7 @@
 export interface LinuxLaunchRequest {
     cwd: string;
     env: Record<string, string>;
+    control?: 'pipe';
 }
 /** Bounded Node-shaped error fields allowed across a private runner boundary. */
 export interface SerializedRunnerError {
@@ -22,6 +23,7 @@ export interface WindowsStartRequest {
     type: 'start';
     cwd: string;
     env: Record<string, string>;
+    control?: 'pipe';
 }
 /** The only parent-to-runner control message on Windows. */
 export interface WindowsTerminateRequest {

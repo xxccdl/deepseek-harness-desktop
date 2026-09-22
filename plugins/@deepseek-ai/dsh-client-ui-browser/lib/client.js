@@ -204,9 +204,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region plugin
 		const NS = "settings.browser";
-		const inject = ["slots", "locale", "settingsScope"];
+		const inject = ["slots", "locale", "configForms"];
 		function apply(ctx) {
-			scopeRef = ctx.settingsScope.bind({ namespace: "browser-control" });
+			// The Host entry that owns these settings is the `tool-browser` row.
+			scopeRef = ctx.configForms.get("tool-browser");
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh: {
 					"nav": "浏览器控制",

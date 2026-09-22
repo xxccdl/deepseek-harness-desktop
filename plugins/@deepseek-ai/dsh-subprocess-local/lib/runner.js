@@ -1,11 +1,12 @@
-import { S as loadLinuxExecve, a as resolveWindowsExecutable, b as serializeRunnerError, f as consumeLinuxLaunchRequest, g as linuxLaunchFilesFromLocator, h as isWindowsTerminateRequest, i as parseRunnerTargetArgv, r as consumeRunnerSelection, t as SUBPROCESS_RUNNER_ENV, v as parseWindowsStartRequest, x as writeLinuxStartupError } from "./runner-launch-COYGu0Dl.js";
+import { S as loadLinuxExecve, a as resolveWindowsExecutable, b as serializeRunnerError, f as consumeLinuxLaunchRequest, g as linuxLaunchFilesFromLocator, h as isWindowsTerminateRequest, i as parseRunnerTargetArgv, r as consumeRunnerSelection, t as SUBPROCESS_RUNNER_ENV, v as parseWindowsStartRequest, x as writeLinuxStartupError } from "./runner-launch-DGV26RBf.js";
 import { closeSync } from "node:fs";
+import { SUBPROCESS_CONTROL_FD } from "@deepseek-ai/dsh-subprocess/control";
 import { Win32Error, closeHandleChecked, isJobEmpty, loadWin32ProcessBindings, pollProcessExit, spawnCurrentTokenJobProcess, terminateJob } from "@deepseek-ai/dsh-win32-process";
 //#region lib/types/spawn-runner.js
 /** One-shot Linux exec bootstrap and Windows Job-owning subprocess runner. */
 const defaultInternals = {
 	/* v8 ignore next -- source/built/packaged subprocess smoke executes this only in a replaceable child process. */
-	execve: (file, argv, env) => loadLinuxExecve()(file, argv, env),
+	execve: (file, argv, env, control) => loadLinuxExecve()(file, argv, env, control),
 	loadWin32ProcessBindings,
 	spawnCurrentTokenJobProcess,
 	closeFileDescriptor: closeSync,
@@ -58,28 +59,32 @@ function linuxPathNotFoundError(program) {
 		spawnargs: []
 	});
 }
-function execLinuxFile(file, argv, env, internals) {
+function execLinuxFile(file, argv, env, internals, control) {
 	try {
-		return internals.execve(file, argv, env);
+		return control === void 0 ? internals.execve(file, argv, env) : internals.execve(file, argv, env, control);
 	} catch (error) {
 		if (error.code !== "ENOEXEC") throw error;
-		return internals.execve("/bin/sh", [
+		return control === void 0 ? internals.execve("/bin/sh", [
 			"/bin/sh",
 			file,
 			...argv.slice(1)
-		], env);
+		], env) : internals.execve("/bin/sh", [
+			"/bin/sh",
+			file,
+			...argv.slice(1)
+		], env, control);
 	}
 }
 function execLinuxTarget(request, argv, internals) {
 	const program = argv[0];
-	if (program.includes("/")) return execLinuxFile(program, argv, request.env, internals);
+	if (program.includes("/")) return execLinuxFile(program, argv, request.env, internals, request.control);
 	const path = request.env.PATH ?? "/usr/bin:/bin";
 	let permissionFailure;
 	for (const directory of path.split(":")) {
 		const root = directory.startsWith("/") ? directory : `${request.cwd}${request.cwd.endsWith("/") ? "" : "/"}${directory}`;
 		const candidate = `${root}${root.endsWith("/") ? "" : "/"}${program}`;
 		try {
-			return execLinuxFile(candidate, argv, request.env, internals);
+			return execLinuxFile(candidate, argv, request.env, internals, request.control);
 		} catch (error) {
 			const code = error.code;
 			if (code === "EACCES") {
@@ -227,12 +232,18 @@ var WindowsJobRunner = class {
 				stdio: {
 					stdin: 4,
 					stdout: 5,
-					stderr: 6
+					stderr: 6,
+					...request.control === "pipe" ? { control: SUBPROCESS_CONTROL_FD } : {}
 				}
 			});
 			this.processHandle = spawned.process;
 			this.jobHandle = spawned.job;
-			for (const fileDescriptor of [
+			for (const fileDescriptor of request.control === "pipe" ? [
+				4,
+				5,
+				6,
+				SUBPROCESS_CONTROL_FD
+			] : [
 				4,
 				5,
 				6

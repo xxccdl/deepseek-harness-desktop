@@ -25,8 +25,8 @@ import z from "@deepseek-ai/schemastery";
 
 /** Cordis plugin name. */
 const name = "tool-computer-use";
-/** Required services: the loader (to mount the MCP client), the settings registry. */
-const inject = ["loader", "settings"];
+/** Required services: the loader (to mount the MCP client). */
+const inject = ["loader"];
 
 /** Default Python managed by uv for the Windows-MCP venv. */
 const DEFAULT_PYTHON_VERSION = "3.13";
@@ -47,18 +47,16 @@ const MARKER_FILENAME = ".dsh-provisioned";
  * install recipe itself changes.
  */
 const PROVISION_RECIPE = "windows-mcp";
-/** Settings namespace owned by the computer-use plugin. */
-const COMPUTER_USE_SETTINGS_NS = "computer-use";
-/** Durable computer-use settings; the harness Settings document edits it. */
-const ComputerUseSettingsSchema = z.object({
+/** The plugin's editable settings; the profile entry's config form edits it. */
+const Config = z.object({
   /** Master switch: when false, no MCP runtime, skill, or reminder is mounted. */
-  enabled: z.boolean().default(true),
+  enabled: z.boolean().default(true).volatile(),
   /** Python version managed by uv for the Windows-MCP venv. */
-  pythonVersion: z.string().default(DEFAULT_PYTHON_VERSION),
+  pythonVersion: z.string().default(DEFAULT_PYTHON_VERSION).volatile(),
   /** PyPI package providing the `windows-mcp` CLI. */
-  package: z.string().default(DEFAULT_PACKAGE),
+  package: z.string().default(DEFAULT_PACKAGE).volatile(),
   /** Mount the persistent `computer-use:capability` system-prompt reminder. */
-  autoRemind: z.boolean().default(true)
+  autoRemind: z.boolean().default(true).volatile()
 });
 
 /**
@@ -190,14 +188,15 @@ const COMPUTER_USE_HTTP_PATH = "/api/computer-use";
 
 // ── plugin ────────────────────────────────────────────────────────────────────
 /**
- * Mount / unmount the computer-use runtime from the `computer-use` settings
- * namespace, reactively. Changing `enabled`, `pythonVersion`, or `package`
- * tears down the old MCP client and reprovisions (recipe change rebuilds the
- * venv exactly once); `autoRemind` toggles the prompt reminder. A generation
- * counter keeps a slower earlier configuration from clobbering a newer one.
+ * Mount / unmount the computer-use runtime from this entry's volatile config
+ * form, reactively. Changing `enabled`, `pythonVersion`, or `package` tears
+ * down the old MCP client and reprovisions (recipe change rebuilds the venv
+ * exactly once); `autoRemind` toggles the prompt reminder. A generation counter
+ * keeps a slower earlier configuration from clobbering a newer one.
  * @param ctx - registrant context carrying the loader, skill, and prompt registries.
+ * @param config - resolved plugin config; volatile fields are live references.
  */
-function apply(ctx) {
+function apply(ctx, config) {
   let currentConfig = {};
   let mountGen = 0;
   let mounted = null;
@@ -225,7 +224,10 @@ function apply(ctx) {
     for (const dispose of current.cleanup) {
       try { dispose(); } catch { /* best-effort */ }
     }
-    if (current.mcpEntryId !== undefined) await ctx.loader.remove(current.mcpEntryId).catch(() => {});
+    // `loader.remove` is synchronous in cordis-plugin-loader; guard it by hand.
+    if (current.mcpEntryId !== undefined) {
+      try { ctx.loader.remove(current.mcpEntryId); } catch { /* best-effort */ }
+    }
   };
 
   const start = async (config) => {
@@ -268,7 +270,10 @@ function apply(ctx) {
           reconnect: { enabled: true, initialDelayMs: 2000, maxDelayMs: 30000, maxAttempts: 20 }
         }
       });
-      if (gen !== mountGen) { await ctx.loader.remove(mcpEntryId).catch(() => {}); return; }
+      if (gen !== mountGen) {
+        try { ctx.loader.remove(mcpEntryId); } catch { /* best-effort */ }
+        return;
+      }
       const skills = ctx.get("skills");
       const systemPrompt = ctx.get("systemPrompt");
       cleanup.push(skills.register(computerUseSkill));
@@ -295,6 +300,11 @@ function apply(ctx) {
   // Reactive registration of the status route (webServer is optional).
   const httpDisposers = [];
   const syncHttp = () => {
+    // `internal/service` also fires while the tree is coming down, and by then
+    // this plugin's fiber is already unloading (state 5) — `ctx.effect` would
+    // throw INACTIVE_EFFECT out of an event listener and turn a clean quit into
+    // a startup-style failure. Only a fully active fiber (state 2) owns routes.
+    if (ctx.fiber.state !== 2) return;
     for (const dispose of httpDisposers) dispose();
     httpDisposers.length = 0;
     const webServer = ctx.get("webServer", false);
@@ -358,15 +368,18 @@ function apply(ctx) {
     void runSerial(teardown);
   }, "tool-computer-use: teardown");
 
-  ctx.inject(["settings"], (settingsCtx) => {
-    const scope = settingsCtx.settings.register(COMPUTER_USE_SETTINGS_NS, ComputerUseSettingsSchema);
-    scope.watch((next) => {
-      currentConfig = next;
-      applyConfig(next);
-    });
-    currentConfig = scope.get();
-    applyConfig(currentConfig);
-  });
+  const refreshConfig = () => {
+    const values = {
+      enabled: config.enabled.get(),
+      pythonVersion: config.pythonVersion.get(),
+      package: config.package.get(),
+      autoRemind: config.autoRemind.get()
+    };
+    currentConfig = values;
+    applyConfig(values);
+  };
+  refreshConfig();
+  ctx.on("loader/volatile-update", () => { refreshConfig(); });
 }
 
-export { apply, inject, name };
+export { Config, apply, inject, name };

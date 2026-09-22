@@ -39,7 +39,7 @@ export declare function consumeRunnerSelection(env?: NodeJS.ProcessEnv): string 
 export declare function parseRunnerTargetArgv(argv: readonly string[]): string[];
 /**
  * Build direct Linux target stdio, or isolated Windows runner stdio with IPC
- * on fd 3 and target carriers on fd 4 through fd 6.
+ * on fd 3 and target carriers on fd 4 through fd 6; optional control uses fd 7.
  * @param spec - ordinary subprocess request whose stdio modes are preserved.
  * @param ipc - whether to isolate the runner and add its private Node IPC descriptor.
  * @param stdinCarrier - runner fd 4 carrier; Windows ignore passes an opened null-device fd.
@@ -62,5 +62,7 @@ export declare function resolveWindowsExecutable(command: string, cwd: string, e
  * @param spec - final target argv, cwd, and environment overrides.
  * @returns complete target environment after Node-equivalent validation.
  */
-export declare function targetEnvironment(spec: Pick<SubprocessSpawnSpec, 'argv' | 'cwd' | 'env'>): Record<string, string>;
+export declare function targetEnvironment(spec: Pick<SubprocessSpawnSpec, 'argv' | 'cwd' | 'env'> & {
+    stdio?: SubprocessSpawnSpec['stdio'];
+}): Record<string, string>;
 //# sourceMappingURL=runner-launch.d.ts.map

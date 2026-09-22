@@ -5,7 +5,7 @@
  *
  * @module @deepseek-ai/dsh-llm/assembler
  */
-import type { Message, MessageSource } from './message.ts';
+import type { AssistantMessage, ModelMessageSource } from './message.ts';
 import type { ContentBlock, FinishReason, ReplayEnvelope, StreamChunk, TokenUsage } from './types.ts';
 /**
  * Incrementally assembles raw {@link StreamChunk}s into complete
@@ -67,9 +67,9 @@ export declare class BlockAssembler {
     get replayState(): ReplayEnvelope | undefined;
     /**
      * The assembled assistant message.
-     * @param source - producer attribution for the assembled message.
+     * @param source - provider/model attribution (without the `kind` tag) for the assembled message.
      * @returns a frozen assistant-role message over `blocks()` (same open-block assembly rules).
      */
-    message(source?: MessageSource): Message;
+    message(source: Omit<ModelMessageSource, 'kind'>): AssistantMessage;
 }
 //# sourceMappingURL=assembler.d.ts.map

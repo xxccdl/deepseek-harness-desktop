@@ -7,7 +7,7 @@
  *
  * @module dsh-llm-pi-ai/replay
  */
-import type { Message, ReplayEnvelope } from '@deepseek-ai/dsh-llm';
+import type { AssistantMessage as HarnessAssistantMessage, ReplayEnvelope } from '@deepseek-ai/dsh-llm';
 import type { Api, AssistantMessage } from '@earendil-works/pi-ai';
 /** Per-block half of the pi-ai replay envelope, one entry per content block. */
 export type PiAiReplayBlock = {
@@ -54,10 +54,10 @@ export declare function toPiReplayState(message: AssistantMessage, requestedMode
  * another adapter's kind, another version, a malformed value, or metadata that
  * no longer matches the content — therefore degrades the one message to
  * provider-neutral history instead of failing the request.
- * @param message - assistant content with required source and optional adapter-owned replay metadata.
+ * @param message - model-produced assistant content with provider, model, and optional adapter-owned replay metadata.
  * @param onDegrade - called with the diagnostic reason when an unusable replay
  *   state falls back to provider-neutral conversion.
  * @returns a native pi-ai assistant message reconstructed from durable content.
  */
-export declare function toPiAssistant(message: Message, onDegrade?: (reason: string) => void): AssistantMessage;
+export declare function toPiAssistant(message: HarnessAssistantMessage, onDegrade?: (reason: string) => void): AssistantMessage;
 //# sourceMappingURL=replay.d.ts.map

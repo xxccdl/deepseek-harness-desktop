@@ -1,3 +1,4 @@
+import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
 import type { WorkspaceBrowserProps } from '../contract/slots.ts';
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts';
 /** The standard locale seat, prop-passed from the browser root. */
@@ -29,6 +30,7 @@ interface WorkspaceRowDragProps {
  * Workspace shows its hover card (the ungrouped bucket has none).
  * `containsCurrent` arrives on the node (derivation fact, no renderer scan).
  * @param props.group - derived group node.
+ * @param props.containsCurrentDescendant - highlight an ancestor even when its subtree is collapsed.
  * @param props.onToggle - expand/collapse the group.
  * @param props.onCreate - start a frontend Session inside this Workspace.
  * @param props.drag - optional workspace-row drag wiring.
@@ -36,8 +38,9 @@ interface WorkspaceRowDragProps {
  * @param props.t - the browser root's locale seat.
  * @returns the row element.
  */
-export declare function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home, t }: {
+export declare function ProjectRowItem({ group, containsCurrentDescendant, onToggle, onCreate, actions, drag, home, t }: {
     group: GroupNode;
+    containsCurrentDescendant?: boolean;
     onToggle: () => void;
     onCreate: () => void;
     /** Real-Workspace actions; absent for the ungrouped bucket (no menu shown). */
@@ -54,53 +57,52 @@ export declare function ProjectRowItem({ group, onToggle, onCreate, actions, dra
 /**
  * One flat search result: title, Workspace context, and optional content
  * excerpt. Search navigation opens the session only; it does not address an
- * event inside the conversation.
+ * event inside the conversation. Archived rows carry a hover unarchive
+ * button, because search is where the filter surfaces them for recovery.
  * @param props.result - merged local/content search row.
  * @param props.currentId - selected session id.
  * @param props.onOpen - open the selected session.
+ * @param props.onUnarchive - unarchive an archived result row.
  * @param props.t - Workspace-browser translation seat.
- * @returns the result button.
+ * @returns the result row.
  */
-export declare function SearchResultItem({ result, currentId, onOpen, t }: {
+export declare function SearchResultItem({ result, currentId, onOpen, onUnarchive, t }: {
     result: SearchResultNode;
     currentId: string | undefined;
     onOpen: (id: SearchResultNode['id']) => void;
+    onUnarchive: (id: SearchResultNode['id']) => void;
     t: RowTranslate;
 }): import("react").JSX.Element;
 /**
  * One top-level 34px session row: status dot (pending user interaction outranks
- * own or descendant activity), title, relative time, and the row actions menu.
+ * own or descendant activity), title, relative time or compact pending label,
+ * and the row actions menu.
  * @param props.node - derived session node.
  * @param props.currentId - selected session id (row highlight).
  * @param props.now - epoch ms for relative-time formatting.
  * @param props.onOpen - open a session by id.
- * @param props.onRename - open the session rename dialog (id + current title).
- * @param props.onFork - fork a session at its last completed turn.
- * @param props.onArchive - archive a session by id.
+ * @param props.onRenameRequest - open the rename dialog from a title double-click (id + current title).
+ * @param props.renderSlot - render the row's `sidebar.workspaces.session.menu.item` and `sidebar.workspaces.session.row.action` lists.
  * @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
- * @param props.drag - optional draggable-row wiring.
+ * @param props.drag - optional row-drag target wiring; blank rows cannot start a drag.
  * @param props.flat - omit the empty status slot in the hierarchy-free flat list.
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-export declare function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, onReveal, drag, flat, t, }: {
+export declare function SessionNodeItem({ node, currentId, now, onOpen, onRenameRequest, renderSlot, onReveal, drag, flat, t, }: {
     node: SessionNode;
     currentId: string | undefined;
     now: number;
     onOpen: (id: SessionNode['id']) => void;
-    /** Open the browser-owned session rename dialog (row menu action). */
-    onRename: (id: SessionNode['id'], currentTitle: string) => void;
-    /** Fork a session at its last completed turn (row menu action). */
-    onFork: (id: SessionNode['id']) => void;
-    /** Archive this session (row menu action; commits without a dialog). */
-    onArchive: (id: SessionNode['id']) => void;
+    /** Open the rename dialog from a title double-click (id + current title). */
+    onRenameRequest: (id: SessionNode['id'], currentTitle: string) => void;
     /** Scroll this row into view after search navigation, then acknowledge it. */
     onReveal?: (() => void) | undefined;
-    /** Present only on draggable rows (workspace-group sessions outside search). */
+    /** Present on reorderable-list rows so every row can remain a drop target. */
     drag?: RowDragProps | undefined;
     /** The row is rendered without a parent Workspace header. */
     flat?: boolean | undefined;
     t: RowTranslate;
-}): import("react").JSX.Element;
+} & PropsRenderSlots<'sidebar.workspaces.session.menu.item' | 'sidebar.workspaces.session.row.action'>): import("react").JSX.Element;
 export {};
 //# sourceMappingURL=Rows.d.ts.map

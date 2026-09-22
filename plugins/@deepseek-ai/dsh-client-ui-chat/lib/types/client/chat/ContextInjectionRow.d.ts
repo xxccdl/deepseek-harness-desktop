@@ -5,7 +5,7 @@ export interface ContextInjectionRowProps {
     content: ContextMessageNode['content'];
     source: ContextMessageNode['source'];
     /** Role and producer name projected from the durable source. */
-    provenance: ContextMessageNode['provenance'];
+    producer: ContextMessageNode['producer'];
     /** Producer-declared information form; null renders the opaque body. */
     form: ContextMessageNode['form'];
     /** The owning view's locale seat, passed down as a plain prop. */
@@ -22,5 +22,5 @@ export interface ContextInjectionRowProps {
  * @param props - Durable content, its projected producer role/name and form, and the locale seat.
  * @returns A collapsed context row with a bounded, form-specific body.
  */
-export declare function ContextInjectionRow({ content, source, provenance, form, t }: ContextInjectionRowProps): import("react").JSX.Element;
+export declare function ContextInjectionRow({ content, source, producer, form, t }: ContextInjectionRowProps): import("react").JSX.Element;
 //# sourceMappingURL=ContextInjectionRow.d.ts.map

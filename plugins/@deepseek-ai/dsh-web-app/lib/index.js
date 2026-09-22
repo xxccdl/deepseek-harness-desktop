@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
 import z from "@deepseek-ai/schemastery";
-import { addHarnessSourceSection } from "@deepseek-ai/dsh-app-boot";
+import { addHarnessSourceSection, auditStartupEntries } from "@deepseek-ai/dsh-app-boot";
 import * as FrontendStatic from "@deepseek-ai/dsh-host-frontend-static";
 import { launchEnvironmentOf, launchedThroughSsh } from "@deepseek-ai/dsh-launch-environment";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
@@ -216,9 +216,10 @@ function apply(ctx, config) {
 		};
 		const settled = connectionCtx.get("loader")?.await();
 		if (settled === void 0) announceReady();
-		else settled.then(() => {
+		else settled.then(async () => {
+			await auditStartupEntries(connectionCtx.root, "dsh web", () => {});
 			if (connectionCtx.get("webServer") !== void 0 && connectionCtx.get("connection") !== void 0) announceReady();
-		}, () => {});
+		}).catch(() => {});
 	});
 }
 //#endregion

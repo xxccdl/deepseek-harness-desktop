@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import type { PropsRenderSlots, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
-import type { OpenFileOptions } from '@deepseek-ai/dsh-client-ui-chat/client';
+import type { OpenFileOptions, UseDisclosure } from '@deepseek-ai/dsh-client-ui-chat/client';
 import type { MessageImageLoader } from '@deepseek-ai/dsh-client-ui-conversation/client';
 import { type DiffCardModel } from '../models/diff-card-model.ts';
 import { type ReadCardModel } from '../models/read-card-model.ts';
@@ -10,7 +10,10 @@ import { type TerminalCardModel } from '../models/terminal-card-model.ts';
 import type { AskQuestionCardModel } from '../models/ask-question-card-model.ts';
 import { type ToolRowState, type ToolRowVariant } from '../models/tool-call-model.ts';
 import type { WebCardModelProps } from '../models/web-card-model.ts';
+import { type ToolDetailsModel } from './ToolDetails.tsx';
 export interface ToolRowProps {
+    /** Subscribe here, where the row owns its expanded body. */
+    useDisclosure: UseDisclosure;
     t: TranslateNS<'conversation'>;
     variant: ToolRowVariant;
     /** Wire tool name for tool-owned styling layered over the generic variant. */
@@ -55,6 +58,8 @@ export interface ToolRowProps {
     loadImage?: MessageImageLoader | undefined;
     search?: SearchCardModel | null | undefined;
     web?: WebCardModelProps | null | undefined;
+    /** Read-only fields/list card derived from a successful recorded result. */
+    details?: ToolDetailsModel | null | undefined;
     state: ToolRowState;
     /**
      * Filesystem path from tool args; when set with onOpenFile, the summary
@@ -71,5 +76,10 @@ export interface ToolRowProps {
      */
     inspect?: (() => void) | undefined;
 }
-export declare function ToolRow({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, state, filePath, filePathLine, onOpenFile, inspect, }: ToolRowProps): import("react").JSX.Element;
+/**
+ * Render one localized tool summary and lazily mounted result card.
+ * @param props - tool state, summary, output, and navigation callbacks.
+ * @returns the tool disclosure.
+ */
+export declare const ToolRow: import("react").MemoExoticComponent<({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, details, state, filePath, filePathLine, onOpenFile, inspect, useDisclosure, }: ToolRowProps) => import("react").JSX.Element>;
 //# sourceMappingURL=ToolRow.d.ts.map

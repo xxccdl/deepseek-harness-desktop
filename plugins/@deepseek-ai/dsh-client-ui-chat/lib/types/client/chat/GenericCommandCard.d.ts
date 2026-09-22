@@ -5,5 +5,10 @@ export interface GenericCommandCardProps extends CommandRowOwnerProps {
     /** Command-specific running copy; absent uses the generic command label. */
     runningSummary?: string | undefined;
 }
-export declare function GenericCommandCard({ node, t, runningSummary }: GenericCommandCardProps): import("react").JSX.Element;
+/**
+ * Render a command summary and its lazily mounted multiline output.
+ * @param props - command, locale, and optional running label.
+ * @returns the command disclosure.
+ */
+export declare const GenericCommandCard: import("react").MemoExoticComponent<({ node, t, runningSummary }: GenericCommandCardProps) => import("react").JSX.Element>;
 //# sourceMappingURL=GenericCommandCard.d.ts.map

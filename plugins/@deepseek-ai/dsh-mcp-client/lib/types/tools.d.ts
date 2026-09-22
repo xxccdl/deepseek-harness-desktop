@@ -11,8 +11,9 @@
  *
  * @module
  */
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { type Client } from '@modelcontextprotocol/client';
 import type { Context } from '@deepseek-ai/cordis';
+import type { ToolDefinition, ToolExecution } from '@deepseek-ai/dsh-tools';
 import type { JsonValue } from '@deepseek-ai/dsh-util-values';
 /** Resolved options relevant to tool bridging. */
 export interface ToolBridgeOptions {
@@ -48,9 +49,9 @@ export declare function publicToolName(serverName: string, rawName: string): str
  *
  * Two phases keep the swap safe:
  *
- * 1. Fetch: drain uncached `tools/list` pagination and build the full next
+ * 1. Fetch: let the SDK aggregate `tools/list` and build the full next
  *    generation of `ToolDefinition`s under public names. Any failure here
- *    (network error, duplicate raw name, repeated continuation cursor) rejects
+ *    (network error or duplicate raw name) rejects
  *    and leaves the previous generation registered untouched.
  * 2. Swap: dispose the previous generation, register the new one. A registry
  *    conflict here can only mean a foreign registration squats on this
@@ -68,4 +69,34 @@ export declare function publicToolName(serverName: string, rawName: string): str
  *   disposers — the exact set of live registrations owned by this server.
  */
 export declare function syncTools(client: Client, ctx: Context, opts: ToolBridgeOptions, previous: ToolDisposers): Promise<ToolDisposers>;
+/** One upstream MCP tool and the callback that obtains its raw protocol result. */
+export interface McpToolDefinitionOptions {
+    /** ToolRuntime name presented to the model. */
+    name: string;
+    /** Upstream name used in result diagnostics. */
+    rawName: string;
+    /** Upstream model-facing description. */
+    description: string;
+    /** Upstream JSON input schema. */
+    inputSchema: Record<string, unknown>;
+    /** Advertised structured output schema, when present. */
+    outputSchema?: unknown;
+    /** Whether the upstream tool requires the unsupported task execution extension. */
+    taskRequired?: boolean;
+    /**
+     * Obtain one raw MCP result from the provider.
+     * @param args - model arguments admitted by the ToolRuntime.
+     * @param execution - exact ToolRuntime invocation, including its Agent and cancellation.
+     * @returns the external result object, validated before content projection.
+     */
+    call(args: Record<string, unknown>, execution: ToolExecution): Promise<unknown>;
+}
+/**
+ * Adapt an upstream MCP tool to canonical values and durable image content.
+ * Registration, provider lifetime, deadlines, and transport belong to the caller.
+ * @param ctx - plugin context carrying optional attachment and model services.
+ * @param options - upstream tool fields and its raw-result callback.
+ * @returns the unregistered ToolRuntime definition.
+ */
+export declare function createMcpToolDefinition(ctx: Context, options: McpToolDefinitionOptions): ToolDefinition;
 //# sourceMappingURL=tools.d.ts.map

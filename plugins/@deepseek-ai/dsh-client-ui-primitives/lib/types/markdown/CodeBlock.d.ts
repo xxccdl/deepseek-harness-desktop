@@ -19,10 +19,12 @@ export interface CodeBlockProps {
     contentRef?: Ref<HTMLDivElement> | undefined;
     /** Show a numbered gutter without adding numbers to copied source. Defaults to false. */
     lineNumbers?: boolean | undefined;
+    /** Show the language and copy header; false when the caller supplies a toolbar. Defaults to true. */
+    showHeader?: boolean | undefined;
     /** Copy-button idle label; the owner passes localized copy (this package is cordis-free, so copy arrives via props). */
     copyLabel: string;
     /** Copy-button label during the post-copy confirmation window. */
     copiedLabel: string;
 }
-export declare function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers, copyLabel, copiedLabel }: CodeBlockProps): import("react").JSX.Element;
+export declare function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers, showHeader, copyLabel, copiedLabel, }: CodeBlockProps): import("react").JSX.Element;
 //# sourceMappingURL=CodeBlock.d.ts.map

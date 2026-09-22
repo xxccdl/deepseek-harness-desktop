@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.6.7";
+const tag = process.argv[2] ?? "v1.7.0";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,6 +19,18 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
+  "## 1.7.0",
+  "",
+  "本次把 fork 重基到上游 **dsh 0.1.7-alpha.1**。上游这一版带来侧边栏会话置顶与归档、工作过程展示与性能用量设置、后台任务列表、文件预览与改动审阅、Team 任务看板、内置浏览器在 Electron 默认开启等大量改动（完整清单见上游 `dsh-v0.1.7-alpha.1`）。重基的改动面很大：65 个覆盖层包全部重新对齐，下面是本次与桌面端直接相关的修复。",
+  "- **修复：fork 自研插件几乎全都没加载**。0.1.7 把前端图标库的命名从固定规格改成带规格后缀（`IconXxxOutline16` 变为 `IconXxxOutlineRegular`），覆盖层仍按旧名字取组件，取到的是 `undefined`，于是按钮渲染成空白；同时 `conversation.composer.dock` 的槽语义从「卡片内竖排」变成了「卡片下的横向胶囊行」，塞进去的全宽内容会被压成一根窄柱，看起来就像整块界面消失。现在图标名与新槽语义都已对齐，价格标签、插件发布条等自研界面恢复正常",
+  "- **修复：登录**。新装或登出后不会再自动打开登录链接，回调被拒时直接报「登录失败」",
+  "- **修复：Windows 上终端类工具全线失败（`PTY shell exited during startup`）**。根因是 Windows ACL 沙箱在给工作区根目录写授权之前，需要往目录的 SACL 里写 Low 完整性标签，而这一步要求调用者**拥有该目录并持有 WRITE_OWNER**：工作区只继承到 `Authenticated Users: Modify` 时（Modify 不含 WRITE_OWNER）授权必然失败，沙箱运行器以 127 退出，PTY 还没启动就已经不在，界面上只剩一句 `PTY shell exited during startup`。现在这条路径被 Windows 拒绝时不再 fail-closed：命令以降级（不隔离）方式执行，并在控制台写明原因、恢复办法，以及为什么不能简单地补权限——沙箱的 Low 标签是按 `(OI)(CI)` 整棵树继承的，工作区里放着自己的可执行文件时会被一并标低",
+  "- **修复：输入框时不时往上跳**。逐帧测得：发消息时这条消息会先在 `inbox[\"next-turn\"]` 里停留约 90ms（等 host 启动这一轮），期间队列面板会渲染出 40px 高的一行。面板本在 composer 栈的文档流里，而输入框卡片是底部锚定的，于是整块输入框被顶高 37px，面板消失后再弹回去。现在队列面板贴在卡片上方且不参与文档流，并在 180ms 内不绘制：纯瞬态根本不会出现，真排队照常淡入，输入框位置恒定",
+  "- **控制面板精简为价格标签**。动作抽屉、分布在输入栏/会话头部/工具栏的三处开关、以及 PowerShell 面板（连同它背后的 `dsh-host-shellpanel` 桥）全部移除，只留 DeepSeek 峰谷价签；模型常驻的 `pwsh` 工具自己持有终端",
+  "- **创造模式的插件发布条回到输入框上方**。改注册到全宽槽位，不再被压成窄柱，视觉重做：玻璃表面、两行信息（标题 + 等宽字体路径）、发丝线分隔的控制条、自绘下拉箭头",
+  "- **会话头部按钮去重**。删除与本就会话头部重复的工作目录、更多操作、折叠侧栏按钮",
+  "- 重基过程中一并修好的若干加载与状态回归：会话事件流的 `jobs` 迁移、插件加载器 `remove` 的同步化、模型菜单里推理等级滑块的位置与选择后菜单不关闭",
+  "",
   "## 1.6.7",
   "",
   "- **修复：终端类工具全线不可用**。表现是 Pwsh / Grep / Glob 都报 `Windows Job runner exited with exit code 0 before proving its managed range empty`。在打包后的 Electron 里 `process.execPath` 就是应用本体，而子进程运行器正是用它去跑一个 Node 脚本：少了 `ELECTRON_RUN_AS_NODE`，那个子进程会**把整个应用再启动一遍**，第二个实例拿不到单实例锁，于是干净地退出（退出码 0），运行器还没来得及回报任何结果。凡是走这条通道的工具（Pwsh、Grep、Glob、常驻终端）因此全部失败。现在该包纳入 `plugins/` 并补上这个开关——与本项目其它 Node 辅助进程（目录选择器、浏览器启动器）一致，且只作用于这一次 spawn；目标命令的环境仍经由 IPC 单独下发，所以从命令里启动别的 Electron 应用不受影响",

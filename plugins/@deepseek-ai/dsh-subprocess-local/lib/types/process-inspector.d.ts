@@ -25,6 +25,8 @@ interface FileStatus {
  * is the fence a signal takes, because it reads current state instead.
  */
 export interface ProcessSnapshot {
+    /** Whether the process-table scan omitted no unreadable rows; absent means unverified. */
+    readonly complete?: boolean;
     /**
      * Return the root and its transitive descendants as observed, children first.
      * @param rootPid - tree root to descend from.
@@ -58,6 +60,7 @@ export interface ProcessInspector {
     /**
      * Read the process table once and answer tree, session, and liveness from it.
      * @returns A process-table observation whose reads are shared.
+     * @throws when the platform process table cannot be enumerated.
      */
     snapshot(): ProcessSnapshot;
     /**

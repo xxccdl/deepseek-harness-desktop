@@ -1,12 +1,13 @@
-import { accessSync, chmodSync, closeSync, constants, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readSync, readdirSync, readlinkSync, rmdirSync, statSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
+import { OutputCollector, prepareManagedProcessBinding } from "./output.js";
+import { accessSync, chmodSync, closeSync, constants, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readSync, readdirSync, readlinkSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join } from "node:path";
+import { createLazyRequire } from "@deepseek-ai/dsh-lazy-require";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { tmpdir } from "node:os";
 import { setTimeout as setTimeout$1 } from "node:timers/promises";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
-import koffi from "koffi";
+import { SUBPROCESS_CONTROL_ENV, SUBPROCESS_CONTROL_FD } from "@deepseek-ai/dsh-subprocess/control";
 import { getSystemErrorMessage, getSystemErrorName, inspect } from "node:util";
 import { fileURLToPath } from "node:url";
 //#region lib/types/managed-owner.js
@@ -38,6 +39,30 @@ async function waitWithAbort(pending, signal) {
 	}
 }
 //#endregion
+//#region lib/types/control-spawn.js
+/** Parent-side setup for one explicitly requested inherited control pipe. */
+/**
+* Read the optional extra pipe from Node's stdio tuple.
+* @param child - child whose requested extra pipe was allocated by Node.
+* @param control - requested transport, or undefined when absent.
+* @returns the parent duplex endpoint, absent when not requested or native startup failed.
+*/
+function controlPipe(child, control) {
+	const streams = child.stdio;
+	return control === "pipe" ? streams[SUBPROCESS_CONTROL_FD] : void 0;
+}
+/**
+* Stamp the private marker on a fresh child environment after rejecting a caller override.
+* @param env - newly materialized child environment, owned by the caller.
+* @param control - requested control transport, or undefined when absent.
+* @returns the same environment with the provider-owned launch marker when requested.
+*/
+function controlEnvironment(env, control) {
+	for (const [key, value] of Object.entries(env)) if (key.toUpperCase() === SUBPROCESS_CONTROL_ENV && value !== void 0) throw new Error(`${SUBPROCESS_CONTROL_ENV} is reserved for subprocess control-channel setup`);
+	if (control === "pipe") Object.assign(env, { [SUBPROCESS_CONTROL_ENV]: "pipe" });
+	return env;
+}
+//#endregion
 //#region lib/types/windows-inspector.js
 /**
 * Windows process-table operations for terminal readiness, signalling, and
@@ -49,6 +74,7 @@ async function waitWithAbort(pending, signal) {
 * an injectable internals boundary so suites can pin it on any host.
 * @module dsh-subprocess-local/windows-inspector
 */
+const requireKoffi$1 = createLazyRequire("koffi", import.meta.url);
 /**
 * Walk a process table from one root in children-first order, retaining only
 * members whose start identity is readable (unreadable members are detector
@@ -150,7 +176,6 @@ function isInvalidHandle(value) {
 	const asBigInt = value;
 	return asBigInt === 0n || asBigInt === 18446744073709551615n || asBigInt === -1n;
 }
-const PVOID = koffi.pointer("void");
 /**
 * Resolve the koffi Win32 struct types once. Registration is lazy and cached
 * because koffi's type registry is global per process: test runners that
@@ -159,6 +184,8 @@ const PVOID = koffi.pointer("void");
 */
 function win32Structs() {
 	if (cachedStructs !== void 0) return cachedStructs;
+	const koffi = requireKoffi$1();
+	const PVOID = koffi.pointer("void");
 	const PROCESSENTRY32W = koffi.struct("PROCESSENTRY32W", {
 		dwSize: "uint32",
 		cntUsage: "uint32",
@@ -179,6 +206,7 @@ function win32Structs() {
 	if (PROCESSENTRY32W.size !== 568) throw new Error(`PROCESSENTRY32W layout mismatch: koffi computed ${PROCESSENTRY32W.size}, Windows headers say 568`);
 	/* v8 ignore stop */
 	cachedStructs = {
+		PVOID,
 		PROCESSENTRY32W,
 		FILETIME
 	};
@@ -195,7 +223,8 @@ let cachedBindings;
 */
 function win32Bindings() {
 	if (cachedBindings !== void 0) return cachedBindings;
-	const { PROCESSENTRY32W, FILETIME } = win32Structs();
+	const koffi = requireKoffi$1();
+	const { PVOID, PROCESSENTRY32W, FILETIME } = win32Structs();
 	const kernel32 = koffi.load("kernel32.dll");
 	const bind = (name, result, args) => kernel32.func("__stdcall", name, result, args);
 	cachedBindings = {
@@ -227,10 +256,11 @@ function win32Bindings() {
 * @returns the branded allocation pointer.
 */
 function allocNative(type, count) {
-	return koffi.alloc(type, count);
+	return requireKoffi$1().alloc(type, count);
 }
 /** Enumerate the current process table through Toolhelp32. */
 function snapshotWindowsProcesses(bindings) {
+	const koffi = requireKoffi$1();
 	const { PROCESSENTRY32W } = win32Structs();
 	const snapshot = bindings.createToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	/* v8 ignore next -- an invalid snapshot for the process flag is not producible through the public API;
@@ -256,6 +286,7 @@ function snapshotWindowsProcesses(bindings) {
 }
 /** Read one process's creation identity and current wait state. */
 function windowsProcessState(bindings, pid) {
+	const koffi = requireKoffi$1();
 	const { FILETIME } = win32Structs();
 	const handle = bindings.openProcess(1052672, 0, pid);
 	if (isInvalidHandle(handle)) return void 0;
@@ -392,7 +423,7 @@ function numericEntries(internals, path) {
 	try {
 		return internals.readDir(path).filter((entry) => /^\d+$/.test(entry)).map(Number);
 	} catch (_unreadableProcDirectory) {
-		return [];
+		return;
 	}
 }
 function readSyscall(internals, pid, tid) {
@@ -491,9 +522,11 @@ function quiescent(state) {
 }
 var PosixProcessSnapshot = class {
 	rows;
+	complete;
 	byPid;
-	constructor(rows) {
+	constructor(rows, complete) {
 		this.rows = rows;
+		this.complete = complete;
 		this.byPid = new Map(rows.map((row) => [row.pid, row]));
 	}
 	tree(rootPid) {
@@ -550,10 +583,10 @@ var LinuxProcessInspector = class extends PosixProcessInspector {
 		if (shell === void 0) return false;
 		const terminalDevice = readLinuxTerminalDevice(this.internals, shellPid, shell.ttyDevice);
 		if (terminalDevice === void 0) return false;
-		for (const pid of numericEntries(this.internals, "/proc")) {
+		for (const pid of numericEntries(this.internals, "/proc") ?? []) {
 			const process = readLinuxStat(this.internals, pid);
 			if (process?.pgrp !== pgid) continue;
-			for (const tid of numericEntries(this.internals, `/proc/${pid}/task`)) {
+			for (const tid of numericEntries(this.internals, `/proc/${pid}/task`) ?? []) {
 				const syscall = readSyscall(this.internals, pid, tid);
 				if (syscall !== void 0 && syscallWaitsOnStdin(this.internals, pid, tid, syscall, tables) && readLinuxTerminalDevice(this.internals, pid, process.ttyDevice, tid) === terminalDevice) return true;
 			}
@@ -565,8 +598,12 @@ var LinuxProcessInspector = class extends PosixProcessInspector {
 		return stat?.started === identity.started && !quiescent(stat.state);
 	}
 	snapshot() {
-		return new PosixProcessSnapshot(numericEntries(this.internals, "/proc").flatMap((pid) => {
+		const pids = numericEntries(this.internals, "/proc");
+		if (pids === void 0) throw new Error("Cannot inspect processes: /proc directory is unreadable");
+		let complete = true;
+		return new PosixProcessSnapshot(pids.flatMap((pid) => {
 			const stat = readLinuxStat(this.internals, pid);
+			if (stat === void 0) complete = false;
 			return stat === void 0 ? [] : [{
 				pid,
 				parentPid: stat.parentPid,
@@ -574,21 +611,28 @@ var LinuxProcessInspector = class extends PosixProcessInspector {
 				session: stat.session,
 				state: stat.state
 			}];
-		}));
+		}), complete);
 	}
 };
 function macProcessTable(internals) {
-	return internals.exec("/bin/ps", ["-axo", "pid=,ppid=,lstart="]).split("\n").flatMap((line) => {
-		const match = /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line);
-		if (match?.[1] === void 0 || match[2] === void 0 || match[3] === void 0) return [];
-		return [{
-			pid: Number(match[1]),
-			parentPid: Number(match[2]),
-			started: match[3],
-			session: void 0,
-			state: void 0
-		}];
-	});
+	let complete = true;
+	return {
+		rows: internals.exec("/bin/ps", ["-axo", "pid=,ppid=,lstart="]).split("\n").flatMap((line) => {
+			const match = /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line);
+			if (match?.[1] === void 0 || match[2] === void 0 || match[3] === void 0) {
+				if (line.trim().length > 0) complete = false;
+				return [];
+			}
+			return [{
+				pid: Number(match[1]),
+				parentPid: Number(match[2]),
+				started: match[3],
+				session: void 0,
+				state: void 0
+			}];
+		}),
+		complete
+	};
 }
 var MacProcessInspector = class extends PosixProcessInspector {
 	foregroundPgid(shellPid) {
@@ -608,10 +652,11 @@ var MacProcessInspector = class extends PosixProcessInspector {
 		return false;
 	}
 	isAlive(identity) {
-		return macProcessTable(this.internals).some((entry) => entry.pid === identity.pid && entry.started === identity.started);
+		return macProcessTable(this.internals).rows.some((entry) => entry.pid === identity.pid && entry.started === identity.started);
 	}
 	snapshot() {
-		return new PosixProcessSnapshot(macProcessTable(this.internals));
+		const table = macProcessTable(this.internals);
+		return new PosixProcessSnapshot(table.rows, table.complete);
 	}
 };
 /**
@@ -669,169 +714,6 @@ function childEnv(extra) {
 function sleepTick() {
 	return setTimeout$1(15);
 }
-let spillCounter = 0;
-let defaultSpillDir;
-/**
-* The default spill location: a private (0700) per-process directory under
-* the OS tmpdir, created lazily. Predictable world-readable paths would let
-* other local users read command output or pre-create symlinks. At a
-* JavaScript-observable process exit the directory is removed only when it
-* holds no completed spill file (spill files are retained as full-output
-* recovery artifacts until an external cleanup).
-*/
-function privateSpillDir() {
-	defaultSpillDir ??= mkdtempSync(join(tmpdir(), "dsh-subprocess-"));
-	return defaultSpillDir;
-}
-/* v8 ignore next 4 -- exit listeners run after the coverage dump; removal is verified by the CI /tmp residue measurement. */
-process.once("exit", () => {
-	if (defaultSpillDir === void 0) return;
-	try {
-		rmdirSync(defaultSpillDir);
-	} catch {}
-});
-/**
-* Prepare fallible output storage before starting a managed native process.
-* @param internals - optional caller-owned spill directory.
-* @returns binding inputs whose spill directory is ready for use.
-*/
-function prepareManagedProcessBinding(internals = {}) {
-	return { spillDir: internals.spillDir ?? privateSpillDir() };
-}
-/**
-* Collects one stream with a bounded in-memory tail. With a spill cap, on
-* first overflow a spill file is created and every chunk (including those
-* already collected) is appended there while the full stream remains within
-* the cap; without one, only the in-memory tail is ever retained (the
-* diagnostic-tail shape — a language server's stderr).
-*
-* Tail-keep rationale (pi/OpenCode): errors and final results cluster at the
-* end of command output; the spill file covers the head.
-*/
-var OutputCollector = class {
-	maxBytes;
-	maxSpillBytes;
-	label;
-	spillDir;
-	chunks = [];
-	bytes = 0;
-	dropped = false;
-	spillFd;
-	spillFile;
-	spillDisabled;
-	/** Total bytes ever pushed (not just retained). */
-	total = 0;
-	constructor(maxBytes, maxSpillBytes, label, spillDir) {
-		this.maxBytes = maxBytes;
-		this.maxSpillBytes = maxSpillBytes;
-		this.label = label;
-		this.spillDir = spillDir;
-		this.spillDisabled = maxSpillBytes === void 0;
-	}
-	/**
-	* Ingest one stream chunk, counting it toward the whole-stream total. On
-	* first overflow of the in-memory cap a spill file is opened (when spilling
-	* is enabled) and every chunk (already-collected ones included) is appended
-	* there from then on; the in-memory tail then drops whole chunks from its
-	* head (or the head of a single over-cap chunk) until it fits the cap again.
-	* @param chunk - the raw bytes from one stream 'data' event.
-	*/
-	push(chunk) {
-		this.total += chunk.length;
-		const overflows = this.bytes + chunk.length > this.maxBytes;
-		if (!this.spillDisabled && (overflows || this.spillFd !== void 0)) this.spillAll(chunk);
-		this.chunks.push(chunk);
-		this.bytes += chunk.length;
-		while (this.bytes > this.maxBytes) {
-			const head = this.chunks[0];
-			const excess = this.bytes - this.maxBytes;
-			if (head.length <= excess) {
-				this.chunks.shift();
-				this.bytes -= head.length;
-			} else {
-				this.chunks[0] = head.subarray(excess);
-				this.bytes -= excess;
-			}
-			this.dropped = true;
-		}
-	}
-	/** Open the spill file lazily and append `chunk` (and any prior chunks once). */
-	spillAll(chunk) {
-		if (this.maxSpillBytes !== void 0 && this.total > this.maxSpillBytes) {
-			this.discardSpill();
-			return;
-		}
-		if (this.spillFd === void 0) {
-			this.spillFile = join(this.spillDir, `dsh-subprocess-${process.pid}-${++spillCounter}-${randomBytes(6).toString("hex")}-${this.label}.log`);
-			this.spillFd = openSync(this.spillFile, "wx", 384);
-			for (const prior of this.chunks) writeSync(this.spillFd, prior);
-		}
-		writeSync(this.spillFd, chunk);
-	}
-	/** Stop spilling and remove the file once it can no longer hold the complete stream. */
-	discardSpill() {
-		const fd = this.spillFd;
-		const file = this.spillFile;
-		this.spillFd = void 0;
-		this.spillFile = void 0;
-		this.spillDisabled = true;
-		if (fd !== void 0) try {
-			closeSync(fd);
-		} catch {
-			this.spillFd = fd;
-		}
-		if (file !== void 0) try {
-			unlinkSync(file);
-		} catch {}
-	}
-	/**
-	* Incremental read in whole-stream byte coordinates: returns everything
-	* pushed since `fromByte`. When `fromByte` has already slid out of the
-	* in-memory tail window, the read is `lossy` — it returns the whole
-	* retained tail and the gap is only recoverable from the spill file.
-	* @param fromByte - whole-stream offset to resume from (a prior read's `nextOffset`; 0 for the first read).
-	* @returns the delta text, the offset for the next read, the `lossy` flag, and the spill path when one was created.
-	*/
-	readFrom(fromByte) {
-		const windowStart = this.total - this.bytes;
-		const buffer = Buffer.concat(this.chunks);
-		const lossy = fromByte < windowStart;
-		return {
-			text: (lossy ? buffer : buffer.subarray(fromByte - windowStart)).toString("utf8"),
-			nextOffset: this.total,
-			lossy,
-			...this.spillFile !== void 0 ? { spillPath: this.spillFile } : {}
-		};
-	}
-	/**
-	* Close the spill file once the stream has ended. A failed close (delayed
-	* writeback fault) stops advertising the spill path — the file may be
-	* missing its tail — while every in-memory read keeps working. Idempotent;
-	* the spawn path seals both collectors at settlement so reads after exit
-	* never point at a still-open file.
-	*/
-	seal() {
-		if (this.spillFd === void 0) return;
-		try {
-			closeSync(this.spillFd);
-		} catch {
-			this.spillFile = void 0;
-		}
-		this.spillFd = void 0;
-	}
-	/**
-	* Seal the spill file and return the final output.
-	* @returns the final collected output: tail text, truncation flag, and the spill path when intact.
-	*/
-	finalize() {
-		this.seal();
-		return {
-			text: Buffer.concat(this.chunks).toString("utf8"),
-			truncated: this.dropped,
-			...this.spillFile !== void 0 ? { spillPath: this.spillFile } : {}
-		};
-	}
-};
 /**
 * Terminate one Windows process tree with `taskkill /T /F`. Contained like
 * POSIX group signalling — delivery races tree exit, so an absent tree, a
@@ -1113,6 +995,7 @@ function bindManagedProcess(spec, launch, internals = {}) {
 		stdin: stdinMode === "pipe" ? stdin ?? void 0 : void 0,
 		stdout: outMode === "pipe" ? stdout ?? void 0 : void 0,
 		stderr: errMode === "pipe" ? stderr ?? void 0 : void 0,
+		control: launch.control,
 		/* v8 ignore stop */
 		collected: {
 			...stdoutCollector !== void 0 ? { stdout: stdoutCollector } : {},
@@ -1134,14 +1017,19 @@ function spawnSubprocess(spec, internals = {}) {
 	const binding = prepareManagedProcessBinding(internals);
 	const platform = internals.platform ?? process.platform;
 	const [program, ...args] = spec.argv;
+	const stdio = [
+		spec.stdio.stdin === "ignore" ? "ignore" : "pipe",
+		spec.stdio.stdout === "inherit" ? "inherit" : "pipe",
+		spec.stdio.stderr === "inherit" ? "inherit" : "pipe"
+	];
+	if (spec.stdio.control === "pipe") {
+		while (stdio.length < SUBPROCESS_CONTROL_FD) stdio.push("ignore");
+		stdio.push("overlapped");
+	}
 	const child = (internals.spawn ?? spawn)(program, args, {
 		cwd: spec.cwd,
-		env: childEnv(spec.env),
-		stdio: [
-			spec.stdio.stdin === "ignore" ? "ignore" : "pipe",
-			spec.stdio.stdout === "inherit" ? "inherit" : "pipe",
-			spec.stdio.stderr === "inherit" ? "inherit" : "pipe"
-		],
+		env: controlEnvironment(childEnv(spec.env), spec.stdio.control),
+		stdio,
 		detached: platform !== "win32",
 		windowsHide: platform === "win32"
 	});
@@ -1152,6 +1040,7 @@ function spawnSubprocess(spec, internals = {}) {
 		stdin: child.stdin,
 		stdout: child.stdout,
 		stderr: child.stderr,
+		control: controlPipe(child, spec.stdio.control),
 		direct,
 		owner
 	}, binding);
@@ -1159,6 +1048,7 @@ function spawnSubprocess(spec, internals = {}) {
 //#endregion
 //#region lib/types/linux-execve.js
 /** Lazy libc execve and descriptor bindings used by the one-shot Linux bootstrap. */
+const requireKoffi = createLazyRequire("koffi", import.meta.url);
 const STANDARD_FILE_DESCRIPTORS = [
 	0,
 	1,
@@ -1186,11 +1076,13 @@ function systemError(errno, syscall, path) {
 */
 function loadLinuxExecve() {
 	if (cachedExecve !== void 0) return cachedExecve;
+	const koffi = requireKoffi();
 	const libc = koffi.load(null);
 	const nativeExecve = libc.func("int execve(const char *pathname, const char **argv, const char **envp)");
 	const nativeFcntl = libc.func("int fcntl(int fd, int cmd, int arg)");
-	cachedExecve = (file, argv, env) => {
-		for (const fd of STANDARD_FILE_DESCRIPTORS) {
+	cachedExecve = (file, argv, env, control) => {
+		const descriptors = control === "pipe" ? [...STANDARD_FILE_DESCRIPTORS, SUBPROCESS_CONTROL_FD] : STANDARD_FILE_DESCRIPTORS;
+		for (const fd of descriptors) {
 			const flags = nativeFcntl(fd, F_GETFD, 0);
 			if (flags === -1) throw systemError(koffi.errno(), "fcntl");
 			if ((flags & FD_CLOEXEC) === 0) continue;
@@ -1277,10 +1169,11 @@ function consumeLinuxLaunchRequest(requestPath) {
 	const text = readFileSync(requestPath, "utf8");
 	unlinkSync(requestPath);
 	const value = JSON.parse(text);
-	if (!isRecord(value) || !hasExactKeys(value, ["cwd", "env"]) || typeof value.cwd !== "string" || !isStringRecord(value.env)) throw new Error("subprocess runner received an invalid Linux launch request");
+	if (!isRecord(value) || !hasExactKeys(value, ["cwd", "env"], ["control"]) || typeof value.cwd !== "string" || !isStringRecord(value.env) || value.control !== void 0 && value.control !== "pipe") throw new Error("subprocess runner received an invalid Linux launch request");
 	return {
 		cwd: value.cwd,
-		env: value.env
+		env: value.env,
+		...value.control === "pipe" ? { control: "pipe" } : {}
 	};
 }
 /**
@@ -1315,11 +1208,12 @@ function parseWindowsStartRequest(value) {
 		"type",
 		"cwd",
 		"env"
-	]) || value.type !== "start" || typeof value.cwd !== "string" || !isStringRecord(value.env)) throw new Error("subprocess runner received an invalid Windows start request");
+	], ["control"]) || value.type !== "start" || typeof value.cwd !== "string" || !isStringRecord(value.env) || value.control !== void 0 && value.control !== "pipe") throw new Error("subprocess runner received an invalid Windows start request");
 	return {
 		type: "start",
 		cwd: value.cwd,
-		env: value.env
+		env: value.env,
+		...value.control === "pipe" ? { control: "pipe" } : {}
 	};
 }
 /**
@@ -1487,7 +1381,7 @@ function parseRunnerTargetArgv(argv) {
 }
 /**
 * Build direct Linux target stdio, or isolated Windows runner stdio with IPC
-* on fd 3 and target carriers on fd 4 through fd 6.
+* on fd 3 and target carriers on fd 4 through fd 6; optional control uses fd 7.
 * @param spec - ordinary subprocess request whose stdio modes are preserved.
 * @param ipc - whether to isolate the runner and add its private Node IPC descriptor.
 * @param stdinCarrier - runner fd 4 carrier; Windows ignore passes an opened null-device fd.
@@ -1499,8 +1393,14 @@ function runnerStdio(spec, ipc, stdinCarrier = "pipe") {
 		spec.stdio.stdout === "inherit" ? "inherit" : "pipe",
 		spec.stdio.stderr === "inherit" ? "inherit" : "pipe"
 	];
-	if (!ipc) return targetStdio;
-	return [
+	if (!ipc) {
+		if (spec.stdio.control === "pipe") {
+			while (targetStdio.length < SUBPROCESS_CONTROL_FD) targetStdio.push("ignore");
+			targetStdio.push("overlapped");
+		}
+		return targetStdio;
+	}
+	const runner = [
 		"ignore",
 		"ignore",
 		"ignore",
@@ -1509,6 +1409,8 @@ function runnerStdio(spec, ipc, stdinCarrier = "pipe") {
 		spec.stdio.stdout === "inherit" ? 1 : "pipe",
 		spec.stdio.stderr === "inherit" ? 2 : "pipe"
 	];
+	if (spec.stdio.control === "pipe") runner.push("overlapped");
+	return runner;
 }
 function windowsEnvironmentValue(env, name) {
 	for (const key of Object.keys(env).sort()) if (key.toUpperCase() === name) return env[key];
@@ -1655,7 +1557,7 @@ function targetEnvironment(spec) {
 		validateNoNullByte(`options.env['${key}']`, key);
 		validateNoNullByte(`options.env['${key}']`, value);
 	}
-	return env;
+	return controlEnvironment(env, spec.stdio?.control);
 }
 //#endregion
-export { bindManagedProcess as C, validateSubprocessSpec as D, spawnSubprocess as E, createProcessInspector as O, loadLinuxExecve as S, prepareManagedProcessBinding as T, parseWindowsRunnerResult as _, resolveWindowsExecutable as a, serializeRunnerError as b, runnerStdio as c, cleanupLinuxLaunchFiles as d, consumeLinuxLaunchRequest as f, linuxLaunchFilesFromLocator as g, isWindowsTerminateRequest as h, parseRunnerTargetArgv as i, spawnRunnerInvocation as l, deserializeRunnerError as m, WINDOWS_RUNNER_SELECTION as n, runnerEnvironment as o, createLinuxLaunchFiles as p, consumeRunnerSelection as r, runnerInvocationAvailable as s, SUBPROCESS_RUNNER_ENV as t, targetEnvironment as u, parseWindowsStartRequest as v, childEnv as w, writeLinuxStartupError as x, readLinuxStartupError as y };
+export { bindManagedProcess as C, createProcessInspector as D, validateSubprocessSpec as E, controlPipe as O, loadLinuxExecve as S, spawnSubprocess as T, parseWindowsRunnerResult as _, resolveWindowsExecutable as a, serializeRunnerError as b, runnerStdio as c, cleanupLinuxLaunchFiles as d, consumeLinuxLaunchRequest as f, linuxLaunchFilesFromLocator as g, isWindowsTerminateRequest as h, parseRunnerTargetArgv as i, spawnRunnerInvocation as l, deserializeRunnerError as m, WINDOWS_RUNNER_SELECTION as n, runnerEnvironment as o, createLinuxLaunchFiles as p, consumeRunnerSelection as r, runnerInvocationAvailable as s, SUBPROCESS_RUNNER_ENV as t, targetEnvironment as u, parseWindowsStartRequest as v, childEnv as w, writeLinuxStartupError as x, readLinuxStartupError as y };

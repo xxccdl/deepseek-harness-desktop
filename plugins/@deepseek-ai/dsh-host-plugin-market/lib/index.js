@@ -1096,6 +1096,9 @@ function apply(ctx) {
   };
   sync();
   ctx.on("internal/service", () => {
+    // The same event fires while the tree unloads, when this fiber is already
+    // beyond state 2 and `ctx.effect` would throw INACTIVE_EFFECT.
+    if (ctx.fiber.state !== 2) return;
     sync();
   });
 }

@@ -223,6 +223,9 @@ function apply(ctx) {
   // ── HTTP surface ──
   const httpDisposers = [];
   const syncHttp = () => {
+    // The same event fires while the tree unloads, when this fiber is already
+    // beyond state 2 and `ctx.effect` would throw INACTIVE_EFFECT.
+    if (ctx.fiber.state !== 2) return;
     for (const dispose of httpDisposers) dispose();
     httpDisposers.length = 0;
     const webServer = ctx.get("webServer", false);

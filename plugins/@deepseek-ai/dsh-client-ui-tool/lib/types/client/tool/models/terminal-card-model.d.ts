@@ -74,7 +74,7 @@ export declare function isSettledPersistentShellCall(block: ToolCallBlock): bool
 export declare function isSpilledShellCall(block: ToolCallBlock): boolean;
 /**
  * Derive terminal props for supported shell and terminal-send calls, including
- * nested Code Dispatch calls. Standard shell results parse their final status
+ * nested PTC dispatch calls. Standard shell results parse their final status
  * marker; persistent shell results, spill previews, background calls, errors,
  * and malformed input use the generic path. {@link isSettledPersistentShellCall} lets that generic
  * persistent result remain expandable without inventing one process status.

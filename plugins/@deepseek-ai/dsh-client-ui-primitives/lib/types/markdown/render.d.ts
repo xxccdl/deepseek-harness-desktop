@@ -4,8 +4,8 @@
  * cache frozen blocks as React elements; the rendered DOM is pinned
  * byte-for-byte by `tests/fixtures/markdown-dom` and must not drift.
  *
- * Untrusted-output policy (unchanged from the replaced pipeline): link and
- * image destinations pass a protocol allowlist, images additionally require
+ * External link and image destinations pass a protocol allowlist; settled
+ * local file links use an explicit owner callback. Images additionally require
  * absolute HTTP(S), raw HTML renders as literal text (no HTML enters the
  * DOM), and KaTeX runs without trusted commands. Fragment-anchor URLs fail
  * the allowlist, so footnote references and back-references render as plain

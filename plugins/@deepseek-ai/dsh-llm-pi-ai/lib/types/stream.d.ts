@@ -35,7 +35,7 @@ export declare function mapStopReason(message: AssistantMessage, contextWindow?:
  * @param contextWindow - resolved catalog capacity for usage-based overflow detection.
  * @param callerSignal - caller cancellation state; an aborted caller makes any
  *   in-band terminal error an aborted finish.
- * @param requestedModel - request model identity for durable replay provenance.
+ * @param requestedModel - request model identity recorded for durable replay.
  * @returns the harness chunks, ending with `usage` then `finish`; throws
  *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event.
  */

@@ -1,10 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis';
-import type { ConversationTimelineSnapshot, ConversationViewBuilder, ConversationViewDefinition } from '@deepseek-ai/dsh-client-ui-conversation/client';
+import type { ConversationTimelineSnapshot, ConversationViewBuilder, ConversationViewDefinition, ConversationGroupInput } from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type { ChatConversationViewNode } from '../contract/chat-nodes.ts';
 import type { ChatNodeStore, ChatSnapshot } from '../contract/snapshot.ts';
 /**
  * Order visible Chat Nodes without changing existing relative order as process
- * eligibility changes. Opening human input precedes process candidates, while
+ * eligibility changes. Opening input precedes process candidates, while
  * each synthetic process control sits between them.
  * @param nodes - currently materialized Chat Nodes.
  * @returns visible Nodes in presentation order.
@@ -72,6 +72,10 @@ export declare class ChatSnapshotBuilder implements ConversationViewBuilder<Chat
     private readonly referenceLabels;
     private readonly skillNames;
     private order;
+    private latestGroupInput;
+    private readonly readGroupNode;
+    private readonly readGroupTurn;
+    private readonly readGroupPosition;
     /** Last published timeline: a Turn boundary can land without a new node. */
     private timeline;
     readonly empty: ChatSnapshot;
@@ -83,7 +87,10 @@ export declare class ChatSnapshotBuilder implements ConversationViewBuilder<Chat
     apply(input: {
         readonly upserts: readonly ChatConversationViewNode[];
         readonly timeline: ConversationTimelineSnapshot;
+        readonly changedTurns?: readonly number[];
     }): ChatSnapshot;
+    groupInput(): ConversationGroupInput<ChatConversationViewNode>;
+    publish(): void;
     private snapshot;
 }
 /** Chat target factory contributed to the Conversation view registry. */

@@ -7,9 +7,9 @@ export declare const DEFAULT_DIFF_MAX_LINES = 16;
 export interface DiffHunk {
     /** The changed file's path, drawn verbatim as the hunk's header (the tool's model-facing path). */
     path: string;
-    /** Prior content, or `null` for a new file / an overwrite (nothing on the removed side). */
+    /** Prior content including context, or `null` when no prior content is available. */
     oldText: string | null;
-    /** Content after the change (the added side). */
+    /** Content after the change, including any shared context. */
     newText: string;
 }
 export interface DiffBlockProps {
@@ -33,12 +33,11 @@ export interface DiffBlockLabels {
     files: (count: number) => string;
 }
 /**
- * Total added/removed line counts across hunks — the same numbers the footer
- * prints, exported so a summary row can show them without rebuilding the body.
- * Every old-side line counts toward `removed` and every new-side line toward
- * `added`, under {@link contentLines}'s terminator rule.
+ * Count displayed additions and deletions. Exact patches exclude shared context;
+ * comparisons exceeding the edit limit count both complete fragments as replaced.
+ * Text follows {@link contentLines}'s terminator rule.
  * @param diffs - the hunks to count.
- * @returns the +/- totals.
+ * @returns the +/- totals for summaries and the card footer.
  */
 export declare function diffTotals(diffs: DiffHunk[]): {
     added: number;

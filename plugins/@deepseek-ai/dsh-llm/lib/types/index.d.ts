@@ -38,8 +38,8 @@ declare module '@deepseek-ai/cordis' {
          *   process-local {@link markAgentLoopRequest} identity and arrives deep-frozen
          *   (mutation throws): its content is a pure function of the session log (the
          *   reconstructability Agent Note), so listeners read it, never rewrite it.
-         *   Hand-built calls do not carry that marker; their messages already obey
-         *   the immutable creation contract.
+         *   Hand-built calls do not carry that marker; callers own their request
+         *   inputs and must keep them unchanged until the stream settles.
          * @mode waterfall
          */
         'llm/stream'(this: LlmRuntime, options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>;
@@ -53,6 +53,8 @@ export interface LlmErrorOptions extends ErrorOptions {
     providerRetryAfterMs?: number;
     /** Non-empty opaque provider request id. */
     requestId?: ProviderRequestId;
+    /** Positive count of additional oldest retained image occurrences to offload; only with `IMAGE_OFFLOAD_REQUIRED`. */
+    offloadImages?: number;
 }
 /**
  * Typed error for LLM-related failures. Extends {@link HarnessError}, so the

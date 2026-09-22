@@ -2,14 +2,17 @@
 //
 // Two surfaces:
 //
-//   1. `conversation.composer.dock` — the 「插件发布」strip. It is not a
+//   1. `conversation.input.dock` — the 「插件发布」strip. It is not a
 //      fixture of creation mode: the model lights it up by calling the
 //      `ask-publish-plugin` tool once it has written a plugin or skill, and the
 //      host folds that call into the `publishHint` projection this strip reads.
 //      A hint carries the package path and kind; the strip adds a version
 //      number and an optional release note, and pressing publish hands the
 //      model one explicit instruction whose `plugin_publish` call clears the
-//      hint again.
+//      hint again. That slot is the composer's full-width column above the
+//      card; `conversation.composer.dock`, where this used to live, became the
+//      ambient pill row beside the chat stats in 0.1.7 and squeezed the card
+//      into a column.
 //   2. `conversation.session.header.utilities` + `shell.overlay` — the market
 //      itself, in an embedded window: it browses the deployed shop and installs
 //      through the host bridge. The page and this surface talk over
@@ -30,30 +33,53 @@ window.__ModuleLoader__.load({
 		//#region styles
 		const css = [
 			/* ── the publish strip ── */
-			".dspm-strip{display:flex;flex-direction:column;gap:6px;box-sizing:border-box;width:100%;max-width:var(--dsh-chat-content-width,680px);margin:8px auto 0;padding:8px 8px 8px 12px;border-radius:12px;background:linear-gradient(120deg,color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent),transparent 62%);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 22%,transparent);animation:dspmRise .38s cubic-bezier(.22,1,.36,1) backwards}",
+			// The composer stack is a full-width column, so the strip is one more
+			// card in it. It borrows the surface the todo dock above it uses, so
+			// the two read as the same kind of object; the brand tint is kept for
+			// the badge alone rather than washing the whole card.
+			".dspm-strip{display:flex;flex-direction:column;gap:12px;box-sizing:border-box;width:calc(100% - var(--dsh-composer-side-clearance,16px)*2 - var(--dsh-composer-dock-inset,8px)*4);max-width:calc(var(--dsh-composer-card-max-width,712px) - var(--dsh-composer-dock-inset,8px)*2);margin:0 auto;padding:12px 12px 12px 14px;border-radius:12px;background:var(--dsw-specific-menu);backdrop-filter:var(--dsw-menu-backdrop-filter);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-panel);animation:dspmRise .38s cubic-bezier(.22,1,.36,1) backwards}",
 			".dspm-strip-head{display:flex;align-items:flex-start;gap:10px;min-width:0}",
-			".dspm-strip-icon{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);color:var(--dsw-alias-brand-primary)}",
+			".dspm-strip-icon{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 12%,transparent);color:var(--dsw-alias-brand-primary)}",
 			".dspm-strip-icon svg{width:13px;height:13px}",
-			".dspm-strip-copy{flex:1 1 auto;min-width:0;font-size:12px;line-height:1.55;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}",
-			".dspm-strip-copy b{color:var(--dsw-alias-label-primary);font-weight:500}",
-			".dspm-strip-hintmeta{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere}",
-			".dspm-strip-controls{display:flex;align-items:center;gap:8px;padding-left:32px;min-width:0}",
-			".dspm-publish{all:unset;display:inline-flex;align-items:center;gap:6px;flex:none;height:26px;padding:0 12px;border-radius:9px;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1);font-size:12px;font-weight:500;cursor:pointer;transition:filter .16s ease,transform .12s ease,opacity .16s ease}",
+			// Two lines, not one: the offer reads first and the package path drops
+			// to a monospace line that truncates instead of wrapping the card.
+			".dspm-strip-text{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}",
+			".dspm-strip-title{display:flex;align-items:baseline;gap:7px;min-width:0;font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-secondary)}",
+			".dspm-strip-title b{flex:none;font-weight:500;color:var(--dsw-alias-label-primary)}",
+			".dspm-strip-title span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			".dspm-strip-title[data-error='true']{color:var(--dsw-alias-state-warn-label)}",
+			".dspm-strip-title[data-error='true'] span{overflow:visible;white-space:normal;text-overflow:clip;overflow-wrap:anywhere}",
+			".dspm-strip-path{font:11px/16px ui-monospace,'Cascadia Mono',Consolas,monospace;color:var(--dsw-alias-label-dimmed);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+			// The controls are their own band under a hairline: fields left, actions
+			// right, every control on one 28px line so the row reads as a toolbar.
+			".dspm-strip-controls{display:flex;align-items:center;gap:8px;min-width:0;padding-top:11px;box-shadow:inset 0 1px 0 0 var(--dsw-alias-border-l1)}",
+			".dspm-strip-fields{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}",
+			".dspm-strip-actions{display:flex;align-items:center;gap:6px;flex:none}",
+			".dspm-publish{all:unset;display:inline-flex;align-items:center;gap:6px;flex:none;height:28px;padding:0 14px;border-radius:9px;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1);font-size:12px;font-weight:500;cursor:pointer;transition:filter .16s ease,transform .12s ease,opacity .16s ease}",
 			".dspm-publish svg{width:13px;height:13px}",
 			".dspm-publish:hover{filter:brightness(1.1)}",
 			".dspm-publish:active{transform:scale(.97)}",
 			".dspm-publish:disabled{opacity:.45;cursor:default;filter:none}",
 			".dspm-publish[data-sent='true']{background:var(--dsw-alias-state-success-primary);color:#fff}",
 			".dspm-publish:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}",
-			".dspm-strip-link{all:unset;flex:none;font-size:11.5px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:color .16s ease}",
-			".dspm-strip-link:hover{color:var(--dsw-alias-brand-primary)}",
-			".dspm-strip-input{all:unset;flex:0 1 auto;min-width:0;height:26px;width:110px;box-sizing:border-box;padding:0 9px;border-radius:9px;font-size:12px;color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:box-shadow .16s ease}",
+			// The market link is a secondary action, so it takes the same height and
+			// radius as the primary one and only differs in weight.
+			".dspm-strip-link{all:unset;flex:none;display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:9px;font-size:12px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:color .16s ease,background .16s ease}",
+			".dspm-strip-link:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}",
+			".dspm-strip-input{all:unset;flex:none;box-sizing:border-box;width:132px;height:28px;padding:0 10px;border-radius:9px;font-size:12px;color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:box-shadow .16s ease}",
 			".dspm-strip-input::placeholder{color:var(--dsw-alias-label-tertiary)}",
+			".dspm-strip-input:hover{box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l2)}",
 			".dspm-strip-input:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,transparent)}",
-			".dspm-strip-input.dspm-strip-note{flex:1 1 auto;min-width:120px;width:auto}",
-			".dspm-strip-select{width:86px;padding:0 4px 0 8px;cursor:pointer;color:var(--dsw-alias-label-secondary)}",
+			".dspm-strip-input[data-field='note']{flex:1 1 auto;width:auto;min-width:110px}",
+			// A native select only keeps the OS arrow, so the wrap draws one; the
+			// select itself stays transparent so it is the field's whole surface.
+			".dspm-strip-select-wrap{position:relative;flex:none;display:inline-flex;align-items:center}",
+			".dspm-strip-select{width:104px;padding:0 24px 0 10px;cursor:pointer;color:var(--dsw-alias-label-secondary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1)}",
+			".dspm-strip-select:hover{color:var(--dsw-alias-label-primary)}",
 			".dspm-strip-select:disabled{opacity:.5;cursor:default}",
-			".dspm-strip-close{all:unset;flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:background .16s ease,color .16s ease}",
+			".dspm-strip-select option{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}",
+			".dspm-strip-chev{position:absolute;right:8px;width:12px;height:12px;pointer-events:none;color:var(--dsw-alias-label-dimmed)}",
+			".dspm-strip-close{all:unset;flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:background .16s ease,color .16s ease}",
 			".dspm-strip-close:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
 			".dspm-strip-close svg{width:11px;height:11px}",
 			"@keyframes dspmRise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}",
@@ -153,6 +179,20 @@ window.__ModuleLoader__.load({
 				"stroke-linecap": "round",
 				"stroke-linejoin": "round",
 				children: jsx("path", { d: "M3.6 8.4l3 3 5.8-6.4" })
+			});
+		}
+		/** Icon: chevron, for the type field's own affordance. */
+		function ChevronIcon({ className }) {
+			return jsx("svg", {
+				viewBox: "0 0 16 16",
+				className,
+				fill: "none",
+				stroke: "currentColor",
+				"stroke-width": "1.5",
+				"stroke-linecap": "round",
+				"stroke-linejoin": "round",
+				"aria-hidden": true,
+				children: jsx("path", { d: "M4.2 6.2 8 10l3.8-3.8" })
 			});
 		}
 		/** Icon: close. */
@@ -344,15 +384,25 @@ window.__ModuleLoader__.load({
 						className: "dspm-strip-head",
 						children: [
 							jsx("span", { className: "dspm-strip-icon", children: jsx(SparkIcon, {}) }),
-							jsx("span", {
-								className: "dspm-strip-copy",
-								children: error !== null ? error : jsxs(react.Fragment, {
-									children: [
-										jsx("b", { children: t("strip.creator") }),
-										t(sent ? "strip.sent" : running ? "strip.busy" : "strip.offered", { name }),
-										jsx("span", { className: "dspm-strip-hintmeta", children: hint.path === "" ? "" : ` · ${hint.path}` })
-									]
-								})
+							jsxs("div", {
+								className: "dspm-strip-text",
+								children: [
+									jsxs("div", {
+										className: "dspm-strip-title",
+										"data-error": String(error !== null),
+										children: [
+											jsx("b", { children: t("strip.creator") }),
+											jsx("span", {
+												children: error !== null ? error : t(sent ? "strip.sent" : running ? "strip.busy" : "strip.offered", { name })
+											})
+										]
+									}),
+									hint.path === "" ? null : jsx("div", {
+										className: "dspm-strip-path",
+										title: hint.path,
+										children: hint.path
+									})
+								]
 							}),
 							jsx("button", {
 								type: "button",
@@ -367,52 +417,70 @@ window.__ModuleLoader__.load({
 					jsxs("div", {
 						className: "dspm-strip-controls",
 						children: [
-							jsx("select", {
-								className: "dspm-strip-input dspm-strip-select",
-								value: kind,
-								"aria-label": t("strip.kind"),
-								disabled: sent,
-								onChange: (event) => setKind(event.target.value),
+							jsxs("div", {
+								className: "dspm-strip-fields",
 								children: [
-									jsx("option", { value: "", children: t("strip.kind.auto") }),
-									jsx("option", { value: "plugin", children: t("strip.kind.plugin") }),
-									jsx("option", { value: "skill", children: t("strip.kind.skill") })
+									jsxs("span", {
+										className: "dspm-strip-select-wrap",
+										children: [
+											jsx("select", {
+												className: "dspm-strip-input dspm-strip-select",
+												value: kind,
+												"aria-label": t("strip.kind"),
+												disabled: sent,
+												onChange: (event) => setKind(event.target.value),
+												children: [
+													jsx("option", { value: "", children: t("strip.kind.auto") }),
+													jsx("option", { value: "plugin", children: t("strip.kind.plugin") }),
+													jsx("option", { value: "skill", children: t("strip.kind.skill") })
+												]
+											}),
+											jsx(ChevronIcon, { className: "dspm-strip-chev" })
+										]
+									}),
+									jsx("input", {
+										type: "text",
+										className: "dspm-strip-input",
+										"data-field": "version",
+										value: version,
+										placeholder: t("strip.version"),
+										"aria-label": t("strip.version"),
+										spellCheck: false,
+										onChange: (event) => setVersion(event.target.value)
+									}),
+									jsx("input", {
+										type: "text",
+										className: "dspm-strip-input",
+										"data-field": "note",
+										value: note,
+										placeholder: t("strip.note"),
+										"aria-label": t("strip.note"),
+										onChange: (event) => setNote(event.target.value)
+									})
 								]
 							}),
-							jsx("input", {
-								type: "text",
-								className: "dspm-strip-input",
-								value: version,
-								placeholder: t("strip.version"),
-								"aria-label": t("strip.version"),
-								spellCheck: false,
-								onChange: (event) => setVersion(event.target.value)
-							}),
-							jsx("input", {
-								type: "text",
-								className: "dspm-strip-input dspm-strip-note",
-								value: note,
-								placeholder: t("strip.note"),
-								"aria-label": t("strip.note"),
-								onChange: (event) => setNote(event.target.value)
-							}),
-							jsx("button", {
-								type: "button",
-								className: "dspm-strip-link",
-								onClick: onOpenMarket,
-								children: t("strip.market")
-							}),
-							jsx("button", {
-								type: "button",
-								className: "dspm-publish",
-								"data-sent": String(sent),
-								disabled: running || sent,
-								onClick: () => {
-									void publish();
-								},
+							jsxs("div", {
+								className: "dspm-strip-actions",
 								children: [
-									jsx(sent ? TickIcon : SparkIcon, {}),
-									jsx("span", { children: t(sent ? "strip.published" : "strip.publish") })
+									jsx("button", {
+										type: "button",
+										className: "dspm-strip-link",
+										onClick: onOpenMarket,
+										children: t("strip.market")
+									}),
+									jsx("button", {
+										type: "button",
+										className: "dspm-publish",
+										"data-sent": String(sent),
+										disabled: running || sent,
+										onClick: () => {
+											void publish();
+										},
+										children: [
+											jsx(sent ? TickIcon : SparkIcon, {}),
+											jsx("span", { children: t(sent ? "strip.published" : "strip.publish") })
+										]
+									})
 								]
 							})
 						]
@@ -766,11 +834,11 @@ window.__ModuleLoader__.load({
 		//#region dictionaries
 		const zh = {
 			"strip.creator": "创造模式",
-			"strip.offered": " · {name}已写好，可选择版本号后发布",
+			"strip.offered": "{name}已写好，可选择版本号后发布",
 			"strip.plugin": "一个插件",
 			"strip.skill": "一个技能",
-			"strip.busy": " · AI 正在工作，等它停下再发布",
-			"strip.sent": " · 已请 AI 打包发布，结果会出现在对话里",
+			"strip.busy": "AI 正在工作，等它停下再发布",
+			"strip.sent": "已请 AI 打包发布，结果会出现在对话里",
 			"strip.publish": "插件发布",
 			"strip.published": "已请求发布",
 			"strip.version": "版本号（留空自动）",
@@ -796,11 +864,11 @@ window.__ModuleLoader__.load({
 		};
 		const en = {
 			"strip.creator": "Creation mode",
-			"strip.offered": " · {name} is ready — pick a version and publish",
+			"strip.offered": "{name} is ready — pick a version and publish",
 			"strip.plugin": "a plugin",
 			"strip.skill": "a skill",
-			"strip.busy": " · the model is working — publish when it settles",
-			"strip.sent": " · asked the model to package and publish it",
+			"strip.busy": "the model is working — publish when it settles",
+			"strip.sent": "asked the model to package and publish it",
 			"strip.publish": "Publish plugin",
 			"strip.published": "Publish requested",
 			"strip.version": "version (auto if empty)",
@@ -843,8 +911,11 @@ window.__ModuleLoader__.load({
 					window.removeEventListener("dsh:open-market", open);
 				};
 			}, "ui-market: title-bar entry");
-			ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
-				name: "conversation.composer.dock",
+			// The strip is a full-width card above the composer, so it belongs to
+			// the InputZone column — not to the ambient pill row it was written
+			// for before 0.1.7 moved that row out of the composer card.
+			ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
+				name: "conversation.input.dock",
 				id: "market-publish",
 				order: 10,
 				locale: NS

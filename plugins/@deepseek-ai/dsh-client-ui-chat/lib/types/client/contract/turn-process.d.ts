@@ -1,3 +1,4 @@
+import type { ChatNode } from './chat-nodes.ts';
 /** Current process range and finalized answer boundary derived from one Turn. */
 export interface TurnProcessSpec {
     readonly turn: number;
@@ -30,4 +31,10 @@ export declare function sameTurnProcessSpec(left: TurnProcessSpec, right: TurnPr
  * @returns whether the call creates or forks a subagent.
  */
 export declare function isSubagentDelegationTool(name: string): boolean;
+/**
+ * Keep live, stopped, and failed Turns open.
+ * @param node - Node carrying the owning Turn.
+ * @returns whether whole-Turn collapse is unavailable.
+ */
+export declare function turnProcessAlwaysOpen(node: ChatNode | undefined): boolean;
 //# sourceMappingURL=turn-process.d.ts.map

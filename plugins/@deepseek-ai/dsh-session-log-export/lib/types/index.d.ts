@@ -6,8 +6,7 @@ export { DEFAULT_SESSION_LOG_COMPRESSION_LEVEL, flushLiveSessionLog, readSession
 export type { SessionLogCompressionLevel, SessionLogExportDeps, SessionLogExportReady, SessionLogZipEntry, } from './archive.ts';
 export declare const name = "session-log-download";
 export declare const inject: string[];
-/** Stable browser download path retained across the transport migration. */
-export declare const SESSION_LOG_EXPORT_PATH = "/api/session.export";
+export { SESSION_LOG_EXPORT_PATH } from './routes.ts';
 /** Session-log archive policy. */
 export interface Config {
     /** DEFLATE level for each ZIP entry. @default 6 */

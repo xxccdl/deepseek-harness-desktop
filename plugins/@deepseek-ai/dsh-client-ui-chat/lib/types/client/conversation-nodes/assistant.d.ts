@@ -21,11 +21,10 @@ interface AssistantState {
     readonly firstVisibleSeq: number | undefined;
     readonly firstVisibleTime: number | undefined;
     readonly firstTokenTime: number | undefined;
-    readonly hidden: boolean;
     readonly final: ConversationMatch | undefined;
     readonly usage: unknown;
 }
-/** Per-step Assistant streaming/final/interruption Definition. */
+/** Per-step Assistant lifecycle; materialized keys survive cleared stream content as hidden Nodes. */
 export declare const assistantDefinition: ConversationNodeDefinition<AssistantState>;
 /**
  * Register the Assistant lifecycle business contribution.

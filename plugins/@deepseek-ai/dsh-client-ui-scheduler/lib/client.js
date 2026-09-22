@@ -413,9 +413,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region plugin
 		const NS = "settings.scheduler";
-		const inject = ["slots", "locale", "settingsScope"];
+		const inject = ["slots", "locale", "configForms"];
 		function apply(ctx) {
-			scopeRef = ctx.settingsScope.bind({ namespace: "notify" });
+			// The Host entry that owns these settings is the `task-notify` row.
+			scopeRef = ctx.configForms.get("task-notify");
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh: {
 					"nav": "定时任务",

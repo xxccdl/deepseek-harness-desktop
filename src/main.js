@@ -15,9 +15,10 @@ import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import {
   PROFILE_PATCH_FILENAME,
+  PluginPackages,
   boot,
   composeEntries,
-  healProfilesModuleFallback,
+  createRuntimeResolution,
   installFailLoud,
   loadLayeredEnv,
   loadOptionalPatches,
@@ -114,21 +115,71 @@ function shippedPresetRoot() {
 
 const LOOPBACK = "127.0.0.1";
 
+/**
+ * The launcher-owned readiness signal, the same shape `dsh`'s own launch
+ * passes to `provideCmdline`. Profile HMR refuses to mount without it (it
+ * wants reloads to start only after the app is actually up), and the stdio
+ * entry points read it too.
+ * @returns the service plus its one-shot commit.
+ */
+function createAppReady() {
+  let ready = false;
+  const listeners = new Set();
+  return {
+    service: {
+      onReady(listener) {
+        if (ready) {
+          listener();
+          return () => {};
+        }
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      }
+    },
+    commit() {
+      if (ready) return;
+      ready = true;
+      for (const listener of [...listeners]) listener();
+      listeners.clear();
+    }
+  };
+}
+
 // ── harness boot state ───────────────────────────────────────────────────────
 let ctx = undefined; // settled root context
 let serverUrl = undefined; // canonical GUI URL (carries the launch token), set after boot
 let serverOrigin = undefined; // bare loopback origin for in-process calls; auth rides the session cookie
 let disposed = false;
 let quitting = false;
+/** Stops the account-state watch installed after boot. */
+let stopAccountSignInWatch = () => {};
 /** Monotonic id for the pill's proxied RPC envelopes. */
 let rpcSeq = 0;
 
-/** Dispose the harness tree exactly once. */
+/**
+ * Grace the harness tree gets to dispose before the app exits anyway.
+ *
+ * Some mounted surfaces (watchers, schedulers, the plugin market's reload
+ * bridge) keep a handle alive past their disposer, so the tree can settle
+ * without ever resolving. The CLI bounds the same wait and force-exits; a
+ * desktop shell that did not would show a window that never closes.
+ */
+const DISPOSE_GRACE_MS = 5000;
+
+/** Dispose the harness tree exactly once, with a bounded wait. */
 async function disposeHarness() {
   if (disposed) return;
   disposed = true;
+  stopAccountSignInWatch();
+  if (ctx === undefined) return;
   try {
-    await ctx?.fiber.dispose();
+    const settled = await Promise.race([
+      ctx.fiber.dispose().then(() => true),
+      new Promise((done) => setTimeout(() => done(false), DISPOSE_GRACE_MS))
+    ]);
+    if (!settled) console.warn("dsh-desktop: harness dispose did not settle; exiting anyway");
   } catch (error) {
     console.error("dsh-desktop: harness dispose failed", error);
   }
@@ -139,12 +190,16 @@ async function disposeHarness() {
  * applies: bundle layers in `dsh.profile.bundles` order, the profile's own
  * user layer, the home-level user layer, the shipped agent-presets root, and
  * the telemetry switch.
+ *
+ * The 0.1.7 line resolves plugin packages at RUNTIME instead of projecting
+ * junctions into the profile's `node_modules`, so the composition also carries
+ * the resolution table the boot mounts (`PluginPackages`).
  */
 async function composeWebProfile() {
   const DSH_ANCHOR = dshAnchor();
   const SHIPPED_PRESET_ROOT = shippedPresetRoot();
   const profile = loadProfile(BIN_NAME, PROFILE_NAME, DSH_ANCHOR);
-  await healProfilesModuleFallback({ installAnchor: DSH_ANCHOR, profile });
+  const resolution = await createRuntimeResolution({ installAnchor: DSH_ANCHOR, profile });
   // Rewrite the empty root config: the Loader's tree write-back can bake
   // composed rows into it, which would duplicate bundle inserts on next boot.
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG);
@@ -170,8 +225,24 @@ async function composeWebProfile() {
   }
   const telemetryDisabled = (process.env.DSH_TELEMETRY_DISABLED ?? "") !== "";
   if (telemetryDisabled && rows.has(TELEMETRY_ROW_ID)) overlays.push({ id: TELEMETRY_ROW_ID, disabled: true });
+  // Launcher-owned profile locations, the same shape the CLI provides: the
+  // plugin manager writes bundle rows through it, and rows that differ by
+  // surface read it (the built-in sidebar browser is a Web-vs-Electron switch).
+  const profileContext = {
+    name: PROFILE_NAME,
+    dir: profile.dir,
+    patchPath: profile.patchPath,
+    installAnchor: DSH_ANCHOR,
+    startedBundles: profile.layers.map((layer) => layer.packageName),
+    cwd: process.cwd(),
+    home: resolveDshHome(),
+    overlays,
+    telemetryDisabledEnv: process.env.DSH_TELEMETRY_DISABLED
+  };
   return {
     profile,
+    profileContext,
+    resolution,
     patches: [...bundlePatches, ...profile.patches, ...homePatches, ...overlays]
   };
 }
@@ -182,17 +253,26 @@ async function composeWebProfile() {
  * @returns the canonical local URL of the GUI.
  */
 async function bootHarness() {
-  const { profile, patches } = await composeWebProfile();
+  const { profile, profileContext, resolution, patches } = await composeWebProfile();
   const rootConfig = join(profile.dir, PROFILE_ROOT_FILENAME);
-  ctx = await boot(BIN_NAME, rootConfig, patches, (hostCtx) => {
+  const appReady = createAppReady();
+  ctx = await boot(BIN_NAME, rootConfig, patches, async (hostCtx) => {
+    hostCtx.provide("profileContext", profileContext);
     hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(BIN_NAME));
+    // Install the runtime package resolution BEFORE the Loader mounts a row:
+    // it is what makes the profile's bare specifiers resolve without the
+    // junction projections the 0.1.5 line used to write into the profile.
+    await hostCtx.plugin(PluginPackages, { resolution });
     provideCmdline(hostCtx, {
       args: ["--port", "0", "--no-open"],
       exit: (code) => {
         void disposeHarness().finally(() => app.exit(code));
-      }
+      },
+      ready: appReady.service
     });
   });
+  // The tree settled: profile HMR's reload watcher may now start.
+  if (ctx.fiber.state === 2 && ctx.get("loader") !== undefined) appReady.commit();
   const port = ctx.get("webServer")?.port;
   if (port === undefined) throw new Error("dsh-desktop: webServer service did not bind a port");
   const localUrl = `http://${LOOPBACK}:${String(port)}/`;
@@ -201,6 +281,44 @@ async function bootHarness() {
   const connection = ctx.get("connection");
   serverOrigin = localUrl;
   return connection === undefined ? localUrl : connection.authenticatedUrl(localUrl);
+}
+
+/**
+ * Hand every new sign-in URL to the system browser.
+ *
+ * The account provider registers its loopback callback and waits: it publishes
+ * the authorize URL on the attempt and lets the hosting surface open it — the
+ * sign-in dialog's copy ("Page did not open automatically?") names that
+ * expectation. Inside this shell nothing else can: a `window.open` from the
+ * served GUI counts as foreign navigation and is denied, so the watch lives
+ * here and opens each attempt once.
+ * @returns the disposer ending the watch.
+ */
+function watchAccountSignIn() {
+  const account = ctx?.get("deepseekAccount", false);
+  if (account === undefined || typeof account.watch !== "function") return () => {};
+  const lifetime = new AbortController();
+  void (async () => {
+    let opened;
+    try {
+      for await (const state of account.watch(lifetime.signal)) {
+        const attempt = state?.attempt;
+        if (attempt?.phase !== "waiting-browser") continue;
+        if (typeof attempt.authorizeUrl !== "string" || opened === attempt.id) continue;
+        opened = attempt.id;
+        try {
+          await shell.openExternal(attempt.authorizeUrl);
+        } catch (error) {
+          console.warn("dsh-desktop: failed to open the sign-in page", error);
+        }
+      }
+    } catch {
+      /* an aborted or closed attempt stream is the normal end of the watch */
+    }
+  })();
+  return () => {
+    lifetime.abort();
+  };
 }
 
 // ── window state persistence ─────────────────────────────────────────────────
@@ -1161,6 +1279,7 @@ if (!gotLock) {
       // paint request waits behind it and the splash arrives only at the end.
       if (!startHidden) await firstPaint(win);
       serverUrl = await bootHarness();
+      stopAccountSignInWatch = watchAccountSignIn();
       if (startHidden) void win.loadURL(serverUrl);
       else revealApp(win, serverUrl);
     } catch (error) {

@@ -8,19 +8,21 @@ interface TurnNavigatorProps {
     readonly onNavigate: (item: TurnRailItem) => void;
     readonly t: ChatViewSlotProps['t'];
 }
-declare function TurnNavigatorRail({ items, activeTurn, busyTurn, onNavigate, t }: TurnNavigatorProps): import("react").JSX.Element | null;
+/** Imperative controls for known turns; unknown turn numbers are ignored. */
+export interface TurnNavigatorHandle {
+    /** @param turn - turn to activate through the navigation callback. */
+    activateTurn(turn: number): void;
+    /** @param turn - turn to center in the rail without navigating the transcript. */
+    scrollToTurn(turn: number): void;
+}
 /**
  * Fixed-pitch rail of every known Turn — loaded marks scroll, unloaded marks
  * page history in first — with hover and focus previews. Overflow scrolls
  * inside the frame, gradient fades marking each scrollable end, and the
- * active mark keeps itself in view while the pointer is elsewhere.
- *
- * Memoized because it renders two host elements per Turn while the
- * enclosing view re-renders on every streaming delta: without the guard a long
- * session rebuilds hundreds of marks per commit for a rail that only changes
- * when a Turn is added, removed, or becomes active. Its props must therefore
- * stay referentially stable across those commits.
+ * active mark centers only outside the fade-free band while the pointer is
+ * elsewhere. Previews follow pointer movement or focus, not scrolling under
+ * a stationary pointer.
  */
-export declare const TurnNavigator: import("react").MemoExoticComponent<typeof TurnNavigatorRail>;
+export declare const TurnNavigator: import("react").MemoExoticComponent<import("react").ForwardRefExoticComponent<TurnNavigatorProps & import("react").RefAttributes<TurnNavigatorHandle>>>;
 export {};
 //# sourceMappingURL=TurnNavigator.d.ts.map

@@ -5,5 +5,5 @@ import type { ToolTreeProps } from '../contract/slots.ts';
  * @param props - whole-Tool owner data and the Tool-owned child-slot share.
  * @returns the Tool call tree.
  */
-export declare function ToolCallTree({ renderSlot, node, cwd, openFile, inspectCall, loadImage, useHostInfo, t, }: ToolTreeProps): import("react").JSX.Element;
+export declare function ToolCallTree({ renderSlot, node, cwd, openFile, inspectCall, loadImage, useDisclosure, useHostInfo, t, }: ToolTreeProps): import("react").JSX.Element;
 //# sourceMappingURL=ToolCallTree.d.ts.map

@@ -96,6 +96,7 @@ export class LlmError extends HarnessError {
             ...options?.status === undefined ? {} : { status: options.status },
             ...options?.providerRetryAfterMs === undefined ? {} : { providerRetryAfterMs: options.providerRetryAfterMs },
             ...options?.requestId === undefined ? {} : { requestId: options.requestId },
+            ...options?.offloadImages === undefined ? {} : { offloadImages: options.offloadImages },
         });
     }
 }
@@ -487,6 +488,7 @@ let LlmRuntime = (() => {
                     ...model.name === undefined ? {} : { name: model.name },
                     ...model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow },
                     ...model.maxTokens === undefined ? {} : { maxTokens: model.maxTokens },
+                    ...model.inputModalities === undefined ? {} : { inputModalities: [...model.inputModalities] },
                 });
             }
             return models;
@@ -771,8 +773,10 @@ let LlmRuntime = (() => {
         /** Remove replay state whose historical route is owned by another adapter. */
         forAdapter(options, adapter) {
             const messages = options.messages.map((message) => {
+                if (message.role !== 'assistant')
+                    return message;
                 const source = message.source;
-                if (message.role !== 'assistant' || source.kind !== 'model' || source.replayState === undefined)
+                if (source.replayState === undefined)
                     return message;
                 if (this.adapters.get(source.provider)?.adapter === adapter)
                     return message;

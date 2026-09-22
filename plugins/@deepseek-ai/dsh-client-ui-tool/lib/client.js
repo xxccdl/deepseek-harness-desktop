@@ -60,6 +60,193 @@ window.__ModuleLoader__.load({
 			return text;
 		}
 		//#endregion
+		//#region lib/types/client/tool/models/tool-call-model.js
+		/** Locale key per generic row variant. */
+		const VARIANT_TITLE_KEYS = {
+			search: "tool.title.search",
+			read: "tool.title.read",
+			bash: "tool.title.bash",
+			write: "tool.title.write",
+			edit: "tool.title.edit",
+			code: "tool.title.code",
+			others: "tool.title.generic"
+		};
+		/**
+		* Known tool name -> variant.
+		*
+		* `cordis_define` is deliberately absent: ui-cordis registers a keyed
+		* `tool.call.toolview` entry for it, and a keyed hit REPLACES the generic row
+		* (this table is only reached through GenericToolCard, the dispatch fallback in
+		* ToolCallTree). An entry here would be unreachable, and a second title for the
+		* same call would be a second answer to a question the card already owns.
+		*/
+		const TOOL_VARIANTS = {
+			bash: "bash",
+			pwsh: "bash",
+			read: "read",
+			read_image: "read",
+			web_fetch: "read",
+			web_search: "search",
+			grep: "search",
+			glob: "search",
+			write: "write",
+			edit: "edit",
+			run_code: "code",
+			cordis_package_inspect: "read",
+			cordis_runtime_inspect: "read",
+			cordis_run: "others",
+			cordis_stop: "others",
+			cordis_undefine: "others"
+		};
+		/** Tool-owned titles that refine a generic row variant without replacing it. */
+		const TOOL_TITLE_KEYS = {
+			cordis_package_inspect: "tool.title.inspect",
+			cordis_runtime_inspect: "tool.title.inspect",
+			cordis_run: "tool.title.runCordis",
+			cordis_stop: "tool.title.stopCordis",
+			cordis_undefine: "tool.title.removeCordis",
+			pwsh: "tool.title.pwsh",
+			read_image: "tool.title.readImage"
+		};
+		/**
+		* Classify a tool name into its row variant.
+		* @param toolName - wire tool name.
+		* @returns matching variant, others when unknown.
+		*/
+		function classifyTool(toolName) {
+			return TOOL_VARIANTS[toolName] ?? "others";
+		}
+		function deriveAutoReviewDenial(block) {
+			if (!("kind" in block) || !block.isError) return null;
+			const error = block.error;
+			if (error?.name !== "AutoReviewDeniedError" || error.code !== "AUTO_REVIEW_DENIED") return null;
+			return { reason: typeof error.reason === "string" ? error.reason : null };
+		}
+		/**
+		* Flatten a settled result's content blocks to display text: text blocks
+		* verbatim, other block shapes as pretty JSON. Empty content on a failed call
+		* falls back to the structured error's `name: code` line.
+		* @param node - the settled result node.
+		* @returns the flattened result text (may be empty).
+		*/
+		function resultText(node) {
+			const parts = [];
+			for (const block of node.content) if (block.type === "text") parts.push(block.text);
+			else parts.push(JSON.stringify(block, null, 2));
+			if (parts.length === 0 && node.error !== void 0) parts.push(`${node.error.name}: ${node.error.code}`);
+			return parts.join("\n");
+		}
+		function parseArgs(argsRaw) {
+			try {
+				return JSON.parse(argsRaw);
+			} catch {
+				return;
+			}
+		}
+		function firstLine(text) {
+			const nl = text.indexOf("\n");
+			return nl === -1 ? text : text.slice(0, nl);
+		}
+		function pickString(args, keys) {
+			for (const key of keys) {
+				const v = args[key];
+				if (typeof v === "string" && v !== "") return v;
+			}
+		}
+		/** Summary key preference per variant (args-derived; result-derived summaries are a ledger item). */
+		const SUMMARY_KEYS = {
+			bash: ["description", "command"],
+			read: [
+				"path",
+				"file_path",
+				"url"
+			],
+			search: [
+				"query",
+				"pattern",
+				"url"
+			],
+			write: ["path", "file_path"],
+			edit: ["path", "file_path"],
+			code: ["description"],
+			others: []
+		};
+		function deriveSummary(variant, argsRaw) {
+			const parsed = parseArgs(argsRaw);
+			if (typeof parsed !== "object" || parsed === null) return firstLine(argsRaw);
+			const args = parsed;
+			if (variant === "search" && Array.isArray(args.queries)) {
+				const queries = args.queries.filter((query) => typeof query === "string" && query !== "");
+				if (queries.length > 0) return queries.map(firstLine).join(", ");
+			}
+			const picked = pickString(args, SUMMARY_KEYS[variant]);
+			if (picked !== void 0) return firstLine(picked);
+			for (const v of Object.values(args)) if (typeof v === "string" && v !== "") return firstLine(v);
+			return firstLine(argsRaw);
+		}
+		/** Path keys only — never `url` (web_fetch lands on the read variant). */
+		const FILE_PATH_KEYS = ["path", "file_path"];
+		/** File-tool variants whose summary may be an openable workspace path. */
+		const FILE_PATH_VARIANTS = new Set([
+			"read",
+			"write",
+			"edit"
+		]);
+		function deriveFilePath(variant, argsRaw) {
+			if (!FILE_PATH_VARIANTS.has(variant)) return void 0;
+			const parsed = parseArgs(argsRaw);
+			if (typeof parsed !== "object" || parsed === null) return void 0;
+			const picked = pickString(parsed, FILE_PATH_KEYS);
+			return picked === void 0 ? void 0 : firstLine(picked);
+		}
+		/**
+		* Format one argument payload when its generic input body becomes visible.
+		* @param variant - row presentation selected for the Tool name.
+		* @param argsRaw - original argument JSON or incomplete raw text.
+		* @returns display body, or null for empty input.
+		*/
+		function formatToolBody(variant, argsRaw) {
+			if (argsRaw === "") return null;
+			const parsed = parseArgs(argsRaw);
+			if (parsed === void 0) return argsRaw;
+			if (variant === "code" && typeof parsed === "object" && parsed !== null) {
+				const code = parsed.code;
+				if (typeof code === "string" && code !== "") return code;
+			}
+			return JSON.stringify(parsed, null, 2);
+		}
+		/**
+		* Derive the full row model from a frozen call slice.
+		* @param toolName - wire tool name (dispatch-supplied; survives windowless results).
+		* @param block - RunningToolCall or ToolResultNode off the snapshot caches.
+		* @param cwd - session workspace root; workspace-rooted path summaries display relative to it.
+		* @param home - host account home; a leftover POSIX home path displays as `~`.
+		* @returns the row model.
+		*/
+		function toolRowModel(toolName, block, cwd, home) {
+			const variant = classifyTool(toolName);
+			const done = "kind" in block;
+			const argsRaw = (done ? block.call?.argsRaw : block.argsRaw) ?? "";
+			const state = !done ? "running" : block.error?.code === "interrupted" ? "stopped" : block.isError ? "error" : "ok";
+			const base = argsRaw === "" ? block.callId : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home);
+			const toolTitleKey = TOOL_TITLE_KEYS[toolName];
+			const summary = variant === "others" && toolName !== "" && toolTitleKey === void 0 ? `${toolName} · ${base}` : base;
+			const output = done ? resultText(block) || null : null;
+			const errorSummary = state === "error" && output !== null ? firstLine(output) : null;
+			const bodyRaw = argsRaw === "" ? null : argsRaw;
+			return {
+				variant,
+				titleKey: toolTitleKey ?? VARIANT_TITLE_KEYS[variant],
+				summary,
+				filePath: deriveFilePath(variant, argsRaw),
+				bodyRaw,
+				output,
+				errorSummary,
+				autoReviewDenial: deriveAutoReviewDenial(block),
+				state
+			};
+		}
+		//#endregion
 		//#region lib/types/client/tool/models/raw-tool-call.js
 		const parsedCalls = /* @__PURE__ */ new WeakMap();
 		/**
@@ -445,7 +632,7 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Recognize a final spill-policy notice in persisted text, including notice-only output.
-		* This identifies the text convention, not authenticated provenance of tool output.
+		* This identifies the text convention, not authenticated tool-output origin.
 		* @param text - complete recorded text result.
 		* @returns whether a complete notice occupies the end of the result.
 		*/
@@ -475,6 +662,7 @@ window.__ModuleLoader__.load({
 			return {
 				signal: (signal) => t("terminal.signal", { signal }),
 				exitCode: (code) => t("terminal.exitCode", { code }),
+				noExitCode: t("terminal.noExitCode"),
 				running: t("terminal.running"),
 				failed: t("terminal.failed"),
 				done: t("terminal.done"),
@@ -677,7 +865,7 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Derive terminal props for supported shell and terminal-send calls, including
-		* nested Code Dispatch calls. Standard shell results parse their final status
+		* nested PTC dispatch calls. Standard shell results parse their final status
 		* marker; persistent shell results, spill previews, background calls, errors,
 		* and malformed input use the generic path. {@link isSettledPersistentShellCall} lets that generic
 		* persistent result remain expandable without inventing one process status.
@@ -791,183 +979,28 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
-		//#region lib/types/client/tool/models/tool-call-model.js
-		/** Locale key per generic row variant. */
-		const VARIANT_TITLE_KEYS = {
-			search: "tool.title.search",
-			read: "tool.title.read",
-			bash: "tool.title.bash",
-			write: "tool.title.write",
-			edit: "tool.title.edit",
-			code: "tool.title.code",
-			others: "tool.title.generic"
-		};
+		//#region lib/types/client/tool/models/auto-review-denial.js
 		/**
-		* Known tool name -> variant.
-		*
-		* `cordis_define` is deliberately absent: ui-cordis registers a keyed
-		* `tool.call.toolview` entry for it, and a keyed hit REPLACES the generic row
-		* (this table is only reached through GenericToolCard, the dispatch fallback in
-		* ToolCallTree). An entry here would be unreachable, and a second title for the
-		* same call would be a second answer to a question the card already owns.
+		* Normalize only the user-visible copy; the durable error keeps the raw reason.
+		* @param reason - raw persisted reviewer reason, or null when none was recorded.
+		* @returns one display line, or null when the reason has no displayable text.
 		*/
-		const TOOL_VARIANTS = {
-			bash: "bash",
-			pwsh: "bash",
-			read: "read",
-			read_image: "read",
-			web_fetch: "read",
-			web_search: "search",
-			grep: "search",
-			glob: "search",
-			write: "write",
-			edit: "edit",
-			run_code: "code",
-			cordis_package_inspect: "read",
-			cordis_runtime_inspect: "read",
-			cordis_run: "others",
-			cordis_stop: "others",
-			cordis_undefine: "others"
-		};
-		/** Tool-owned titles that refine a generic row variant without replacing it. */
-		const TOOL_TITLE_KEYS = {
-			cordis_package_inspect: "tool.title.inspect",
-			cordis_runtime_inspect: "tool.title.inspect",
-			cordis_run: "tool.title.runCordis",
-			cordis_stop: "tool.title.stopCordis",
-			cordis_undefine: "tool.title.removeCordis",
-			pwsh: "tool.title.pwsh",
-			read_image: "tool.title.readImage"
-		};
-		/**
-		* Classify a tool name into its row variant.
-		* @param toolName - wire tool name.
-		* @returns matching variant, others when unknown.
-		*/
-		function classifyTool(toolName) {
-			return TOOL_VARIANTS[toolName] ?? "others";
+		function normalizeAutoReviewReason(reason) {
+			if (reason === null) return null;
+			const normalized = reason.trim().replace(/[\r\n\u2028\u2029]+/gu, " ");
+			return normalized === "" ? null : normalized;
 		}
 		/**
-		* Flatten a settled result's content blocks to display text: text blocks
-		* verbatim, other block shapes as pretty JSON. Empty content on a failed call
-		* falls back to the structured error's `name: code` line.
-		* @param node - the settled result node.
-		* @returns the flattened result text (may be empty).
+		* Resolve the collapsed identity and the single expanded OUT line.
+		* @param denial - locale-neutral persisted denial facts.
+		* @param t - conversation-namespace translator.
+		* @returns localized summary and output text for the Tool row.
 		*/
-		function resultText(node) {
-			const parts = [];
-			for (const block of node.content) if (block.type === "text") parts.push(block.text);
-			else parts.push(JSON.stringify(block, null, 2));
-			if (parts.length === 0 && node.error !== void 0) parts.push(`${node.error.name}: ${node.error.code}`);
-			return parts.join("\n");
-		}
-		function parseArgs(argsRaw) {
-			try {
-				return JSON.parse(argsRaw);
-			} catch {
-				return;
-			}
-		}
-		function firstLine(text) {
-			const nl = text.indexOf("\n");
-			return nl === -1 ? text : text.slice(0, nl);
-		}
-		function pickString(args, keys) {
-			for (const key of keys) {
-				const v = args[key];
-				if (typeof v === "string" && v !== "") return v;
-			}
-		}
-		/** Summary key preference per variant (args-derived; result-derived summaries are a ledger item). */
-		const SUMMARY_KEYS = {
-			bash: ["description", "command"],
-			read: [
-				"path",
-				"file_path",
-				"url"
-			],
-			search: [
-				"query",
-				"pattern",
-				"url"
-			],
-			write: ["path", "file_path"],
-			edit: ["path", "file_path"],
-			code: ["description"],
-			others: []
-		};
-		function deriveSummary(variant, argsRaw) {
-			const parsed = parseArgs(argsRaw);
-			if (typeof parsed !== "object" || parsed === null) return firstLine(argsRaw);
-			const args = parsed;
-			if (variant === "search" && Array.isArray(args.queries)) {
-				const queries = args.queries.filter((query) => typeof query === "string" && query !== "");
-				if (queries.length > 0) return queries.map(firstLine).join(", ");
-			}
-			const picked = pickString(args, SUMMARY_KEYS[variant]);
-			if (picked !== void 0) return firstLine(picked);
-			for (const v of Object.values(args)) if (typeof v === "string" && v !== "") return firstLine(v);
-			return firstLine(argsRaw);
-		}
-		/** Path keys only — never `url` (web_fetch lands on the read variant). */
-		const FILE_PATH_KEYS = ["path", "file_path"];
-		/** File-tool variants whose summary may be an openable workspace path. */
-		const FILE_PATH_VARIANTS = new Set([
-			"read",
-			"write",
-			"edit"
-		]);
-		function deriveFilePath(variant, argsRaw) {
-			if (!FILE_PATH_VARIANTS.has(variant)) return void 0;
-			const parsed = parseArgs(argsRaw);
-			if (typeof parsed !== "object" || parsed === null) return void 0;
-			const picked = pickString(parsed, FILE_PATH_KEYS);
-			return picked === void 0 ? void 0 : firstLine(picked);
-		}
-		/**
-		* Format one argument payload when its generic input body becomes visible.
-		* @param variant - row presentation selected for the Tool name.
-		* @param argsRaw - original argument JSON or incomplete raw text.
-		* @returns display body, or null for empty input.
-		*/
-		function formatToolBody(variant, argsRaw) {
-			if (argsRaw === "") return null;
-			const parsed = parseArgs(argsRaw);
-			if (parsed === void 0) return argsRaw;
-			if (variant === "code" && typeof parsed === "object" && parsed !== null) {
-				const code = parsed.code;
-				if (typeof code === "string" && code !== "") return code;
-			}
-			return JSON.stringify(parsed, null, 2);
-		}
-		/**
-		* Derive the full row model from a frozen call slice.
-		* @param toolName - wire tool name (dispatch-supplied; survives windowless results).
-		* @param block - RunningToolCall or ToolResultNode off the snapshot caches.
-		* @param cwd - session workspace root; workspace-rooted path summaries display relative to it.
-		* @param home - host account home; a leftover POSIX home path displays as `~`.
-		* @returns the row model.
-		*/
-		function toolRowModel(toolName, block, cwd, home) {
-			const variant = classifyTool(toolName);
-			const done = "kind" in block;
-			const argsRaw = (done ? block.call?.argsRaw : block.argsRaw) ?? "";
-			const state = !done ? "running" : block.error?.code === "interrupted" ? "stopped" : block.isError ? "error" : "ok";
-			const base = argsRaw === "" ? block.callId : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home);
-			const toolTitleKey = TOOL_TITLE_KEYS[toolName];
-			const summary = variant === "others" && toolName !== "" && toolTitleKey === void 0 ? `${toolName} · ${base}` : base;
-			const output = done ? resultText(block) || null : null;
-			const errorSummary = state === "error" && output !== null ? firstLine(output) : null;
-			const bodyRaw = argsRaw === "" ? null : argsRaw;
+		function localizeAutoReviewDenial(denial, t) {
+			const reason = normalizeAutoReviewReason(denial.reason) ?? t("tool.autoReviewReasonFallback");
 			return {
-				variant,
-				titleKey: toolTitleKey ?? VARIANT_TITLE_KEYS[variant],
-				summary,
-				filePath: deriveFilePath(variant, argsRaw),
-				bodyRaw,
-				output,
-				errorSummary,
-				state
+				summary: t("tool.autoReviewRejected"),
+				output: t("tool.autoReviewNotExecuted", { reason })
 			};
 		}
 		//#endregion
@@ -1078,13 +1111,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/AskQuestionCard.module.css.mjs
-		const css$3 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);border-radius:12px;flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
-		const tagId$3 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
+		const css$4 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);border-radius:12px;flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
+		const tagId$4 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$3;
-			tag.textContent = css$3;
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
 			document.head.appendChild(tag);
 		}
 		var AskQuestionCard_module_css_default = {
@@ -1140,8 +1173,181 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolDetails.module.css.mjs
+		const css$3 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);border-radius:12px;margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_root .DXqwVW_group .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_code [data-code-block-banner]{padding:4px 10px}.DXqwVW_root .DXqwVW_code pre{padding:6px 10px 8px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}";
+		const tagId$3 = "@deepseek-ai/dsh-client-ui-tool/ToolDetails.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
+			tag.dataset.pluginCss = tagId$3;
+			tag.textContent = css$3;
+			document.head.appendChild(tag);
+		}
+		var ToolDetails_module_css_default = {
+			"badge": "DXqwVW_badge",
+			"caption": "DXqwVW_caption",
+			"code": "DXqwVW_code",
+			"description": "DXqwVW_description",
+			"empty": "DXqwVW_empty",
+			"field": "DXqwVW_field",
+			"fields": "DXqwVW_fields",
+			"group": "DXqwVW_group",
+			"heading": "DXqwVW_heading",
+			"item": "DXqwVW_item",
+			"lines": "DXqwVW_lines",
+			"list": "DXqwVW_list",
+			"path": "DXqwVW_path",
+			"pending": "DXqwVW_pending",
+			"previous": "DXqwVW_previous",
+			"prose": "DXqwVW_prose",
+			"root": "DXqwVW_root",
+			"status": "DXqwVW_status",
+			"statusText": "DXqwVW_statusText",
+			"subtitle": "DXqwVW_subtitle",
+			"text": "DXqwVW_text",
+			"unchanged": "DXqwVW_unchanged"
+		};
+		//#endregion
+		//#region lib/types/client/tool/components/ToolDetails.js
+		/** Compact, read-only fields and lists for recorded Tool results. */
+		function DetailItem({ item, t, onOpenFile }) {
+			const status = item.status;
+			return (0, react_jsx_runtime.jsxs)("li", {
+				className: ToolDetails_module_css_default.item,
+				"data-change": item.change?.value,
+				children: [
+					item.title !== void 0 && (0, react_jsx_runtime.jsxs)("div", {
+						className: ToolDetails_module_css_default.heading,
+						children: [
+							status !== void 0 && (0, react_jsx_runtime.jsx)("span", {
+								className: ToolDetails_module_css_default.status,
+								role: "img",
+								"aria-label": item.change?.label ?? status.label,
+								children: item.change?.value === "added" ? "+" : item.change?.value === "removed" ? "−" : status.value === "completed" ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineRegular, { size: 14 }) : status.value === "in_progress" ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlayOutlineRegular, { size: 14 }) : (0, react_jsx_runtime.jsx)("span", { className: ToolDetails_module_css_default.pending })
+							}),
+							item.location !== void 0 && onOpenFile !== void 0 ? (0, react_jsx_runtime.jsx)("button", {
+								className: ToolDetails_module_css_default.path,
+								type: "button",
+								onClick: () => {
+									const location = item.location;
+									if (location !== void 0) onOpenFile(location.path, location.line === void 0 ? void 0 : { line: location.line });
+								},
+								children: item.title
+							}) : (0, react_jsx_runtime.jsx)("span", {
+								className: ToolDetails_module_css_default.text,
+								children: item.title
+							}),
+							item.badge !== void 0 && (0, react_jsx_runtime.jsx)("span", {
+								className: ToolDetails_module_css_default.badge,
+								"data-tone": item.badge.tone,
+								children: item.badge.label
+							}),
+							status !== void 0 && (0, react_jsx_runtime.jsxs)("span", {
+								className: ToolDetails_module_css_default.statusText,
+								children: [
+									item.previousStatus !== void 0 && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
+										className: ToolDetails_module_css_default.previous,
+										children: item.previousStatus
+									}), (0, react_jsx_runtime.jsx)("span", { children: " → " })] }),
+									(0, react_jsx_runtime.jsx)("span", { children: status.label }),
+									item.change?.value === "updated" && item.previousStatus === void 0 && (0, react_jsx_runtime.jsxs)("span", { children: [" · ", item.change.label] })
+								]
+							})
+						]
+					}),
+					item.subtitle !== void 0 && (0, react_jsx_runtime.jsx)("div", {
+						className: ToolDetails_module_css_default.subtitle,
+						children: item.subtitle
+					}),
+					item.description !== void 0 && (0, react_jsx_runtime.jsx)("p", {
+						className: ToolDetails_module_css_default.description,
+						children: item.description
+					}),
+					item.fields.length > 0 && (0, react_jsx_runtime.jsx)("dl", {
+						className: ToolDetails_module_css_default.fields,
+						children: item.fields.map((field) => (0, react_jsx_runtime.jsxs)("div", {
+							className: ToolDetails_module_css_default.field,
+							children: [(0, react_jsx_runtime.jsx)("dt", { children: field.label }), (0, react_jsx_runtime.jsx)("dd", { children: field.value })]
+						}, field.label))
+					}),
+					item.lines !== void 0 && (0, react_jsx_runtime.jsx)("ul", {
+						className: ToolDetails_module_css_default.lines,
+						children: item.lines.map((line, index) => (0, react_jsx_runtime.jsx)("li", { children: line }, index))
+					}),
+					item.markdown !== void 0 && (0, react_jsx_runtime.jsx)("div", {
+						className: ToolDetails_module_css_default.prose,
+						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, {
+							text: item.markdown,
+							labels: markdownLabels(t)
+						})
+					}),
+					item.code !== void 0 && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.CodeBlock, {
+						className: ToolDetails_module_css_default.code,
+						code: item.code.text,
+						lang: item.code.language,
+						copyLabel: t("copy"),
+						copiedLabel: t("copied")
+					}),
+					item.groups?.map((group, index) => (0, react_jsx_runtime.jsxs)("details", {
+						className: ToolDetails_module_css_default.group,
+						children: [(0, react_jsx_runtime.jsxs)("summary", { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutlineRegular, {}), (0, react_jsx_runtime.jsx)("span", { children: group.label })] }), (0, react_jsx_runtime.jsx)("ul", {
+							className: ToolDetails_module_css_default.list,
+							children: group.items.map((child, childIndex) => (0, react_jsx_runtime.jsx)(DetailItem, {
+								item: child,
+								t,
+								onOpenFile
+							}, childIndex))
+						})]
+					}, index))
+				]
+			});
+		}
+		/**
+		* Render recorded values with local disclosures, copy controls, and file navigation.
+		* @param props.model - Localized fields or list items; an empty list uses its empty label.
+		* @param props.hasInspect - Reserve space for the row's upper-right Inspect button.
+		* @param props.t - Conversation dictionary for shared Markdown and code controls.
+		* @param props.onOpenFile - Open a recorded file location in the session workspace.
+		* @returns The expanded detail body.
+		*/
+		function ToolDetails({ model, hasInspect = false, t, onOpenFile }) {
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: ToolDetails_module_css_default.root,
+				"data-inspect": hasInspect || void 0,
+				"data-caption": model.caption !== void 0 || void 0,
+				children: [
+					model.caption !== void 0 && (0, react_jsx_runtime.jsx)("div", {
+						className: ToolDetails_module_css_default.caption,
+						children: model.caption
+					}),
+					model.items.length === 0 ? (0, react_jsx_runtime.jsx)("p", {
+						className: ToolDetails_module_css_default.empty,
+						children: model.empty
+					}) : (0, react_jsx_runtime.jsx)("ul", {
+						className: ToolDetails_module_css_default.list,
+						children: model.items.map((item, index) => (0, react_jsx_runtime.jsx)(DetailItem, {
+							item,
+							t,
+							onOpenFile
+						}, index))
+					}),
+					model.unchanged !== void 0 && (0, react_jsx_runtime.jsxs)("details", {
+						className: ToolDetails_module_css_default.unchanged,
+						children: [(0, react_jsx_runtime.jsxs)("summary", { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutlineRegular, {}), model.unchanged.label] }), (0, react_jsx_runtime.jsx)("ul", {
+							className: ToolDetails_module_css_default.list,
+							children: model.unchanged.items.map((item, index) => (0, react_jsx_runtime.jsx)(DetailItem, {
+								item,
+								t,
+								onOpenFile
+							}, index))
+						})]
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolRow.module.css.mjs
-		const css$2 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_row{position:relative;overflow:hidden}.o3BgMG_root[data-state=running] .o3BgMG_row:after{content:\"\";background:linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%, transparent 100%);pointer-events:none;width:300px;animation:2.6s ease-out infinite o3BgMG_dsh-tool-row-sweep;position:absolute;top:0;bottom:0;left:0}@keyframes o3BgMG_dsh-tool-row-sweep{0%{left:-300px}90%,to{left:100%}}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_leading,.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{color:var(--dsw-alias-state-business-primary)}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_sep{background:var(--dsw-alias-state-business-primary)}.o3BgMG_chevron{color:var(--dsw-alias-label-secondary)}.o3BgMG_title{font-weight:400}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;margin-left:4px}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);color:var(--dsw-alias-label-caption);margin-left:10px;transform:translateY(.5px)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);text-decoration:underline dotted;text-decoration-color:var(--dsw-alias-label-tertiary);text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration-thickness:1px;overflow:hidden}.o3BgMG_fileLink:hover{color:var(--dsw-alias-label-primary);text-decoration-color:currentColor}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);border-radius:12px;flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{background-clip:padding-box;border:2px solid #0000;border-radius:6px}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_codeBody{--dsl-code-block-content-font:var(--dsw-font-markdown-code-block-small)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css$2 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_leading,.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{color:var(--dsw-alias-state-business-primary)}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_sep{background:var(--dsw-alias-state-business-primary)}.o3BgMG_chevron{color:var(--dsw-alias-label-secondary)}.o3BgMG_title{font-weight:400;transition:color .1s}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;margin-left:4px;transition:color .1s}.o3BgMG_row:hover .o3BgMG_title,.o3BgMG_row:hover .o3BgMG_summary:not(.o3BgMG_errorSummary):not(.o3BgMG_stoppedSummary),.o3BgMG_row:hover .o3BgMG_summarySuffix{color:var(--dsw-alias-label-primary)}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);color:var(--dsw-alias-label-caption);margin-left:10px;transform:translateY(.5px)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);text-decoration:underline dotted;text-decoration-color:var(--dsw-alias-label-tertiary);text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration-thickness:1px;transition:color .1s;overflow:hidden}.o3BgMG_row:hover .o3BgMG_fileLink,.o3BgMG_fileLink:hover{color:var(--dsw-alias-label-primary);text-decoration-color:currentColor}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);border-radius:12px;flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{background-clip:padding-box;border:2px solid #0000;border-radius:6px}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_codeBody{--dsl-code-block-content-font:var(--dsw-font-markdown-code-block-small)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId$2 = "@deepseek-ai/dsh-client-ui-tool/ToolRow.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1155,9 +1361,9 @@ window.__ModuleLoader__.load({
 			"bodyWrap": "o3BgMG_bodyWrap",
 			"chevron": "o3BgMG_chevron",
 			"codeBody": "o3BgMG_codeBody",
+			"detailsBodyWrap": "o3BgMG_detailsBodyWrap",
 			"diffBody": "o3BgMG_diffBody",
 			"diffStat": "o3BgMG_diffStat",
-			"dsh-tool-row-sweep": "o3BgMG_dsh-tool-row-sweep",
 			"errorSummary": "o3BgMG_errorSummary",
 			"fileLink": "o3BgMG_fileLink",
 			"imageBody": "o3BgMG_imageBody",
@@ -1176,6 +1382,7 @@ window.__ModuleLoader__.load({
 			"searchBody": "o3BgMG_searchBody",
 			"searchRecovery": "o3BgMG_searchRecovery",
 			"sep": "o3BgMG_sep",
+			"stoppedSummary": "o3BgMG_stoppedSummary",
 			"summary": "o3BgMG_summary",
 			"summarySuffix": "o3BgMG_summarySuffix",
 			"terminalBody": "o3BgMG_terminalBody",
@@ -1185,17 +1392,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/tool/components/ToolRow.js
-		function leadingFor$1(state, icon) {
-			switch (state) {
-				case "error": return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "error" });
-				case "stopped": return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "warning" });
-				default: return icon;
-			}
-		}
-		/** Visually hidden run-state label: the StateDot and the CSS sweep are both
-		*  aria-hidden / colour-only, so assistive technology needs this text to know a
-		*  row is running, failed, or interrupted. null in the ok state (the icon and
-		*  summary already describe a settled row). */
+		/** Visually hidden run-state label for color-only running and settlement cues. */
 		function stateStatus$1(state, t) {
 			switch (state) {
 				case "running": return t("row.running");
@@ -1204,53 +1401,218 @@ window.__ModuleLoader__.load({
 				default: return null;
 			}
 		}
-		function ToolRow({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, state, filePath, filePathLine, onOpenFile, inspect }) {
-			const [expanded, setExpanded] = (0, react.useState)(false);
+		/**
+		* Render one localized tool summary and lazily mounted result card.
+		* @param props - tool state, summary, output, and navigation callbacks.
+		* @returns the tool disclosure.
+		*/
+		const ToolRow = (0, react.memo)(function ToolRow({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, details, state, filePath, filePathLine, onOpenFile, inspect, useDisclosure }) {
+			const { expanded, toggle: toggleExpand } = useDisclosure();
 			const terminalLabels = (0, react.useMemo)(() => terminalBlockLabels(t), [t]);
 			const diffLabels = (0, react.useMemo)(() => diffBlockLabels(t), [t]);
 			const readLabels = (0, react.useMemo)(() => readBlockLabels(t), [t]);
 			const searchLabels = (0, react.useMemo)(() => searchBlockLabels(t), [t]);
 			const webLabels = (0, react.useMemo)(() => webBlockLabels(t), [t]);
-			const terminalBody = terminal === void 0 || terminal === null ? null : localizeTerminalCardModel(terminal, t);
+			const terminalBody = (0, react.useMemo)(() => terminal === void 0 || terminal === null ? null : localizeTerminalCardModel(terminal, t), [terminal, t]);
 			const diffBody = diff ?? null;
 			const readBody = read ?? null;
 			const imageBody = image !== void 0 && image !== null && renderSlot !== void 0 && loadImage !== void 0 ? image : null;
 			const searchBody = search ?? null;
 			const webBody = web ?? null;
 			const askQuestionBody = askQuestion ?? null;
+			const detailsBody = details ?? null;
+			const inputRaw = bodyRaw ?? null;
 			const outputText = output ?? null;
-			const card = askQuestionBody ?? terminalBody ?? diffBody ?? readBody ?? imageBody ?? searchBody ?? webBody;
-			const expandable = bodyRaw != null || outputText !== null || card !== null;
+			const card = askQuestionBody ?? terminalBody ?? diffBody ?? readBody ?? imageBody ?? searchBody ?? webBody ?? detailsBody;
+			const expandable = inputRaw !== null || outputText !== null || card !== null;
 			const open = expanded && expandable;
-			const bodyText = (0, react.useMemo)(() => open && card === null && bodyRaw != null ? formatToolBody(variant, bodyRaw) : null, [
-				bodyRaw,
+			const bodyText = (0, react.useMemo)(() => open && card === null && inputRaw !== null ? formatToolBody(variant, inputRaw) : null, [
 				card,
+				inputRaw,
 				open,
 				variant
 			]);
 			const status = stateStatus$1(state, t);
-			const failureLine = state === "error" ? errorSummary ?? null : null;
-			const summaryText = failureLine ?? terminalBody?.description ?? summary;
+			const running = state === "running";
+			const normalSummary = terminalBody?.description ?? (open ? detailsBody?.expandedSummary ?? summary : summary);
+			const summaryText = (state === "error" ? errorSummary ?? normalSummary : null) ?? normalSummary;
 			const diffStat = (0, react.useMemo)(() => {
 				if (diffBody === null) return null;
 				const { added, removed } = (0, _deepseek_ai_dsh_client_ui_primitives.diffTotals)(diffBody.card.diffs);
 				return `+${added} -${removed}`;
 			}, [diffBody]);
-			const suffix = failureLine === null ? summarySuffix ?? diffStat : null;
-			const fileLink = filePath !== void 0 && onOpenFile !== void 0 && failureLine === null;
-			const toggleExpand = () => {
-				setExpanded((v) => !v);
-			};
-			const openFile = (event) => {
+			const settledWithCue = state === "error" || state === "stopped";
+			const suffix = settledWithCue ? null : summarySuffix ?? diffStat;
+			const openFile = (0, react.useMemo)(() => filePath !== void 0 && onOpenFile !== void 0 && !settledWithCue ? (event) => {
 				event.stopPropagation();
-				if (filePath === void 0 || onOpenFile === void 0) return;
 				if (filePathLine === void 0) onOpenFile(filePath);
 				else onOpenFile(filePath, { line: filePathLine });
-			};
-			const fileLinkKeyDown = (event) => {
+			} : void 0, [
+				filePath,
+				filePathLine,
+				onOpenFile,
+				settledWithCue
+			]);
+			const fileLinkKeyDown = (0, react.useCallback)((event) => {
 				if (event.key === "Enter" || event.key === " ") event.stopPropagation();
-			};
+			}, []);
 			const cardBody = variant === "code" ? null : bodyText;
+			const collapsedContent = (0, react.useMemo)(() => summaryText !== "" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+				(0, react_jsx_runtime.jsx)("span", {
+					className: ToolRow_module_css_default.sep,
+					"aria-hidden": true
+				}),
+				openFile !== void 0 ? (0, react_jsx_runtime.jsx)("button", {
+					type: "button",
+					className: ToolRow_module_css_default.fileLink,
+					onClick: openFile,
+					onKeyDown: fileLinkKeyDown,
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+						active: running,
+						children: summaryText
+					})
+				}) : (0, react_jsx_runtime.jsx)("span", {
+					className: clsx(ToolRow_module_css_default.summary, state === "error" && ToolRow_module_css_default.errorSummary, state === "stopped" && ToolRow_module_css_default.stoppedSummary),
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+						active: running,
+						children: summaryText
+					})
+				}),
+				suffix !== null && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+					className: clsx(ToolRow_module_css_default.summarySuffix, suffix === diffStat && ToolRow_module_css_default.diffStat),
+					active: running,
+					children: suffix
+				})
+			] }), [
+				diffStat,
+				fileLinkKeyDown,
+				openFile,
+				running,
+				state,
+				suffix,
+				summaryText
+			]);
+			const expandedContent = (0, react.useMemo)(() => open ? (0, react_jsx_runtime.jsxs)("div", {
+				className: clsx(ToolRow_module_css_default.bodyWrap, detailsBody !== null && ToolRow_module_css_default.detailsBodyWrap),
+				children: [askQuestionBody !== null ? (0, react_jsx_runtime.jsx)(AskQuestionCard, { card: askQuestionBody }) : terminalBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TerminalBlock, {
+					...terminalBody.card,
+					maxLines: Infinity,
+					labels: terminalLabels,
+					className: ToolRow_module_css_default.terminalBody
+				}) : diffBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.DiffBlock, {
+					...diffBody.card,
+					labels: diffLabels,
+					maxLines: 9,
+					className: ToolRow_module_css_default.diffBody
+				}) : readBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.ReadBlock, {
+					...readBody,
+					labels: readLabels,
+					maxLines: 8,
+					className: ToolRow_module_css_default.readBody
+				}) : imageBody !== null ? (0, react_jsx_runtime.jsxs)("div", {
+					className: ToolRow_module_css_default.imageBody,
+					children: [
+						(0, react_jsx_runtime.jsx)("div", {
+							className: ToolRow_module_css_default.imageLabel,
+							children: imageBody.label
+						}),
+						renderSlot !== void 0 && loadImage !== void 0 && renderSlot("tool.call.images", {
+							images: imageBody.images,
+							loadImage,
+							align: "start"
+						}),
+						(0, react_jsx_runtime.jsx)("div", {
+							className: ToolRow_module_css_default.imageMeta,
+							children: imageBody.text
+						})
+					]
+				}) : searchBody !== null ? (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SearchBlock, {
+					...searchBody.card,
+					labels: searchLabels,
+					maxLines: 8,
+					className: ToolRow_module_css_default.searchBody
+				}), searchBody.recovery !== void 0 && (0, react_jsx_runtime.jsx)("div", {
+					className: ToolRow_module_css_default.searchRecovery,
+					children: searchBody.recovery
+				})] }) : webBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.WebBlock, {
+					...webBody,
+					labels: webLabels,
+					className: ToolRow_module_css_default.webBody
+				}) : detailsBody !== null ? (0, react_jsx_runtime.jsx)(ToolDetails, {
+					model: detailsBody,
+					hasInspect: inspect !== void 0,
+					t,
+					onOpenFile
+				}) : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [variant === "code" && bodyText !== null && (0, react_jsx_runtime.jsx)("div", {
+					className: ToolRow_module_css_default.bodyScroll,
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.CodeBlock, {
+						code: bodyText,
+						lang: "typescript",
+						copyLabel: t("copy"),
+						copiedLabel: t("copied"),
+						className: ToolRow_module_css_default.codeBody
+					})
+				}), (cardBody !== null || outputText !== null) && (0, react_jsx_runtime.jsxs)("div", {
+					className: ToolRow_module_css_default.ioCard,
+					children: [
+						cardBody !== null && (0, react_jsx_runtime.jsxs)("div", {
+							className: ToolRow_module_css_default.ioSection,
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: ToolRow_module_css_default.ioLabel,
+								children: t("row.input")
+							}), (0, react_jsx_runtime.jsx)("span", {
+								className: ToolRow_module_css_default.ioText,
+								children: cardBody
+							})]
+						}),
+						cardBody !== null && outputText !== null && (0, react_jsx_runtime.jsx)("span", {
+							className: ToolRow_module_css_default.ioDivider,
+							"aria-hidden": true
+						}),
+						outputText !== null && (0, react_jsx_runtime.jsxs)("div", {
+							className: ToolRow_module_css_default.ioSection,
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: ToolRow_module_css_default.ioLabel,
+								children: t("row.output")
+							}), (0, react_jsx_runtime.jsx)("span", {
+								className: ToolRow_module_css_default.ioText,
+								"data-error": state === "error" || void 0,
+								children: outputText
+							})]
+						})
+					]
+				})] }), inspect !== void 0 && (0, react_jsx_runtime.jsxs)("button", {
+					type: "button",
+					className: ToolRow_module_css_default.inspectButton,
+					onClick: inspect,
+					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconInspectOutlineRegular, {}), t("row.inspect")]
+				})]
+			}) : void 0, [
+				open,
+				detailsBody,
+				askQuestionBody,
+				terminalBody,
+				terminalLabels,
+				diffBody,
+				diffLabels,
+				readBody,
+				readLabels,
+				imageBody,
+				renderSlot,
+				loadImage,
+				searchBody,
+				searchLabels,
+				webBody,
+				webLabels,
+				inspect,
+				t,
+				onOpenFile,
+				variant,
+				bodyText,
+				cardBody,
+				outputText,
+				state
+			]);
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: ToolRow_module_css_default.root,
 				"data-variant": variant,
@@ -1264,141 +1626,34 @@ window.__ModuleLoader__.load({
 					leadingClassName: ToolRow_module_css_default.leading,
 					titleClassName: ToolRow_module_css_default.title,
 					chevronClassName: ToolRow_module_css_default.chevron,
-					icon: leadingFor$1(state, icon),
+					icon,
 					title,
+					running,
 					open,
 					expandable,
 					expandOnRowClick: true,
 					keepContentWhenOpen: true,
 					onToggle: toggleExpand,
-					collapsedContent: summaryText !== "" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-						(0, react_jsx_runtime.jsx)("span", {
-							className: ToolRow_module_css_default.sep,
-							"aria-hidden": true
-						}),
-						fileLink ? (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: ToolRow_module_css_default.fileLink,
-							onClick: openFile,
-							onKeyDown: fileLinkKeyDown,
-							children: summaryText
-						}) : (0, react_jsx_runtime.jsx)("span", {
-							className: clsx(ToolRow_module_css_default.summary, failureLine !== null && ToolRow_module_css_default.errorSummary),
-							children: summaryText
-						}),
-						suffix !== null && (0, react_jsx_runtime.jsx)("span", {
-							className: clsx(ToolRow_module_css_default.summarySuffix, suffix === diffStat && ToolRow_module_css_default.diffStat),
-							children: suffix
-						})
-					] }),
-					children: (0, react_jsx_runtime.jsxs)("div", {
-						className: ToolRow_module_css_default.bodyWrap,
-						children: [askQuestionBody !== null ? (0, react_jsx_runtime.jsx)(AskQuestionCard, { card: askQuestionBody }) : terminalBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TerminalBlock, {
-							...terminalBody.card,
-							maxLines: Infinity,
-							labels: terminalLabels,
-							className: ToolRow_module_css_default.terminalBody
-						}) : diffBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.DiffBlock, {
-							...diffBody.card,
-							labels: diffLabels,
-							maxLines: 8,
-							className: ToolRow_module_css_default.diffBody
-						}) : readBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.ReadBlock, {
-							...readBody,
-							labels: readLabels,
-							maxLines: 8,
-							className: ToolRow_module_css_default.readBody
-						}) : imageBody !== null ? (0, react_jsx_runtime.jsxs)("div", {
-							className: ToolRow_module_css_default.imageBody,
-							children: [
-								(0, react_jsx_runtime.jsx)("div", {
-									className: ToolRow_module_css_default.imageLabel,
-									children: imageBody.label
-								}),
-								renderSlot !== void 0 && loadImage !== void 0 && renderSlot("tool.call.images", {
-									images: imageBody.images,
-									loadImage,
-									align: "start"
-								}),
-								(0, react_jsx_runtime.jsx)("div", {
-									className: ToolRow_module_css_default.imageMeta,
-									children: imageBody.text
-								})
-							]
-						}) : searchBody !== null ? (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SearchBlock, {
-							...searchBody.card,
-							labels: searchLabels,
-							maxLines: 8,
-							className: ToolRow_module_css_default.searchBody
-						}), searchBody.recovery !== void 0 && (0, react_jsx_runtime.jsx)("div", {
-							className: ToolRow_module_css_default.searchRecovery,
-							children: searchBody.recovery
-						})] }) : webBody !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.WebBlock, {
-							...webBody,
-							labels: webLabels,
-							className: ToolRow_module_css_default.webBody
-						}) : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [variant === "code" && bodyText !== null && (0, react_jsx_runtime.jsx)("div", {
-							className: ToolRow_module_css_default.bodyScroll,
-							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.CodeBlock, {
-								code: bodyText,
-								lang: "typescript",
-								copyLabel: t("copy"),
-								copiedLabel: t("copied"),
-								className: ToolRow_module_css_default.codeBody
-							})
-						}), (cardBody !== null || outputText !== null) && (0, react_jsx_runtime.jsxs)("div", {
-							className: ToolRow_module_css_default.ioCard,
-							children: [
-								cardBody !== null && (0, react_jsx_runtime.jsxs)("div", {
-									className: ToolRow_module_css_default.ioSection,
-									children: [(0, react_jsx_runtime.jsx)("span", {
-										className: ToolRow_module_css_default.ioLabel,
-										children: t("row.input")
-									}), (0, react_jsx_runtime.jsx)("span", {
-										className: ToolRow_module_css_default.ioText,
-										children: cardBody
-									})]
-								}),
-								cardBody !== null && outputText !== null && (0, react_jsx_runtime.jsx)("span", {
-									className: ToolRow_module_css_default.ioDivider,
-									"aria-hidden": true
-								}),
-								outputText !== null && (0, react_jsx_runtime.jsxs)("div", {
-									className: ToolRow_module_css_default.ioSection,
-									children: [(0, react_jsx_runtime.jsx)("span", {
-										className: ToolRow_module_css_default.ioLabel,
-										children: t("row.output")
-									}), (0, react_jsx_runtime.jsx)("span", {
-										className: ToolRow_module_css_default.ioText,
-										"data-error": state === "error" || void 0,
-										children: outputText
-									})]
-								})
-							]
-						})] }), inspect !== void 0 && (0, react_jsx_runtime.jsxs)("button", {
-							type: "button",
-							className: ToolRow_module_css_default.inspectButton,
-							onClick: inspect,
-							children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconInspectOutline12, {}), t("row.inspect")]
-						})]
-					})
+					collapsedContent,
+					children: expandedContent
 				})]
 			});
-		}
+		});
 		//#endregion
 		//#region lib/types/client/tool/toolviews/GenericToolCard.js
 		/** Variant leading icons (figma table); all glyphs render at 14 inside the 16px leading box. */
 		const VARIANT_ICONS = {
-			search: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, { size: 14 }),
-			read: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, { size: 14 }),
-			bash: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutline14, { size: 14 }),
-			write: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, { size: 14 }),
-			edit: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, { size: 14 }),
-			code: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutline16, { size: 14 }),
-			others: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSparkle16, { size: 14 })
+			search: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: 14 }),
+			read: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size: 14 }),
+			bash: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutlineRegular, { size: 14 }),
+			write: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 }),
+			edit: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 }),
+			code: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 }),
+			others: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSparkleRegular, { size: 14 })
 		};
-		function GenericToolCard({ toolName, block, cwd, home, openFile, inspect, t }) {
+		function GenericToolCard({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block, cwd, home);
+			const autoReview = model.autoReviewDenial === null ? null : localizeAutoReviewDenial(model.autoReviewDenial, t);
 			const terminal = terminalCardModel(block, cwd);
 			const read = readCardModel(block, cwd, home);
 			const diff = diffCardModel(block);
@@ -1407,15 +1662,16 @@ window.__ModuleLoader__.load({
 			const state = model.state === "ok" && terminal !== null && terminalFailed(terminal) ? "error" : model.state;
 			const singleFile = model.filePath !== void 0;
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
 				icon: VARIANT_ICONS[model.variant],
 				title: t(model.titleKey),
 				summary: model.summary,
-				bodyRaw: singleFile ? null : model.bodyRaw,
-				output: model.output,
-				errorSummary: model.errorSummary,
+				bodyRaw: singleFile || autoReview !== null ? null : model.bodyRaw,
+				output: autoReview?.output ?? model.output,
+				errorSummary: autoReview?.summary ?? model.errorSummary,
 				terminal,
 				diff,
 				read,
@@ -1450,7 +1706,7 @@ window.__ModuleLoader__.load({
 			return "kind" in node ? node.call?.name ?? "" : node.name;
 		}
 		/** One atomic call dispatched through the Tool-owned keyed slot. */
-		const ToolCall = (0, react.memo)(function ToolCall({ renderSlot, callId, toolName, block, openFile, cwd, home, inspectCall, loadImage, t, children }) {
+		const ToolCall = (0, react.memo)(function ToolCall({ renderSlot, callId, toolName, block, openFile, cwd, home, inspectCall, loadImage, useDisclosure, t, children }) {
 			const owner = (0, react.useMemo)(() => ({
 				callId,
 				toolName,
@@ -1459,7 +1715,8 @@ window.__ModuleLoader__.load({
 				cwd,
 				home,
 				loadImage,
-				inspect: () => {
+				useDisclosure,
+				inspect: inspectCall === void 0 ? void 0 : () => {
 					inspectCall(callId);
 				}
 			}), [
@@ -1470,13 +1727,18 @@ window.__ModuleLoader__.load({
 				cwd,
 				home,
 				loadImage,
-				inspectCall
+				inspectCall,
+				useDisclosure
 			]);
+			const autoReviewDenied = (0, react.useMemo)(() => toolRowModel(toolName, block).autoReviewDenial !== null, [toolName, block]);
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: ToolCallTree_module_css_default.callRow,
 				"data-chat-anchor-key": `call:${callId}`,
 				"data-chat-call-id": callId,
-				children: [renderSlot("tool.call.toolview", owner, {
+				children: [autoReviewDenied ? (0, react_jsx_runtime.jsx)(GenericToolCard, {
+					...owner,
+					t
+				}) : renderSlot("tool.call.toolview", owner, {
 					entryKey: toolName,
 					fallback: (0, react_jsx_runtime.jsx)(GenericToolCard, {
 						...owner,
@@ -1485,7 +1747,7 @@ window.__ModuleLoader__.load({
 				}), children]
 			});
 		});
-		const ToolCallBranch = (0, react.memo)(function ToolCallBranch({ renderSlot, block, cwd, home, openFile, inspectCall, loadImage, t }) {
+		const ToolCallBranch = (0, react.memo)(function ToolCallBranch({ renderSlot, block, cwd, home, openFile, inspectCall, loadImage, useDisclosure, t }) {
 			return (0, react_jsx_runtime.jsx)(ToolCall, {
 				renderSlot,
 				callId: block.callId,
@@ -1495,6 +1757,7 @@ window.__ModuleLoader__.load({
 				cwd,
 				home,
 				inspectCall,
+				useDisclosure,
 				loadImage,
 				t,
 				children: block.subCalls.length > 0 ? (0, react_jsx_runtime.jsx)("div", {
@@ -1507,6 +1770,7 @@ window.__ModuleLoader__.load({
 						home,
 						openFile,
 						inspectCall,
+						useDisclosure,
 						loadImage,
 						t
 					}, child.callId))
@@ -1519,7 +1783,7 @@ window.__ModuleLoader__.load({
 		* @param props - whole-Tool owner data and the Tool-owned child-slot share.
 		* @returns the Tool call tree.
 		*/
-		function ToolCallTree({ renderSlot, node, cwd, openFile, inspectCall, loadImage, useHostInfo, t }) {
+		function ToolCallTree({ renderSlot, node, cwd, openFile, inspectCall, loadImage, useDisclosure, useHostInfo, t }) {
 			const home = useHostInfo((info) => info.home);
 			const block = node.data.root;
 			return (0, react_jsx_runtime.jsx)(ToolCallBranch, {
@@ -1529,6 +1793,7 @@ window.__ModuleLoader__.load({
 				home,
 				openFile,
 				inspectCall,
+				useDisclosure,
 				loadImage,
 				t
 			});
@@ -1628,7 +1893,7 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** Summarizes a pending, answered, cancelled, or interrupted question set. */
-		function AskQuestionRow({ toolName, block, inspect, t }) {
+		function AskQuestionRow({ toolName, block, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block);
 			const code = "kind" in block ? block.error?.code : void 0;
 			const argsRaw = ("kind" in block ? block.call?.argsRaw : block.argsRaw) ?? "";
@@ -1667,10 +1932,11 @@ window.__ModuleLoader__.load({
 				}
 			}
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQuestionOutline14, {}),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQuestionOutlineRegular, {}),
 				title: t("ask.rowTitle"),
 				summary,
 				bodyRaw: transcript === null ? model.bodyRaw : null,
@@ -1694,7 +1960,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/toolviews/bash-sample.module.css.mjs
-		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);border-radius:12px;flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{background-clip:padding-box;border:2px solid #0000;border-radius:6px}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));align-items:center;min-width:0;display:flex;position:relative;overflow:hidden}.CY-8Ka_root[data-state=running]:after{content:\"\";background:linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%, transparent 100%);pointer-events:none;width:300px;animation:2.6s ease-out infinite CY-8Ka_dsh-bash-row-sweep;position:absolute;top:0;bottom:0;left:0}@keyframes CY-8Ka_dsh-bash-row-sweep{0%{left:-300px}90%,to{left:100%}}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:var(--dsw-alias-label-secondary)}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);border-radius:12px;flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{background-clip:padding-box;border:2px solid #0000;border-radius:6px}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));align-items:center;min-width:0;display:flex}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:var(--dsw-alias-label-secondary)}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none;transition:color .1s}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.CY-8Ka_root:hover .CY-8Ka_title,.CY-8Ka_root:hover .CY-8Ka_summary:not(.CY-8Ka_errorSummary):not(.CY-8Ka_stoppedSummary){color:var(--dsw-alias-label-primary)}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId = "@deepseek-ai/dsh-client-ui-tool/bash-sample.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1708,7 +1974,6 @@ window.__ModuleLoader__.load({
 			"card": "CY-8Ka_card",
 			"chevron": "CY-8Ka_chevron",
 			"chevronHover": "CY-8Ka_chevronHover",
-			"dsh-bash-row-sweep": "CY-8Ka_dsh-bash-row-sweep",
 			"errorSummary": "CY-8Ka_errorSummary",
 			"iconIdle": "CY-8Ka_iconIdle",
 			"inspectButton": "CY-8Ka_inspectButton",
@@ -1720,6 +1985,7 @@ window.__ModuleLoader__.load({
 			"leading": "CY-8Ka_leading",
 			"root": "CY-8Ka_root",
 			"sep": "CY-8Ka_sep",
+			"stoppedSummary": "CY-8Ka_stoppedSummary",
 			"summary": "CY-8Ka_summary",
 			"terminal": "CY-8Ka_terminal",
 			"title": "CY-8Ka_title",
@@ -1727,14 +1993,8 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/tool/toolviews/bash-sample.js
-		function leadingFor(state) {
-			switch (state) {
-				case "error": return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "error" });
-				case "stopped": return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "warning" });
-				default: return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutline14, { size: 14 });
-			}
-		}
-		/** Visually hidden status — StateDot is aria-hidden; AT needs a text label. */
+		const BASH_ICON = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutlineRegular, { size: 14 });
+		/** Visually hidden status for the color-only running sweep and error tone. */
 		function stateStatus(state, t) {
 			switch (state) {
 				case "running": return t("bash.running");
@@ -1743,14 +2003,20 @@ window.__ModuleLoader__.load({
 				default: return null;
 			}
 		}
-		/** Renders expandable Bash output with an accessible lifecycle label. */
-		function BashRow({ toolName, block, sessionId, useSessions, inspect, t }) {
-			const model = toolRowModel(toolName, block);
-			const terminalModel = terminalCardModel(block, useSessions((list) => list.byId[sessionId]?.cwd));
-			const terminal = terminalModel === null ? null : localizeTerminalCardModel(terminalModel, t);
+		/**
+		* Render expandable Bash output with an accessible lifecycle label.
+		* @param props - tool call, Session sources, locale, and inspection callback.
+		* @returns the Bash output row.
+		*/
+		const BashRow = (0, react.memo)(function BashRow({ toolName, block, sessionId, useSessions, inspect, useDisclosure, t }) {
+			const model = (0, react.useMemo)(() => toolRowModel(toolName, block), [toolName, block]);
+			const cwd = useSessions((list) => list.byId[sessionId]?.cwd);
+			const terminalModel = (0, react.useMemo)(() => terminalCardModel(block, cwd), [block, cwd]);
+			const terminal = (0, react.useMemo)(() => terminalModel === null ? null : localizeTerminalCardModel(terminalModel, t), [terminalModel, t]);
+			const labels = (0, react.useMemo)(() => terminalBlockLabels(t), [t]);
 			const state = model.state === "ok" && terminalModel !== null && terminalFailed(terminalModel) ? "error" : model.state;
 			const status = stateStatus(state, t);
-			const [expanded, setExpanded] = (0, react.useState)(false);
+			const { expanded, toggle: toggleExpand } = useDisclosure();
 			const genericBody = terminal === null && (model.state === "error" || isSettledPersistentShellCall(block) || isSpilledShellCall(block)) && (model.bodyRaw !== null || model.output !== null);
 			const expandable = terminal !== null || genericBody;
 			const open = expanded && expandable;
@@ -1760,19 +2026,18 @@ window.__ModuleLoader__.load({
 				model.variant,
 				open
 			]);
-			const failureLine = model.state === "error" ? model.errorSummary : null;
-			const toggleExpand = () => {
-				setExpanded((v) => !v);
-			};
-			const toggleFromKeyboard = (event) => {
+			const normalSummary = terminal?.description ?? model.summary;
+			const settlementLine = state === "error" ? model.errorSummary ?? normalSummary : state === "stopped" ? t("bash.stopped") : null;
+			const running = state === "running";
+			const toggleFromKeyboard = (0, react.useCallback)((event) => {
 				if (!expandable || event.key !== "Enter" && event.key !== " ") return;
 				event.preventDefault();
 				toggleExpand();
-			};
-			const leading = open ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: bash_sample_module_css_default.chevron }) : expandable ? (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
+			}, [expandable, toggleExpand]);
+			const leading = open ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronUpOutlineRegular, { className: bash_sample_module_css_default.chevron }) : expandable ? (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
 				className: bash_sample_module_css_default.iconIdle,
-				children: leadingFor(state)
-			}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: clsx(bash_sample_module_css_default.chevron, bash_sample_module_css_default.chevronHover) })] }) : leadingFor(state);
+				children: BASH_ICON
+			}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: clsx(bash_sample_module_css_default.chevron, bash_sample_module_css_default.chevronHover) })] }) : BASH_ICON;
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: bash_sample_module_css_default.card,
 				children: [(0, react_jsx_runtime.jsxs)("div", {
@@ -1795,8 +2060,9 @@ window.__ModuleLoader__.load({
 							className: bash_sample_module_css_default.visuallyHidden,
 							children: status
 						}),
-						(0, react_jsx_runtime.jsx)("span", {
+						(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
 							className: bash_sample_module_css_default.title,
+							active: running,
 							children: t(model.titleKey)
 						}),
 						(0, react_jsx_runtime.jsx)("span", {
@@ -1804,8 +2070,11 @@ window.__ModuleLoader__.load({
 							"aria-hidden": true
 						}),
 						(0, react_jsx_runtime.jsx)("span", {
-							className: clsx(bash_sample_module_css_default.summary, failureLine !== null && bash_sample_module_css_default.errorSummary),
-							children: failureLine ?? terminal?.description ?? model.summary
+							className: clsx(bash_sample_module_css_default.summary, state === "error" && bash_sample_module_css_default.errorSummary, state === "stopped" && bash_sample_module_css_default.stoppedSummary),
+							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+								active: running,
+								children: settlementLine ?? normalSummary
+							})
 						})
 					]
 				}), open && (0, react_jsx_runtime.jsxs)("div", {
@@ -1813,7 +2082,7 @@ window.__ModuleLoader__.load({
 					children: [terminal !== null ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TerminalBlock, {
 						...terminal.card,
 						maxLines: Infinity,
-						labels: terminalBlockLabels(t),
+						labels,
 						className: bash_sample_module_css_default.terminal
 					}) : (0, react_jsx_runtime.jsxs)("div", {
 						className: bash_sample_module_css_default.ioCard,
@@ -1848,11 +2117,11 @@ window.__ModuleLoader__.load({
 						type: "button",
 						className: bash_sample_module_css_default.inspectButton,
 						onClick: inspect,
-						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconInspectOutline12, {}), t("row.inspect")]
+						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconInspectOutlineRegular, {}), t("row.inspect")]
 					})]
 				})]
 			});
-		}
+		});
 		/** Registers the standalone Bash conversation-row sample. */
 		const bashToolviewSample = {
 			name: "bash-toolview-sample",
@@ -1870,14 +2139,15 @@ window.__ModuleLoader__.load({
 		/**
 		* Lets users expand an applied file diff and open the reported path.
 		*/
-		function FileMutationRow({ toolName, block, cwd, home, openFile, inspect, t }) {
+		function FileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block, cwd, home);
 			const diff = diffCardModel(block);
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, { size: 14 }),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 }),
 				title: t(model.titleKey),
 				summary: model.summary,
 				output: model.output,
@@ -1917,13 +2187,14 @@ window.__ModuleLoader__.load({
 		* @param card - the card props this row owns.
 		* @returns the assembled ToolRow.
 		*/
-		function readFamilyRow({ toolName, block, cwd, home, openFile, inspect, t }, card) {
+		function readFamilyRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }, card) {
 			const model = toolRowModel(toolName, block, cwd, home);
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, { size: 14 }),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size: 14 }),
 				title: t(model.titleKey),
 				summary: model.summary,
 				bodyRaw: null,
@@ -2176,14 +2447,15 @@ window.__ModuleLoader__.load({
 			glob: "tool.title.glob"
 		};
 		/** Lets users expand grep or glob results and recover capped searches. */
-		function SearchRow({ toolName, block, inspect, t }) {
+		function SearchRow({ toolName, block, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block);
 			const search = searchCardModel(block);
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, { size: 14 }),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: 14 }),
 				title: t(toolName === "grep" ? SEARCH_TITLE_KEYS.grep : toolName === "glob" ? SEARCH_TITLE_KEYS.glob : model.titleKey),
 				summary: model.summary,
 				output: model.output,
@@ -2212,6 +2484,1440 @@ window.__ModuleLoader__.load({
 				});
 			}
 		};
+		//#endregion
+		//#region lib/types/client/tool/models/detail-model-shared.js
+		/**
+		* Narrow parsed JSON to an object record.
+		* @param value - Parsed result or argument value.
+		* @returns Whether named fields can be read.
+		*/
+		function detailRecord(value) {
+			return typeof value === "object" && value !== null && !Array.isArray(value);
+		}
+		/**
+		* Check a recorded string field that must contain visible text.
+		* @param value - Parsed field value.
+		* @returns Whether the field is a non-empty string after trimming.
+		*/
+		function nonempty(value) {
+			return typeof value === "string" && value.trim() !== "";
+		}
+		/**
+		* Decode an entire JSON result without accepting a partial prefix.
+		* @param text - Recorded text.
+		* @returns Parsed JSON, or undefined for non-JSON output.
+		*/
+		function detailJson(text) {
+			try {
+				return JSON.parse(text);
+			} catch {
+				return;
+			}
+		}
+		const STATUS_KEYS = {
+			running: "detail.status.running",
+			idle: "detail.status.idle",
+			ready: "detail.status.ready",
+			inactive: "detail.status.inactive",
+			provisioning: "detail.status.provisioning",
+			failed: "detail.status.failed",
+			error: "detail.status.failed",
+			completed: "detail.status.completed",
+			complete: "detail.status.completed",
+			done: "detail.status.completed",
+			pending: "detail.todo.pending",
+			in_progress: "detail.todo.in_progress",
+			deleted: "detail.status.deleted",
+			killed: "detail.status.killed",
+			blocked: "detail.goal.blocked",
+			accepted: "detail.status.accepted",
+			queued: "detail.status.queued"
+		};
+		/**
+		* Give a recorded status its localized name and a static semantic color.
+		* @param status - Result status, retained verbatim when the vocabulary is unknown.
+		* @param t - Conversation translator.
+		* @returns A badge that does not imply a live subscription.
+		*/
+		function detailBadge(status, t) {
+			const key = Object.hasOwn(STATUS_KEYS, status) ? STATUS_KEYS[status] : void 0;
+			const tone = [
+				"completed",
+				"complete",
+				"done",
+				"accepted"
+			].includes(status) ? "success" : ["failed", "error"].includes(status) ? "error" : [
+				"blocked",
+				"killed",
+				"pending",
+				"queued",
+				"inactive"
+			].includes(status) ? "warning" : [
+				"running",
+				"in_progress",
+				"provisioning"
+			].includes(status) ? "info" : "neutral";
+			return {
+				label: key === void 0 ? status : t(key),
+				tone
+			};
+		}
+		const FIELD_KEYS = {
+			id: "detail.field.id",
+			revision: "detail.field.revision",
+			platform: "detail.field.platform",
+			provider: "detail.field.provider",
+			model: "detail.field.model",
+			role: "detail.field.role",
+			context: "detail.field.context",
+			ownerName: "detail.field.owner",
+			ready: "detail.field.ready",
+			blockedBy: "detail.field.dependencies",
+			writeScopes: "detail.field.writeScopes",
+			writeScopeWarnings: "detail.field.warnings",
+			diagnostics: "detail.field.diagnostics",
+			methods: "detail.field.methods",
+			inputSchema: "detail.field.inputSchema",
+			outputSchema: "detail.field.outputSchema",
+			currentPackageId: "detail.field.currentPackage",
+			nextPackageId: "detail.field.nextPackage",
+			latestRun: "detail.field.latestRun",
+			packages: "detail.field.packages",
+			registrations: "detail.field.registrations",
+			props: "detail.field.props",
+			data: "detail.field.data",
+			source: "detail.field.source",
+			arguments: "row.input",
+			content: "detail.field.content",
+			message: "detail.field.message",
+			messageId: "detail.field.messageId",
+			status: "detail.state",
+			root: "detail.field.root",
+			pid: "detail.field.pid",
+			type: "detail.field.type",
+			time: "detail.field.time",
+			seq: "detail.field.seq",
+			turn: "detail.field.turn",
+			step: "detail.field.step",
+			callId: "detail.field.callId",
+			agentsStarted: "detail.field.agents",
+			output: "row.output",
+			result: "detail.field.result"
+		};
+		/**
+		* Name a known tool field while preserving extension-owned field names.
+		* @param key - Recorded JSON property name.
+		* @param t - Conversation translator.
+		* @returns Localized known label or the original property name.
+		*/
+		function detailLabel(key, t) {
+			const label = Object.hasOwn(FIELD_KEYS, key) ? FIELD_KEYS[key] : void 0;
+			return label === void 0 ? key : t(label);
+		}
+		function scalar(value, t) {
+			if (value === null) return t("detail.none");
+			if (typeof value === "boolean") return t(value ? "detail.yes" : "detail.no");
+			return typeof value === "string" ? value : JSON.stringify(value);
+		}
+		const INSPECTION_KEY_ORDER = [
+			"subject",
+			"title",
+			"name",
+			"pluginId",
+			"packageId",
+			"id",
+			"summary"
+		];
+		const INSPECTION_DETAIL_KEYS = ["description", "purpose"];
+		const MAX_INSPECTION_ITEMS = 40;
+		/**
+		* Project open inspection records into readable fields and named disclosures.
+		* @param value - Parsed JSON, including provider-owned extension fields.
+		* @param t - Conversation translator.
+		* @param depth - Current disclosure depth; deeper records remain available as code.
+		* @returns Entity rows preserving the order of visible values.
+		*/
+		function inspectionItems(value, t, depth = 0) {
+			if (depth > 4 && value !== null && typeof value === "object") return [{
+				code: {
+					text: JSON.stringify(value, null, 2),
+					language: "json"
+				},
+				fields: []
+			}];
+			if (Array.isArray(value)) {
+				const items = value.slice(0, MAX_INSPECTION_ITEMS).flatMap((entry) => inspectionItems(entry, t, depth + 1));
+				if (value.length > MAX_INSPECTION_ITEMS) items.push({
+					description: t("detail.moreInInspect", { count: value.length - MAX_INSPECTION_ITEMS }),
+					fields: []
+				});
+				return items.length === 0 ? [{
+					description: t("detail.empty"),
+					fields: []
+				}] : items;
+			}
+			if (!detailRecord(value)) return [{
+				description: scalar(value, t),
+				fields: []
+			}];
+			const titleKey = INSPECTION_KEY_ORDER.find((key) => typeof value[key] === "string" && value[key] !== "");
+			const descriptionKey = INSPECTION_DETAIL_KEYS.find((key) => typeof value[key] === "string" && value[key] !== "");
+			const title = titleKey === void 0 ? void 0 : String(value[titleKey]);
+			const fields = [];
+			const groups = [];
+			for (const [key, field] of Object.entries(value)) {
+				if (key === titleKey || key === descriptionKey || key === "status" && typeof field === "string") continue;
+				if (key === "inputSchema" || key === "outputSchema") {
+					groups.push({
+						label: detailLabel(key, t),
+						items: [{
+							fields: [],
+							code: {
+								text: JSON.stringify(field, null, 2),
+								language: "json"
+							}
+						}]
+					});
+					continue;
+				}
+				if (Array.isArray(field) && field.length === 0) continue;
+				if (key === "arguments" && typeof field === "string") {
+					const args = detailJson(field);
+					if (detailRecord(args)) {
+						groups.push({
+							label: detailLabel(key, t),
+							items: inspectionItems(args, t, depth + 1)
+						});
+						continue;
+					}
+				}
+				if (field !== null && typeof field === "object") groups.push({
+					label: detailLabel(key, t),
+					items: inspectionItems(field, t, depth + 1)
+				});
+				else fields.push({
+					label: detailLabel(key, t),
+					value: scalar(field, t)
+				});
+			}
+			return [{
+				...title === void 0 && typeof value.status !== "string" ? {} : { title: title ?? t("detail.field.result") },
+				...descriptionKey === void 0 ? {} : { description: String(value[descriptionKey]) },
+				...typeof value.status === "string" ? { badge: detailBadge(value.status, t) } : {},
+				fields,
+				...groups.length === 0 ? {} : { groups }
+			}];
+		}
+		/**
+		* Give a result list consistent historical context and empty-state copy.
+		* @param items - Recorded result rows.
+		* @param summary - Collapsed-row summary.
+		* @param t - Conversation translator.
+		* @returns A complete compact detail model.
+		*/
+		function detailList(items, summary, t) {
+			return {
+				items,
+				summary,
+				caption: t("detail.recordedResult"),
+				empty: t("detail.empty")
+			};
+		}
+		//#endregion
+		//#region lib/types/client/tool/models/control-details-model.js
+		const OUTPUT_TRUNCATED = "\n[output truncated]";
+		function arg(args, key) {
+			const value = args[key];
+			return typeof value === "string" ? value : "";
+		}
+		function receipt(title, badge, t, fields = [], description) {
+			return {
+				...detailList([{
+					title,
+					badge,
+					fields,
+					...description === void 0 ? {} : { description }
+				}], `${title} · ${badge.label}`, t),
+				expandedSummary: title
+			};
+		}
+		function agentList(text, json, t) {
+			if (Array.isArray(json)) return detailList(inspectionItems(json, t), t("detail.agents.count", { count: json.length }), t);
+			if (text === "(no subagents)") return detailList([], t("detail.agents.count", { count: 0 }), t);
+			const items = [];
+			for (const line of text.split("\n")) {
+				const match = /^(\S+) \[([^\]]+)\](?: parent=(\S+) depth=(\d+))?(?: — (.*))?$/u.exec(line);
+				if (match === null) return null;
+				const [, id, state, parent, depth, title] = match;
+				if (id === void 0 || state === void 0) return null;
+				items.push({
+					title: title ?? id,
+					...title === void 0 ? {} : { subtitle: id },
+					badge: detailBadge(state, t),
+					fields: parent === void 0 ? [] : [{
+						label: t("detail.field.parent"),
+						value: parent
+					}, {
+						label: t("detail.field.depth"),
+						value: depth ?? ""
+					}]
+				});
+			}
+			return detailList(items, t("detail.agents.count", { count: items.length }), t);
+		}
+		function jobList(text, t) {
+			if (text === "(no background jobs)") return detailList([], t("detail.jobs.count", { count: 0 }), t);
+			const items = [];
+			for (const line of text.split("\n")) {
+				const match = /^(\S+) \[([^\]]+)\] (\S+) — (.*)$/u.exec(line);
+				if (match === null) return null;
+				const [, id, kind, state, title] = match;
+				if (id === void 0 || kind === void 0 || state === void 0 || title === void 0) return null;
+				items.push({
+					title,
+					subtitle: id,
+					badge: detailBadge(state, t),
+					fields: [{
+						label: t("detail.field.type"),
+						value: kind
+					}]
+				});
+			}
+			return detailList(items, t("detail.jobs.count", { count: items.length }), t);
+		}
+		function terminalList(text, t) {
+			if (text === "(no terminal sessions)") return detailList([], t("detail.terminals.count", { count: 0 }), t);
+			const items = [];
+			for (const line of text.split("\n")) {
+				const match = /^(\S+)(?: \((.*?)\))? \[([^\]]+)\] (running|exited code=(\S+) signal=(\S+))(?: pid=(\d+))?$/u.exec(line);
+				if (match === null) return null;
+				const [, id, name, type, state, exitCode, signal, pid] = match;
+				if (id === void 0 || type === void 0 || state === void 0) return null;
+				const fields = [{
+					label: t("detail.field.type"),
+					value: type
+				}];
+				if (pid !== void 0) fields.push({
+					label: t("detail.field.pid"),
+					value: pid
+				});
+				if (exitCode !== void 0) fields.push({
+					label: t("detail.field.exitCode"),
+					value: exitCode
+				});
+				if (signal !== void 0 && signal !== "null") fields.push({
+					label: t("detail.field.signal"),
+					value: signal
+				});
+				items.push({
+					title: name ?? id,
+					...name === void 0 ? {} : { subtitle: id },
+					badge: state === "running" ? detailBadge("running", t) : {
+						label: t("detail.status.exited"),
+						tone: exitCode === "0" ? "success" : "neutral"
+					},
+					fields
+				});
+			}
+			return detailList(items, t("detail.terminals.count", { count: items.length }), t);
+		}
+		function lspDetails(args, text, t) {
+			const file = arg(args, "file_path");
+			const operation = arg(args, "operation");
+			if (file === "" || typeof args.line !== "number" || typeof args.character !== "number") return null;
+			const source = `${file}:${args.line}:${args.character}`;
+			if (operation === "hover") return detailList([{
+				title: source,
+				location: {
+					path: file,
+					line: args.line
+				},
+				markdown: text,
+				fields: []
+			}], source, t);
+			if (text === "No results.") return detailList([], t("detail.locations.count", { count: 0 }), t);
+			const items = [];
+			for (const line of text.split("\n")) {
+				if (line.startsWith("… ")) {
+					items.push({
+						description: line,
+						fields: []
+					});
+					continue;
+				}
+				const match = /^(.*):(\d+):(\d+)$/u.exec(line);
+				if (match === null) return null;
+				const [, path, row, column] = match;
+				if (path === void 0 || row === void 0 || column === void 0) return null;
+				const isUri = /^[a-z][a-z\d+.-]*:/iu.test(path) && !/^[a-z]:[\\/]/iu.test(path);
+				items.push({
+					title: path,
+					subtitle: t("detail.location", {
+						line: row,
+						column
+					}),
+					fields: [],
+					...isUri ? {} : { location: {
+						path,
+						line: Number(row)
+					} }
+				});
+			}
+			const count = items.filter((item) => item.title !== void 0).length;
+			return detailList(items, `${file} · ${t("detail.locations.count", { count })}`, t);
+		}
+		/**
+		* Derive entity lists and operation receipts from supported recorded output formats.
+		* @param name - Wire tool name, including Team-scoped aliases.
+		* @param args - Parsed recorded arguments.
+		* @param text - Successful recorded result text.
+		* @param json - Parsed whole-result JSON, or undefined for non-JSON text.
+		* @param t - Conversation translator.
+		* @returns Compact details, or null when the output format is not recognized.
+		*/
+		function controlDetails(name, args, text, json, t) {
+			const target = arg(args, "target") || arg(args, "agent_id") || arg(args, "sessionId") || arg(args, "job_id");
+			switch (name) {
+				case "list_agents": return agentList(text, json, t);
+				case "job_list": return jobList(text, t);
+				case "terminal_list": return terminalList(text, t);
+				case "lsp": return lspDetails(args, text, t);
+				case "spawn_teammate":
+					if (!detailRecord(json) || !detailRecord(json.member)) return null;
+					return detailList(inspectionItems(json.member, t), arg(args, "name"), t);
+				case "team_task_create":
+				case "team_task_get":
+				case "team_task_update":
+					if (!detailRecord(json) || typeof json.subject !== "string") return null;
+					return detailList(inspectionItems(json, t), json.subject, t);
+				case "team_task_list":
+					if (!detailRecord(json) || !Array.isArray(json.tasks)) return null;
+					if (json.nextCursor !== void 0 && typeof json.nextCursor !== "number") return null;
+					return {
+						...detailList(inspectionItems(json.tasks, t), t("detail.tasks.count", { count: json.tasks.length }), t),
+						...json.nextCursor === void 0 ? {} : { caption: t("detail.tasks.nextPage", { cursor: String(json.nextCursor) }) }
+					};
+				case "send_message": {
+					const status = detailRecord(json) ? json.status : void 0;
+					if (status === "accepted" || status === "queued") return receipt(target, {
+						label: t(status === "queued" ? "detail.status.queued" : "detail.receipt.delivered"),
+						tone: status === "queued" ? "warning" : "success"
+					}, t, [], arg(args, "message"));
+					return text === `message delivered to agent ${target}` ? receipt(target, {
+						label: t("detail.receipt.delivered"),
+						tone: "success"
+					}, t, [], arg(args, "message")) : null;
+				}
+				case "interrupt_agent":
+					if (detailRecord(json) && typeof json.previousStatus === "string") return receipt(target, {
+						label: t("detail.receipt.interrupt"),
+						tone: "warning"
+					}, t, [{
+						label: t("detail.field.previousStatus"),
+						value: detailBadge(json.previousStatus, t).label
+					}]);
+					return text === `interrupt requested for agent ${target}` ? receipt(target, {
+						label: t("detail.receipt.interrupt"),
+						tone: "warning"
+					}, t) : null;
+				case "wait_agent":
+					if (!detailRecord(json) || typeof json.timedOut !== "boolean") return null;
+					if (detailRecord(json.noProgress) && typeof json.noProgress.message === "string") return detailList([{
+						title: t("detail.wait.noProgress"),
+						description: json.noProgress.message,
+						fields: []
+					}], t("detail.wait.noProgress"), t);
+					return receipt(t("detail.wait.title"), {
+						label: t(json.timedOut ? "detail.wait.timeout" : "detail.wait.changed"),
+						tone: "neutral"
+					}, t);
+				case "subagent": {
+					const started = /^started (background subagent job|subagent) (\S+)$/u.exec(text);
+					if (started !== null) return receipt(arg(args, "prompt"), {
+						label: t("detail.receipt.started"),
+						tone: "info"
+					}, t, [{
+						label: t(started[1] === "subagent" ? "detail.field.agent" : "detail.field.job"),
+						value: started[2] ?? ""
+					}]);
+					return detailList([{
+						title: t("detail.agent.reply"),
+						markdown: text,
+						fields: [],
+						groups: [{
+							label: t("detail.field.task"),
+							items: [{
+								description: arg(args, "prompt"),
+								fields: []
+							}]
+						}]
+					}], t("detail.agent.reply"), t);
+				}
+				case "list_subagent_models": return detailList(text.split("\n").map((line) => {
+					const split = line.indexOf(" — ");
+					return split < 0 ? {
+						description: line,
+						fields: []
+					} : {
+						title: line.slice(0, split),
+						description: line.slice(split + 3),
+						fields: []
+					};
+				}), arg(args, "model") || arg(args, "provider") || t("detail.models.title"), t);
+				case "job_output": {
+					const match = /\n\[status: ([^,\]\n]+)(?:, ([^\]\n]+))?\]$/u.exec(text);
+					if (match === null || match[1] === void 0) return null;
+					const output = text.slice(0, match.index);
+					const truncated = output.endsWith(OUTPUT_TRUNCATED);
+					const code = truncated ? output.slice(0, -19) : output;
+					const description = [match[2], truncated ? t("detail.output.truncated") : void 0].filter((value) => value !== void 0).join(" · ");
+					return {
+						...detailList([{
+							title: target,
+							badge: detailBadge(match[1], t),
+							fields: [],
+							...description === "" ? {} : { description },
+							code: { text: code }
+						}], `${target} · ${detailBadge(match[1], t).label}`, t),
+						expandedSummary: target
+					};
+				}
+				case "job_kill":
+					if (text === `requested cancellation of job ${target}`) return receipt(target, {
+						label: t("detail.receipt.cancel"),
+						tone: "warning"
+					}, t, [], arg(args, "reason"));
+					if (text.startsWith(`job ${target} had already finished `)) return receipt(target, {
+						label: t("detail.receipt.alreadyFinished"),
+						tone: "neutral"
+					}, t);
+					return null;
+				case "terminal_open": {
+					const match = /^started terminal session (\S+)(?: \((.*?)\))? \[type: ([^\]]+)\]\n([\s\S]*)$/u.exec(text);
+					if (match === null || match[1] === void 0 || match[3] === void 0 || match[4] === void 0) return null;
+					return detailList([{
+						title: match[2] ?? match[1],
+						...match[2] === void 0 ? {} : { subtitle: match[1] },
+						badge: {
+							label: t("detail.receipt.started"),
+							tone: "info"
+						},
+						fields: [{
+							label: t("detail.field.type"),
+							value: match[3]
+						}],
+						code: { text: match[4] }
+					}], match[2] ?? match[1], t);
+				}
+				case "terminal_read": {
+					const match = /\n\[lines: (\d+)-(\d+) of (\d+)\](\n\[output truncated\])?$/u.exec(text);
+					if (match === null) return null;
+					return detailList([{
+						title: target,
+						subtitle: t("detail.output.lines", {
+							begin: match[1] ?? "",
+							end: match[2] ?? "",
+							total: match[3] ?? ""
+						}),
+						fields: [],
+						code: { text: text.slice(0, match.index) },
+						...match[4] === void 0 ? {} : { description: t("detail.output.truncated") }
+					}], target, t);
+				}
+				case "terminal_signal": {
+					const match = /^delivered (\S+) to foreground process group (\d+)$/u.exec(text);
+					if (match === null || match[1] === void 0 || match[2] === void 0) return null;
+					return receipt(target, {
+						label: t("detail.receipt.signal"),
+						tone: "success"
+					}, t, [{
+						label: t("detail.field.signal"),
+						value: match[1]
+					}, {
+						label: t("detail.field.processGroup"),
+						value: match[2]
+					}]);
+				}
+				case "terminal_close":
+					if (text === `closed terminal session ${target}`) return receipt(target, {
+						label: t("detail.receipt.closed"),
+						tone: "neutral"
+					}, t);
+					if (text === `terminal session ${target} was already closing`) return receipt(target, {
+						label: t("detail.receipt.closing"),
+						tone: "neutral"
+					}, t);
+					return null;
+				default: return null;
+			}
+		}
+		//#endregion
+		//#region lib/types/client/tool/models/inspection-details-model.js
+		function dateText(value, locale) {
+			const date = new Date(value);
+			if (!Number.isFinite(date.getTime())) return String(value);
+			try {
+				return new Intl.DateTimeFormat(locale, {
+					dateStyle: "medium",
+					timeStyle: "short"
+				}).format(date);
+			} catch {
+				return String(value);
+			}
+		}
+		function cordisDetails(name, args, value, t) {
+			if (!detailRecord(value)) return null;
+			if (name === "cordis_inspect_list") {
+				if (!Array.isArray(value.providers)) return null;
+				return detailList(inspectionItems(value.providers, t), t("detail.providers.count", { count: value.providers.length }), t);
+			}
+			if (name === "cordis_inspect_query") {
+				if (!("data" in value) || typeof value.provider !== "string" || typeof value.method !== "string") return null;
+				return detailList(inspectionItems(value.data, t), `${value.provider}.${value.method}`, t);
+			}
+			if (name === "cordis_inspect_self") {
+				if (Array.isArray(value.plugins)) return detailList(inspectionItems(value.plugins, t), t("detail.plugins.count", { count: value.plugins.length }), t);
+				return detailList(inspectionItems(value, t), String(args.pluginId ?? args.packageId ?? value.mode), t);
+			}
+			return null;
+		}
+		function workflowDetails(name, args, text, t) {
+			if (name === "workflow") {
+				const match = /^workflow "([\s\S]*?)" completed \((\d+) agents?\)\.\nReturn value:\n([\s\S]*)$/u.exec(text);
+				if (match === null || match[1] === void 0 || match[2] === void 0 || match[3] === void 0) return null;
+				const value = detailJson(match[3]);
+				if (value === void 0) return null;
+				return detailList([{
+					title: match[1],
+					badge: {
+						label: t("detail.status.completed"),
+						tone: "success"
+					},
+					fields: [{
+						label: t("detail.field.agents"),
+						value: match[2]
+					}],
+					...typeof args.code === "string" ? { groups: [{
+						label: t("detail.workflow.script"),
+						items: [{
+							fields: [],
+							code: {
+								text: args.code,
+								language: "javascript"
+							}
+						}]
+					}] } : {}
+				}, ...inspectionItems(value, t)], match[1], t);
+			}
+			const split = text.indexOf("\nFinal report:\n");
+			if (split < 0) return null;
+			const header = text.slice(0, split);
+			const rounds = /\b(\d+) rounds?\b/u.exec(header)?.[1];
+			const report = detailJson(text.slice(split + 15));
+			if (!detailRecord(report) || typeof report.summary !== "string" || !Array.isArray(report.evidence) || !report.evidence.every((value) => typeof value === "string") || !Array.isArray(report.nextSteps) || !report.nextSteps.every((value) => typeof value === "string") || typeof report.blocker !== "string") return null;
+			const badge = header.startsWith("Ralph worker reported completion ") ? {
+				label: t("detail.ralph.reportedComplete"),
+				tone: "success"
+			} : header.startsWith("Ralph worker reported a blocker ") ? {
+				label: t("detail.ralph.reportedBlocker"),
+				tone: "warning"
+			} : header.startsWith("Ralph reached its ") ? {
+				label: t("detail.ralph.limit"),
+				tone: "warning"
+			} : void 0;
+			if (badge === void 0) return null;
+			const groups = [];
+			if (report.nextSteps.length > 0) groups.push({
+				label: t("detail.report.nextSteps"),
+				items: [{
+					fields: [],
+					lines: report.nextSteps
+				}]
+			});
+			if (typeof args.objective === "string") groups.push({
+				label: t("detail.field.task"),
+				items: [{
+					fields: [],
+					description: args.objective
+				}]
+			});
+			const fields = rounds === void 0 ? [] : [{
+				label: t("detail.goal.rounds"),
+				value: rounds
+			}];
+			if (report.blocker !== "") fields.push({
+				label: t("detail.goal.reason"),
+				value: report.blocker
+			});
+			return detailList([{
+				title: report.summary,
+				badge,
+				fields,
+				...report.evidence.length === 0 ? {} : { lines: report.evidence },
+				groups
+			}], report.summary, t);
+		}
+		const TRACE_FIELDS = {
+			Created: "detail.field.time",
+			Availability: "detail.field.availability",
+			Parent: "detail.field.parent",
+			"Best match": "detail.field.bestMatch",
+			Target: "detail.field.target",
+			"Replaced by": "detail.trace.replacedBy",
+			"Replacement chain": "detail.trace.replacementChain",
+			"Events replaced by target": "detail.trace.replaces",
+			"Events cited directly as sources": "detail.trace.sources",
+			"Direct derived events": "detail.trace.derived"
+		};
+		function textFields(text, t, locale) {
+			return text.split("\n").flatMap((line) => {
+				const match = /^\s*([^:]+): (.+)$/u.exec(line);
+				if (match === null || match[1] === void 0 || match[2] === void 0) return [];
+				const key = Object.hasOwn(TRACE_FIELDS, match[1]) ? TRACE_FIELDS[match[1]] : void 0;
+				if (key === void 0) return [];
+				return [{
+					label: t(key),
+					value: match[1] === "Created" ? dateText(match[2], locale) : match[2] === "none" ? t("detail.none") : match[2]
+				}];
+			});
+		}
+		function searchDetails(name, text, t, locale) {
+			if (text === "No prior session matches found." || text.endsWith("\n\nNo prior event matches found.")) return detailList([], t("detail.matches.count", { count: 0 }), t);
+			const blocks = text.split(/\n(?=\d+\. )/u).filter((block) => /^\d+\. /u.test(block));
+			if (blocks.length === 0) return null;
+			const items = [];
+			for (const block of blocks) {
+				const snippet = /\n\s*Snippet: ([\s\S]*?)(?:\n\nResult cap reached\.|$)/u.exec(block)?.[1];
+				if (name === "session_search") {
+					const match = /^\d+\. Session (\S+) — (.*)/u.exec(block);
+					if (match === null || match[1] === void 0 || match[2] === void 0) return null;
+					items.push({
+						title: match[2],
+						subtitle: match[1],
+						...snippet === void 0 ? {} : { description: snippet.trimEnd() },
+						fields: textFields(block, t, locale)
+					});
+				} else {
+					const match = /^\d+\. seq (\d+) \| ([^|]+) \| ([^|]+) \| ([^\n]+)/u.exec(block);
+					if (match === null || match[1] === void 0 || match[2] === void 0 || match[3] === void 0 || match[4] === void 0) return null;
+					items.push({
+						title: snippet?.trimEnd() ?? match[2],
+						subtitle: `${match[2].trim()} · #${match[1]}`,
+						fields: [{
+							label: t("detail.field.time"),
+							value: dateText(match[4], locale)
+						}, {
+							label: t("detail.field.surface"),
+							value: match[3].trim()
+						}]
+					});
+				}
+			}
+			return {
+				...detailList(items, t("detail.matches.count", { count: items.length }), t),
+				...text.includes("Result cap reached.") ? { caption: t("detail.matches.capped") } : {}
+			};
+		}
+		function eventReadDetails(text, t, locale) {
+			const match = /^Session (\S+) — ([^\n]*)\nTarget event seq (\d+):\n```json\n([\s\S]*?)\n```([\s\S]*)$/u.exec(text);
+			if (match === null || match[1] === void 0 || match[2] === void 0 || match[3] === void 0 || match[4] === void 0) return null;
+			const event = detailJson(match[4]);
+			if (!detailRecord(event) || typeof event.type !== "string" || !detailRecord(event.data)) return null;
+			const fields = [{
+				label: t("detail.field.seq"),
+				value: match[3]
+			}];
+			if (typeof event.time === "number") fields.push({
+				label: t("detail.field.time"),
+				value: dateText(event.time, locale)
+			});
+			const groups = [];
+			const adjacent = match[5]?.trim();
+			if (adjacent) groups.push({
+				label: t("detail.event.neighbors"),
+				items: [{
+					fields: [],
+					description: adjacent
+				}]
+			});
+			return detailList([
+				{
+					title: event.type,
+					subtitle: `${match[2]} · ${match[1]}`,
+					fields
+				},
+				...inspectionItems(event.data, t),
+				...groups.length === 0 ? [] : [{
+					fields: [],
+					groups
+				}]
+			], `${event.type} · #${match[3]}`, t);
+		}
+		function traceDetails(name, text, t, locale) {
+			const match = /^Session (\S+) — ([^\n]*)\n([\s\S]*)$/u.exec(text);
+			if (match === null || match[1] === void 0 || match[2] === void 0 || match[3] === void 0) return null;
+			if (name === "session_event_trace") return detailList([{
+				title: match[2],
+				subtitle: match[1],
+				fields: textFields(match[3], t, locale)
+			}], match[2], t);
+			const sections = match[3].split("\n\n");
+			const items = [{
+				title: match[2],
+				subtitle: match[1],
+				fields: textFields(sections[0] ?? "", t, locale)
+			}];
+			for (const section of sections.slice(1)) {
+				const firstBreak = section.indexOf("\n");
+				const label = section.startsWith("Ancestors (nearest first):") ? t("detail.trace.ancestors") : section.startsWith("Descendants:") ? t("detail.trace.descendants") : void 0;
+				if (label === void 0 || firstBreak < 0) return null;
+				const body = section.slice(firstBreak + 1);
+				items.push({
+					title: label,
+					fields: [],
+					...body === "- none" || body === "- none (target is a root session)" ? { description: t("detail.none") } : { lines: body.split("\n").map((line) => line.replace(/^(\s*)- /u, "$1")) }
+				});
+			}
+			return detailList(items, match[2], t);
+		}
+		/**
+		* Present successful inspection, query, and workflow text as named records.
+		* @param name - Wire tool name.
+		* @param args - Recorded argument object.
+		* @param text - Recorded result text.
+		* @param json - Parsed whole-result JSON, or undefined for non-JSON text.
+		* @param t - Conversation translator.
+		* @param locale - Date display locale.
+		* @returns Structured details, or null when an output format is unknown.
+		*/
+		function inspectionDetails(name, args, text, json, t, locale) {
+			if (hasSpillNotice(text)) return null;
+			switch (name) {
+				case "cordis_inspect_list":
+				case "cordis_inspect_query":
+				case "cordis_inspect_self": return cordisDetails(name, args, json, t);
+				case "workflow":
+				case "ralph": return workflowDetails(name, args, text, t);
+				case "session_search":
+				case "session_event_search": return searchDetails(name, text, t, locale);
+				case "session_event_read": return eventReadDetails(text, t, locale);
+				case "session_trace":
+				case "session_event_trace": return traceDetails(name, text, t, locale);
+				default: return null;
+			}
+		}
+		//#endregion
+		//#region lib/types/client/tool/models/details-card-model.js
+		function count(value) {
+			return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+		}
+		function formatDate(date, locale, fallback) {
+			try {
+				return new Intl.DateTimeFormat(locale, {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+					second: "2-digit",
+					timeZoneName: "short"
+				}).format(date);
+			} catch {
+				return fallback;
+			}
+		}
+		/**
+		* Derive the compact todo list from a todo_write call.
+		* @param args - Parsed todo_write arguments.
+		* @param t - Conversation dictionary translator.
+		* @returns Localized todo details, or null for unsupported input.
+		*/
+		function todosDetail(args, t) {
+			if (!Array.isArray(args.todos)) return null;
+			const items = [];
+			const seen = /* @__PURE__ */ new Set();
+			for (const todo of args.todos) {
+				if (!detailRecord(todo) || !nonempty(todo.content)) return null;
+				const status = todo.status;
+				if (status !== "completed" && status !== "in_progress" && status !== "pending") return null;
+				const title = todo.content.trim();
+				if (seen.has(title)) return null;
+				seen.add(title);
+				items.push({
+					title,
+					status: {
+						value: status,
+						label: t(`detail.todo.${status}`)
+					},
+					fields: []
+				});
+			}
+			return {
+				items,
+				empty: t("detail.todo.empty")
+			};
+		}
+		function goalDetail(value, t) {
+			if (!detailRecord(value)) return null;
+			if (value.goal === null) return {
+				items: [],
+				empty: t("detail.goal.empty")
+			};
+			const goal = value.goal;
+			if (!detailRecord(goal) || !nonempty(goal.id) || !nonempty(goal.objective) || !count(goal.revision) || !count(goal.roundsStarted) || !count(goal.maxGoalRounds)) return null;
+			const phase = goal.phase;
+			if (phase !== "active" && phase !== "paused" && phase !== "blocked" && phase !== "complete") return null;
+			if (value.activation !== "armed" && value.activation !== "disarmed") return null;
+			const fields = [{
+				label: t("detail.state"),
+				value: t(phase === "active" && value.activation === "disarmed" ? "detail.goal.disarmed" : `detail.goal.${phase}`)
+			}, {
+				label: t("detail.goal.rounds"),
+				value: `${goal.roundsStarted} / ${goal.maxGoalRounds}`
+			}];
+			if (goal.blockedReason !== void 0) {
+				if (!detailRecord(goal.blockedReason) || !nonempty(goal.blockedReason.code) || !nonempty(goal.blockedReason.message)) return null;
+				fields.push({
+					label: t("detail.goal.reason"),
+					value: goal.blockedReason.message
+				});
+			}
+			return { items: [{
+				title: goal.objective,
+				fields
+			}] };
+		}
+		function interval(seconds, t) {
+			if (seconds % 86400 === 0) return t("detail.days", { count: seconds / 86400 });
+			if (seconds % 3600 === 0) return t("detail.hours", { count: seconds / 3600 });
+			if (seconds % 60 === 0) return t("detail.minutes", { count: seconds / 60 });
+			return t("detail.seconds", { count: seconds });
+		}
+		function scheduleItem(value, t, locale) {
+			if (!detailRecord(value) || !nonempty(value.id) || !nonempty(value.prompt) || typeof value.scheduledAt !== "string" || value.deliveryMode !== "session-local" || value.state !== "scheduled" && value.state !== "overdue") return null;
+			const date = new Date(value.scheduledAt);
+			if (!Number.isFinite(date.getTime()) || date.toISOString() !== value.scheduledAt) return null;
+			let frequency;
+			switch (value.kind) {
+				case "at":
+					frequency = t("detail.schedule.once");
+					break;
+				case "after":
+					if (!count(value.afterSeconds) || value.afterSeconds === 0) return null;
+					frequency = t("detail.schedule.once");
+					break;
+				case "every":
+					if (!count(value.everySeconds) || value.everySeconds === 0) return null;
+					frequency = t("detail.schedule.every", { interval: interval(value.everySeconds, t) });
+					break;
+				default: return null;
+			}
+			const dateText = formatDate(date, locale, value.scheduledAt);
+			return {
+				title: value.prompt,
+				fields: [
+					{
+						label: t("detail.schedule.when"),
+						value: dateText
+					},
+					{
+						label: t("detail.schedule.frequency"),
+						value: frequency
+					},
+					{
+						label: t("detail.state"),
+						value: t(`detail.schedule.${value.state}`)
+					}
+				]
+			};
+		}
+		/**
+		* Derive a supported successful result, retaining generic output on unknown or malformed data.
+		* @param block - Logged root or nested Tool call and its optional result.
+		* @param t - Conversation dictionary translator.
+		* @param locale - Display locale for absolute dates in the viewer's time zone.
+		* @returns Localized detail data, or null for raw input/output.
+		*/
+		function detailsCardModel(block, t, locale) {
+			if (!("kind" in block) || block.isError) return null;
+			const call = parsedToolCall(block);
+			if (call === null) return null;
+			const text = singleResultText(block);
+			if (text === void 0) return null;
+			const value = detailJson(text);
+			const details = controlDetails(call.name, call.args, text, value, t) ?? inspectionDetails(call.name, call.args, text, value, t, locale);
+			if (details !== null) return details;
+			if (value === void 0) return null;
+			switch (call.name) {
+				case "create_goal":
+				case "get_goal":
+				case "update_goal": return goalDetail(value, t);
+				case "schedule_create": {
+					const item = scheduleItem(value, t, locale);
+					return item === null ? null : { items: [item] };
+				}
+				case "schedule_list": {
+					if (!Array.isArray(value)) return null;
+					const items = [];
+					for (const entry of value) {
+						const item = scheduleItem(entry, t, locale);
+						if (item === null) return null;
+						items.push(item);
+					}
+					return {
+						items,
+						summary: t("detail.schedule.count", { count: items.length }),
+						empty: t("detail.schedule.empty")
+					};
+				}
+				case "schedule_delete":
+					if (!detailRecord(value) || !nonempty(value.id) || value.deleted !== true) return null;
+					return { items: [{
+						title: value.id,
+						fields: [{
+							label: t("detail.state"),
+							value: t("detail.schedule.deleted")
+						}]
+					}] };
+				default: return null;
+			}
+		}
+		//#endregion
+		//#region lib/types/client/tool/toolviews/details-row.js
+		/** Keyed recorded-result rows sharing the compact detail body. */
+		const TITLE_KEYS = {
+			create_goal: "tool.title.createGoal",
+			get_goal: "tool.title.getGoal",
+			update_goal: "tool.title.updateGoal",
+			schedule_create: "tool.title.createSchedule",
+			schedule_list: "tool.title.listSchedules",
+			schedule_delete: "tool.title.deleteSchedule",
+			cordis_inspect_list: "tool.title.inspectProviders",
+			cordis_inspect_query: "tool.title.queryRuntime",
+			cordis_inspect_self: "tool.title.inspectPlugins",
+			workflow: "tool.title.workflow",
+			ralph: "tool.title.ralph",
+			session_event_read: "tool.title.readEvent",
+			session_event_search: "tool.title.searchEvents",
+			session_event_trace: "tool.title.traceEvent",
+			session_search: "tool.title.searchSessions",
+			session_trace: "tool.title.traceSession",
+			list_subagent_models: "tool.title.listModels",
+			subagent: "tool.title.subagent",
+			list_agents: "tool.title.listAgents",
+			send_message: "tool.title.sendMessage",
+			interrupt_agent: "tool.title.interruptAgent",
+			job_list: "tool.title.listJobs",
+			job_output: "tool.title.readJob",
+			job_kill: "tool.title.killJob",
+			terminal_open: "tool.title.openTerminal",
+			terminal_read: "tool.title.readTerminal",
+			terminal_list: "tool.title.listTerminals",
+			terminal_signal: "tool.title.signalTerminal",
+			terminal_close: "tool.title.closeTerminal",
+			lsp: "tool.title.lsp",
+			spawn_teammate: "tool.title.spawnTeammate",
+			team_task_create: "tool.title.createTeamTask",
+			team_task_get: "tool.title.getTeamTask",
+			team_task_update: "tool.title.updateTeamTask",
+			team_task_list: "tool.title.listTeamTasks",
+			wait_agent: "tool.title.waitAgent"
+		};
+		const LSP_TITLE_KEYS = {
+			goToDefinition: "tool.title.findDefinition",
+			findReferences: "tool.title.findReferences",
+			goToImplementation: "tool.title.findImplementation",
+			hover: "tool.title.hoverSymbol"
+		};
+		function detailIcon(toolName) {
+			if (toolName.startsWith("schedule_")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconClockOutlineRegular, { size: 14 });
+			if (toolName.endsWith("_goal")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGoalOutlineRegular, { size: 14 });
+			if (toolName.startsWith("cordis_")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCordisPluginOutlineRegular, {});
+			if (toolName.startsWith("terminal_")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 });
+			if (toolName.startsWith("session_") || toolName === "lsp") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: 14 });
+			if (toolName.startsWith("job_") || toolName.startsWith("team_task_")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChecklistOutlineRegular, {});
+			if (toolName === "workflow" || toolName === "ralph") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutlineRegular, { size: 14 });
+			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconAgentPresetOutlineRegular, { size: 14 });
+		}
+		/**
+		* Present recorded entities, receipts, and report fields in the existing expandable row.
+		* @param props - Tool call, row actions, and locale supplied by the keyed slot.
+		* @returns A Tool row with structured details or generic input/output.
+		*/
+		function DetailsRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
+			const model = toolRowModel(toolName, block, cwd, home);
+			const locale = document.documentElement.lang;
+			const details = (0, react.useMemo)(() => detailsCardModel(block, t, locale), [
+				block,
+				t,
+				locale
+			]);
+			const operation = toolName === "lsp" ? parsedToolCall(block)?.args.operation : void 0;
+			const titleKey = typeof operation === "string" && Object.hasOwn(LSP_TITLE_KEYS, operation) ? LSP_TITLE_KEYS[operation] : Object.hasOwn(TITLE_KEYS, toolName) ? TITLE_KEYS[toolName] : model.titleKey;
+			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
+				t,
+				variant: model.variant,
+				toolName,
+				icon: detailIcon(toolName),
+				title: t(titleKey),
+				summary: details?.summary ?? details?.items[0]?.title ?? details?.empty ?? model.summary,
+				details,
+				bodyRaw: model.bodyRaw,
+				output: model.output,
+				errorSummary: model.errorSummary,
+				state: model.state,
+				inspect,
+				onOpenFile: openFile
+			});
+		}
+		/** Register recorded-result details through the standard atomic Tool slot. */
+		const detailsToolview = {
+			name: "details-toolview",
+			inject: ["slots"],
+			apply(ctx) {
+				ctx.slots.inject("tool.call.toolview", function* () {
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "create_goal",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "get_goal",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "update_goal",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "schedule_create",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "schedule_list",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "schedule_delete",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "cordis_inspect_list",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "cordis_inspect_query",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "cordis_inspect_self",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "workflow",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "ralph",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "session_event_read",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "session_event_search",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "session_event_trace",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "session_search",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "session_trace",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "list_subagent_models",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "subagent",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "list_agents",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "send_message",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "interrupt_agent",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "job_list",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "job_output",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "job_kill",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "terminal_open",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "terminal_read",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "terminal_list",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "terminal_signal",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "terminal_close",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "lsp",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "spawn_teammate",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "team_task_create",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "team_task_get",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "team_task_update",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "team_task_list",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "wait_agent",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+				});
+			}
+		};
+		//#endregion
+		//#region lib/types/client/tool/models/todo-history.js
+		/** Durable writes are indexed independently of Tool success receipts. */
+		const todoWriteDefinition = {
+			kind: "tool-todo-write",
+			match: (event) => event.type === "todo/write" ? {
+				id: String(event.seq),
+				role: "start"
+			} : null,
+			start: (_context, match) => {
+				if (match.event.type !== "todo/write") throw new Error("tool-todo-write requires todo/write");
+				return match.event.data.todos;
+			},
+			update: (context) => context.state,
+			publication: () => "none"
+		};
+		/** Invocation predecessors are repaired by the assembler when older history arrives. */
+		const todoCallDefinition = {
+			kind: "tool-todo-call",
+			target: "tool-todo-history",
+			match: (event) => {
+				if (event.type === "tool/call" && event.data.name === "todo_write") return {
+					id: String(event.data.callId),
+					role: "start"
+				};
+				if (event.type === "tool/ptc-dispatch-start" && event.data.name === "todo_write") return {
+					id: String(event.data.subCallId),
+					role: "start"
+				};
+				return null;
+			},
+			start: (_context, _match, reader) => ({ todos: reader.previous("tool-todo-write")?.state }),
+			update: (context) => context.state,
+			buildViewNode: (context) => context.state === void 0 ? null : {
+				key: context.key,
+				kind: context.kind,
+				id: context.id,
+				target: "tool-todo-history",
+				data: context.state
+			}
+		};
+		/** Incremental lookup snapshots preserve earlier call baselines across later writes. */
+		const todoHistoryView = {
+			target: "tool-todo-history",
+			create: () => {
+				let calls = /* @__PURE__ */ new Map();
+				return {
+					empty: calls,
+					replace: ({ nodes }) => calls = new Map(nodes.map((node) => [node.id, node.data])),
+					apply: ({ upserts }) => {
+						if (upserts.length > 0) {
+							calls = new Map(calls);
+							for (const node of upserts) calls.set(node.id, node.data);
+						}
+						return calls;
+					}
+				};
+			}
+		};
+		/**
+		* Install the recorded-write index and call predecessor target.
+		* @param ctx - Tool presentation plugin context.
+		*/
+		function registerTodoHistory(ctx) {
+			ctx.uiConversation.events.register(todoWriteDefinition);
+			ctx.uiConversation.events.register(todoCallDefinition);
+			ctx.uiConversation.views.register(todoHistoryView);
+		}
+		//#endregion
+		//#region lib/types/client/tool/models/todo-diff-model.js
+		/**
+		* Compare this write with its predecessor in the loaded call history.
+		* @param block - The write being displayed.
+		* @param baseline - List recorded before this call, or undefined when its start is unavailable.
+		* @param hasMore - Whether older unloaded history may contain a preceding list.
+		* @param t - Conversation dictionary translator.
+		* @returns Details and a change summary, or null for generic Tool output.
+		*/
+		function todoDiffModel(block, baseline, hasMore, t) {
+			if (!("kind" in block) || block.isError) return null;
+			const call = parsedToolCall(block);
+			const current = call?.name === "todo_write" ? todosDetail(call.args, t) : null;
+			if (current === null) return null;
+			const previous = baseline?.todos === void 0 ? null : { items: baseline.todos.map((todo) => ({
+				title: todo.content,
+				status: {
+					value: todo.status,
+					label: t(`detail.todo.${todo.status}`)
+				},
+				fields: []
+			})) };
+			if (baseline === void 0 || previous === null && hasMore) return {
+				details: {
+					...current,
+					caption: t("todo.diff.unavailable")
+				},
+				summary: null
+			};
+			const previousByTitle = new Map(previous?.items.map((item) => [item.title, item]));
+			const currentTitles = new Set(current.items.map((item) => item.title));
+			const retainedPositions = new Map(previous?.items.filter((item) => currentTitles.has(item.title)).map((item, index) => [item.title, index]));
+			let retainedIndex = 0;
+			const items = [];
+			const unchanged = [];
+			let added = 0;
+			let updated = 0;
+			for (const item of current.items) {
+				const before = previousByTitle.get(item.title);
+				previousByTitle.delete(item.title);
+				if (before === void 0) {
+					added++;
+					items.push({
+						...item,
+						change: {
+							value: "added",
+							label: t("todo.diff.addedItem")
+						}
+					});
+				} else {
+					const moved = retainedPositions.get(item.title) !== retainedIndex++;
+					const statusChanged = before.status?.value !== item.status?.value;
+					if (statusChanged || moved) {
+						updated++;
+						items.push({
+							...item,
+							...statusChanged && before.status !== void 0 ? { previousStatus: before.status.label } : {},
+							change: {
+								value: "updated",
+								label: t(statusChanged ? "todo.diff.updatedItem" : "todo.diff.movedItem")
+							}
+						});
+					} else unchanged.push(item);
+				}
+			}
+			for (const item of previousByTitle.values()) items.push({
+				...item,
+				change: {
+					value: "removed",
+					label: t("todo.diff.removedItem")
+				}
+			});
+			return {
+				summary: [
+					added > 0 ? t("todo.diff.added", { count: added }) : null,
+					updated > 0 ? t("todo.diff.updated", { count: updated }) : null,
+					previousByTitle.size > 0 ? t("todo.diff.removed", { count: previousByTitle.size }) : null
+				].filter((part) => part !== null).join(" · ") || t("todo.diff.noChanges"),
+				details: {
+					items,
+					caption: t(previous === null ? "todo.diff.initial" : "todo.diff.compare"),
+					empty: current.items.length === 0 && previous === null ? t("detail.todo.empty") : t("todo.diff.noChanges"),
+					...unchanged.length === 0 ? {} : { unchanged: {
+						label: t("todo.diff.unchanged", { count: unchanged.length }),
+						items: unchanged
+					} }
+				}
+			};
+		}
 		//#endregion
 		//#region lib/types/client/tool/toolviews/plan-summary.js
 		/**
@@ -2274,22 +3980,32 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/** Summarizes a plan update without presenting a cancelled call as completed. */
-		function TodoRow({ toolName, block, inspect, t }) {
+		function TodoRow({ toolName, block, inspect, useDisclosure, useTodoHistory, useSession, t }) {
+			const baseline = useTodoHistory((snapshot) => snapshot?.get(block.callId));
+			const hasMore = useSession((snapshot) => snapshot.hasMore);
+			const diff = (0, react.useMemo)(() => todoDiffModel(block, baseline, hasMore, t), [
+				block,
+				baseline,
+				hasMore,
+				t
+			]);
 			const model = toolRowModel(toolName, block);
 			const summary = summarize(("kind" in block ? block.call?.argsRaw : block.argsRaw) ?? "", t) ?? {
 				text: model.summary,
 				extra: 0
 			};
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChecklistOutline14, {}),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChecklistOutlineRegular, {}),
 				title: t("todo.rowTitle"),
 				summary: summary.text,
-				summarySuffix: summary.extra > 0 ? `+${summary.extra}` : null,
+				summarySuffix: [diff?.summary, summary.extra > 0 ? `+${summary.extra}` : null].filter((part) => part !== null && part !== void 0).join(" · ") || null,
 				bodyRaw: model.bodyRaw,
 				output: model.output,
+				details: diff?.details,
 				errorSummary: model.errorSummary,
 				state: model.state,
 				inspect
@@ -2298,12 +4014,14 @@ window.__ModuleLoader__.load({
 		/** Registers the todo conversation row. */
 		const todoToolview = {
 			name: "todo-toolview",
-			inject: ["slots"],
+			inject: ["slots", "uiConversation"],
 			apply(ctx) {
+				registerTodoHistory(ctx);
 				ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({
 					name: "tool.call.toolview",
 					key: "todo_write",
-					locale: CONVERSATION_NS
+					locale: CONVERSATION_NS,
+					inject: (sessionId) => ({ hooks: { todoHistory: ctx.uiConversation.binding(sessionId).target("tool-todo-history") } })
 				}, TodoRow));
 			}
 		};
@@ -2314,11 +4032,12 @@ window.__ModuleLoader__.load({
 			web_fetch: "tool.title.webFetch"
 		};
 		/** Lets users expand a completed web search or fetch result. */
-		function WebRow({ toolName, block, inspect, t }) {
+		function WebRow({ toolName, block, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block);
 			const web = webCardModel(block);
-			const icon = toolName === "web_fetch" ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, { size: 14 }) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGlobeOutline14, { size: 14 });
+			const icon = toolName === "web_fetch" ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size: 14 }) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGlobeOutlineRegular, { size: 14 });
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
 				t,
 				variant: model.variant,
 				toolName,
@@ -2382,6 +4101,7 @@ window.__ModuleLoader__.load({
 			ctx.plugin(searchToolview);
 			ctx.plugin(webToolview);
 			ctx.plugin(todoToolview);
+			ctx.plugin(detailsToolview);
 			ctx.plugin(askQuestionToolview);
 		}
 		//#endregion

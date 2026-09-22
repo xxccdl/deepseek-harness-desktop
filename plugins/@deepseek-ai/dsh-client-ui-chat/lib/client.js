@@ -4,12 +4,41 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+		//#region \0rolldown/runtime.js
+		var __create = Object.create;
+		var __defProp = Object.defineProperty;
+		var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+		var __getOwnPropNames = Object.getOwnPropertyNames;
+		var __getProtoOf = Object.getPrototypeOf;
+		var __hasOwnProp = Object.prototype.hasOwnProperty;
+		var __copyProps = (to, from, except, desc) => {
+			if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
+				key = keys[i];
+				if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
+					get: ((k) => from[k]).bind(null, key),
+					enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+				});
+			}
+			return to;
+		};
+		var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
+			value: mod,
+			enumerable: true
+		}) : target, mod));
+		//#endregion
+		let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react = require("react");
+		react = __toESM(react, 1);
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
-		let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
 		let react_dom = require("react-dom");
-		//#region ../../util/workspace-path/src/file-address.ts
+		//#region ../../util/workspace-path/lib/index.js
+		/**
+		* The `dsh-resource://file/…` address grammar: how a file is named across the
+		* Sidebar and the resource model, built and parsed without touching a
+		* filesystem.
+		* @module
+		*/
 		/** The scheme and type every file address opens with. */
 		const FILE_ADDRESS_PREFIX = "dsh-resource://file/";
 		/** Component-encode one id or path segment, keeping `:` literal for drive letters. */
@@ -30,8 +59,6 @@ window.__ModuleLoader__.load({
 			const normalized = path.replace(/\\/g, "/").replace(/^(?:\.\/)+/, "");
 			return `${FILE_ADDRESS_PREFIX}session/${encodeSegment(sessionId)}/${encodePath(normalized)}`;
 		}
-		//#endregion
-		//#region ../../util/workspace-path/src/index.ts
 		/**
 		* Browser-safe Workspace path and display helpers.
 		* @module @deepseek-ai/dsh-util-workspace-path
@@ -81,12 +108,17 @@ window.__ModuleLoader__.load({
 			getSnapshot: () => void 0,
 			subscribe: () => () => {}
 		};
+		const EMPTY_TURN_NODE_SOURCE = {
+			getSnapshot: () => EMPTY_LIST$1,
+			subscribe: () => () => {}
+		};
 		/** Empty Chat target used before a view builder is registered. */
 		const EMPTY_CHAT_SNAPSHOT = {
 			order: EMPTY_LIST$1,
 			nodes: {
 				get: () => void 0,
 				source: () => EMPTY_NODE_SOURCE,
+				turnDataSource: () => EMPTY_TURN_NODE_SOURCE,
 				processSource: () => EMPTY_NODE_PROCESS_SOURCE,
 				values: () => EMPTY_LIST$1
 			},
@@ -152,13 +184,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/MessageItem.module.css.mjs
-		const css$15 = ".Sixlwa_userRow{flex-direction:column;align-items:flex-end;gap:6px;display:flex}.Sixlwa_userStack{min-width:0;max-width:min(calc(var(--dsh-chat-content-width,748px) * .702), 82%);flex-direction:column;align-items:flex-end;gap:8px;display:flex}.Sixlwa_bubble{background:var(--dsw-specific-bubble);max-width:100%;font-size:var(--dsh-content-font-size,14px);line-height:calc(22px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-word;border-radius:22px;padding:10px 16px}.Sixlwa_referenceSummary{color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px))}.Sixlwa_contextRow,.Sixlwa_compactionRow{padding:2px 0}.Sixlwa_compactionButton{width:100%;height:calc(24px + var(--dsh-content-font-delta,0px));min-width:0;color:inherit;font:inherit;text-align:left;background:0 0;border:none;border-radius:6px;align-items:center;padding:0;display:flex}.Sixlwa_compactionButton:not(:disabled){cursor:pointer}.Sixlwa_compactionButton:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover)}.Sixlwa_compactionLeading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none;place-items:center;margin-right:6px;display:inline-grid}.Sixlwa_compactionLeading svg{width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.Sixlwa_compactionContextIcon,.Sixlwa_compactionDisclosureIcon{grid-area:1/1;justify-content:center;align-items:center;display:inline-flex}.Sixlwa_compactionDisclosureIcon,.Sixlwa_compactionButton:not(:disabled):hover .Sixlwa_compactionContextIcon,.Sixlwa_compactionButton:not(:disabled):focus-visible .Sixlwa_compactionContextIcon{opacity:0}.Sixlwa_compactionButton:not(:disabled):hover .Sixlwa_compactionDisclosureIcon,.Sixlwa_compactionButton:not(:disabled):focus-visible .Sixlwa_compactionDisclosureIcon{opacity:1}.Sixlwa_compactionTitle{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-primary-dimmed);flex:none}.Sixlwa_compactionSep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.Sixlwa_compactionSummary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}.Sixlwa_compactionBody{padding:4px 0 4px calc(22px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}.Sixlwa_retryRow{color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px))}.Sixlwa_retrySummary{width:fit-content;color:inherit;cursor:pointer;user-select:none;border-radius:3px;align-items:center;gap:7px;padding:2px 0;list-style:none;display:inline-flex}.Sixlwa_retrySummary::-webkit-details-marker{display:none}.Sixlwa_retrySummary:after{content:\"\";opacity:.8;border-bottom:1.5px solid;border-right:1.5px solid;width:6px;height:6px;transition:transform .12s;transform:rotate(-45deg)}.Sixlwa_retrySummary:hover{color:var(--dsw-alias-label-secondary)}.Sixlwa_retrySummary:focus-visible{outline:1.5px solid var(--dsw-alias-button-info-fill);outline-offset:2px}.Sixlwa_retryText{color:inherit}.Sixlwa_retryRow[data-active] .Sixlwa_retryText{background:linear-gradient(90deg, var(--dsw-alias-label-tertiary) 0%, var(--dsw-alias-label-tertiary) 40%, var(--dsw-alias-label-secondary) 50%, var(--dsw-alias-label-tertiary) 60%, var(--dsw-alias-label-tertiary) 100%);color:#0000;background-position:100%;background-size:200% 100%;background-clip:text;animation:1.6s ease-in-out infinite Sixlwa_retry-shimmer}.Sixlwa_retryRow[open] .Sixlwa_retrySummary:after{transform:rotate(45deg)}.Sixlwa_retryDetails{overflow-wrap:anywhere;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px));gap:2px;margin-top:3px;padding-left:14px;display:grid}.Sixlwa_retryDetailLabel{color:var(--dsw-alias-label-secondary)}.Sixlwa_turnErrorRow{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));grid-template-columns:10px minmax(0,1fr) auto;align-items:start;gap:8px;padding:2px 0;display:grid}.Sixlwa_turnErrorDot{margin-top:5px}.Sixlwa_turnErrorCopy{overflow-wrap:anywhere;min-width:0}.Sixlwa_turnErrorTitle{color:var(--dsw-alias-state-error-primary);margin-right:6px;font-weight:600}.Sixlwa_turnErrorMessage{color:var(--dsw-alias-label-secondary)}.Sixlwa_turnErrorCode{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-markdown-code-block-small)}.Sixlwa_maxTokensTitle{color:var(--dsw-alias-state-warn-primary);margin-right:6px;font-weight:600}@keyframes Sixlwa_retry-shimmer{0%{background-position:100%}to{background-position:0}}@media (prefers-reduced-motion:reduce){.Sixlwa_retryRow[data-active] .Sixlwa_retryText{color:inherit;background:0 0;animation:none}}.Sixlwa_attachmentRow{flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:100%;display:flex}.Sixlwa_fileCard{border:.5px solid var(--dsw-alias-border-l2,#0000001f);background:var(--dsw-specific-input-major,transparent);box-sizing:border-box;border-radius:16px;flex:0 0 240px;align-items:center;gap:10px;width:240px;min-height:64px;padding:8px 12px;display:inline-flex}.Sixlwa_fileIcon{flex:none;width:28px;height:28px}.Sixlwa_fileContent{flex-direction:column;flex:1;min-width:0;display:flex}.Sixlwa_fileName{white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;overflow:hidden}.Sixlwa_fileMeta{white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-tertiary,#00000073);font-size:12px;line-height:15px;overflow:hidden}";
-		const tagId$15 = "@deepseek-ai/dsh-client-ui-chat/MessageItem.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$15) + "]") === null) {
+		const css$17 = ".Sixlwa_userRow{flex-direction:column;align-items:flex-end;gap:6px;display:flex}.Sixlwa_userStack{min-width:0;max-width:min(calc(var(--dsh-chat-content-width,748px) * .702), 82%);flex-direction:column;align-items:flex-end;gap:8px;display:flex}.Sixlwa_bubble{background:var(--dsw-specific-bubble);max-width:100%;font-size:var(--dsh-content-font-size,14px);line-height:calc(22px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-word;border-radius:22px;padding:10px 16px}.Sixlwa_referenceSummary{color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px))}.Sixlwa_contextRow{padding:2px 0}.Sixlwa_compactionRow{--dsh-compaction-header-height:calc(24px + var(--dsh-content-font-delta,0px));padding:2px 0}.Sixlwa_compactionButton{width:100%;height:var(--dsh-compaction-header-height);min-width:0;color:inherit;font:inherit;text-align:left;background:0 0;border:none;border-radius:6px;align-items:center;padding:0;display:flex}.Sixlwa_compactionRow:has(.Sixlwa_compactionBody) .Sixlwa_compactionButton{z-index:7;background:var(--dsw-alias-bg-base);border-radius:0;position:sticky;top:0}.Sixlwa_compactionBody :has(>[data-code-block-banner]){top:var(--dsh-compaction-header-height)}.Sixlwa_compactionRow:has(.Sixlwa_compactionBody) .Sixlwa_compactionButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid)}.Sixlwa_compactionButton:not(:disabled){cursor:pointer}.Sixlwa_compactionButton:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover)}.Sixlwa_compactionLeading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none;place-items:center;margin-right:6px;display:inline-grid}.Sixlwa_compactionLeading svg{width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.Sixlwa_compactionContextIcon,.Sixlwa_compactionDisclosureIcon{grid-area:1/1;justify-content:center;align-items:center;display:inline-flex}.Sixlwa_compactionDisclosureIcon,.Sixlwa_compactionButton:not(:disabled):hover .Sixlwa_compactionContextIcon,.Sixlwa_compactionButton:not(:disabled):focus-visible .Sixlwa_compactionContextIcon{opacity:0}.Sixlwa_compactionButton:not(:disabled):hover .Sixlwa_compactionDisclosureIcon,.Sixlwa_compactionButton:not(:disabled):focus-visible .Sixlwa_compactionDisclosureIcon{opacity:1}.Sixlwa_compactionTitle{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-primary-dimmed);flex:none}.Sixlwa_compactionSep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.Sixlwa_compactionSummary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}.Sixlwa_compactionBody{padding:4px 0 4px calc(22px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}.Sixlwa_retryRow{color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px))}.Sixlwa_retrySummary{width:fit-content;color:inherit;cursor:pointer;user-select:none;border-radius:3px;align-items:center;gap:7px;padding:2px 0;list-style:none;display:inline-flex}.Sixlwa_retrySummary::-webkit-details-marker{display:none}.Sixlwa_retrySummary:after{content:\"\";opacity:.8;border-bottom:1.5px solid;border-right:1.5px solid;width:6px;height:6px;transition:transform .12s;transform:rotate(-45deg)}.Sixlwa_retrySummary:hover{color:var(--dsw-alias-label-secondary)}.Sixlwa_retrySummary:focus-visible{outline:1.5px solid var(--dsw-alias-button-info-fill);outline-offset:2px}.Sixlwa_retryText{color:inherit}.Sixlwa_retryRow[data-active] .Sixlwa_retryText{background:linear-gradient(90deg, var(--dsw-alias-label-tertiary) 0%, var(--dsw-alias-label-tertiary) 40%, var(--dsw-alias-label-secondary) 50%, var(--dsw-alias-label-tertiary) 60%, var(--dsw-alias-label-tertiary) 100%);color:#0000;background-position:100%;background-size:200% 100%;background-clip:text;animation:1.6s ease-in-out infinite Sixlwa_retry-shimmer}.Sixlwa_retryRow[open] .Sixlwa_retrySummary:after{transform:rotate(45deg)}.Sixlwa_retryDetails{overflow-wrap:anywhere;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px));gap:2px;margin-top:3px;padding-left:14px;display:grid}.Sixlwa_retryDetailLabel{color:var(--dsw-alias-label-secondary)}.Sixlwa_turnErrorRow{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));grid-template-columns:10px minmax(0,1fr) auto;align-items:start;gap:8px;padding:2px 0;display:grid}.Sixlwa_turnErrorDot{margin-top:5px}.Sixlwa_turnErrorCopy{overflow-wrap:anywhere;min-width:0}.Sixlwa_turnErrorTitle{color:var(--dsw-alias-state-error-primary);margin-right:6px;font-weight:600}.Sixlwa_turnErrorMessage{color:var(--dsw-alias-label-secondary)}.Sixlwa_turnErrorCode{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-markdown-code-block-small)}.Sixlwa_maxTokensTitle{color:var(--dsw-alias-state-warn-primary);margin-right:6px;font-weight:600}@keyframes Sixlwa_retry-shimmer{0%{background-position:100%}to{background-position:0}}@media (prefers-reduced-motion:reduce){.Sixlwa_retryRow[data-active] .Sixlwa_retryText{color:inherit;background:0 0;animation:none}}.Sixlwa_attachmentRow{flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:100%;display:flex}.Sixlwa_fileCard{border:.5px solid var(--dsw-alias-border-l2,#0000001f);background:var(--dsw-specific-input-major,transparent);box-sizing:border-box;border-radius:16px;flex:0 0 240px;align-items:center;gap:10px;width:240px;min-height:64px;padding:8px 12px;display:inline-flex}.Sixlwa_fileIcon{flex:none;width:28px;height:28px}.Sixlwa_fileContent{flex-direction:column;flex:1;min-width:0;display:flex}.Sixlwa_fileName{white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;overflow:hidden}.Sixlwa_fileMeta{white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-tertiary,#00000073);font-size:12px;line-height:15px;overflow:hidden}";
+		const tagId$17 = "@deepseek-ai/dsh-client-ui-chat/MessageItem.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$17) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$15;
-			tag.textContent = css$15;
+			tag.dataset.pluginCss = tagId$17;
+			tag.textContent = css$17;
 			document.head.appendChild(tag);
 		}
 		var MessageItem_module_css_default = {
@@ -229,11 +261,11 @@ window.__ModuleLoader__.load({
 							children: [(0, react_jsx_runtime.jsx)("span", {
 								className: MessageItem_module_css_default.compactionContextIcon,
 								"data-compaction-icon": "context",
-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutline14, {})
+								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutlineRegular, {})
 							}), (0, react_jsx_runtime.jsx)("span", {
 								className: MessageItem_module_css_default.compactionDisclosureIcon,
 								"data-compaction-disclosure": open ? "expanded" : "collapsed",
-								children: open ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, {})
+								children: open ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutlineRegular, {})
 							})]
 						}),
 						(0, react_jsx_runtime.jsx)("span", {
@@ -260,13 +292,13 @@ window.__ModuleLoader__.load({
 		});
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/ContextBody.module.css.mjs
-		const css$14 = ".ZkiH0q_text{color:var(--dsw-alias-label-secondary);font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.ZkiH0q_fields{border-top:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:2px;margin:8px 0 0;padding-top:8px;display:flex}.ZkiH0q_field{gap:8px;min-width:0;display:flex}.ZkiH0q_fieldKey{min-width:96px;color:var(--dsw-alias-label-caption);flex:none}.ZkiH0q_fieldValue{min-width:0;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;flex:auto;margin:0}.ZkiH0q_files{flex-wrap:wrap;gap:4px 12px;margin:0 0 8px;padding:0;list-style:none;display:flex}.ZkiH0q_file{align-items:baseline;gap:6px;min-width:0;display:flex}.ZkiH0q_filePath{color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.ZkiH0q_fileAction{color:var(--dsw-alias-label-caption)}.ZkiH0q_catalogNotice{color:var(--dsw-alias-label-caption);margin:0 0 6px}.ZkiH0q_entries{flex-direction:column;gap:4px;margin:0;padding:0;list-style:none;display:flex}.ZkiH0q_entry{gap:8px;min-width:0;display:flex}.ZkiH0q_entryName{color:var(--dsw-alias-label-secondary);flex:none}.ZkiH0q_entryDescription{min-width:0;color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}.ZkiH0q_sections{flex-direction:column;gap:8px;margin:0;display:flex}.ZkiH0q_section{flex-direction:column;gap:2px;min-width:0;display:flex}.ZkiH0q_sectionName{color:var(--dsw-alias-label-caption)}.ZkiH0q_sectionText{color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.ZkiH0q_relaySender{color:var(--dsw-alias-label-caption);overflow-wrap:anywhere;margin:0 0 6px}.ZkiH0q_recalls{flex-direction:column;gap:2px;margin:0 0 8px;padding:0;list-style:none;display:flex}.ZkiH0q_recall{gap:8px;min-width:0;display:flex}.ZkiH0q_recallLabel{color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.ZkiH0q_recallCounts{color:var(--dsw-alias-label-caption);flex:none}";
-		const tagId$14 = "@deepseek-ai/dsh-client-ui-chat/ContextBody.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$14) + "]") === null) {
+		const css$16 = ".ZkiH0q_text{color:var(--dsw-alias-label-secondary);font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.ZkiH0q_fields{border-top:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:2px;margin:8px 0 0;padding-top:8px;display:flex}.ZkiH0q_field{gap:8px;min-width:0;display:flex}.ZkiH0q_fieldKey{min-width:96px;color:var(--dsw-alias-label-caption);flex:none}.ZkiH0q_fieldValue{min-width:0;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;flex:auto;margin:0}.ZkiH0q_files{flex-wrap:wrap;gap:4px 12px;margin:0 0 8px;padding:0;list-style:none;display:flex}.ZkiH0q_file{align-items:baseline;gap:6px;min-width:0;display:flex}.ZkiH0q_filePath{color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.ZkiH0q_fileAction{color:var(--dsw-alias-label-caption)}.ZkiH0q_catalogNotice{color:var(--dsw-alias-label-caption);margin:0 0 6px}.ZkiH0q_entries{flex-direction:column;gap:4px;margin:0;padding:0;list-style:none;display:flex}.ZkiH0q_entry{gap:8px;min-width:0;display:flex}.ZkiH0q_entryName{color:var(--dsw-alias-label-secondary);flex:none}.ZkiH0q_entryDescription{min-width:0;color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}.ZkiH0q_sections{flex-direction:column;gap:8px;margin:0;display:flex}.ZkiH0q_section{flex-direction:column;gap:2px;min-width:0;display:flex}.ZkiH0q_sectionName{color:var(--dsw-alias-label-caption)}.ZkiH0q_sectionText{color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.ZkiH0q_relaySender{color:var(--dsw-alias-label-caption);overflow-wrap:anywhere;margin:0 0 6px}.ZkiH0q_recalls{flex-direction:column;gap:2px;margin:0 0 8px;padding:0;list-style:none;display:flex}.ZkiH0q_recall{gap:8px;min-width:0;display:flex}.ZkiH0q_recallLabel{color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.ZkiH0q_recallCounts{color:var(--dsw-alias-label-caption);flex:none}";
+		const tagId$16 = "@deepseek-ai/dsh-client-ui-chat/ContextBody.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$16) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$14;
-			tag.textContent = css$14;
+			tag.dataset.pluginCss = tagId$16;
+			tag.textContent = css$16;
 			document.head.appendChild(tag);
 		}
 		var ContextBody_module_css_default = {
@@ -817,13 +849,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/ContextInjectionRow.module.css.mjs
-		const css$13 = ".XrJvXW_root{min-width:0}.XrJvXW_root[data-open]{padding-bottom:4px}.XrJvXW_chevron{color:var(--dsw-alias-label-secondary)}.XrJvXW_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.XrJvXW_source{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:none;overflow:hidden}.XrJvXW_summary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}.XrJvXW_body{box-sizing:border-box;width:calc(100% - 22px - var(--dsh-content-font-delta,0px));max-height:141px;margin:4px 0 0 calc(22px + var(--dsh-content-font-delta,0px));background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-tertiary);font:400 11px/16px var(--ds-font-family-code);border:none;border-radius:8px;padding:10px 16px 12px 12px;overflow:auto}";
-		const tagId$13 = "@deepseek-ai/dsh-client-ui-chat/ContextInjectionRow.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$13) + "]") === null) {
+		const css$15 = ".XrJvXW_root{min-width:0}.XrJvXW_root[data-open]{padding-bottom:4px}.XrJvXW_chevron{color:var(--dsw-alias-label-secondary)}.XrJvXW_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.XrJvXW_source{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:none;overflow:hidden}.XrJvXW_summary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}.XrJvXW_body{box-sizing:border-box;width:calc(100% - 22px - var(--dsh-content-font-delta,0px));max-height:141px;margin:4px 0 0 calc(22px + var(--dsh-content-font-delta,0px));background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-tertiary);font:400 11px/16px var(--ds-font-family-code);border:none;border-radius:8px;padding:10px 16px 12px 12px;overflow:auto}";
+		const tagId$15 = "@deepseek-ai/dsh-client-ui-chat/ContextInjectionRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$15) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$13;
-			tag.textContent = css$13;
+			tag.dataset.pluginCss = tagId$15;
+			tag.textContent = css$15;
 			document.head.appendChild(tag);
 		}
 		var ContextInjectionRow_module_css_default = {
@@ -847,7 +879,7 @@ window.__ModuleLoader__.load({
 		* @param props - Durable content, its projected producer role/name and form, and the locale seat.
 		* @returns A collapsed context row with a bounded, form-specific body.
 		*/
-		function ContextInjectionRow({ content, source, provenance, form, t }) {
+		function ContextInjectionRow({ content, source, producer, form, t }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const { rendered, summary, body } = contextBody(form, {
 				content,
@@ -856,13 +888,13 @@ window.__ModuleLoader__.load({
 			});
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.DisclosureRow, {
 				className: ContextInjectionRow_module_css_default.root,
-				icon: provenance.role === "recall" ? (0, react_jsx_runtime.jsx)("span", {
+				icon: producer.role === "recall" ? (0, react_jsx_runtime.jsx)("span", {
 					"data-context-recall-icon": true,
-					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.ReferenceIcon, { kind: "session" })
-				}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconContextInjectionOutline16, { size: 14 }),
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.ReferenceIconRegular, { kind: "session" })
+				}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconContextInjectionOutlineRegular, { size: 14 }),
 				chevronClassName: ContextInjectionRow_module_css_default.chevron,
-				title: t(provenance.role === "recall" ? "message.contextRecall" : "message.contextInjection"),
-				collapsedContent: provenance.label === null ? void 0 : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+				title: t(producer.role === "recall" ? "message.contextRecall" : "message.contextInjection"),
+				collapsedContent: producer.label === null ? void 0 : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 					(0, react_jsx_runtime.jsx)("span", {
 						className: ContextInjectionRow_module_css_default.sep,
 						"aria-hidden": true
@@ -870,7 +902,7 @@ window.__ModuleLoader__.load({
 					(0, react_jsx_runtime.jsx)("span", {
 						className: ContextInjectionRow_module_css_default.source,
 						"data-context-source": true,
-						children: provenance.label
+						children: producer.label
 					}),
 					summary !== null && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
 						className: ContextInjectionRow_module_css_default.sep,
@@ -898,6 +930,8 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region lib/types/client/chat/message-chrome.js
+		/** Refresh interval for whole-second live run clocks. */
+		const LIVE_RUN_CLOCK_INTERVAL_MS = 1e3;
 		function pad2(n) {
 			return String(n).padStart(2, "0");
 		}
@@ -922,29 +956,49 @@ window.__ModuleLoader__.load({
 			return Math.max(next.getTime() - ms, 1);
 		}
 		/**
-		* Localized elapsed-time label shared by running and settled turn chrome.
+		* Localized elapsed-time label for the running conversation clock.
 		* @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
 		* @param t - Translate seat supplying the duration templates.
-		* @returns Display string in whole seconds.
+		* @returns Display string in whole seconds; minutes and seconds once the
+		* duration reaches a minute; hours, minutes, and seconds once it reaches an
+		* hour, with the smaller units zero-padded.
 		*/
 		function formatRunDuration(ms, t) {
 			const total = Math.max(0, Math.floor(ms / 1e3));
-			const minutes = Math.floor(total / 60);
+			const hours = Math.floor(total / 3600);
+			const minutes = Math.floor(total / 60) % 60;
 			const seconds = total % 60;
+			if (hours > 0) return t("duration.hours", {
+				hours,
+				minutes: pad2(minutes),
+				seconds: pad2(seconds)
+			});
 			return minutes > 0 ? t("duration.minutes", {
 				minutes,
-				seconds: String(seconds).padStart(2, "0")
+				seconds: pad2(seconds)
 			}) : t("duration.seconds", { seconds });
 		}
 		/**
-		* Sub-turn latency figure: one decimal under ten seconds, whole seconds
-		* beyond. Unit-less so the locale template owns the second suffix.
-		* @param ms - Latency in milliseconds (negatives clamp to zero).
-		* @returns Display number in seconds without unit.
+		* Localized live elapsed time without padded seconds or early rollover.
+		* @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
+		* @param t - Translate seat supplying the duration templates.
+		* @returns Whole seconds without a leading zero; minutes start at 60 seconds
+		* and hours start at exactly 60 minutes.
 		*/
-		function formatLatencySeconds(ms) {
-			const s = Math.max(0, ms) / 1e3;
-			return s < 10 ? String(Math.round(s * 10) / 10) : String(Math.round(s));
+		function formatLiveRunDuration(ms, t) {
+			const totalSeconds = Math.max(0, Math.floor(ms / 1e3));
+			const hours = Math.floor(totalSeconds / 3600);
+			const minutes = Math.floor(totalSeconds / 60) % 60;
+			const seconds = String(totalSeconds % 60);
+			if (hours > 0) return t("duration.hours", {
+				hours,
+				minutes: pad2(minutes),
+				seconds
+			});
+			return minutes > 0 ? t("duration.minutes", {
+				minutes,
+				seconds
+			}) : t("duration.seconds", { seconds });
 		}
 		/**
 		* Decode-throughput figure: whole tokens from ten up, one decimal below.
@@ -1001,18 +1055,19 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/MessageIconActions.module.css.mjs
-		const css$12 = ".xzv4MW_actions{height:calc(28px + var(--dsh-content-font-delta,0px));align-items:center;gap:8px;display:flex}.xzv4MW_timeStart{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);white-space:nowrap;padding-right:12px}.xzv4MW_timeEnd{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);white-space:nowrap}@media (hover:hover){[data-actions-reveal=hover] .xzv4MW_actions,:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering]):has(~:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering])) .xzv4MW_actions{opacity:0;transition:opacity 80ms}[data-actions-reveal=hover]:hover .xzv4MW_actions,[data-actions-reveal=hover]:focus-within .xzv4MW_actions,:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering]):has(~:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering])):hover .xzv4MW_actions,:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering]):has(~:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering])):focus-within .xzv4MW_actions{opacity:1}}.xzv4MW_action{width:calc(28px + var(--dsh-content-font-delta,0px));height:calc(28px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:28px;justify-content:center;align-items:center;padding:6px;display:inline-flex}.xzv4MW_action svg{width:calc(15px + var(--dsh-content-font-delta,0px));height:calc(15px + var(--dsh-content-font-delta,0px))}.xzv4MW_action:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}.xzv4MW_action[data-unavailable]{cursor:default;opacity:.4}.xzv4MW_action[data-unavailable]:hover{color:var(--dsw-alias-label-tertiary);background:0 0}.xzv4MW_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
-		const tagId$12 = "@deepseek-ai/dsh-client-ui-chat/MessageIconActions.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$12) + "]") === null) {
+		const css$14 = ".xzv4MW_actions{height:calc(28px + var(--dsh-content-font-delta,0px));align-items:center;gap:8px;display:flex}.xzv4MW_timeStart{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);white-space:nowrap;padding-right:12px}.xzv4MW_timeEnd{font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:inherit;white-space:nowrap}.xzv4MW_endInfo{min-width:0;color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;margin-left:8px;display:inline-flex}@media (hover:hover){[data-actions-reveal=hover] .xzv4MW_actions,:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering]):has(~:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering])) .xzv4MW_actions{opacity:0;transition:opacity 80ms}[data-actions-reveal=hover]:hover .xzv4MW_actions,[data-actions-reveal=hover]:focus-within .xzv4MW_actions,:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering]):has(~:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering])):hover .xzv4MW_actions,:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering]):has(~:is([data-chat-flow-kind=user],[data-chat-flow-kind=steering])):focus-within .xzv4MW_actions{opacity:1}}.xzv4MW_action{width:calc(28px + var(--dsh-content-font-delta,0px));height:calc(28px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:28px;justify-content:center;align-items:center;padding:6px;display:inline-flex}.xzv4MW_action svg{width:calc(15px + var(--dsh-content-font-delta,0px));height:calc(15px + var(--dsh-content-font-delta,0px))}.xzv4MW_actions[data-clock=end] .xzv4MW_action svg{width:calc(17px + var(--dsh-content-font-delta,0px));height:calc(17px + var(--dsh-content-font-delta,0px))}.xzv4MW_action:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}.xzv4MW_action[data-unavailable]{cursor:default;opacity:.4}.xzv4MW_action[data-unavailable]:hover{color:var(--dsw-alias-label-tertiary);background:0 0}.xzv4MW_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const tagId$14 = "@deepseek-ai/dsh-client-ui-chat/MessageIconActions.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$14) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$12;
-			tag.textContent = css$12;
+			tag.dataset.pluginCss = tagId$14;
+			tag.textContent = css$14;
 			document.head.appendChild(tag);
 		}
 		var MessageIconActions_module_css_default = {
 			"action": "xzv4MW_action",
 			"actions": "xzv4MW_actions",
+			"endInfo": "xzv4MW_endInfo",
 			"timeEnd": "xzv4MW_timeEnd",
 			"timeStart": "xzv4MW_timeStart",
 			"visuallyHidden": "xzv4MW_visuallyHidden"
@@ -1057,6 +1112,7 @@ window.__ModuleLoader__.load({
 			});
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: className === void 0 ? MessageIconActions_module_css_default.actions : `${MessageIconActions_module_css_default.actions} ${className}`,
+				"data-clock": clock,
 				children: [
 					clock === "start" ? clockEl : null,
 					(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
@@ -1067,7 +1123,7 @@ window.__ModuleLoader__.load({
 							className: MessageIconActions_module_css_default.action,
 							"aria-label": copied ? t("copied") : t("copy"),
 							onClick: onCopy,
-							children: copied ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutline16, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutline16, {})
+							children: copied ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineRegular, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutlineRegular, {})
 						})
 					}),
 					extraActions,
@@ -1082,7 +1138,7 @@ window.__ModuleLoader__.load({
 							"aria-describedby": branchUnavailable ? reasonId : void 0,
 							"data-unavailable": branchUnavailable || void 0,
 							onClick: branchUnavailable ? void 0 : onBranch,
-							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutline16, {})
+							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutlineRegular, {})
 						})
 					}),
 					onBranch !== void 0 && branchUnavailable && (0, react_jsx_runtime.jsx)("span", {
@@ -1090,8 +1146,10 @@ window.__ModuleLoader__.load({
 						className: MessageIconActions_module_css_default.visuallyHidden,
 						children: t("message.branchUnavailable")
 					}),
-					usageAction,
-					clock === "end" ? clockEl : null
+					clock === "end" ? (0, react_jsx_runtime.jsxs)("span", {
+						className: MessageIconActions_module_css_default.endInfo,
+						children: [usageAction, clockEl]
+					}) : usageAction
 				]
 			});
 		}
@@ -1230,7 +1288,7 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** Right-aligned bubble shared by user and steering rows. */
-		function UserStyleBubble({ content, renderMessageImages, actions, pending = false, echo = false, referenceLabels = [], skillNames = [], previewAttachments, t }) {
+		function UserStyleBubble({ content, renderMessageImages, actions, pending = false, echo = false, referenceLabels = [], skillNames = [], previewAttachments, references, t }) {
 			const { text, attachments: contentAttachments, rest } = contentParts(content);
 			const attachments = previewAttachments ?? contentAttachments;
 			const compactImages = attachments.length > 1;
@@ -1270,7 +1328,7 @@ window.__ModuleLoader__.load({
 						}),
 						showBubble && (0, react_jsx_runtime.jsxs)("div", {
 							className: MessageItem_module_css_default.bubble,
-							children: [(0, _deepseek_ai_dsh_client_ui_primitives.projectUserText)(text, referenceLabels, skillNames), rest.map((block, i) => (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.JsonBlock, {
+							children: [(0, _deepseek_ai_dsh_client_ui_primitives.projectUserText)(text, referenceLabels, skillNames, "skill", references), rest.map((block, i) => (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.JsonBlock, {
 								label: t("message.extraBlock"),
 								payload: block,
 								truncatedLabel: truncated
@@ -1344,10 +1402,14 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** User and admitted-steering keyed Chat renderer. */
-		const UserMessageNodeView = (0, react.memo)(function UserMessageNodeView({ node, renderMessageImages, t }) {
+		const UserMessageNodeView = (0, react.memo)(function UserMessageNodeView({ node, renderMessageImages, openFile, openSkill, t }) {
 			const data = node.data;
 			return (0, react_jsx_runtime.jsx)(UserStyleBubble, {
 				content: data.content,
+				references: {
+					openFile,
+					openSkill
+				},
 				renderMessageImages,
 				...data.referenceLabels === void 0 ? {} : { referenceLabels: data.referenceLabels },
 				...data.skillNames === void 0 ? {} : { skillNames: data.skillNames },
@@ -1367,7 +1429,7 @@ window.__ModuleLoader__.load({
 			return (0, react_jsx_runtime.jsx)(ContextInjectionRow, {
 				content: data.content,
 				source: data.source,
-				provenance: data.provenance,
+				producer: data.producer,
 				form: data.form,
 				t
 			});
@@ -1416,6 +1478,7 @@ window.__ModuleLoader__.load({
 			"system-prompt",
 			"user",
 			"steering",
+			"turn-trigger",
 			"turn-process",
 			"turn-error",
 			"turn-max-tokens",
@@ -1438,6 +1501,17 @@ window.__ModuleLoader__.load({
 		*/
 		function isSubagentDelegationTool(name) {
 			return name === "subagent" || name.startsWith("subagent_");
+		}
+		/**
+		* Keep live, stopped, and failed Turns open.
+		* @param node - Node carrying the owning Turn.
+		* @returns whether whole-Turn collapse is unavailable.
+		*/
+		function turnProcessAlwaysOpen(node) {
+			const location = node?.location;
+			if (location?.kind !== "turn" && location?.kind !== "step") return false;
+			const reason = location.turn.end?.data.reason.kind;
+			return location.turn.status === "open" || reason === "aborted" || reason === "error";
 		}
 		//#endregion
 		//#region lib/types/client/stores.js
@@ -1505,19 +1579,18 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/ChatView.module.css.mjs
-		const css$11 = ".EvIC1a_root{flex-direction:column;flex:auto;min-height:0;display:flex;position:relative}.EvIC1a_scroll{min-height:0;padding:16px calc(var(--dsh-composer-side-clearance) + 16px);flex:auto;overflow-y:auto;container-type:inline-size}[data-conversation-scroll] .EvIC1a_root{flex:none;height:auto;min-height:auto}[data-conversation-scroll] .EvIC1a_scroll{flex:none;min-height:auto;overflow:visible}.EvIC1a_column{max-width:var(--dsh-chat-content-width);flex-direction:column;width:100%;margin:0 auto;display:flex}.EvIC1a_column>:not([hidden]):not(.EvIC1a_flowItem:empty)~:not([hidden]):not(.EvIC1a_flowItem:empty){margin-top:var(--dsh-chat-flow-gap,16px)}.EvIC1a_flowItem{min-width:0}.EvIC1a_flowItem[data-turn-process-answer]{--dsh-chat-flow-gap:8px}.EvIC1a_flowItem:empty{display:none}.EvIC1a_callRow{border-radius:6px}.EvIC1a_turnStatus{height:calc(26px + var(--dsh-content-font-delta,0px));font:var(--dsw-font-s-strong-14);font-size:var(--dsh-content-font-size,14px);line-height:calc(22px + var(--dsh-content-font-delta,0px));white-space:nowrap;background:linear-gradient(90deg, var(--dsw-static-deepseek-500) 0%, var(--dsw-static-deepseek-500) 40%, var(--dsw-static-deepseek-200) 50%, var(--dsw-static-deepseek-500) 60%, var(--dsw-static-deepseek-500) 100%);color:#0000;-webkit-text-fill-color:transparent;background-position:100% 0;background-size:250% 100%;-webkit-background-clip:text;background-clip:text;flex:none;align-self:flex-start;align-items:center;animation:1.8s linear infinite EvIC1a_dsh-turn-status-shimmer;display:inline-flex}.EvIC1a_turnStatusClock{font:var(--dsw-font-xs-13);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-caption);-webkit-text-fill-color:var(--dsw-alias-label-caption);margin-left:8px;font-weight:400}@keyframes EvIC1a_dsh-turn-status-shimmer{to{background-position:0 0}}@media (prefers-reduced-motion:reduce){.EvIC1a_turnStatus{background-position:0 0;background-size:100% 100%;animation:none}}.EvIC1a_hint{color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px))}.EvIC1a_openError{color:var(--dsw-alias-state-error-primary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px))}.EvIC1a_older{justify-content:center;display:flex}.EvIC1a_older button{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover-solid);cursor:pointer;border:none;border-radius:14px;padding:4px 12px;font-size:12px}.EvIC1a_older button:disabled{cursor:default;opacity:.6}.EvIC1a_toBottomSlot{z-index:8;height:0;padding-right:max(0px, calc((100% - var(--dsh-chat-content-width)) / 2));pointer-events:none;justify-content:flex-end;display:flex;position:sticky;bottom:16px}[data-conversation-scroll] .EvIC1a_toBottomSlot{bottom:calc(var(--dsh-composer-height,152px) + 16px)}.EvIC1a_toBottom{--dsw-elevation-stroke-color:var(--dsw-alias-border-l3);corner-shape:round;width:34px;height:34px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-floating-fill);box-shadow:var(--dsw-elevation-panel);cursor:pointer;pointer-events:auto;border:0;border-radius:100px;justify-content:center;align-items:center;margin-top:-34px;padding:0;display:flex}.EvIC1a_toBottom:hover{background:var(--dsw-alias-button-floating-hover)}.EvIC1a_modalAction{min-width:72px}";
-		const tagId$11 = "@deepseek-ai/dsh-client-ui-chat/ChatView.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$11) + "]") === null) {
+		const css$13 = ".EvIC1a_root{flex-direction:column;flex:auto;min-height:0;display:flex;position:relative}.EvIC1a_scroll{min-height:0;padding:16px calc(var(--dsh-composer-side-clearance) + 16px);flex:auto;overflow-y:auto;container-type:inline-size}.EvIC1a_root[data-chat-following-tail] .EvIC1a_scroll,[data-conversation-scroll]:has(.EvIC1a_root[data-chat-following-tail]){overflow-anchor:none}[data-conversation-scroll] .EvIC1a_root{flex:none;height:auto;min-height:auto}[data-conversation-scroll] .EvIC1a_scroll{flex:none;min-height:auto;overflow:visible}.EvIC1a_column{max-width:var(--dsh-chat-content-width);flex-direction:column;width:100%;margin:0 auto;display:flex}.EvIC1a_column>:not([hidden]):not(.EvIC1a_flowItem:empty)~:not([hidden]):not(.EvIC1a_flowItem:empty){margin-top:var(--dsh-chat-flow-gap,16px)}.EvIC1a_flowItem{min-width:0}.EvIC1a_flowItem[data-turn-process-answer]{--dsh-chat-flow-gap:8px}.EvIC1a_flowItem:empty{height:0}.EvIC1a_callRow{border-radius:6px}.EvIC1a_hint{color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px))}.EvIC1a_openError{color:var(--dsw-alias-state-error-primary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(18px + var(--dsh-content-font-delta-secondary,0px))}.EvIC1a_older{justify-content:center;display:flex}.EvIC1a_older button{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover-solid);cursor:pointer;border:none;border-radius:14px;padding:4px 12px;font-size:12px}.EvIC1a_older button:disabled{cursor:default;opacity:.6}.EvIC1a_toBottomSlot{z-index:8;height:0;padding-right:max(0px, calc((100% - var(--dsh-chat-content-width)) / 2));pointer-events:none;justify-content:flex-end;display:flex;position:sticky;bottom:16px}[data-conversation-scroll] .EvIC1a_toBottomSlot{bottom:calc(var(--dsh-composer-height,152px) + 16px)}.EvIC1a_toBottom{--dsw-elevation-stroke-color:var(--dsw-alias-border-l3);corner-shape:round;width:34px;height:34px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-floating-fill);box-shadow:var(--dsw-elevation-panel);cursor:pointer;pointer-events:auto;border:0;border-radius:100px;justify-content:center;align-items:center;margin-top:-34px;padding:0;display:flex}.EvIC1a_toBottom:hover{background:var(--dsw-alias-button-floating-hover)}.EvIC1a_modalAction{min-width:72px}";
+		const tagId$13 = "@deepseek-ai/dsh-client-ui-chat/ChatView.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$13) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$11;
-			tag.textContent = css$11;
+			tag.dataset.pluginCss = tagId$13;
+			tag.textContent = css$13;
 			document.head.appendChild(tag);
 		}
 		var ChatView_module_css_default = {
 			"callRow": "EvIC1a_callRow",
 			"column": "EvIC1a_column",
-			"dsh-turn-status-shimmer": "EvIC1a_dsh-turn-status-shimmer",
 			"flowItem": "EvIC1a_flowItem",
 			"hint": "EvIC1a_hint",
 			"modalAction": "EvIC1a_modalAction",
@@ -1526,9 +1599,7 @@ window.__ModuleLoader__.load({
 			"root": "EvIC1a_root",
 			"scroll": "EvIC1a_scroll",
 			"toBottom": "EvIC1a_toBottom",
-			"toBottomSlot": "EvIC1a_toBottomSlot",
-			"turnStatus": "EvIC1a_turnStatus",
-			"turnStatusClock": "EvIC1a_turnStatusClock"
+			"toBottomSlot": "EvIC1a_toBottomSlot"
 		};
 		//#endregion
 		//#region lib/types/client/chat/ChatNodeSeat.js
@@ -1536,36 +1607,52 @@ window.__ModuleLoader__.load({
 			const location = node?.location;
 			return location?.kind === "turn" || location?.kind === "step" ? location.turn.data : void 0;
 		}
-		function turnOf(node) {
+		function turnOf$1(node) {
 			const location = node?.location;
 			return location?.kind === "turn" || location?.kind === "step" ? location.turn.turn : void 0;
 		}
-		/** Subscribe, apply Turn-process visibility, and dispatch one stable Context key. */
-		const ChatNodeSeat = (0, react.memo)(function ChatNodeSeat({ nodeKey, useChatNode, useChatNodeProcess, historyIncomplete, compactTranscript, cwd, openFile, inspectCall, forkAt, loadImage, renderMessageImages, fileMentions, useStore, actions, renderSlot, t }) {
+		/**
+		* Subscribe, apply Turn-process visibility, and dispatch one stable Context key.
+		* Policy reads select this seat's own conclusion, so a mode change re-renders
+		* only seats whose visibility actually changes.
+		*/
+		const ChatNodeSeat = (0, react.memo)(function ChatNodeSeat({ nodeKey, groupPart, useChatNode, useChatNodeProcess, usePresentation, cwd, openFile, openSkill, inspectCall, forkAt, loadImage, renderMessageImages, fileMentions, useStore, actions, renderSlot, t }) {
 			const node = useChatNode(nodeKey);
 			const routedNode = node;
-			const turn = turnOf(routedNode);
+			const turn = turnOf$1(routedNode);
 			const processPresentation = useChatNodeProcess(nodeKey);
 			const processSpec = processPresentation?.spec;
 			const storedEntry = useStore((state) => processSpec === void 0 ? void 0 : storedTurnProcessEntry(state, processSpec.turn));
-			const processOpen = (processSpec !== void 0 && processSpec.answerStep !== null && storedEntry?.answerStep === processSpec.answerStep ? storedEntry : void 0) !== void 0;
+			const processEntry = processSpec !== void 0 && storedEntry?.answerStep === (processSpec.answerStep ?? 0) ? storedEntry : void 0;
+			const liveProcess = processPresentation !== void 0 && !processPresentation.turnClosed;
+			const interleavedInput = processPresentation?.hasInterleavedInput === true;
+			const alwaysOpen = liveProcess || interleavedInput || turnProcessAlwaysOpen(routedNode);
+			const processOpen = alwaysOpen || processEntry !== void 0;
 			const setOpen = (0, react.useCallback)((open) => {
-				if (processSpec !== void 0 && processSpec.answerStep !== null) actions.setTurnProcessOpen(processSpec.turn, processSpec.answerStep, open);
-			}, [actions, processSpec]);
-			const processWindowReady = processSpec !== void 0 && processPresentation !== void 0 && compactTranscript && processSpec.answerAnchorSeq !== null && processPresentation.turn === processSpec.turn && processPresentation.turnClosed && !historyIncomplete;
-			const processMember = routedNode !== void 0 && processWindowReady && !TURN_PROCESS_INDEPENDENT_KINDS.has(routedNode.kind) && routedNode.anchorSeq >= processSpec.processStartSeq && routedNode.anchorSeq < processSpec.answerAnchorSeq;
-			const processAnswer = routedNode !== void 0 && processWindowReady && routedNode.kind === "assistant-step" && routedNode.data.step === processSpec.answerStep;
+				if (processSpec !== void 0 && !alwaysOpen) actions.setTurnProcessOpen(processSpec.turn, processSpec.answerStep ?? 0, open);
+			}, [
+				actions,
+				processSpec,
+				alwaysOpen
+			]);
+			const foldCompleted = usePresentation((policy) => policy.foldCompletedTurns);
+			const processWindowReady = processSpec !== void 0 && processPresentation !== void 0 && foldCompleted && processPresentation.turn === processSpec.turn && (processPresentation.turnStarted || processPresentation.turnClosed);
+			const processMember = routedNode !== void 0 && processWindowReady && !TURN_PROCESS_INDEPENDENT_KINDS.has(routedNode.kind) && routedNode.anchorSeq >= processSpec.processStartSeq && (liveProcess || processSpec.answerAnchorSeq === null || routedNode.anchorSeq < processSpec.answerAnchorSeq || groupPart === "reasoning" && routedNode.kind === "assistant-step" && routedNode.data.step === processSpec.answerStep);
+			const processAnswer = routedNode !== void 0 && processWindowReady && !liveProcess && groupPart !== "reasoning" && routedNode.kind === "assistant-step" && routedNode.data.step === processSpec.answerStep;
 			const ownsDisclosure = routedNode?.kind === "turn-process" || processAnswer;
-			const foldable = processWindowReady && (processMember || ownsDisclosure && (processPresentation.hasExternalProcess || processSpec.inlineReasoning));
+			const foldable = processWindowReady && (liveProcess || processMember || ownsDisclosure);
 			const turnProcess = (0, react.useMemo)(() => processSpec === void 0 ? void 0 : {
 				spec: processSpec,
 				foldable,
+				hasContent: !interleavedInput && (processPresentation?.hasExternalProcess === true || processSpec.inlineReasoning),
 				open: processOpen,
 				setOpen
 			}, [
 				foldable,
+				interleavedInput,
 				processOpen,
 				processSpec,
+				processPresentation?.hasExternalProcess,
 				setOpen
 			]);
 			const controllerInactive = routedNode?.kind === "turn-process" && !foldable;
@@ -1574,9 +1661,25 @@ window.__ModuleLoader__.load({
 			const wrapperRef = useSearchableHidden(processHidden, (0, react.useCallback)(() => {
 				if (processMember) setOpen(true);
 			}, [processMember, setOpen]));
+			const [disclosureReset] = (0, react.useState)(() => (0, _deepseek_ai_dsh_client_store.createSnapshotStore)(0));
+			const turnData = turnDataOf(routedNode);
+			const hookContext = (0, react.useMemo)(() => ({
+				turnData,
+				disclosureReset
+			}), [turnData, disclosureReset]);
+			(0, react.useEffect)(() => {
+				if (processMember && processHidden && wrapperRef.current?.hasAttribute("hidden")) disclosureReset.set(disclosureReset.getSnapshot() + 1);
+			}, [
+				processMember,
+				processHidden,
+				wrapperRef,
+				disclosureReset
+			]);
 			const owner = (0, react.useMemo)(() => node === void 0 ? null : {
+				...groupPart === void 0 ? {} : { groupPart },
 				cwd,
 				openFile,
+				openSkill,
 				inspectCall,
 				forkAt,
 				loadImage,
@@ -1585,8 +1688,10 @@ window.__ModuleLoader__.load({
 				turnProcess
 			}, [
 				node,
+				groupPart,
 				cwd,
 				openFile,
+				openSkill,
 				inspectCall,
 				forkAt,
 				loadImage,
@@ -1595,16 +1700,19 @@ window.__ModuleLoader__.load({
 				turnProcess
 			]);
 			if (routedNode === void 0 || owner === null) return null;
-			const turnData = turnDataOf(routedNode);
 			const routedOwner = {
 				...owner,
 				node: routedNode
 			};
+			const flowKey = groupPart === void 0 || groupPart === "response" ? routedNode.key : JSON.stringify([routedNode.key, groupPart]);
 			return (0, react_jsx_runtime.jsx)("div", {
 				ref: wrapperRef,
 				className: ChatView_module_css_default.flowItem,
-				"data-chat-anchor-key": routedNode.key,
-				"data-chat-flow-key": routedNode.key,
+				"data-chat-anchor-key": flowKey,
+				"data-chat-flow-key": flowKey,
+				"data-chat-paging-anchor": routedNode.kind !== "turn-process" || void 0,
+				"data-chat-node-key": routedNode.key,
+				"data-chat-group-part": groupPart,
 				"data-chat-flow-kind": routedNode.kind,
 				"data-chat-turn": turn,
 				"data-turn-process-member": processMember || void 0,
@@ -1612,7 +1720,7 @@ window.__ModuleLoader__.load({
 				"data-turn-process-answer": compactAnswer || void 0,
 				children: renderSlot("conversation.chat.node", routedOwner, {
 					entryKey: routedNode.kind,
-					hookContext: turnData,
+					hookContext,
 					fallback: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.JsonBlock, {
 						label: t("message.unknownSurface", { type: routedNode.kind }),
 						payload: routedNode.data,
@@ -1622,19 +1730,1528 @@ window.__ModuleLoader__.load({
 			});
 		});
 		//#endregion
-		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/TurnNavigator.module.css.mjs
-		const css$10 = ".eGxaPq_slot{z-index:7;pointer-events:none;height:0;position:sticky;top:0}.eGxaPq_frame{--turn-rail-band:calc(var(--dsh-conversation-viewport-height,100dvh) - var(--dsh-composer-height,152px));--turn-preview-height:100px;top:calc(var(--turn-rail-band) / 2);right:calc(12px - (var(--dsh-composer-side-clearance) + 16px));width:28px;height:min(var(--turn-natural-height), max(0px, calc(var(--turn-rail-band) - 64px)), 420px);cursor:pointer;pointer-events:auto;transition:height .22s cubic-bezier(.2,.8,.2,1);position:absolute;transform:translateY(-50%)}.eGxaPq_scroller{overscroll-behavior:contain;scrollbar-width:none;position:absolute;inset:0;overflow-y:auto}.eGxaPq_scroller::-webkit-scrollbar{display:none}.eGxaPq_fadeTop{mask-image:linear-gradient(#0000 0,#000 24px 100%)}.eGxaPq_fadeBottom{mask-image:linear-gradient(#000 0 calc(100% - 24px),#0000 100%)}.eGxaPq_fadeTop.eGxaPq_fadeBottom{mask-image:linear-gradient(#0000 0,#000 24px calc(100% - 24px),#0000 100%)}.eGxaPq_marks{height:var(--turn-natural-height);position:relative}.eGxaPq_markPosition{top:calc(var(--turn-natural-position) + var(--turn-rail-inset));height:10px;transition:top .22s cubic-bezier(.2,.8,.2,1);animation:.15s ease-out eGxaPq_dsh-turn-mark-enter;position:absolute;left:0;right:0;transform:translateY(-50%)}.eGxaPq_mark{cursor:pointer;pointer-events:none;background:0 0;border:0;border-radius:8px;width:20px;padding:0;position:absolute;inset:0 0 0 auto}.eGxaPq_mark:before{background:var(--dsw-alias-border-l4);content:\"\";border-radius:2px;width:12px;height:2px;transition:width .14s,background-color .14s;position:absolute;top:50%;right:0;transform:translateY(-50%)}.eGxaPq_markUnloaded:before{opacity:.6;width:8px}.eGxaPq_markPreview:before{background:var(--dsw-alias-label-tertiary);width:18px}.eGxaPq_markBusy:before{animation:1s ease-in-out infinite eGxaPq_dsh-turn-mark-busy}.eGxaPq_markActive:before{background:var(--dsw-alias-label-primary);width:20px}.eGxaPq_mark:focus-visible:before{background:var(--dsw-alias-state-business-primary);width:20px}.eGxaPq_mark:focus-visible{outline:1px solid var(--dsw-alias-state-business-primary);outline-offset:2px}.eGxaPq_preview{top:clamp(0px, calc(var(--turn-natural-position) + var(--turn-rail-inset) - var(--turn-scroll-top,0px) - var(--turn-preview-height) / 2), calc(100% - var(--turn-preview-height)));box-sizing:border-box;width:min(300px,100cqw - 120px);max-height:var(--turn-preview-height);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-elevation-panel);pointer-events:none;border:0;border-radius:10px;padding:10px 12px;transition:top .14s cubic-bezier(.2,.8,.2,1);animation:.12s ease-out eGxaPq_dsh-turn-preview-enter;position:absolute;right:calc(100% + 10px);overflow:hidden}.eGxaPq_previewPrompt,.eGxaPq_previewResponse{-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.eGxaPq_previewPrompt{font:var(--dsw-font-xs-strong-13);-webkit-line-clamp:1}.eGxaPq_previewResponse{color:var(--dsw-alias-label-caption);font:var(--dsw-font-xxs-12);-webkit-line-clamp:3;margin-top:4px}@keyframes eGxaPq_dsh-turn-mark-enter{0%{opacity:0}to{opacity:1}}@keyframes eGxaPq_dsh-turn-preview-enter{0%{opacity:0;transform:translate(4px)}to{opacity:1;transform:translate(0)}}@keyframes eGxaPq_dsh-turn-mark-busy{0%,to{opacity:1}50%{opacity:.35}}@container (width<=900px){.eGxaPq_slot{display:none}}@media (prefers-reduced-motion:reduce){.eGxaPq_frame,.eGxaPq_scroller,.eGxaPq_markPosition,.eGxaPq_mark:before,.eGxaPq_markBusy:before,.eGxaPq_preview{scroll-behavior:auto;transition:none;animation:none}}";
-		const tagId$10 = "@deepseek-ai/dsh-client-ui-chat/TurnNavigator.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$10) + "]") === null) {
+		//#region ../../util/values/lib/index.js
+		/** Duplicate-install-safe JSON and immutable-value helpers. @module @deepseek-ai/dsh-util-values */
+		/**
+		* Mark an unreachable closed-union branch.
+		* @param value - impossible value; an unhandled typed variant fails at the call site.
+		* @param context - optional switch-site label included in the failure message.
+		* @returns never; a runtime value that escaped its type always throws.
+		*/
+		function assertNever(value, context) {
+			const rendered = JSON.stringify(value) ?? String(value);
+			throw new Error(`unreachable variant${context ? ` in ${context}` : ""}: ${rendered}`);
+		}
+		//#endregion
+		//#region lib/types/client/chat/render-entry.js
+		/**
+		* Identify a rendering position independently of presentation mode.
+		* @param entry - mode-independent rendering reference.
+		* @returns its collision-free React key.
+		*/
+		function chatRenderKey(entry) {
+			switch (entry.kind) {
+				case "node": return JSON.stringify([
+					"node",
+					entry.key,
+					entry.groupPart ?? null
+				]);
+				case "group": return JSON.stringify(["group", entry.key]);
+				default: return assertNever(entry);
+			}
+		}
+		//#endregion
+		//#region lib/types/client/chat/step-process.js
+		/**
+		* Compose a closed group's localized title from its top three categories without counts.
+		* @param summary - ranked work and phase evidence for this range.
+		* @param t - Chat namespace translator.
+		* @returns the secondary disclosure title.
+		*/
+		function processTitle(summary, t) {
+			const labels = summary.counts.slice(0, 3).map(({ kind }) => t(`message.stepProcess.done.${kind}`));
+			const first = labels[0];
+			if (first === void 0) return t("message.stepProcess.done.thinking");
+			const continuation = (label) => label.charAt(0).toLowerCase() + label.slice(1);
+			const second = labels[1];
+			if (second === void 0) return first;
+			if (labels.length === 2) {
+				const prefix = t("message.stepProcess.sharedPrefix");
+				return t("message.stepProcess.joinTwo", {
+					first,
+					second: continuation(prefix !== "" && first.startsWith(prefix) && second.startsWith(prefix) ? second.slice(prefix.length) : second)
+				});
+			}
+			const title = [first, ...labels.slice(1).map(continuation)].join(t("message.stepProcess.comma"));
+			return summary.counts.length > 3 ? t("message.stepProcess.more", { title }) : title;
+		}
+		//#endregion
+		//#region lib/types/client/chat/use-disclosure.js
+		/** Bind independent disclosure state to a Chat seat's reset source. */
+		/**
+		* Own one initially collapsed disclosure without an external subscription.
+		* @param version - reset generation; unchanged generations retain local open state.
+		* @returns the open state, an explicit setter, and a toggle action.
+		*/
+		function useDisclosure(version = 0) {
+			const [expandedVersion, setExpandedVersion] = (0, react.useState)(null);
+			return {
+				expanded: expandedVersion === version,
+				setExpanded: (0, react.useCallback)((open) => {
+					setExpandedVersion(open ? version : null);
+				}, [version]),
+				toggle: (0, react.useCallback)(() => {
+					setExpandedVersion((previous) => previous === version ? null : version);
+				}, [version])
+			};
+		}
+		/**
+		* Bind a Hook without subscribing until a component calls it.
+		* @param reset - stable source whose version advances when the seat is hidden by its Turn.
+		* @returns a Hook with independent open state for each invocation.
+		*/
+		function bindDisclosure(reset) {
+			const subscribe = (listener) => reset.subscribe(listener);
+			const getSnapshot = () => reset.getSnapshot();
+			return function useBoundDisclosure() {
+				return useDisclosure((0, react.useSyncExternalStore)(subscribe, getSnapshot));
+			};
+		}
+		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/ChatGroupSeat.module.css.mjs
+		const css$12 = ".O_Ebla_root{min-width:0}.O_Ebla_title{max-width:100%;color:var(--dsw-alias-label-secondary);font:inherit;font-size:var(--dsh-content-font-size,14px);text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:6px;padding:0;transition:color .1s;display:flex}.O_Ebla_title:hover{color:var(--dsw-alias-label-primary)}.O_Ebla_leading{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex;position:relative}.O_Ebla_activityIcon,.O_Ebla_chevron{justify-content:center;align-items:center;transition:opacity .1s;display:inline-flex;position:absolute;inset:0}.O_Ebla_activityIcon{opacity:1}.O_Ebla_chevron,.O_Ebla_title:is(:hover,:focus-visible) .O_Ebla_activityIcon{opacity:0}.O_Ebla_title:is(:hover,:focus-visible) .O_Ebla_chevron{opacity:1}.O_Ebla_title[aria-expanded=true] .O_Ebla_activityIcon{opacity:0}.O_Ebla_title[aria-expanded=true] .O_Ebla_chevron{opacity:1}.O_Ebla_title[aria-expanded=true]{padding-bottom:16px}.O_Ebla_body{--dsh-chat-flow-gap:8px;overscroll-behavior-y:auto;scrollbar-gutter:stable;max-height:min(400px,50vh);overflow-y:auto}.O_Ebla_label{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.O_Ebla_fadeTop{mask-image:linear-gradient(#0000 0,#000 24px 100%)}.O_Ebla_fadeBottom{mask-image:linear-gradient(#000 0 calc(100% - 24px),#0000 100%)}.O_Ebla_fadeTop.O_Ebla_fadeBottom{mask-image:linear-gradient(#0000 0,#000 24px calc(100% - 24px),#0000 100%)}@media (prefers-reduced-motion:reduce){.O_Ebla_title,.O_Ebla_activityIcon,.O_Ebla_chevron{transition:none}}.O_Ebla_content{flex-direction:column;display:flex}.O_Ebla_content>*{flex-shrink:0}.O_Ebla_content>:not([hidden]):not(:empty)~:not([hidden]):not(:empty){margin-top:var(--dsh-chat-flow-gap,8px)}.O_Ebla_expandedBody{--dsh-chat-flow-gap:16px;scrollbar-gutter:auto;max-height:none;overflow:visible}";
+		const tagId$12 = "@deepseek-ai/dsh-client-ui-chat/ChatGroupSeat.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$12) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$10;
-			tag.textContent = css$10;
+			tag.dataset.pluginCss = tagId$12;
+			tag.textContent = css$12;
+			document.head.appendChild(tag);
+		}
+		var ChatGroupSeat_module_css_default = {
+			"activityIcon": "O_Ebla_activityIcon",
+			"body": "O_Ebla_body",
+			"chevron": "O_Ebla_chevron",
+			"content": "O_Ebla_content",
+			"expandedBody": "O_Ebla_expandedBody",
+			"fadeBottom": "O_Ebla_fadeBottom",
+			"fadeTop": "O_Ebla_fadeTop",
+			"label": "O_Ebla_label",
+			"leading": "O_Ebla_leading",
+			"root": "O_Ebla_root",
+			"title": "O_Ebla_title"
+		};
+		//#endregion
+		//#region lib/types/client/chat/ChatGroupSeat.js
+		/** Stable process container; display policy changes visibility, never member parents. */
+		const PROCESS_SCROLL_AT_REST = {
+			canScrollUp: false,
+			canScrollDown: false
+		};
+		const PROCESS_TITLE_MINIMUM_MS = 150;
+		const PROCESS_ICONS = {
+			thinking: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconThinkOutlineRegular, {}),
+			read: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size: 14 }),
+			search: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: 14 }),
+			edit: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 }),
+			commands: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutlineRegular, {}),
+			code: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 }),
+			webSearch: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGlobeOutlineRegular, {}),
+			webFetch: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size: 14 }),
+			subagents: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconAgentPresetOutlineRegular, { size: 14 }),
+			plan: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlanOutlineRegular, {}),
+			questions: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQuestionOutlineRegular, {}),
+			tools: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSparkleRegular, { size: 14 })
+		};
+		function processScrollEdges(element) {
+			return {
+				canScrollUp: element.scrollTop > 1,
+				canScrollDown: element.scrollTop < element.scrollHeight - element.clientHeight - 1
+			};
+		}
+		function sameProcessScrollEdges(left, right) {
+			return left.canScrollUp === right.canScrollUp && left.canScrollDown === right.canScrollDown;
+		}
+		function sameLiveProcessTitle(left, right) {
+			return left.activity === right.activity && left.detail === right.detail;
+		}
+		function useStableLiveProcessTitle(desired, active) {
+			const [displayed, setDisplayed] = (0, react.useState)(desired);
+			const displayedRef = (0, react.useRef)(displayed);
+			const desiredRef = (0, react.useRef)(desired);
+			const displayedAtRef = (0, react.useRef)(Date.now());
+			(0, react.useEffect)(() => {
+				desiredRef.current = desired;
+				if (!active || sameLiveProcessTitle(displayedRef.current, desired)) return;
+				const remaining = PROCESS_TITLE_MINIMUM_MS - (Date.now() - displayedAtRef.current);
+				const commit = () => {
+					const next = desiredRef.current;
+					displayedRef.current = next;
+					displayedAtRef.current = Date.now();
+					setDisplayed(next);
+				};
+				if (remaining <= 0) {
+					commit();
+					return;
+				}
+				const timer = setTimeout(commit, remaining);
+				return () => {
+					clearTimeout(timer);
+				};
+			}, [
+				active,
+				desired.activity,
+				desired.detail
+			]);
+			return active ? displayed : desired;
+		}
+		const GroupMembers = (0, react.memo)(function GroupMembers({ members, ...props }) {
+			return members.map((member) => (0, react.createElement)(ChatNodeSeat, {
+				...props,
+				key: chatRenderKey(member),
+				nodeKey: member.key,
+				...member.groupPart === void 0 ? {} : { groupPart: member.groupPart }
+			}));
+		});
+		const ProcessGroupHeader = (0, react.memo)(function ProcessGroupHeader({ groupKey, useChatGroup, usePresentation, t, open, bodyId, toggle }) {
+			const data = useChatGroup(groupKey, (group) => group?.data);
+			const detailed = usePresentation((policy) => data?.closed === false && policy.liveProcessDetail);
+			const live = useStableLiveProcessTitle({
+				activity: data?.summary.running ?? "thinking",
+				detail: data?.summary.runningDetail ?? ""
+			}, data !== void 0 && !data.closed);
+			if (data === void 0) return null;
+			const label = data.closed ? processTitle(data.summary, t) : t(`message.stepProcess.${live.activity}`);
+			const detail = detailed && !data.closed ? live.detail : "";
+			const title = detail === "" ? label : `${label}${t("message.turnProcess.separator")}${detail}`;
+			const activity = data.closed ? data.summary.counts[0]?.kind ?? "thinking" : live.activity;
+			return (0, react_jsx_runtime.jsxs)("button", {
+				type: "button",
+				className: ChatGroupSeat_module_css_default.title,
+				"aria-expanded": open,
+				"aria-controls": bodyId,
+				"data-process-activity": activity,
+				onClick: (event) => {
+					event.currentTarget.focus();
+					toggle();
+				},
+				children: [(0, react_jsx_runtime.jsxs)("span", {
+					className: ChatGroupSeat_module_css_default.leading,
+					"aria-hidden": "true",
+					children: [(0, react_jsx_runtime.jsx)("span", {
+						className: ChatGroupSeat_module_css_default.activityIcon,
+						"data-step-process-icon": true,
+						children: PROCESS_ICONS[activity]
+					}), (0, react_jsx_runtime.jsx)("span", {
+						className: ChatGroupSeat_module_css_default.chevron,
+						"data-step-process-chevron": true,
+						children: open ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronUpOutlineRegular, {}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, {})
+					})]
+				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+					active: !data.closed,
+					className: ChatGroupSeat_module_css_default.label,
+					children: title
+				})]
+			});
+		});
+		/** Render a process group with local disclosure and the existing outer-Turn visibility. */
+		const ChatGroupSeat = (0, react.memo)(function ChatGroupSeat({ groupKey, useChatGroup, ...props }) {
+			const members = useChatGroup(groupKey, (group) => group?.members);
+			const turn = useChatGroup(groupKey, (group) => group?.data.turn);
+			const foldCompleted = props.usePresentation((policy) => policy.foldCompletedTurns);
+			const { expanded: open, setExpanded: setOpen, toggle } = useDisclosure();
+			const firstKey = members?.[0]?.key ?? "";
+			const presentation = props.useChatNodeProcess(firstKey);
+			const turnLocation = props.useChatNode(firstKey, (node) => {
+				const location = node?.location;
+				return location?.kind === "turn" || location?.kind === "step" ? location.turn : void 0;
+			});
+			const grouped = props.usePresentation((policy) => turnLocation?.status !== "open" || policy.stepGrouping !== "none");
+			const reason = turnLocation?.end?.data.reason.kind;
+			const alwaysOpen = presentation?.turnClosed === false || presentation?.hasInterleavedInput === true || reason === "aborted" || reason === "error";
+			const spec = presentation?.spec;
+			const selectStored = (0, react.useCallback)((state) => turn === void 0 ? void 0 : storedTurnProcessEntry(state, turn), [turn]);
+			const stored = props.useStore(selectStored);
+			const outerHidden = foldCompleted && presentation?.turnClosed === true && spec !== void 0 && !alwaysOpen && stored?.answerStep !== (spec.answerStep ?? 0);
+			const rootRef = useSearchableHidden(outerHidden, (0, react.useCallback)(() => {
+				if (spec !== void 0 && !alwaysOpen) props.actions.setTurnProcessOpen(spec.turn, spec.answerStep ?? 0, true);
+			}, [
+				props.actions,
+				spec,
+				alwaysOpen
+			]));
+			(0, react.useEffect)(() => {
+				if (outerHidden && rootRef.current?.hasAttribute("hidden")) setOpen(false);
+			}, [
+				outerHidden,
+				rootRef,
+				setOpen
+			]);
+			const reveal = (0, react.useCallback)(() => {
+				setOpen(true);
+			}, [setOpen]);
+			const bodyRef = useSearchableHidden(grouped && !open, reveal);
+			const contentRef = (0, react.useRef)(null);
+			const bodyId = (0, react.useId)();
+			const [edges, setEdges] = (0, react.useState)(PROCESS_SCROLL_AT_REST);
+			const sync = (0, react.useCallback)(() => {
+				const body = bodyRef.current;
+				const next = body === null || body.closest("[hidden], [data-group-expanded-mode]") !== null ? PROCESS_SCROLL_AT_REST : processScrollEdges(body);
+				setEdges((previous) => sameProcessScrollEdges(previous, next) ? previous : next);
+			}, [bodyRef]);
+			(0, react.useLayoutEffect)(() => {
+				const body = bodyRef.current;
+				if (body === null || !open || typeof ResizeObserver === "undefined") return;
+				const observer = new ResizeObserver(sync);
+				observer.observe(body);
+				if (contentRef.current !== null) observer.observe(contentRef.current);
+				return () => {
+					observer.disconnect();
+				};
+			}, [
+				bodyRef,
+				open,
+				sync
+			]);
+			if (members === void 0) return null;
+			const classes = [
+				ChatGroupSeat_module_css_default.body,
+				!grouped ? ChatGroupSeat_module_css_default.expandedBody : "",
+				grouped && edges.canScrollUp ? ChatGroupSeat_module_css_default.fadeTop : "",
+				grouped && edges.canScrollDown ? ChatGroupSeat_module_css_default.fadeBottom : ""
+			];
+			return (0, react_jsx_runtime.jsxs)("div", {
+				ref: rootRef,
+				className: ChatGroupSeat_module_css_default.root,
+				"data-chat-group-key": groupKey,
+				"data-chat-flow-key": groupKey,
+				"data-chat-anchor-key": `group:${groupKey}`,
+				"data-chat-turn": turn,
+				"data-chat-paging-anchor": grouped && !open || void 0,
+				"data-step-process": true,
+				"data-group-expanded-mode": !grouped || void 0,
+				children: [(0, react_jsx_runtime.jsx)("div", {
+					hidden: !grouped,
+					children: (0, react_jsx_runtime.jsx)(ProcessGroupHeader, {
+						groupKey,
+						useChatGroup,
+						usePresentation: props.usePresentation,
+						t: props.t,
+						open,
+						bodyId,
+						toggle
+					})
+				}), (0, react_jsx_runtime.jsx)("div", {
+					ref: bodyRef,
+					id: bodyId,
+					className: classes.join(" "),
+					"data-step-process-body": true,
+					"data-scroll-up": edges.canScrollUp || void 0,
+					"data-scroll-down": edges.canScrollDown || void 0,
+					onScroll: sync,
+					children: (0, react_jsx_runtime.jsx)("div", {
+						ref: contentRef,
+						className: ChatGroupSeat_module_css_default.content,
+						"data-step-process-content": true,
+						"data-chat-flow": "",
+						children: (0, react_jsx_runtime.jsx)(GroupMembers, {
+							...props,
+							members
+						})
+					})
+				})]
+			});
+		});
+		//#endregion
+		//#region ../../../node_modules/.pnpm/@tanstack+virtual-core@3.17.7/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
+		function createLazyMeasurementsView(count, flat, getItemKey) {
+			const cache = new Array(count);
+			return new Proxy(cache, { get(target, prop, receiver) {
+				if (typeof prop === "string") {
+					const c = prop.charCodeAt(0);
+					if (c >= 48 && c <= 57) {
+						const i = +prop;
+						if (Number.isInteger(i) && i >= 0 && i < count) {
+							let v = target[i];
+							if (!v) {
+								const s = flat[i * 2];
+								v = target[i] = {
+									index: i,
+									key: getItemKey(i),
+									start: s,
+									size: flat[i * 2 + 1],
+									end: s + flat[i * 2 + 1],
+									lane: 0
+								};
+							}
+							return v;
+						}
+					}
+					if (prop === "length") return count;
+				}
+				return Reflect.get(target, prop, receiver);
+			} });
+		}
+		//#endregion
+		//#region ../../../node_modules/.pnpm/@tanstack+virtual-core@3.17.7/node_modules/@tanstack/virtual-core/dist/esm/utils.js
+		function memo$11(getDeps, fn, opts) {
+			let deps = opts.initialDeps ?? [];
+			let result;
+			let isInitial = true;
+			function memoizedFunction() {
+				const newDeps = getDeps();
+				if (!(newDeps.length !== deps.length || newDeps.some((dep, index) => deps[index] !== dep))) return result;
+				deps = newDeps;
+				result = fn(...newDeps);
+				if ((opts == null ? void 0 : opts.onChange) && !(isInitial && opts.skipInitialOnChange)) opts.onChange(result);
+				isInitial = false;
+				return result;
+			}
+			memoizedFunction.updateDeps = (newDeps) => {
+				deps = newDeps;
+			};
+			return memoizedFunction;
+		}
+		function notUndefined(value, msg) {
+			if (value === void 0) throw new Error(`Unexpected undefined${msg ? `: ${msg}` : ""}`);
+			else return value;
+		}
+		const approxEqual = (a, b) => Math.abs(a - b) < 1.01;
+		const debounce = (targetWindow, fn, ms) => {
+			let timeoutId;
+			return function(...args) {
+				targetWindow.clearTimeout(timeoutId);
+				timeoutId = targetWindow.setTimeout(() => fn.apply(this, args), ms);
+			};
+		};
+		//#endregion
+		//#region ../../../node_modules/.pnpm/@tanstack+virtual-core@3.17.7/node_modules/@tanstack/virtual-core/dist/esm/index.js
+		let _isIOSResult;
+		const isIOSWebKit = () => {
+			if (_isIOSResult !== void 0) return _isIOSResult;
+			if (typeof navigator === "undefined") return _isIOSResult = false;
+			if (/iP(hone|od|ad)/.test(navigator.userAgent)) return _isIOSResult = true;
+			const mtp = navigator.maxTouchPoints;
+			return _isIOSResult = navigator.platform === "MacIntel" && mtp !== void 0 && mtp > 0;
+		};
+		const getRect = (element) => {
+			const { offsetWidth, offsetHeight } = element;
+			return {
+				width: offsetWidth,
+				height: offsetHeight
+			};
+		};
+		const defaultKeyExtractor = (index) => index;
+		const defaultRangeExtractor = (range) => {
+			const start = Math.max(range.startIndex - range.overscan, 0);
+			const len = Math.min(range.endIndex + range.overscan, range.count - 1) - start + 1;
+			const arr = new Array(len);
+			for (let i = 0; i < len; i++) arr[i] = start + i;
+			return arr;
+		};
+		const observeElementRect = (instance, cb) => {
+			const element = instance.scrollElement;
+			if (!element) return;
+			const targetWindow = instance.targetWindow;
+			if (!targetWindow) return;
+			const handler = (rect) => {
+				const { width, height } = rect;
+				cb({
+					width: Math.round(width),
+					height: Math.round(height)
+				});
+			};
+			handler(getRect(element));
+			if (!targetWindow.ResizeObserver) return () => {};
+			const observer = new targetWindow.ResizeObserver((entries) => {
+				const run = () => {
+					const entry = entries[0];
+					if (entry == null ? void 0 : entry.borderBoxSize) {
+						const box = entry.borderBoxSize[0];
+						if (box) {
+							handler({
+								width: box.inlineSize,
+								height: box.blockSize
+							});
+							return;
+						}
+					}
+					handler(getRect(element));
+				};
+				instance.options.useAnimationFrameWithResizeObserver ? requestAnimationFrame(run) : run();
+			});
+			observer.observe(element, { box: "border-box" });
+			return () => {
+				observer.unobserve(element);
+			};
+		};
+		const addEventListenerOptions = { passive: true };
+		const supportsScrollend = typeof window == "undefined" ? true : "onscrollend" in window;
+		const observeOffset = (instance, cb, readOffset) => {
+			const element = instance.scrollElement;
+			if (!element) return;
+			const targetWindow = instance.targetWindow;
+			if (!targetWindow) return;
+			const registerScrollendEvent = instance.options.useScrollendEvent && supportsScrollend;
+			let offset = 0;
+			const fallback = registerScrollendEvent ? null : debounce(targetWindow, () => cb(offset, false), instance.options.isScrollingResetDelay);
+			const createHandler = (isScrolling) => () => {
+				offset = readOffset(element);
+				fallback?.();
+				cb(offset, isScrolling);
+			};
+			const handler = createHandler(true);
+			const endHandler = createHandler(false);
+			element.addEventListener("scroll", handler, addEventListenerOptions);
+			if (registerScrollendEvent) element.addEventListener("scrollend", endHandler, addEventListenerOptions);
+			return () => {
+				element.removeEventListener("scroll", handler);
+				if (registerScrollendEvent) element.removeEventListener("scrollend", endHandler);
+			};
+		};
+		const observeElementOffset = (instance, cb) => observeOffset(instance, cb, (el) => {
+			const { horizontal, isRtl } = instance.options;
+			return horizontal ? el.scrollLeft * (isRtl && -1 || 1) : el.scrollTop;
+		});
+		const measureElement = (element, entry, instance) => {
+			if (instance.options.useCachedMeasurements) {
+				const index = instance.indexFromElement(element);
+				const key = instance.options.getItemKey(index);
+				return instance.itemSizeCache.get(key) ?? instance.options.estimateSize(index);
+			}
+			if (entry == null ? void 0 : entry.borderBoxSize) {
+				const box = entry.borderBoxSize[0];
+				if (box) return Math.round(box[instance.options.horizontal ? "inlineSize" : "blockSize"]);
+			}
+			if (!entry) {
+				const index = instance.indexFromElement(element);
+				const key = instance.options.getItemKey(index);
+				const cachedSize = instance.itemSizeCache.get(key);
+				if (cachedSize !== void 0) return cachedSize;
+			}
+			return element[instance.options.horizontal ? "offsetWidth" : "offsetHeight"];
+		};
+		const scrollWithAdjustments = (offset, { adjustments = 0, behavior }, instance) => {
+			var _a, _b;
+			(_b = (_a = instance.scrollElement) == null ? void 0 : _a.scrollTo) == null || _b.call(_a, {
+				[instance.options.horizontal ? "left" : "top"]: offset + adjustments,
+				behavior
+			});
+		};
+		const elementScroll = scrollWithAdjustments;
+		var Virtualizer = class {
+			constructor(opts) {
+				this.unsubs = [];
+				this.scrollElement = null;
+				this.targetWindow = null;
+				this.isScrolling = false;
+				this.scrollState = null;
+				this.measurementsCache = [];
+				this._flatMeasurements = null;
+				this.itemSizeCache = /* @__PURE__ */ new Map();
+				this.itemSizeCacheVersion = 0;
+				this.laneAssignments = /* @__PURE__ */ new Map();
+				this.pendingMin = null;
+				this.prevLanes = void 0;
+				this.lanesChangedFlag = false;
+				this.lanesSettling = false;
+				this.pendingScrollAnchor = null;
+				this.scrollRect = null;
+				this.scrollOffset = null;
+				this.scrollDirection = null;
+				this.scrollAdjustments = 0;
+				this._iosDeferredAdjustment = 0;
+				this._iosTouching = false;
+				this._iosJustTouchEnded = false;
+				this._iosTouchEndTimerId = null;
+				this._intendedScrollOffset = null;
+				this.elementsCache = /* @__PURE__ */ new Map();
+				this.now = () => {
+					var _a, _b, _c;
+					return ((_c = (_b = (_a = this.targetWindow) == null ? void 0 : _a.performance) == null ? void 0 : _b.now) == null ? void 0 : _c.call(_b)) ?? Date.now();
+				};
+				this.observer = /* @__PURE__ */ (() => {
+					let _ro = null;
+					const get = () => {
+						if (_ro) return _ro;
+						if (!this.targetWindow || !this.targetWindow.ResizeObserver) return null;
+						return _ro = new this.targetWindow.ResizeObserver((entries) => {
+							entries.forEach((entry) => {
+								const run = () => {
+									const node = entry.target;
+									const index = this.indexFromElement(node);
+									if (!node.isConnected) {
+										this.observer.unobserve(node);
+										for (const [cacheKey, cachedNode] of this.elementsCache) if (cachedNode === node) {
+											this.elementsCache.delete(cacheKey);
+											break;
+										}
+										return;
+									}
+									if (this.shouldMeasureDuringScroll(index)) this.resizeItem(index, this.options.measureElement(node, entry, this));
+								};
+								this.options.useAnimationFrameWithResizeObserver ? requestAnimationFrame(run) : run();
+							});
+						});
+					};
+					return {
+						disconnect: () => {
+							var _a;
+							(_a = get()) == null || _a.disconnect();
+							_ro = null;
+						},
+						observe: (target) => {
+							var _a;
+							return (_a = get()) == null ? void 0 : _a.observe(target, { box: "border-box" });
+						},
+						unobserve: (target) => {
+							var _a;
+							return (_a = get()) == null ? void 0 : _a.unobserve(target);
+						}
+					};
+				})();
+				this.range = null;
+				this.setOptions = (opts2) => {
+					var _a, _b;
+					const merged = {
+						debug: false,
+						initialOffset: 0,
+						overscan: 1,
+						paddingStart: 0,
+						paddingEnd: 0,
+						scrollPaddingStart: 0,
+						scrollPaddingEnd: 0,
+						horizontal: false,
+						getItemKey: defaultKeyExtractor,
+						rangeExtractor: defaultRangeExtractor,
+						onChange: () => {},
+						measureElement,
+						initialRect: {
+							width: 0,
+							height: 0
+						},
+						scrollMargin: 0,
+						gap: 0,
+						indexAttribute: "data-index",
+						initialMeasurementsCache: [],
+						lanes: 1,
+						anchorTo: "start",
+						followOnAppend: false,
+						scrollEndThreshold: 1,
+						isScrollingResetDelay: 150,
+						enabled: true,
+						isRtl: false,
+						useScrollendEvent: false,
+						useAnimationFrameWithResizeObserver: false,
+						laneAssignmentMode: "estimate",
+						useCachedMeasurements: false
+					};
+					for (const key in opts2) {
+						const v = opts2[key];
+						if (v !== void 0) merged[key] = v;
+					}
+					const prevOptions = this.options;
+					let anchor = null;
+					let followOnAppend = null;
+					let edgeKeysChanged = false;
+					if (prevOptions !== void 0 && prevOptions.enabled && merged.enabled && merged.anchorTo === "end" && this.scrollElement !== null) {
+						const prevCount = prevOptions.count;
+						const nextCount = merged.count;
+						const measurements = this.getMeasurements();
+						const prevFirstKey = prevCount > 0 ? ((_a = measurements[0]) == null ? void 0 : _a.key) ?? prevOptions.getItemKey(0) : null;
+						const prevLastKey = prevCount > 0 ? ((_b = measurements[prevCount - 1]) == null ? void 0 : _b.key) ?? prevOptions.getItemKey(prevCount - 1) : null;
+						if (nextCount !== prevCount || prevCount > 0 && nextCount > 0 && (merged.getItemKey(0) !== prevFirstKey || merged.getItemKey(nextCount - 1) !== prevLastKey)) {
+							edgeKeysChanged = true;
+							const item = prevCount > 0 ? this.getVirtualItemForOffset(this.getScrollOffset()) ?? measurements[0] : null;
+							if (item) anchor = [item.key, this.getScrollOffset() - item.start];
+							const behavior = merged.followOnAppend === true ? "auto" : merged.followOnAppend || null;
+							if (behavior && nextCount > prevCount && this.isAtEnd(prevOptions.scrollEndThreshold) && (prevCount === 0 || merged.getItemKey(nextCount - 1) !== prevLastKey)) followOnAppend = behavior;
+						}
+					}
+					this.options = merged;
+					if (edgeKeysChanged) {
+						this.pendingMin = 0;
+						this.itemSizeCacheVersion++;
+					}
+					let anchorResolved = false;
+					let anchorDelta = 0;
+					if (anchor && this.scrollOffset !== null) {
+						const [anchorKey, anchorOffset] = anchor;
+						const newMeasurements = this.getMeasurements();
+						const { count, getItemKey } = this.options;
+						let idx = 0;
+						while (idx < count && getItemKey(idx) !== anchorKey) idx++;
+						if (idx < count) {
+							const anchorItem = newMeasurements[idx];
+							if (anchorItem) {
+								const newOffset = Math.max(0, anchorItem.start + anchorOffset);
+								if (newOffset !== this.scrollOffset) {
+									anchorDelta = newOffset - this.scrollOffset;
+									this.scrollOffset = newOffset;
+									anchorResolved = true;
+								}
+							}
+						}
+					}
+					if (anchorResolved || followOnAppend) this.pendingScrollAnchor = [
+						anchorResolved ? anchor[0] : null,
+						anchorResolved ? anchor[1] : 0,
+						followOnAppend,
+						anchorDelta
+					];
+				};
+				this.notify = (sync) => {
+					var _a, _b;
+					(_b = (_a = this.options).onChange) == null || _b.call(_a, this, sync);
+				};
+				this.maybeNotify = memo$11(() => {
+					this.calculateRange();
+					return [
+						this.isScrolling,
+						this.range ? this.range.startIndex : null,
+						this.range ? this.range.endIndex : null
+					];
+				}, (isScrolling) => {
+					this.notify(isScrolling);
+				}, {
+					key: false,
+					debug: () => this.options.debug,
+					initialDeps: [
+						this.isScrolling,
+						this.range ? this.range.startIndex : null,
+						this.range ? this.range.endIndex : null
+					]
+				});
+				this.cleanup = () => {
+					this.unsubs.filter(Boolean).forEach((d) => d());
+					this.unsubs = [];
+					this.observer.disconnect();
+					if (this.rafId != null && this.targetWindow) {
+						this.targetWindow.cancelAnimationFrame(this.rafId);
+						this.rafId = null;
+					}
+					this.scrollState = null;
+					this._iosDeferredAdjustment = 0;
+					this._iosTouching = false;
+					this._iosJustTouchEnded = false;
+					this.scrollElement = null;
+					this.targetWindow = null;
+				};
+				this._didMount = () => {
+					return () => {
+						this.cleanup();
+					};
+				};
+				this._willUpdate = () => {
+					var _a;
+					const scrollElement = this.options.enabled ? this.options.getScrollElement() : null;
+					if (this.scrollElement !== scrollElement) {
+						this.cleanup();
+						if (!scrollElement) {
+							this.maybeNotify();
+							return;
+						}
+						this.scrollElement = scrollElement;
+						if (this.scrollElement && "ownerDocument" in this.scrollElement) this.targetWindow = this.scrollElement.ownerDocument.defaultView;
+						else this.targetWindow = ((_a = this.scrollElement) == null ? void 0 : _a.window) ?? null;
+						this.elementsCache.forEach((cached) => {
+							this.observer.observe(cached);
+						});
+						this.unsubs.push(this.options.observeElementRect(this, (rect) => {
+							this.scrollRect = rect;
+							this.maybeNotify();
+						}));
+						this.unsubs.push(this.options.observeElementOffset(this, (offset, isScrolling) => {
+							if (isScrolling && this._intendedScrollOffset === null && offset === this.scrollOffset) return;
+							if (this._intendedScrollOffset !== null && Math.abs(offset - this._intendedScrollOffset) < 1.5) offset = this._intendedScrollOffset;
+							this._intendedScrollOffset = null;
+							this.scrollAdjustments = 0;
+							const prevOffset = this.getScrollOffset();
+							this.scrollDirection = isScrolling ? prevOffset === offset ? this.scrollDirection : prevOffset < offset ? "forward" : "backward" : null;
+							this.scrollOffset = offset;
+							this.isScrolling = isScrolling;
+							this._flushIosDeferredIfReady();
+							if (this.scrollState) this.scheduleScrollReconcile();
+							this.maybeNotify();
+						}));
+						if ("addEventListener" in this.scrollElement) {
+							const scrollEl = this.scrollElement;
+							const onTouchStart = () => {
+								this._iosTouching = true;
+								this._iosJustTouchEnded = false;
+								if (this._iosTouchEndTimerId !== null && this.targetWindow != null) {
+									this.targetWindow.clearTimeout(this._iosTouchEndTimerId);
+									this._iosTouchEndTimerId = null;
+								}
+							};
+							const onTouchEnd = () => {
+								this._iosTouching = false;
+								if (!isIOSWebKit() || this.targetWindow == null) return;
+								this._iosJustTouchEnded = true;
+								this._iosTouchEndTimerId = this.targetWindow.setTimeout(() => {
+									this._iosJustTouchEnded = false;
+									this._iosTouchEndTimerId = null;
+									this._flushIosDeferredIfReady();
+								}, 150);
+							};
+							scrollEl.addEventListener("touchstart", onTouchStart, addEventListenerOptions);
+							scrollEl.addEventListener("touchend", onTouchEnd, addEventListenerOptions);
+							this.unsubs.push(() => {
+								scrollEl.removeEventListener("touchstart", onTouchStart);
+								scrollEl.removeEventListener("touchend", onTouchEnd);
+								if (this._iosTouchEndTimerId !== null && this.targetWindow != null) {
+									this.targetWindow.clearTimeout(this._iosTouchEndTimerId);
+									this._iosTouchEndTimerId = null;
+								}
+							});
+						}
+						this._scrollToOffset(this.getScrollOffset(), {
+							adjustments: void 0,
+							behavior: void 0
+						});
+					}
+					const anchor = this.pendingScrollAnchor;
+					this.pendingScrollAnchor = null;
+					if (anchor && this.scrollElement && this.options.enabled) {
+						const [key, _offset, followOnAppend, anchorDelta] = anchor;
+						if (key !== null && !followOnAppend) if (isIOSWebKit() && (this.isScrolling || this._iosTouching || this._iosJustTouchEnded)) {
+							if (anchorDelta !== 0) this._iosDeferredAdjustment += anchorDelta;
+						} else this._scrollToOffset(this.getScrollOffset(), {
+							adjustments: void 0,
+							behavior: void 0
+						});
+						if (followOnAppend) this.scrollToEnd({ behavior: followOnAppend });
+					}
+				};
+				this._flushIosDeferredIfReady = () => {
+					if (this._iosDeferredAdjustment === 0) return;
+					if (this.isScrolling) return;
+					if (this._iosTouching) return;
+					if (this._iosJustTouchEnded) return;
+					const cur = this.getScrollOffset();
+					const max = this.getMaxScrollOffset();
+					if (cur < 0 || cur > max) return;
+					if (this._iosDeferredAdjustment < 0 && cur >= max - 1) {
+						this._iosDeferredAdjustment = 0;
+						return;
+					}
+					const delta = this._iosDeferredAdjustment;
+					this._iosDeferredAdjustment = 0;
+					this._scrollToOffset(cur, {
+						adjustments: this.scrollAdjustments += delta,
+						behavior: void 0
+					});
+				};
+				this.rafId = null;
+				this.getSize = () => {
+					if (!this.options.enabled) {
+						this.scrollRect = null;
+						return 0;
+					}
+					this.scrollRect = this.scrollRect ?? this.options.initialRect;
+					return this.scrollRect[this.options.horizontal ? "width" : "height"];
+				};
+				this.getScrollOffset = () => {
+					if (!this.options.enabled) {
+						this.scrollOffset = null;
+						return 0;
+					}
+					this.scrollOffset = this.scrollOffset ?? (typeof this.options.initialOffset === "function" ? this.options.initialOffset() : this.options.initialOffset);
+					return this.scrollOffset;
+				};
+				this.getMeasurementOptions = memo$11(() => [
+					this.options.count,
+					this.options.paddingStart,
+					this.options.scrollMargin,
+					this.options.getItemKey,
+					this.options.enabled,
+					this.options.lanes,
+					this.options.laneAssignmentMode,
+					this.options.gap
+				], (count, paddingStart, scrollMargin, getItemKey, enabled, lanes, laneAssignmentMode, gap) => {
+					if (this.prevLanes !== void 0 && this.prevLanes !== lanes) this.lanesChangedFlag = true;
+					this.prevLanes = lanes;
+					this.pendingMin = null;
+					return {
+						count,
+						paddingStart,
+						scrollMargin,
+						getItemKey,
+						enabled,
+						lanes,
+						laneAssignmentMode,
+						gap
+					};
+				}, { key: false });
+				this.getMeasurements = memo$11(() => [this.getMeasurementOptions(), this.itemSizeCacheVersion], ({ count, paddingStart, scrollMargin, getItemKey, enabled, lanes, laneAssignmentMode, gap }, _itemSizeCacheVersion) => {
+					const itemSizeCache = this.itemSizeCache;
+					if (!enabled) {
+						this.measurementsCache = [];
+						this.itemSizeCache.clear();
+						this.laneAssignments.clear();
+						return [];
+					}
+					if (this.laneAssignments.size > count) {
+						for (const index of this.laneAssignments.keys()) if (index >= count) this.laneAssignments.delete(index);
+					}
+					if (this.lanesChangedFlag) {
+						this.lanesChangedFlag = false;
+						this.lanesSettling = true;
+						this.measurementsCache = [];
+						this.itemSizeCache.clear();
+						this.laneAssignments.clear();
+						this.pendingMin = null;
+					}
+					if (this.measurementsCache.length === 0 && !this.lanesSettling) {
+						this.measurementsCache = this.options.initialMeasurementsCache;
+						this.measurementsCache.forEach((item) => {
+							this.itemSizeCache.set(item.key, item.size);
+						});
+					}
+					const min = this.lanesSettling ? 0 : this.pendingMin ?? 0;
+					this.pendingMin = null;
+					if (this.lanesSettling && this.measurementsCache.length === count) this.lanesSettling = false;
+					if (lanes === 1) {
+						const need = count * 2;
+						let flat = this._flatMeasurements;
+						if (!flat || flat.length < need) {
+							const next = new Float64Array(need);
+							if (flat && min > 0) next.set(flat.subarray(0, min * 2));
+							flat = next;
+							this._flatMeasurements = flat;
+						}
+						let runningStart;
+						if (min === 0) runningStart = paddingStart + scrollMargin;
+						else {
+							const prevIdx = min - 1;
+							runningStart = flat[prevIdx * 2] + flat[prevIdx * 2 + 1] + gap;
+						}
+						for (let i = min; i < count; i++) {
+							const key = getItemKey(i);
+							const measuredSize = itemSizeCache.get(key);
+							const size = typeof measuredSize === "number" ? measuredSize : this.options.estimateSize(i);
+							flat[i * 2] = runningStart;
+							flat[i * 2 + 1] = size;
+							runningStart += size + gap;
+						}
+						const view = createLazyMeasurementsView(count, flat, getItemKey);
+						this.measurementsCache = view;
+						return view;
+					}
+					const measurements = this.measurementsCache.slice(0, min);
+					const laneLastIndex = new Array(lanes).fill(void 0);
+					const laneEnds = new Float64Array(lanes);
+					let filledLanes = 0;
+					for (let m = 0; m < min; m++) {
+						const item = measurements[m];
+						if (item) {
+							if (laneLastIndex[item.lane] === void 0) filledLanes++;
+							laneLastIndex[item.lane] = m;
+							laneEnds[item.lane] = item.end;
+						}
+					}
+					for (let i = min; i < count; i++) {
+						const key = getItemKey(i);
+						const cachedLane = this.laneAssignments.get(i);
+						let lane;
+						let start;
+						const shouldCacheLane = laneAssignmentMode === "estimate" || itemSizeCache.has(key);
+						if (cachedLane !== void 0 && this.options.lanes > 1) {
+							lane = cachedLane;
+							const prevIndex = laneLastIndex[lane];
+							const prevInLane = prevIndex !== void 0 ? measurements[prevIndex] : void 0;
+							start = prevInLane ? prevInLane.end + gap : paddingStart + scrollMargin;
+						} else if (filledLanes === lanes) {
+							let bestLane = 0;
+							let bestEnd = laneEnds[0];
+							let bestIdx = laneLastIndex[0];
+							for (let l = 1; l < lanes; l++) {
+								const e = laneEnds[l];
+								if (e < bestEnd || e === bestEnd && laneLastIndex[l] < bestIdx) {
+									bestLane = l;
+									bestEnd = e;
+									bestIdx = laneLastIndex[l];
+								}
+							}
+							lane = bestLane;
+							start = bestEnd + gap;
+							if (shouldCacheLane) this.laneAssignments.set(i, lane);
+						} else {
+							lane = i % this.options.lanes;
+							start = paddingStart + scrollMargin;
+							if (shouldCacheLane) this.laneAssignments.set(i, lane);
+						}
+						const measuredSize = itemSizeCache.get(key);
+						const size = typeof measuredSize === "number" ? measuredSize : this.options.estimateSize(i);
+						const end = start + size;
+						measurements[i] = {
+							index: i,
+							start,
+							size,
+							end,
+							key,
+							lane
+						};
+						if (laneLastIndex[lane] === void 0) filledLanes++;
+						laneLastIndex[lane] = i;
+						laneEnds[lane] = end;
+					}
+					this.measurementsCache = measurements;
+					return measurements;
+				}, {
+					key: false,
+					debug: () => this.options.debug
+				});
+				this.calculateRange = memo$11(() => [
+					this.getMeasurements(),
+					this.getSize(),
+					this.getScrollOffset(),
+					this.options.lanes
+				], (measurements, outerSize, scrollOffset, lanes) => {
+					if (measurements.length === 0 || outerSize === 0) {
+						this.range = null;
+						return null;
+					}
+					this.range = calculateRangeImpl(measurements, outerSize, scrollOffset, lanes, lanes === 1 && this._flatMeasurements != null ? this._flatMeasurements : null);
+					return this.range;
+				}, {
+					key: false,
+					debug: () => this.options.debug
+				});
+				this.getVirtualIndexes = memo$11(() => {
+					let startIndex = null;
+					let endIndex = null;
+					const range = this.calculateRange();
+					if (range) {
+						startIndex = range.startIndex;
+						endIndex = range.endIndex;
+					}
+					this.maybeNotify.updateDeps([
+						this.isScrolling,
+						startIndex,
+						endIndex
+					]);
+					return [
+						this.options.rangeExtractor,
+						this.options.overscan,
+						this.options.count,
+						startIndex,
+						endIndex
+					];
+				}, (rangeExtractor, overscan, count, startIndex, endIndex) => {
+					return startIndex === null || endIndex === null ? [] : rangeExtractor({
+						startIndex,
+						endIndex,
+						overscan,
+						count
+					});
+				}, {
+					key: false,
+					debug: () => this.options.debug
+				});
+				this.indexFromElement = (node) => {
+					const attributeName = this.options.indexAttribute;
+					const indexStr = node.getAttribute(attributeName);
+					if (!indexStr) {
+						console.warn(`Missing attribute name '${attributeName}={index}' on measured element.`);
+						return -1;
+					}
+					return parseInt(indexStr, 10);
+				};
+				this.shouldMeasureDuringScroll = (index) => {
+					var _a;
+					if (!this.scrollState || this.scrollState.behavior !== "smooth") return true;
+					const scrollIndex = this.scrollState.index ?? ((_a = this.getVirtualItemForOffset(this.scrollState.lastTargetOffset)) == null ? void 0 : _a.index);
+					if (scrollIndex !== void 0 && this.range) {
+						const bufferSize = Math.max(this.options.overscan, Math.ceil((this.range.endIndex - this.range.startIndex) / 2));
+						const minIndex = Math.max(0, scrollIndex - bufferSize);
+						const maxIndex = Math.min(this.options.count - 1, scrollIndex + bufferSize);
+						return index >= minIndex && index <= maxIndex;
+					}
+					return true;
+				};
+				this.measureElement = (node) => {
+					if (!node) {
+						this.elementsCache.forEach((cached, key2) => {
+							if (!cached.isConnected) {
+								this.observer.unobserve(cached);
+								this.elementsCache.delete(key2);
+							}
+						});
+						return;
+					}
+					const index = this.indexFromElement(node);
+					const key = this.options.getItemKey(index);
+					const prevNode = this.elementsCache.get(key);
+					if (prevNode !== node) {
+						if (prevNode) this.observer.unobserve(prevNode);
+						this.observer.observe(node);
+						this.elementsCache.set(key, node);
+					}
+					if ((!this.isScrolling || this.scrollState) && this.shouldMeasureDuringScroll(index)) this.resizeItem(index, this.options.measureElement(node, void 0, this));
+				};
+				this.resizeItem = (index, size) => {
+					var _a, _b;
+					if (index < 0 || index >= this.options.count) return;
+					let cachedSize;
+					let itemStart;
+					let key;
+					const flat = this._flatMeasurements;
+					if (this.options.lanes === 1 && flat !== null) {
+						key = this.options.getItemKey(index);
+						itemStart = flat[index * 2];
+						cachedSize = flat[index * 2 + 1];
+					} else {
+						const item = this.measurementsCache[index];
+						if (!item) return;
+						key = item.key;
+						itemStart = item.start;
+						cachedSize = item.size;
+					}
+					const itemSize = this.itemSizeCache.get(key) ?? cachedSize;
+					const delta = size - itemSize;
+					if (delta !== 0) {
+						const wasAtEnd = this.options.anchorTo === "end" && ((_a = this.scrollState) == null ? void 0 : _a.behavior) !== "smooth" && this.getVirtualDistanceFromEnd() <= this.options.scrollEndThreshold;
+						const prevTotalSize = wasAtEnd ? this.getTotalSize() : 0;
+						const scrollOffsetWithAdj = this.getScrollOffset() + this.scrollAdjustments;
+						const defaultShouldAdjust = !this.itemSizeCache.has(key) ? itemStart < scrollOffsetWithAdj : itemStart + itemSize <= scrollOffsetWithAdj && this.scrollDirection !== "backward";
+						const shouldAdjustScroll = ((_b = this.scrollState) == null ? void 0 : _b.behavior) !== "smooth" && (this.shouldAdjustScrollPositionOnItemSizeChange !== void 0 ? this.shouldAdjustScrollPositionOnItemSizeChange(this.measurementsCache[index] ?? {
+							index,
+							key,
+							start: itemStart,
+							size: cachedSize,
+							end: itemStart + cachedSize,
+							lane: 0
+						}, delta, this) : defaultShouldAdjust);
+						if (this.pendingMin === null || index < this.pendingMin) this.pendingMin = index;
+						this.itemSizeCache.set(key, size);
+						this.itemSizeCacheVersion++;
+						let adjustedSync = false;
+						if (wasAtEnd) adjustedSync = this.applyScrollAdjustment(this.getTotalSize() - prevTotalSize);
+						else if (shouldAdjustScroll) adjustedSync = this.applyScrollAdjustment(delta);
+						this.notify(adjustedSync);
+					}
+				};
+				this.getVirtualItems = memo$11(() => [this.getVirtualIndexes(), this.getMeasurements()], (indexes, measurements) => {
+					const virtualItems = [];
+					for (let k = 0, len = indexes.length; k < len; k++) {
+						const measurement = measurements[indexes[k]];
+						virtualItems.push(measurement);
+					}
+					return virtualItems;
+				}, {
+					key: false,
+					debug: () => this.options.debug
+				});
+				this.getVirtualItemForOffset = (offset) => {
+					const measurements = this.getMeasurements();
+					if (measurements.length === 0) return;
+					const flat = this._flatMeasurements;
+					const useFlat = this.options.lanes === 1 && flat != null;
+					return notUndefined(measurements[findNearestBinarySearch(0, measurements.length - 1, useFlat ? (i) => flat[i * 2] : (i) => notUndefined(measurements[i]).start, offset)]);
+				};
+				this.getMaxScrollOffset = () => {
+					if (!this.scrollElement) return 0;
+					if ("scrollHeight" in this.scrollElement) return this.options.horizontal ? this.scrollElement.scrollWidth - this.scrollElement.clientWidth : this.scrollElement.scrollHeight - this.scrollElement.clientHeight;
+					else {
+						const doc = this.scrollElement.document.documentElement;
+						return this.options.horizontal ? doc.scrollWidth - this.scrollElement.innerWidth : doc.scrollHeight - this.scrollElement.innerHeight;
+					}
+				};
+				this.getVirtualDistanceFromEnd = () => {
+					return Math.max(this.getTotalSize() - this.getSize() - this.getScrollOffset(), 0);
+				};
+				this.getDistanceFromEnd = () => {
+					return Math.max(this.getMaxScrollOffset() - this.getScrollOffset(), 0);
+				};
+				this.isAtEnd = (threshold = this.options.scrollEndThreshold) => {
+					return this.getDistanceFromEnd() <= threshold;
+				};
+				this.getOffsetForAlignment = (toOffset, align, itemSize = 0) => {
+					if (!this.scrollElement) return 0;
+					const size = this.getSize();
+					const scrollOffset = this.getScrollOffset();
+					if (align === "auto") align = toOffset >= scrollOffset + size ? "end" : "start";
+					if (align === "center") toOffset += (itemSize - size) / 2;
+					else if (align === "end") toOffset -= size;
+					const maxOffset = this.getMaxScrollOffset();
+					return Math.max(Math.min(maxOffset, toOffset), 0);
+				};
+				this.getOffsetForIndex = (index, align = "auto") => {
+					index = Math.max(0, Math.min(index, this.options.count - 1));
+					const size = this.getSize();
+					const scrollOffset = this.getScrollOffset();
+					const item = this.measurementsCache[index];
+					if (!item) return;
+					if (align === "auto") if (item.end >= scrollOffset + size - this.options.scrollPaddingEnd) align = "end";
+					else if (item.start <= scrollOffset + this.options.scrollPaddingStart) align = "start";
+					else return [scrollOffset, align];
+					if (align === "end" && index === this.options.count - 1) return [this.getMaxScrollOffset(), align];
+					const toOffset = align === "end" ? item.end + this.options.scrollPaddingEnd : item.start - this.options.scrollPaddingStart;
+					return [this.getOffsetForAlignment(toOffset, align, item.size), align];
+				};
+				this.scrollToOffset = (toOffset, { align = "start", behavior = "auto" } = {}) => {
+					this._iosDeferredAdjustment = 0;
+					const offset = this.getOffsetForAlignment(toOffset, align);
+					const now = this.now();
+					this.scrollState = {
+						index: null,
+						align,
+						behavior,
+						startedAt: now,
+						lastTargetOffset: offset,
+						stableFrames: 0
+					};
+					this._scrollToOffset(offset, {
+						adjustments: void 0,
+						behavior
+					});
+					this.scheduleScrollReconcile();
+				};
+				this.scrollToIndex = (index, { align: initialAlign = "auto", behavior = "auto" } = {}) => {
+					this._iosDeferredAdjustment = 0;
+					index = Math.max(0, Math.min(index, this.options.count - 1));
+					const offsetInfo = this.getOffsetForIndex(index, initialAlign);
+					if (!offsetInfo) return;
+					const [offset, align] = offsetInfo;
+					const now = this.now();
+					this.scrollState = {
+						index,
+						align,
+						behavior,
+						startedAt: now,
+						lastTargetOffset: offset,
+						stableFrames: 0
+					};
+					this._scrollToOffset(offset, {
+						adjustments: void 0,
+						behavior
+					});
+					this.scheduleScrollReconcile();
+				};
+				this.scrollBy = (delta, { behavior = "auto" } = {}) => {
+					const offset = this.getScrollOffset() + delta;
+					const now = this.now();
+					this.scrollState = {
+						index: null,
+						align: "start",
+						behavior,
+						startedAt: now,
+						lastTargetOffset: offset,
+						stableFrames: 0
+					};
+					this._scrollToOffset(offset, {
+						adjustments: void 0,
+						behavior
+					});
+					this.scheduleScrollReconcile();
+				};
+				this.scrollToEnd = ({ behavior = "auto" } = {}) => {
+					if (this.options.count > 0) {
+						this.scrollToIndex(this.options.count - 1, {
+							align: "end",
+							behavior
+						});
+						return;
+					}
+					this.scrollToOffset(Math.max(this.getTotalSize() - this.getSize(), 0), { behavior });
+				};
+				this.getTotalSize = () => {
+					var _a;
+					const measurements = this.getMeasurements();
+					let end;
+					if (measurements.length === 0) end = this.options.paddingStart;
+					else if (this.options.lanes === 1) {
+						const lastIdx = measurements.length - 1;
+						const flat = this._flatMeasurements;
+						if (flat != null) end = flat[lastIdx * 2] + flat[lastIdx * 2 + 1];
+						else end = ((_a = measurements[lastIdx]) == null ? void 0 : _a.end) ?? 0;
+					} else {
+						const endByLane = Array(this.options.lanes).fill(null);
+						let endIndex = measurements.length - 1;
+						while (endIndex >= 0 && endByLane.some((val) => val === null)) {
+							const item = measurements[endIndex];
+							if (endByLane[item.lane] === null) endByLane[item.lane] = item.end;
+							endIndex--;
+						}
+						end = Math.max(...endByLane.filter((val) => val !== null));
+					}
+					return Math.max(end - this.options.scrollMargin + this.options.paddingEnd, 0);
+				};
+				this.takeSnapshot = () => {
+					const snapshot = [];
+					if (this.itemSizeCache.size === 0) return snapshot;
+					const m = this.getMeasurements();
+					for (const item of m) if (item && this.itemSizeCache.has(item.key)) snapshot.push({
+						index: item.index,
+						key: item.key,
+						start: item.start,
+						size: item.size,
+						end: item.end,
+						lane: item.lane
+					});
+					return snapshot;
+				};
+				this._scrollToOffset = (offset, { adjustments, behavior }) => {
+					this._intendedScrollOffset = offset + (adjustments ?? 0);
+					this.options.scrollToFn(offset, {
+						behavior,
+						adjustments
+					}, this);
+				};
+				this.measure = () => {
+					this.pendingMin = null;
+					this.itemSizeCache.clear();
+					this.laneAssignments.clear();
+					this.itemSizeCacheVersion++;
+					this.notify(false);
+				};
+				this.setOptions(opts);
+			}
+			applyScrollAdjustment(delta, behavior) {
+				if (delta === 0) return false;
+				if (isIOSWebKit() && (this.isScrolling || this._iosTouching || this._iosJustTouchEnded)) {
+					this._iosDeferredAdjustment += delta;
+					return false;
+				} else {
+					this._scrollToOffset(this.getScrollOffset(), {
+						adjustments: this.scrollAdjustments += delta,
+						behavior
+					});
+					if (this.scrollOffset !== null) {
+						this.scrollOffset += this.scrollAdjustments;
+						if (this.scrollOffset < 0) this.scrollOffset = 0;
+						this.scrollAdjustments = 0;
+					}
+					return true;
+				}
+			}
+			scheduleScrollReconcile() {
+				if (!this.targetWindow) {
+					this.scrollState = null;
+					return;
+				}
+				if (this.rafId != null) return;
+				this.rafId = this.targetWindow.requestAnimationFrame(() => {
+					this.rafId = null;
+					this.reconcileScroll();
+				});
+			}
+			reconcileScroll() {
+				if (!this.scrollState) return;
+				if (!this.scrollElement) return;
+				if (this.now() - this.scrollState.startedAt > 5e3) {
+					this.scrollState = null;
+					return;
+				}
+				const offsetInfo = this.scrollState.index != null ? this.getOffsetForIndex(this.scrollState.index, this.scrollState.align) : void 0;
+				const targetOffset = offsetInfo ? offsetInfo[0] : this.scrollState.lastTargetOffset;
+				const STABLE_FRAMES = 1;
+				const targetChanged = targetOffset !== this.scrollState.lastTargetOffset;
+				if (!targetChanged && approxEqual(targetOffset, this.getScrollOffset())) {
+					this.scrollState.stableFrames++;
+					if (this.scrollState.stableFrames >= STABLE_FRAMES) {
+						if (this.getScrollOffset() !== targetOffset) this._scrollToOffset(targetOffset, {
+							adjustments: void 0,
+							behavior: "auto"
+						});
+						this.scrollState = null;
+						return;
+					}
+				} else {
+					this.scrollState.stableFrames = 0;
+					if (targetChanged) {
+						const viewport = this.getSize() || 600;
+						const distance = Math.abs(targetOffset - this.getScrollOffset());
+						const keepSmooth = this.scrollState.behavior === "smooth" && distance > viewport;
+						this.scrollState.lastTargetOffset = targetOffset;
+						if (!keepSmooth) this.scrollState.behavior = "auto";
+						this._scrollToOffset(targetOffset, {
+							adjustments: void 0,
+							behavior: keepSmooth ? "smooth" : "auto"
+						});
+					}
+				}
+				this.scheduleScrollReconcile();
+			}
+		};
+		const findNearestBinarySearch = (low, high, getCurrentValue, value) => {
+			while (low <= high) {
+				const middle = (low + high) / 2 | 0;
+				const currentValue = getCurrentValue(middle);
+				if (currentValue < value) low = middle + 1;
+				else if (currentValue > value) high = middle - 1;
+				else return middle;
+			}
+			if (low > 0) return low - 1;
+			else return 0;
+		};
+		function findNearestBinarySearchFlat(flat, high, value) {
+			let low = 0;
+			while (low <= high) {
+				const middle = (low + high) / 2 | 0;
+				const currentValue = flat[middle * 2];
+				if (currentValue < value) low = middle + 1;
+				else if (currentValue > value) high = middle - 1;
+				else return middle;
+			}
+			return low > 0 ? low - 1 : 0;
+		}
+		function calculateRangeImpl(measurements, outerSize, scrollOffset, lanes, flat) {
+			const lastIndex = measurements.length - 1;
+			if (measurements.length <= lanes) return {
+				startIndex: 0,
+				endIndex: lastIndex
+			};
+			if (lanes === 1 && flat !== null) {
+				const startIndex2 = findNearestBinarySearchFlat(flat, lastIndex, scrollOffset);
+				let endIndex2 = startIndex2;
+				const limit = scrollOffset + outerSize;
+				while (endIndex2 < lastIndex && flat[endIndex2 * 2] + flat[endIndex2 * 2 + 1] < limit) endIndex2++;
+				return {
+					startIndex: startIndex2,
+					endIndex: endIndex2
+				};
+			}
+			const getStart = (index) => measurements[index].start;
+			let startIndex = findNearestBinarySearch(0, lastIndex, getStart, scrollOffset);
+			let endIndex = startIndex;
+			if (lanes === 1) while (endIndex < lastIndex && measurements[endIndex].end < scrollOffset + outerSize) endIndex++;
+			else if (lanes > 1) {
+				const endPerLane = Array(lanes).fill(0);
+				while (endIndex < lastIndex && endPerLane.some((pos) => pos < scrollOffset + outerSize)) {
+					const item = measurements[endIndex];
+					endPerLane[item.lane] = item.end;
+					endIndex++;
+				}
+				const startPerLane = Array(lanes).fill(scrollOffset + outerSize);
+				while (startIndex >= 0 && startPerLane.some((pos) => pos >= scrollOffset)) {
+					const item = measurements[startIndex];
+					startPerLane[item.lane] = item.start;
+					startIndex--;
+				}
+				startIndex = Math.max(0, startIndex - startIndex % lanes);
+				endIndex = Math.min(lastIndex, endIndex + (lanes - 1 - endIndex % lanes));
+			}
+			return {
+				startIndex,
+				endIndex
+			};
+		}
+		//#endregion
+		//#region ../../../node_modules/.pnpm/@tanstack+react-virtual@3.14.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+		const useIsomorphicLayoutEffect = typeof document !== "undefined" ? react.useLayoutEffect : react.useEffect;
+		function useVirtualizerBase({ useFlushSync = true, directDomUpdates = false, directDomUpdatesMode = "transform", ...options }) {
+			const rerender = react.useReducer((x) => x + 1, 0)[1];
+			const directRef = react.useRef({
+				enabled: directDomUpdates,
+				mode: directDomUpdatesMode,
+				container: null,
+				lastSize: null,
+				lastPositions: /* @__PURE__ */ new WeakMap(),
+				prevRange: null
+			});
+			directRef.current.enabled = directDomUpdates;
+			directRef.current.mode = directDomUpdatesMode;
+			const applyContainerSize = (instance2) => {
+				const state = directRef.current;
+				if (!state.enabled || !state.container) return;
+				const totalSize = instance2.getTotalSize();
+				if (totalSize !== state.lastSize) {
+					state.lastSize = totalSize;
+					const sizeAxis = instance2.options.horizontal ? "width" : "height";
+					state.container.style[sizeAxis] = `${totalSize}px`;
+				}
+			};
+			const applyDirectStyles = (instance2) => {
+				const state = directRef.current;
+				if (!state.enabled || !state.container) return;
+				applyContainerSize(instance2);
+				const horizontal = !!instance2.options.horizontal;
+				const useTransform = state.mode === "transform";
+				const posAxis = horizontal ? "left" : "top";
+				const scrollMargin = instance2.options.scrollMargin;
+				const items = instance2.getVirtualItems();
+				for (const item of items) {
+					const next = item.start - scrollMargin;
+					const el = instance2.elementsCache.get(item.key);
+					if (!el) continue;
+					if (state.lastPositions.get(el) === next) continue;
+					state.lastPositions.set(el, next);
+					if (useTransform) el.style.transform = horizontal ? `translate3d(${next}px, 0, 0)` : `translate3d(0, ${next}px, 0)`;
+					else el.style[posAxis] = `${next}px`;
+				}
+			};
+			const resolvedOptions = {
+				...options,
+				onChange: (instance2, sync) => {
+					var _a;
+					const state = directRef.current;
+					let shouldRerender = true;
+					if (state.enabled) {
+						applyDirectStyles(instance2);
+						const range = instance2.range;
+						const prev = state.prevRange;
+						shouldRerender = !prev || prev.isScrolling !== instance2.isScrolling || prev.startIndex !== (range == null ? void 0 : range.startIndex) || prev.endIndex !== (range == null ? void 0 : range.endIndex);
+						if (shouldRerender) state.prevRange = range ? {
+							startIndex: range.startIndex,
+							endIndex: range.endIndex,
+							isScrolling: instance2.isScrolling
+						} : null;
+					}
+					if (shouldRerender) if (useFlushSync && sync) (0, react_dom.flushSync)(rerender);
+					else rerender();
+					(_a = options.onChange) == null || _a.call(options, instance2, sync);
+				}
+			};
+			const [instance] = react.useState(() => {
+				const v = new Virtualizer(resolvedOptions);
+				return Object.assign(v, { containerRef: (node) => {
+					const state = directRef.current;
+					state.container = node;
+					state.lastSize = null;
+					if (node && state.enabled) {
+						const total = v.getTotalSize();
+						state.lastSize = total;
+						const axis = v.options.horizontal ? "width" : "height";
+						node.style[axis] = `${total}px`;
+					}
+				} });
+			});
+			instance.setOptions(resolvedOptions);
+			useIsomorphicLayoutEffect(() => {
+				return instance._didMount();
+			}, []);
+			useIsomorphicLayoutEffect(() => {
+				applyContainerSize(instance);
+				return instance._willUpdate();
+			});
+			useIsomorphicLayoutEffect(() => {
+				applyDirectStyles(instance);
+			});
+			return instance;
+		}
+		function useVirtualizer(options) {
+			return useVirtualizerBase({
+				observeElementRect,
+				observeElementOffset,
+				scrollToFn: elementScroll,
+				...options
+			});
+		}
+		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/TurnNavigator.module.css.mjs
+		const css$11 = ".eGxaPq_slot{z-index:7;pointer-events:none;height:0;position:sticky;top:0}.eGxaPq_frame{--turn-rail-band:calc(var(--dsh-conversation-viewport-height,100dvh) - var(--dsh-composer-height,152px));--turn-preview-height:100px;top:calc(var(--turn-rail-band) / 2);right:calc(12px - (var(--dsh-composer-side-clearance) + 16px));width:28px;max-height:min(max(0px, calc(var(--turn-rail-band) - 64px)), 420px);contain:layout;cursor:pointer;pointer-events:auto;position:absolute;transform:translateY(-50%)}.eGxaPq_scroller{max-height:inherit;overscroll-behavior:contain;scrollbar-width:none;position:relative;overflow-y:auto}.eGxaPq_scroller::-webkit-scrollbar{display:none}.eGxaPq_fadeTop{mask-image:linear-gradient(#0000 0,#000 24px 100%)}.eGxaPq_fadeBottom{mask-image:linear-gradient(#000 0 calc(100% - 24px),#0000 100%)}.eGxaPq_fadeTop.eGxaPq_fadeBottom{mask-image:linear-gradient(#0000 0,#000 24px calc(100% - 24px),#0000 100%)}.eGxaPq_marks{position:relative}.eGxaPq_mark{cursor:pointer;background:0 0;border:0;border-radius:8px;height:10px;padding:0;position:absolute;top:0;left:0;right:0}.eGxaPq_mark:before{background:var(--dsw-alias-border-l4);content:\"\";transform-origin:100%;border-radius:2px;width:20px;height:2px;transition:transform .14s,background-color .14s;position:absolute;top:50%;right:0;transform:translateY(-50%)scaleX(.6)}.eGxaPq_markUnloaded:before{opacity:.6;transform:translateY(-50%)scaleX(.4)}.eGxaPq_markPreview:before{background:var(--dsw-alias-label-tertiary);transform:translateY(-50%)scaleX(.9)}.eGxaPq_markBusy:before{animation:1s ease-in-out infinite eGxaPq_dsh-turn-mark-busy}.eGxaPq_markActive:before{background:var(--dsw-alias-label-primary);transform:translateY(-50%)scaleX(1)}.eGxaPq_mark:focus-visible:before{background:var(--dsw-alias-state-business-primary);transform:translateY(-50%)scaleX(1)}.eGxaPq_mark:focus-visible{outline:none}.eGxaPq_mark:focus-visible:after{border-radius:inherit;outline:1px solid var(--dsw-alias-state-business-primary);outline-offset:2px;content:\"\";width:20px;position:absolute;inset:0 0 0 auto}.eGxaPq_preview{top:clamp(0px, calc(var(--turn-preview-center) - var(--turn-preview-height) / 2), calc(100% - var(--turn-preview-height)));box-sizing:border-box;width:min(300px,100cqw - 120px);max-height:var(--turn-preview-height);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-elevation-panel);pointer-events:none;border:0;border-radius:10px;padding:10px 12px;transition:top .14s cubic-bezier(.2,.8,.2,1);animation:.12s ease-out eGxaPq_dsh-turn-preview-enter;position:absolute;right:calc(100% + 10px);overflow:hidden}.eGxaPq_previewPrompt,.eGxaPq_previewResponse{-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.eGxaPq_previewPrompt{font:var(--dsw-font-xs-strong-13);-webkit-line-clamp:1}.eGxaPq_previewResponse{color:var(--dsw-alias-label-caption);font:var(--dsw-font-xxs-12);-webkit-line-clamp:3;margin-top:4px}@keyframes eGxaPq_dsh-turn-preview-enter{0%{opacity:0;transform:translate(4px)}to{opacity:1;transform:translate(0)}}@keyframes eGxaPq_dsh-turn-mark-busy{0%,to{opacity:1}50%{opacity:.35}}@container (width<=900px){.eGxaPq_slot{display:none}}@media (prefers-reduced-motion:reduce){.eGxaPq_frame,.eGxaPq_scroller,.eGxaPq_mark:before,.eGxaPq_markBusy:before,.eGxaPq_preview{scroll-behavior:auto;transition:none;animation:none}}";
+		const tagId$11 = "@deepseek-ai/dsh-client-ui-chat/TurnNavigator.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$11) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
+			tag.dataset.pluginCss = tagId$11;
+			tag.textContent = css$11;
 			document.head.appendChild(tag);
 		}
 		var TurnNavigator_module_css_default = {
 			"dsh-turn-mark-busy": "eGxaPq_dsh-turn-mark-busy",
-			"dsh-turn-mark-enter": "eGxaPq_dsh-turn-mark-enter",
 			"dsh-turn-preview-enter": "eGxaPq_dsh-turn-preview-enter",
 			"fadeBottom": "eGxaPq_fadeBottom",
 			"fadeTop": "eGxaPq_fadeTop",
@@ -1642,7 +3259,6 @@ window.__ModuleLoader__.load({
 			"mark": "eGxaPq_mark",
 			"markActive": "eGxaPq_markActive",
 			"markBusy": "eGxaPq_markBusy",
-			"markPosition": "eGxaPq_markPosition",
 			"markPreview": "eGxaPq_markPreview",
 			"markUnloaded": "eGxaPq_markUnloaded",
 			"marks": "eGxaPq_marks",
@@ -1654,106 +3270,215 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/chat/TurnNavigator.js
+		/** Fixed-pitch virtual turn rail with independent activation and scroll controls. */
 		/** Fixed pitch between neighbouring marks; overflow scrolls inside the frame. */
 		const TURN_SPACING_PX = 10;
 		/** Rail padding above the first mark and below the last one, per end. */
 		const RAIL_INSET_PX = 6;
 		/** Fade band the mask reserves at a scrollable end. */
 		const FADE_PX = 24;
-		function itemPosition(index) {
-			return { "--turn-natural-position": `${String(index * TURN_SPACING_PX)}px` };
+		function preferredScrollBehavior() {
+			return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 		}
-		function frameStyle(count, scrollTop) {
-			return {
-				"--turn-natural-height": `${String((count - 1) * TURN_SPACING_PX + 2 * RAIL_INSET_PX)}px`,
-				"--turn-rail-inset": `${String(RAIL_INSET_PX)}px`,
-				"--turn-scroll-top": `${String(scrollTop)}px`
-			};
-		}
-		function itemAtPointer(items, frame, scrollTop, clientY) {
-			const offset = clientY - frame.getBoundingClientRect().top + scrollTop - RAIL_INSET_PX;
-			return items[Math.max(0, Math.min(items.length - 1, Math.round(offset / TURN_SPACING_PX)))];
-		}
-		const RAIL_AT_REST = {
-			top: 0,
-			canScrollUp: false,
-			canScrollDown: false
-		};
-		function railScrollState(scroller) {
-			const top = scroller.scrollTop;
-			return {
-				top,
-				canScrollUp: top > 1,
-				canScrollDown: top < scroller.scrollHeight - scroller.clientHeight - 1
-			};
-		}
-		function sameRailScrollState(left, right) {
-			return left.top === right.top && left.canScrollUp === right.canScrollUp && left.canScrollDown === right.canScrollDown;
-		}
-		function TurnNavigatorRail({ items, activeTurn, busyTurn, onNavigate, t }) {
+		const TurnMark = (0, react.memo)(function TurnMark({ item, index, active, busy, previewId, registerElement, onNavigate, onPreview, onFocusChange, t }) {
+			const classes = [TurnNavigator_module_css_default.mark];
+			if (item.anchor.kind === "unloaded") classes.push(TurnNavigator_module_css_default.markUnloaded);
+			if (active) classes.push(TurnNavigator_module_css_default.markActive);
+			else if (previewId !== void 0) classes.push(TurnNavigator_module_css_default.markPreview);
+			if (busy) classes.push(TurnNavigator_module_css_default.markBusy);
+			return (0, react_jsx_runtime.jsx)("button", {
+				ref: registerElement,
+				"data-index": index,
+				type: "button",
+				className: classes.join(" "),
+				"aria-label": t(item.anchor.kind === "loaded" ? "chat.turnNavigation.jump" : "chat.turnNavigation.jumpLoad", { turn: item.turn }),
+				"aria-current": active ? "true" : void 0,
+				"aria-busy": busy ? "true" : void 0,
+				"aria-describedby": previewId,
+				onPointerMove: () => {
+					onPreview(item.turn);
+				},
+				onClick: () => {
+					onNavigate(item);
+				},
+				onFocus: () => {
+					onFocusChange(item.turn);
+				},
+				onBlur: () => {
+					onFocusChange(null);
+				}
+			});
+		});
+		function TurnNavigatorRail({ items, activeTurn, busyTurn, onNavigate, t }, ref) {
 			const [previewTurn, setPreviewTurn] = (0, react.useState)(null);
-			const [scrollState, setScrollState] = (0, react.useState)(RAIL_AT_REST);
+			const [focusedTurn, setFocusedTurn] = (0, react.useState)(null);
 			const scrollerRef = (0, react.useRef)(null);
+			const initialization = (0, react.useRef)({
+				placed: false,
+				index: 0,
+				follow: null,
+				publishOffset: null
+			});
 			/** While the pointer works the rail, follow must not move it under the hand. */
 			const pointerInsideRef = (0, react.useRef)(false);
 			const previewId = (0, react.useId)();
-			const syncScrollState = () => {
-				const scroller = scrollerRef.current;
-				if (scroller === null) return;
-				const next = railScrollState(scroller);
-				setScrollState((current) => sameRailScrollState(current, next) ? current : next);
-			};
-			(0, react.useEffect)(() => {
-				const scroller = scrollerRef.current;
-				if (scroller === null || typeof ResizeObserver === "undefined") return;
-				const observer = new ResizeObserver(syncScrollState);
-				observer.observe(scroller);
-				return () => {
-					observer.disconnect();
-				};
-			}, []);
-			(0, react.useEffect)(syncScrollState, [items.length]);
-			(0, react.useEffect)(() => {
-				const scroller = scrollerRef.current;
-				const index = items.findIndex((item) => item.turn === activeTurn);
-				if (scroller === null || index < 0 || pointerInsideRef.current) return;
-				const markTop = index * TURN_SPACING_PX + RAIL_INSET_PX;
-				const viewTop = scroller.scrollTop;
-				const viewHeight = scroller.clientHeight;
-				if (viewHeight <= 0 || markTop >= viewTop + FADE_PX && markTop <= viewTop + viewHeight - FADE_PX) return;
-				const target = Math.max(0, markTop - viewHeight / 2);
-				const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-				if (typeof scroller.scrollTo === "function") scroller.scrollTo({
-					top: target,
-					behavior: reduced ? "auto" : "smooth"
+			const turnIndexes = (0, react.useMemo)(() => {
+				const indexes = /* @__PURE__ */ new Map();
+				items.forEach((item, index) => {
+					indexes.set(item.turn, index);
 				});
-				else scroller.scrollTop = target;
-				syncScrollState();
-			}, [activeTurn, items]);
+				return indexes;
+			}, [items]);
+			const activeIndex = activeTurn === null ? void 0 : turnIndexes.get(activeTurn);
+			(0, react.useLayoutEffect)(() => {
+				initialization.current.index = activeIndex ?? 0;
+			}, [activeIndex]);
+			const focusedIndex = focusedTurn === null ? void 0 : turnIndexes.get(focusedTurn);
+			const previewIndex = previewTurn === null ? void 0 : turnIndexes.get(previewTurn);
+			const onFocusChange = (0, react.useCallback)((turn) => {
+				setFocusedTurn(turn);
+				setPreviewTurn(turn);
+			}, []);
+			const virtualizer = useVirtualizer({
+				count: items.length,
+				enabled: items.length >= 2,
+				directDomUpdates: true,
+				directDomUpdatesMode: "transform",
+				useScrollendEvent: true,
+				getScrollElement: (0, react.useCallback)(() => scrollerRef.current, []),
+				getItemKey: (0, react.useCallback)((index) => items[index]?.turn ?? index, [items]),
+				estimateSize: () => TURN_SPACING_PX,
+				measureElement: () => TURN_SPACING_PX,
+				initialRect: {
+					width: 0,
+					height: 0
+				},
+				initialOffset: 0,
+				scrollToFn: (offset, options, instance) => {
+					if (initialization.current.placed) elementScroll(offset, options, instance);
+				},
+				observeElementOffset: (instance, notify) => {
+					initialization.current.publishOffset = notify;
+					const dispose = observeElementOffset(instance, notify);
+					return () => {
+						dispose?.();
+						initialization.current.placed = false;
+						initialization.current.follow = null;
+						initialization.current.publishOffset = null;
+					};
+				},
+				observeElementRect: (instance, notify) => {
+					const element = instance.scrollElement;
+					const Observer = instance.targetWindow?.ResizeObserver;
+					if (element === null || Observer === void 0) return;
+					const observer = new Observer(([entry]) => {
+						if (entry === void 0) return;
+						const box = entry.borderBoxSize[0];
+						const rect = {
+							width: Math.round(box?.inlineSize ?? entry.contentRect.width),
+							height: Math.round(box?.blockSize ?? entry.contentRect.height)
+						};
+						const initial = initialization.current;
+						if (!initial.placed && rect.height > 0) {
+							const max = Math.max(0, instance.getTotalSize() - rect.height);
+							const center = initial.index * TURN_SPACING_PX + RAIL_INSET_PX;
+							const target = Math.max(0, Math.min(max, center - rect.height / 2));
+							initial.placed = true;
+							initial.follow = {
+								index: initial.index,
+								count: instance.options.count,
+								height: rect.height
+							};
+							element.scrollTop = target;
+							initial.publishOffset?.(target, false);
+						}
+						notify(rect);
+					});
+					observer.observe(element, { box: "border-box" });
+					return () => {
+						observer.disconnect();
+					};
+				},
+				paddingStart: RAIL_INSET_PX - TURN_SPACING_PX / 2,
+				paddingEnd: RAIL_INSET_PX - TURN_SPACING_PX / 2,
+				scrollPaddingStart: FADE_PX,
+				scrollPaddingEnd: FADE_PX,
+				overscan: 3,
+				rangeExtractor: (0, react.useCallback)((range) => {
+					const indexes = defaultRangeExtractor(range);
+					if (focusedIndex !== void 0) {
+						const last = Math.min(range.count - 1, focusedIndex + 1);
+						for (let index = Math.max(0, focusedIndex - 1); index <= last; index++) if (!indexes.includes(index)) indexes.push(index);
+						indexes.sort((left, right) => left - right);
+					}
+					return indexes;
+				}, [focusedIndex])
+			});
+			const scrollTop = virtualizer.scrollOffset ?? 0;
+			const viewHeight = virtualizer.scrollRect?.height ?? 0;
+			const virtualItems = virtualizer.getVirtualItems();
+			const scrollToIndex = (0, react.useCallback)((index, reveal, behavior = preferredScrollBehavior()) => {
+				const item = virtualizer.measurementsCache[index];
+				const height = virtualizer.scrollRect?.height ?? 0;
+				if (item === void 0 || height <= 0) return;
+				const current = virtualizer.scrollOffset ?? 0;
+				const center = item.start + item.size / 2;
+				if (reveal === "if-needed") {
+					const { scrollPaddingStart, scrollPaddingEnd } = virtualizer.options;
+					if (center >= current + scrollPaddingStart && center <= current + height - scrollPaddingEnd) return;
+				}
+				const target = center - height / 2;
+				const max = Math.max(0, virtualizer.getTotalSize() - height);
+				const delta = Math.max(0, Math.min(max, target)) - current;
+				if (delta !== 0) virtualizer.scrollBy(delta, { behavior });
+			}, [virtualizer]);
+			(0, react.useImperativeHandle)(ref, () => ({
+				activateTurn(turn) {
+					const index = turnIndexes.get(turn);
+					const item = index === void 0 ? void 0 : items[index];
+					if (item !== void 0) onNavigate(item);
+				},
+				scrollToTurn(turn) {
+					const index = turnIndexes.get(turn);
+					if (index !== void 0) scrollToIndex(index, "always");
+				}
+			}), [
+				items,
+				turnIndexes,
+				onNavigate,
+				scrollToIndex
+			]);
+			(0, react.useEffect)(() => {
+				if (viewHeight <= 0) {
+					initialization.current.follow = null;
+					return;
+				}
+				if (activeIndex === void 0 || pointerInsideRef.current) return;
+				const previous = initialization.current.follow;
+				if (previous?.index === activeIndex && previous.count === items.length && previous.height === viewHeight) return;
+				initialization.current.follow = {
+					index: activeIndex,
+					count: items.length,
+					height: viewHeight
+				};
+				scrollToIndex(activeIndex, "if-needed", previous?.count === items.length && previous.height === viewHeight ? preferredScrollBehavior() : "instant");
+			}, [
+				activeIndex,
+				items.length,
+				viewHeight,
+				scrollToIndex
+			]);
 			if (items.length < 2) return null;
-			const previewIndex = items.findIndex((item) => item.turn === previewTurn);
-			const preview = previewIndex < 0 ? void 0 : items[previewIndex];
-			const previewPosition = previewIndex < 0 ? void 0 : itemPosition(previewIndex);
-			const previewAtPointer = (event) => {
-				const scrollTop = scrollerRef.current?.scrollTop ?? 0;
-				setPreviewTurn(itemAtPointer(items, event.currentTarget, scrollTop, event.clientY)?.turn ?? null);
-			};
-			const navigateAtPointer = (event) => {
-				const scrollTop = scrollerRef.current?.scrollTop ?? 0;
-				const item = itemAtPointer(items, event.currentTarget, scrollTop, event.clientY);
-				if (item !== void 0) onNavigate(item);
-			};
+			const preview = previewIndex === void 0 ? void 0 : items[previewIndex];
+			const previewPosition = virtualItems.find((item) => item.index === previewIndex);
 			const fadeClasses = [TurnNavigator_module_css_default.scroller];
-			if (scrollState.canScrollUp) fadeClasses.push(TurnNavigator_module_css_default.fadeTop);
-			if (scrollState.canScrollDown) fadeClasses.push(TurnNavigator_module_css_default.fadeBottom);
+			if (scrollTop > 1) fadeClasses.push(TurnNavigator_module_css_default.fadeTop);
+			if (scrollTop < virtualizer.getTotalSize() - viewHeight - 1) fadeClasses.push(TurnNavigator_module_css_default.fadeBottom);
 			return (0, react_jsx_runtime.jsx)("div", {
 				className: TurnNavigator_module_css_default.slot,
 				children: (0, react_jsx_runtime.jsxs)("nav", {
 					className: TurnNavigator_module_css_default.frame,
-					style: frameStyle(items.length, scrollState.top),
 					"aria-label": t("chat.turnNavigation.label"),
-					onClick: navigateAtPointer,
-					onPointerMove: previewAtPointer,
 					onPointerEnter: () => {
 						pointerInsideRef.current = true;
 					},
@@ -1764,48 +3489,31 @@ window.__ModuleLoader__.load({
 					children: [(0, react_jsx_runtime.jsx)("div", {
 						ref: scrollerRef,
 						className: fadeClasses.join(" "),
-						onScroll: () => {
-							syncScrollState();
-						},
 						children: (0, react_jsx_runtime.jsx)("div", {
+							ref: virtualizer.containerRef,
 							className: TurnNavigator_module_css_default.marks,
-							children: items.map((item, index) => {
-								const active = item.turn === activeTurn;
-								const showingPreview = item.turn === previewTurn;
-								const classes = [TurnNavigator_module_css_default.mark];
-								if (item.anchor.kind === "unloaded") classes.push(TurnNavigator_module_css_default.markUnloaded);
-								if (active) classes.push(TurnNavigator_module_css_default.markActive);
-								else if (showingPreview) classes.push(TurnNavigator_module_css_default.markPreview);
-								if (item.turn === busyTurn) classes.push(TurnNavigator_module_css_default.markBusy);
-								return (0, react_jsx_runtime.jsx)("div", {
-									className: TurnNavigator_module_css_default.markPosition,
-									style: itemPosition(index),
-									children: (0, react_jsx_runtime.jsx)("button", {
-										type: "button",
-										className: classes.join(" "),
-										"aria-label": t(item.anchor.kind === "loaded" ? "chat.turnNavigation.jump" : "chat.turnNavigation.jumpLoad", { turn: item.turn }),
-										"aria-current": active ? "true" : void 0,
-										"aria-busy": item.turn === busyTurn ? "true" : void 0,
-										"aria-describedby": showingPreview ? previewId : void 0,
-										onClick: (event) => {
-											event.stopPropagation();
-											onNavigate(item);
-										},
-										onFocus: () => {
-											setPreviewTurn(item.turn);
-										},
-										onBlur: () => {
-											setPreviewTurn(null);
-										}
-									})
-								}, item.turn);
+							children: virtualItems.map(({ index, key }) => {
+								const item = items[index];
+								if (item === void 0) return null;
+								return (0, react_jsx_runtime.jsx)(TurnMark, {
+									item,
+									index,
+									active: item.turn === activeTurn,
+									busy: item.turn === busyTurn,
+									previewId: item.turn === previewTurn ? previewId : void 0,
+									registerElement: virtualizer.measureElement,
+									onNavigate,
+									onPreview: setPreviewTurn,
+									onFocusChange,
+									t
+								}, key);
 							})
 						})
 					}), preview !== void 0 && previewPosition !== void 0 && (0, react_jsx_runtime.jsxs)("div", {
 						id: previewId,
 						role: "tooltip",
 						className: TurnNavigator_module_css_default.preview,
-						style: previewPosition,
+						style: { "--turn-preview-center": `${String(previewPosition.start + previewPosition.size / 2 - scrollTop)}px` },
 						children: [(0, react_jsx_runtime.jsx)("div", {
 							className: TurnNavigator_module_css_default.previewPrompt,
 							children: preview.prompt || t("chat.turnNavigation.turn", { turn: preview.turn })
@@ -1821,17 +3529,34 @@ window.__ModuleLoader__.load({
 		* Fixed-pitch rail of every known Turn — loaded marks scroll, unloaded marks
 		* page history in first — with hover and focus previews. Overflow scrolls
 		* inside the frame, gradient fades marking each scrollable end, and the
-		* active mark keeps itself in view while the pointer is elsewhere.
-		*
-		* Memoized because it renders two host elements per Turn while the
-		* enclosing view re-renders on every streaming delta: without the guard a long
-		* session rebuilds hundreds of marks per commit for a rail that only changes
-		* when a Turn is added, removed, or becomes active. Its props must therefore
-		* stay referentially stable across those commits.
+		* active mark centers only outside the fade-free band while the pointer is
+		* elsewhere. Previews follow pointer movement or focus, not scrolling under
+		* a stationary pointer.
 		*/
-		const TurnNavigator = (0, react.memo)(TurnNavigatorRail);
+		const TurnNavigator = (0, react.memo)((0, react.forwardRef)(TurnNavigatorRail));
 		//#endregion
-		//#region ../../util/brand/src/index.ts
+		//#region ../../util/brand/lib/index.js
+		/**
+		* Duplicate-install-safe nominal primitive helpers.
+		*
+		* A brand makes structurally identical strings or numbers non-interchangeable
+		* at the type level: a `SessionId` cannot be passed where a `ToolCallId` is
+		* expected, and an event sequence cannot be passed as a log offset. Comparison,
+		* logging, and serialization retain the underlying primitive behavior.
+		*
+		* This package owns no concrete domain value and keeps no runtime identity or mutable
+		* state, so independently installed copies produce interchangeable values.
+		*
+		* @module @deepseek-ai/dsh-brand
+		*/
+		/**
+		* Apply a compile-time string brand without changing the value.
+		* @param value - string admitted by the domain that owns the target brand.
+		* @returns the same string with the requested compile-time brand.
+		*/
+		function brandString(value) {
+			return value;
+		}
 		/**
 		* Apply a compile-time number brand without changing the value.
 		* @param value - number admitted by the domain that owns the target brand.
@@ -1841,7 +3566,7 @@ window.__ModuleLoader__.load({
 			return value;
 		}
 		//#endregion
-		//#region ../../core/session/src/types.ts
+		//#region ../../core/session/lib/types/types.js
 		/**
 		* Admit a numeric value as an existing Session event position.
 		* @param value - non-negative safe integer admitted by the owning log operation.
@@ -1925,85 +3650,996 @@ window.__ModuleLoader__.load({
 			return [...byTurn.values()].sort((left, right) => left.turn - right.turn);
 		}
 		//#endregion
-		//#region lib/types/client/chat/ChatView.js
-		const SCROLL_SAMPLE_INTERVAL_MS = 500;
-		/** Active column host when present; otherwise the view-local scroller. */
-		function scrollerOf(from) {
-			return from.closest("[data-conversation-scroll]") ?? from;
-		}
-		/** Browser shrink clamps and recorded writes do not transfer scroll ownership. */
-		function readerMovedScroll(top, floor, observedTop) {
-			return Math.abs(top - Math.min(observedTop, floor)) > .5;
-		}
-		/** Find an already-rendered row without interpolating a selector. */
-		function anchorElement(list, key) {
-			for (const row of list.querySelectorAll("[data-chat-anchor-key]:not([hidden])")) if (row.dataset.chatAnchorKey === key) return row;
-			return null;
-		}
-		/**
-		* Turn owning the row at a scrollport line. Scroll frames are hot, so this
-		* hit-tests the line first and falls back to one row scan when layout cannot
-		* answer (jsdom, pre-paint); neither path queries per navigation item.
-		* @param list - the ChatView list element.
-		* @param line - viewport y of the reading line.
-		* @returns the Turn number, or null when no loaded row covers the line.
-		*/
-		function turnAtLine(list, line) {
-			const content = list.getBoundingClientRect();
-			if (typeof document.elementsFromPoint === "function" && content.width > 0) for (const element of document.elementsFromPoint(content.left + content.width / 2, line)) {
-				const row = element instanceof HTMLElement ? element.closest("[data-chat-turn]") : null;
-				const turn = Number(row?.dataset.chatTurn);
-				if (row !== null && list.contains(row) && Number.isSafeInteger(turn)) return turn;
+		//#region lib/types/client/chat/use-chat-navigation.js
+		/** Turn jumps and history-prepend anchoring, independent of DOM measurement. */
+		/** Owns one replaceable turn jump and the anchor retained while history loads. */
+		var ChatNavigation = class {
+			viewport;
+			reading;
+			input;
+			onBusyTurn;
+			jump = null;
+			settleFrame = null;
+			constructor(viewport, reading, input, onBusyTurn) {
+				this.viewport = viewport;
+				this.reading = reading;
+				this.input = input;
+				this.onBusyTurn = onBusyTurn;
 			}
-			let found = null;
-			for (const row of list.querySelectorAll("[data-chat-turn]")) {
-				if (row.getBoundingClientRect().top > line) break;
-				const turn = Number(row.dataset.chatTurn);
-				if (Number.isSafeInteger(turn)) found = turn;
+			/**
+			* Adopt committed history availability without starting a request.
+			* @param input - history state from the latest committed render.
+			*/
+			setInput(input) {
+				this.input = input;
 			}
-			return found;
-		}
-		/** Row position in scrollport coordinates (viewport-independent). */
-		function flowTop(row, scrollport) {
-			return row.getBoundingClientRect().top - scrollport.getBoundingClientRect().top;
-		}
-		/** Select a visible stable node/call identity, falling back only when layout
-		* has not exposed a visible box yet. */
-		function pagingAnchor(list, scrollport) {
-			const viewport = scrollport.getBoundingClientRect();
-			const visibleBottom = scrollport.querySelector("[data-composer-seat]")?.getBoundingClientRect().top ?? viewport.bottom;
-			if (typeof document.elementsFromPoint === "function" && visibleBottom > viewport.top) {
-				const content = list.getBoundingClientRect();
-				const left = Math.max(viewport.left, content.left);
-				const right = Math.min(viewport.right, content.right);
-				const x = left + Math.max(0, right - left) / 2;
-				for (const element of document.elementsFromPoint(x, viewport.top + 1)) {
-					const row = element instanceof HTMLElement ? element.closest("[data-chat-anchor-key]") : null;
-					if (row !== null && list.contains(row)) return row;
+			/** Cancel navigation when opening a Chat view. */
+			reset() {
+				this.cancel();
+			}
+			/** Cancel local callbacks; late history completions cannot revive a task. */
+			dispose() {
+				this.clearTask();
+			}
+			/** Release the jump, paging anchor, and busy indicator without cancelling shared history I/O. */
+			cancel() {
+				this.clearTask();
+				this.onBusyTurn(null);
+			}
+			clearTask() {
+				this.cancelFrame();
+				this.jump = null;
+				this.viewport.stopPreserving();
+			}
+			/**
+			* Replace the current jump with an explicit turn selection.
+			* @param item - loaded anchor or unloaded turn to fetch before landing.
+			*/
+			navigateToTurn = (item) => {
+				if (item.anchor.kind === "loaded") {
+					this.cancel();
+					const landing = this.viewport.scrollToTurn(item.turn);
+					if (landing === null) return;
+					this.reading.acceptNavigation(landing);
+					if (this.input.loadingOlder) this.viewport.beginPreserving(landing.position);
+					return;
 				}
+				this.cancel();
+				this.viewport.beginPreserving();
+				this.reading.pauseFollowing();
+				const jump = {
+					turn: item.turn,
+					seq: item.anchor.seq,
+					phase: "loading",
+					landing: "pending",
+					repageHead: null
+				};
+				this.jump = jump;
+				this.onBusyTurn(jump.turn);
+				this.request(jump);
+			};
+			/** Request one older page while retaining the current semantic position. */
+			loadEarlier = () => {
+				this.cancel();
+				this.viewport.beginPaging();
+				this.reading.pauseFollowing();
+				this.input.loadOlder();
+			};
+			/**
+			* Preserve reader ownership across pending history work.
+			* @param sample - settled reader movement that can update or interrupt an anchor.
+			*/
+			readerSampled(sample) {
+				if (sample.movedByReader && this.jump?.landing === "landed") this.jump.landing = "interrupted";
+				if (sample.followingTail || sample.movedByReader) this.viewport.stopPreserving();
 			}
-			const rows = list.querySelectorAll("[data-chat-flow] > [data-chat-flow-key]:not(:empty):not([hidden])");
-			let low = 0;
-			let high = rows.length;
-			while (low < high) {
-				const middle = low + high >>> 1;
-				if (rows.item(middle).getBoundingClientRect().bottom > viewport.top) high = middle;
-				else low = middle + 1;
+			/**
+			* Preserve one paging anchor after a commit or a later size change, regardless of head identity.
+			* @returns whether the retained anchor handled the layout change.
+			*/
+			contentCommitted() {
+				if (!this.viewport.preserving || this.reading.pending) return false;
+				if (this.landJump(false)) return true;
+				const landing = this.viewport.preserve();
+				if (landing === null) return false;
+				this.reading.preservePosition(landing);
+				return true;
 			}
-			const row = rows[low];
-			return row !== void 0 && row.getBoundingClientRect().top < visibleBottom ? row : rows[0] ?? null;
-		}
-		/** Capture a reflow-resistant reader position from the current rendered window. */
-		function scrollPosition(list, scrollport) {
-			const row = pagingAnchor(list, scrollport);
-			const anchorKey = row?.dataset.chatAnchorKey;
-			if (row === null || anchorKey === void 0) return null;
+			/** Retarget a still-loading page only after inner or outer reader scrolling ends. */
+			readerSettled() {
+				if (this.input.loadingOlder && this.jump === null && !this.viewport.preserving && !this.reading.followingTail) this.viewport.beginPreserving();
+			}
+			/** Land, retry, or complete the current jump against the committed window. */
+			reconcile() {
+				const jump = this.jump;
+				if (jump === null || this.reading.pending) return;
+				if (jump.phase === "loading") {
+					if (jump.landing === "pending") this.landJump(false);
+					return;
+				}
+				if (this.input.loadingOlder) return;
+				if (this.landJump(true)) return;
+				if ((this.input.firstSeq === null || this.input.firstSeq > jump.seq) && this.input.hasMore && jump.repageHead !== this.input.firstSeq) {
+					jump.repageHead = this.input.firstSeq;
+					this.viewport.beginPreserving();
+					this.request(jump);
+					return;
+				}
+				const fallback = this.viewport.scrollToTurnAtOrAfter(jump.turn);
+				this.cancel();
+				if (fallback !== null) this.reading.acceptNavigation(fallback);
+			}
+			landJump(settle) {
+				const jump = this.jump;
+				if (jump === null) return false;
+				if (jump.landing === "interrupted") {
+					if (settle) {
+						this.cancel();
+						return true;
+					}
+					return false;
+				}
+				const landing = this.viewport.scrollToTurn(jump.turn);
+				if (landing === null) return false;
+				this.reading.acceptNavigation(landing);
+				if (settle) this.cancel();
+				else {
+					this.viewport.beginPreserving(landing.position);
+					jump.landing = "landed";
+				}
+				return true;
+			}
+			request(jump) {
+				jump.phase = "loading";
+				const settled = () => {
+					if (this.jump !== jump) return;
+					jump.phase = "settled";
+					this.cancelFrame();
+					if (typeof requestAnimationFrame !== "function") this.reconcile();
+					else this.settleFrame = requestAnimationFrame(() => {
+						this.settleFrame = null;
+						if (this.jump === jump) this.reconcile();
+					});
+				};
+				this.input.loadThrough(jump.seq).then(settled, settled);
+			}
+			cancelFrame() {
+				if (this.settleFrame !== null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(this.settleFrame);
+				this.settleFrame = null;
+			}
+		};
+		/**
+		* Retain one navigation owner for the component's lifetime.
+		* @param viewport - turn-aware DOM operations.
+		* @param reading - reading and follow policy receiving navigation landings.
+		* @param input - committed history state and load operations.
+		* @returns the navigation owner and its visible busy turn.
+		*/
+		function useChatNavigation(viewport, reading, input) {
+			const [busyTurn, setBusyTurn] = (0, react.useState)(null);
+			const [navigation] = (0, react.useState)(() => new ChatNavigation(viewport, reading, input, setBusyTurn));
+			(0, react.useLayoutEffect)(() => {
+				navigation.setInput(input);
+			}, [navigation, input]);
+			(0, react.useLayoutEffect)(() => () => {
+				navigation.dispose();
+			}, [navigation]);
 			return {
-				anchorKey,
-				anchorTop: flowTop(row, scrollport),
-				scrollTop: scrollport.scrollTop
+				navigation,
+				busyTurn
 			};
 		}
+		//#endregion
+		//#region lib/types/client/chat/use-chat-reading.js
+		/** Follow-tail ownership, saved-position restoration, and sampled reader movement. */
+		const SCROLL_SAMPLE_INTERVAL_MS = 500;
+		/** Owns reading policy and its cancellable sampling work, without DOM access. */
+		var ChatReading = class {
+			viewport;
+			store;
+			state;
+			onChange;
+			sampleTimer = null;
+			probeFrame = null;
+			sampled = null;
+			constructor(viewport, store, state, onChange) {
+				this.viewport = viewport;
+				this.store = store;
+				this.state = state;
+				this.onChange = onChange;
+			}
+			/**
+			* Expose pending reader ownership to navigation and resize handlers.
+			* @returns whether reader input still awaits interval or scrollend sampling.
+			*/
+			get pending() {
+				return this.sampleTimer !== null;
+			}
+			/**
+			* Expose the active follow policy.
+			* @returns whether content growth retains bottom-follow ownership.
+			*/
+			get followingTail() {
+				return this.state.followingTail;
+			}
+			/**
+			* Adopt the committed Session's scroll memory.
+			* @param store - scroll memory for the current Session.
+			*/
+			setStore(store) {
+				this.store = store;
+			}
+			/**
+			* Connect history policy to settled reading observations.
+			* @param sampled - receives settled reader positions.
+			* @returns a disposer that disconnects only this listener.
+			*/
+			connect(sampled) {
+				this.sampled = sampled;
+				return () => {
+					if (this.sampled === sampled) this.sampled = null;
+				};
+			}
+			/** Cancel timers and animation frames and detach the sample listener. */
+			dispose() {
+				this.cancelPending();
+				this.sampled = null;
+			}
+			/** Release bottom follow and pending sampling for an explicit navigation. */
+			pauseFollowing() {
+				this.cancelPending();
+				this.publish({
+					...this.state,
+					followingTail: false
+				});
+			}
+			/** Land at the current floor and clear saved reader position. */
+			followTail() {
+				const landing = this.viewport.scrollToBottom();
+				if (landing === null) return;
+				this.cancelPending();
+				this.commit(landing, true, this.viewport.latestTurn);
+			}
+			/** Restore the Session's semantic position, or follow the tail when none is saved. */
+			restore() {
+				const saved = this.store.read();
+				if (saved === null) {
+					this.followTail();
+					return;
+				}
+				const landing = this.viewport.restore(saved);
+				if (landing === null) return;
+				this.cancelPending();
+				const following = this.nearBottom(landing.metrics);
+				this.commit(landing, following, following ? this.viewport.latestTurn : this.state.activeTurn, following);
+				if (!this.state.followingTail && landing.position === null) {
+					const position = this.viewport.capturePosition();
+					if (position !== null) this.store.save(position);
+				}
+				this.refreshActiveTurn();
+			}
+			/**
+			* Adopt a known landing without rediscovering its anchor.
+			* @param landing - measured navigation result that replaces pending reader input.
+			*/
+			acceptNavigation(landing) {
+				this.cancelPending();
+				const following = this.nearBottom(landing.metrics);
+				this.commit(landing, following, landing.turn ?? (following ? this.viewport.latestTurn : this.state.activeTurn));
+			}
+			/**
+			* Retain reading policy while history changes the anchor's geometry.
+			* @param landing - compensated position that retains the current reading policy.
+			*/
+			preservePosition(landing) {
+				this.cancelPending();
+				this.commit(landing, this.state.followingTail, this.state.activeTurn);
+			}
+			/**
+			* Handle pinned layout movement and reader arrivals at the floor immediately.
+			* @param scroll - attributed scroll delivery; other reader movement remains pending until sampled.
+			*/
+			onScroll = (scroll) => {
+				if (!scroll.movedByReader && this.state.followingTail || scroll.movedByReader && scroll.metrics.top >= scroll.metrics.floor) {
+					this.followTail();
+					this.sampled?.({
+						position: null,
+						movedByReader: scroll.movedByReader,
+						followingTail: true
+					});
+					return;
+				}
+				this.sampleTimer ??= window.setTimeout(this.flushSample, SCROLL_SAMPLE_INTERVAL_MS);
+			};
+			/** Settle pending reader movement at the browser's scrollend. */
+			onScrollEnd = () => {
+				this.flushSample();
+			};
+			/** Reconcile a layout change without overriding unsampled reader input. */
+			onResize() {
+				if (this.pending) return;
+				if (this.state.followingTail) this.followTail();
+				else this.refreshActiveTurn();
+			}
+			/** Resolve the active turn from tail ownership or a coalesced reading-line probe. */
+			refreshActiveTurn() {
+				if (this.pending) return;
+				if (this.state.followingTail) {
+					this.publish({
+						...this.state,
+						initialized: true,
+						activeTurn: this.viewport.latestTurn
+					});
+					return;
+				}
+				if (this.probeFrame !== null) return;
+				if (typeof requestAnimationFrame !== "function") this.probe();
+				else this.probeFrame = requestAnimationFrame(this.probe);
+			}
+			nearBottom(metrics) {
+				return metrics.floor - metrics.top <= 25;
+			}
+			commit(landing, followingTail, activeTurn, initialized = true) {
+				if (followingTail) this.store.save(null);
+				else if (landing.position !== null) this.store.save(landing.position);
+				this.publish({
+					initialized,
+					followingTail,
+					activeTurn
+				});
+			}
+			publish(state) {
+				if (state.initialized === this.state.initialized && state.followingTail === this.state.followingTail && state.activeTurn === this.state.activeTurn) return;
+				this.state = state;
+				this.onChange(state);
+			}
+			cancelPending() {
+				if (this.sampleTimer !== null) window.clearTimeout(this.sampleTimer);
+				if (this.probeFrame !== null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(this.probeFrame);
+				this.sampleTimer = null;
+				this.probeFrame = null;
+			}
+			probe = () => {
+				this.probeFrame = null;
+				if (this.pending) return;
+				const scroll = this.viewport.readScroll();
+				if (scroll === null) return;
+				const activeTurn = this.nearBottom(scroll.metrics) ? this.viewport.latestTurn : this.viewport.readVisibleTurn(scroll.metrics);
+				this.publish({
+					...this.state,
+					initialized: true,
+					activeTurn
+				});
+			};
+			flushSample = () => {
+				if (!this.pending) return;
+				this.cancelPending();
+				const scroll = this.viewport.readScroll();
+				if (scroll === null) return;
+				const followingTail = scroll.movedByReader ? this.nearBottom(scroll.metrics) : this.state.followingTail;
+				let position = null;
+				if (!scroll.movedByReader && followingTail) this.followTail();
+				else {
+					position = followingTail ? null : this.viewport.capturePosition();
+					this.viewport.acknowledge(scroll.metrics);
+					if (followingTail || position !== null) this.store.save(position);
+					const activeTurn = this.nearBottom(scroll.metrics) ? this.viewport.latestTurn : this.viewport.readVisibleTurn(scroll.metrics);
+					this.publish({
+						initialized: true,
+						followingTail,
+						activeTurn
+					});
+				}
+				this.sampled?.({
+					position,
+					movedByReader: scroll.movedByReader,
+					followingTail
+				});
+			};
+		};
+		/**
+		* Retain reading policy and expose only changes in visible reading state.
+		* @param viewport - turn-aware DOM operations.
+		* @param store - Session-owned semantic scroll memory.
+		* @param initialTurn - latest loaded turn before the first landing.
+		* @returns the reading owner and its React-visible state.
+		*/
+		function useChatReading(viewport, store, initialTurn) {
+			const [state, setState] = (0, react.useState)(() => ({
+				initialized: false,
+				followingTail: store.read() === null,
+				activeTurn: initialTurn
+			}));
+			const [reading] = (0, react.useState)(() => new ChatReading(viewport, store, state, setState));
+			(0, react.useLayoutEffect)(() => {
+				reading.setStore(store);
+			}, [reading, store]);
+			(0, react.useLayoutEffect)(() => () => {
+				reading.dispose();
+			}, [reading]);
+			return {
+				reading,
+				state
+			};
+		}
+		//#endregion
+		//#region lib/types/client/chat/use-chat-viewport.js
+		/** Turn-aware DOM scrolling and geometry, without history-loading or follow policy. */
+		const READING_INTENTS = [
+			"wheel",
+			"touchstart",
+			"pointerdown",
+			"keydown",
+			"beforematch"
+		];
+		const SCROLL_KEYS = new Set([
+			"ArrowUp",
+			"ArrowDown",
+			"PageUp",
+			"PageDown",
+			"Home",
+			"End",
+			" "
+		]);
+		/** Owns one Chat scrollport's DOM operations, event listeners, and size observer. */
+		var ChatViewport = class {
+			elements = null;
+			observer = null;
+			events = null;
+			turns = [];
+			observation = {
+				top: 0,
+				landing: null
+			};
+			paging = null;
+			/**
+			* Bind to the containing scrollport and observe content and viewport sizes.
+			* @param list - Chat root inside an optional shared conversation scrollport.
+			* @param column - ordered outer Node/Group boxes; its size changes invalidate cached landings.
+			*/
+			attach(list, column) {
+				this.detach();
+				const scroller = list.closest("[data-conversation-scroll]") ?? list;
+				const composer = scroller.querySelector("[data-composer-seat]");
+				const elements = {
+					list,
+					column,
+					scroller,
+					composer
+				};
+				this.elements = elements;
+				scroller.addEventListener("scroll", this.onScroll, { passive: true });
+				scroller.addEventListener("scrollend", this.onScrollEnd, {
+					passive: true,
+					capture: true
+				});
+				for (const type of READING_INTENTS) scroller.addEventListener(type, this.onIntent, {
+					passive: true,
+					capture: true
+				});
+				if (typeof ResizeObserver !== "undefined") {
+					this.observer = new ResizeObserver(() => {
+						if (this.elements !== elements) return;
+						this.invalidate();
+						this.events?.resize();
+					});
+					this.observer.observe(column);
+					this.observer.observe(scroller);
+					if (composer !== null) this.observer.observe(composer);
+				}
+			}
+			/** Disconnect DOM resources and clear observations for the detached view. */
+			detach() {
+				this.stopPreserving();
+				this.elements?.scroller.removeEventListener("scroll", this.onScroll);
+				this.elements?.scroller.removeEventListener("scrollend", this.onScrollEnd, true);
+				for (const type of READING_INTENTS) this.elements?.scroller.removeEventListener(type, this.onIntent, true);
+				this.observer?.disconnect();
+				this.observer = null;
+				this.elements = null;
+				this.events = null;
+				this.turns = [];
+				this.observation = {
+					top: 0,
+					landing: null
+				};
+			}
+			/**
+			* Connect business policy without changing DOM listener ownership.
+			* @param events - business handlers for scroll and layout changes.
+			* @returns a disposer that disconnects only these handlers.
+			*/
+			connect(events) {
+				this.events = events;
+				return () => {
+					if (this.events === events) this.events = null;
+				};
+			}
+			/**
+			* Adopt the loaded turn anchors without querying the DOM.
+			* @param turns - ordered loaded turns from the committed Chat snapshot.
+			*/
+			updateTurns(turns) {
+				this.turns = turns;
+			}
+			/**
+			* Resolve the tail from the committed turn index.
+			* @returns the latest loaded turn, or null for an empty window.
+			*/
+			get latestTurn() {
+				return this.turns.at(-1)?.turn ?? null;
+			}
+			/** Discard geometry-dependent landing knowledge while retaining scroll attribution. */
+			invalidate() {
+				this.observation.landing = null;
+			}
+			/**
+			* Accept a sampled reader position without retaining a known landing.
+			* @param metrics - settled reader position used as the next attribution baseline.
+			*/
+			acknowledge(metrics) {
+				this.observation = {
+					top: metrics.top,
+					landing: null
+				};
+			}
+			/**
+			* Compare the current scroll geometry with the last acknowledged position.
+			* @returns current metrics and movement attribution, or null while detached.
+			*/
+			readScroll() {
+				const metrics = this.metrics();
+				if (metrics === null) return null;
+				return {
+					metrics,
+					movedByReader: Math.abs(metrics.top - Math.min(this.observation.top, metrics.floor)) > .5
+				};
+			}
+			metrics() {
+				const scroller = this.elements?.scroller;
+				if (scroller === void 0) return null;
+				const height = scroller.clientHeight;
+				return {
+					top: scroller.scrollTop,
+					height,
+					floor: Math.max(0, scroller.scrollHeight - height)
+				};
+			}
+			anchor(key, identity = "position") {
+				if (this.elements === null) return null;
+				let nodePart = null;
+				for (const row of this.elements.list.querySelectorAll("[data-chat-anchor-key]:not([hidden]):not([hidden] *)")) {
+					if (row.dataset.chatAnchorKey === key || identity === "node" && row.dataset.chatNodeKey === key) return row;
+					if (nodePart === null && row.dataset.chatNodeKey === key) nodePart = row;
+				}
+				return nodePart;
+			}
+			/**
+			* Capture visible transcript content, excluding Turn controls that relocate when history expands.
+			* @returns a visible semantic anchor, or null when no anchor can be resolved.
+			*/
+			capturePosition() {
+				const elements = this.elements;
+				if (elements === null) return null;
+				const { list, scroller, composer } = elements;
+				const viewport = scroller.getBoundingClientRect();
+				const bottom = composer?.getBoundingClientRect().top ?? viewport.bottom;
+				let anchor = null;
+				if (typeof document.elementsFromPoint === "function" && bottom > viewport.top) {
+					const content = list.getBoundingClientRect();
+					const left = Math.max(viewport.left, content.left);
+					const right = Math.min(viewport.right, content.right);
+					for (const element of document.elementsFromPoint(left + Math.max(0, right - left) / 2, viewport.top + 1)) {
+						const row = element instanceof HTMLElement ? element.closest("[data-chat-anchor-key]") : null;
+						if (row !== null && row.dataset.chatFlowKind !== "turn-process" && list.contains(row)) {
+							anchor = row.dataset.chatGroupKey === void 0 ? row : row.querySelector("[data-step-process-content] > [data-chat-anchor-key]:not(:empty):not([hidden]):not([hidden] *)") ?? row;
+							break;
+						}
+					}
+				}
+				if (anchor === null) {
+					const rows = list.querySelectorAll("[data-chat-flow-key]:not([data-chat-group-key]):not([data-chat-flow-kind=\"turn-process\"]):not(:empty):not([hidden]):not([hidden] *)");
+					let low = 0;
+					let high = rows.length;
+					while (low < high) {
+						const middle = low + high >>> 1;
+						if (rows.item(middle).getBoundingClientRect().bottom > viewport.top) high = middle;
+						else low = middle + 1;
+					}
+					const row = rows[low];
+					anchor = row !== void 0 && row.getBoundingClientRect().top < bottom ? row : rows[0] ?? null;
+				}
+				const key = anchor?.dataset.chatAnchorKey;
+				return anchor === null || key === void 0 ? null : {
+					anchorKey: key,
+					anchorTop: anchor.getBoundingClientRect().top - viewport.top,
+					scrollTop: scroller.scrollTop
+				};
+			}
+			/**
+			* Approximate the active Turn by binary-searching outer Node/Group boxes.
+			* Gaps retain the last visited Turn candidate, not necessarily the immediate predecessor.
+			* A known landing bypasses measurement while its position is unchanged.
+			* @param metrics - reusable scroll metrics; omitted callers request a fresh read.
+			* @returns the Turn near the reading line, or null while detached or empty.
+			*/
+			readVisibleTurn(metrics = this.metrics()) {
+				const knownTurn = this.observation.landing?.turn;
+				if (knownTurn != null && metrics?.top === this.observation.top) return knownTurn;
+				const elements = this.elements;
+				const first = this.turns[0];
+				if (elements === null || metrics === null || first === void 0) return null;
+				const line = elements.scroller.getBoundingClientRect().top + Math.min(96, metrics.height * .2);
+				const rows = elements.column.children;
+				let low = 0;
+				let high = rows.length;
+				let reading = first.turn;
+				while (low < high) {
+					const middle = low + high >>> 1;
+					const row = rows[middle];
+					if (row.getBoundingClientRect().top > line) high = middle;
+					else {
+						const value = row.getAttribute("data-chat-turn");
+						const turn = value === null ? NaN : Number(value);
+						if (Number.isSafeInteger(turn)) reading = turn;
+						low = middle + 1;
+					}
+				}
+				return reading;
+			}
+			/**
+			* Align a known loaded turn and return its actual clamped position.
+			* A split Node anchor selects its first visible part.
+			* @param turn - loaded turn to align below the scrollport's top edge.
+			* @returns the actual landing, or null when its anchor is unavailable.
+			*/
+			scrollToTurn(turn) {
+				const item = this.turns.find((candidate) => candidate.turn === turn);
+				if (item === void 0) return null;
+				const row = this.anchor(item.anchorKey, "node");
+				return row === null ? null : this.align(row, 24, turn);
+			}
+			/**
+			* Align the nearest available fallback for an unavailable turn anchor.
+			* @param turn - minimum turn number for a mounted fallback row.
+			* @returns the fallback landing, or null when no eligible row exists.
+			*/
+			scrollToTurnAtOrAfter(turn) {
+				if (this.elements === null) return null;
+				for (const row of this.elements.list.querySelectorAll("[data-chat-turn]:not([hidden]):not([hidden] *)")) {
+					const candidate = Number(row.dataset.chatTurn);
+					if (Number.isSafeInteger(candidate) && candidate >= turn) return this.align(row, 24, candidate);
+				}
+				return null;
+			}
+			/**
+			* Restore a semantic anchor with a raw-position fallback.
+			* @param position - semantic scroll memory; raw top is used only if its row is absent.
+			* @returns the actual landing, or null while detached.
+			*/
+			restore(position) {
+				const row = this.anchor(position.anchorKey);
+				if (row !== null) return this.align(row, position.anchorTop, null);
+				const metrics = this.metrics();
+				return metrics === null ? null : this.write(position.scrollTop, metrics, null);
+			}
+			/** Retain the first eligible transcript seat in DOM order; selection reads no geometry. */
+			beginPaging() {
+				this.stopPreserving();
+				const row = this.elements?.list.querySelector("[data-chat-paging-anchor]:not(:empty):not([hidden]):not([hidden] *)");
+				if (row != null) this.retain(row);
+			}
+			/**
+			* Retain one old row and its inner/outer offsets for paging and later content growth.
+			* @param position - an explicit landing to retain; omitted callers capture the current reading position.
+			*/
+			beginPreserving(position = this.capturePosition()) {
+				this.stopPreserving();
+				if (position === null) return;
+				const row = this.anchor(position.anchorKey);
+				if (row === null) return;
+				this.retain(row, position);
+			}
+			retain(row, position, groupTop) {
+				const elements = this.elements;
+				const key = row.dataset.chatAnchorKey;
+				if (elements === null || key === void 0) return null;
+				const previous = this.paging?.group;
+				if (previous != null) this.observer?.unobserve(previous.content);
+				const top = row.getBoundingClientRect().top;
+				const body = row.closest("[data-step-process-body]");
+				const content = body?.querySelector("[data-step-process-content]");
+				const group = body === null || content == null ? null : {
+					body,
+					content,
+					top: groupTop ?? top - body.getBoundingClientRect().top
+				};
+				this.paging = {
+					row,
+					group,
+					position: position ?? {
+						anchorKey: key,
+						anchorTop: top - elements.scroller.getBoundingClientRect().top,
+						scrollTop: elements.scroller.scrollTop
+					}
+				};
+				if (group !== null) this.observer?.observe(group.content);
+				return this.paging;
+			}
+			/** Release paging ownership and its content-size observation. */
+			stopPreserving() {
+				const group = this.paging?.group;
+				if (group != null) this.observer?.unobserve(group.content);
+				this.paging = null;
+			}
+			/**
+			* Expose retained paging ownership to navigation and resize policy.
+			* @returns whether a paging row is retained for subsequent layout changes.
+			*/
+			get preserving() {
+				return this.paging !== null;
+			}
+			/**
+			* Compensate inner scrolling first, then the outer scrollport, within their actual scroll ranges.
+			* @returns the actual landing, or null when no visible retained row remains.
+			*/
+			preserve() {
+				let paging = this.paging;
+				const elements = this.elements;
+				if (paging === null || elements === null) return null;
+				if (!elements.list.contains(paging.row)) {
+					const replacement = this.anchor(paging.position.anchorKey);
+					if (replacement === null) {
+						this.stopPreserving();
+						return null;
+					}
+					paging = this.retain(replacement, paging.position, paging.group?.top);
+					if (paging === null) return null;
+				}
+				const { row, group, position } = paging;
+				if (row.closest("[hidden]") !== null || row.matches(":empty")) {
+					this.stopPreserving();
+					return null;
+				}
+				if (group !== null && group.body.contains(row)) {
+					const top = row.getBoundingClientRect().top - group.body.getBoundingClientRect().top;
+					const floor = Math.max(0, group.body.scrollHeight - group.body.clientHeight);
+					const target = Math.max(0, Math.min(floor, group.body.scrollTop + top - group.top));
+					if (group.body.scrollTop !== target) group.body.scrollTop = target;
+				}
+				const metrics = this.metrics();
+				if (metrics === null) return null;
+				const top = row.getBoundingClientRect().top - elements.scroller.getBoundingClientRect().top;
+				const target = metrics.top + top - position.anchorTop;
+				return this.write(target, metrics, null, {
+					key: position.anchorKey,
+					top
+				});
+			}
+			/**
+			* Align the scrollport with its current floor.
+			* @returns the actual floor landing, or null while detached.
+			*/
+			scrollToBottom() {
+				const metrics = this.metrics();
+				return metrics === null ? null : this.write(metrics.floor, metrics, this.latestTurn);
+			}
+			align(row, offset, turn) {
+				const metrics = this.metrics();
+				if (metrics === null || this.elements === null) return null;
+				const top = row.getBoundingClientRect().top - this.elements.scroller.getBoundingClientRect().top;
+				return this.write(metrics.top + top - offset, metrics, turn, {
+					key: row.dataset.chatAnchorKey,
+					top
+				});
+			}
+			write(target, metrics, turn, anchor) {
+				if (this.elements === null) return null;
+				const top = Math.max(0, Math.min(metrics.floor, target));
+				if (top !== metrics.top) this.elements.scroller.scrollTop = top;
+				const actual = this.elements.scroller.scrollTop;
+				const landing = {
+					metrics: {
+						...metrics,
+						top: actual
+					},
+					turn,
+					position: anchor?.key === void 0 ? null : {
+						anchorKey: anchor.key,
+						anchorTop: anchor.top - (actual - metrics.top),
+						scrollTop: actual
+					}
+				};
+				this.observation = {
+					top: actual,
+					landing
+				};
+				return landing;
+			}
+			onScroll = (event) => {
+				if (this.elements === null || event.target !== this.elements.scroller) return;
+				if (this.observation.landing !== null && this.elements.scroller.scrollTop === this.observation.top) return;
+				this.invalidate();
+				if (this.paging !== null) {
+					this.events?.resize();
+					return;
+				}
+				const scroll = this.readScroll();
+				if (scroll !== null) this.events?.scroll(scroll);
+			};
+			onScrollEnd = (event) => {
+				if (event.target === this.elements?.scroller || event.target instanceof HTMLElement && event.target.hasAttribute("data-step-process-body")) this.events?.scrollEnd();
+			};
+			onIntent = (event) => {
+				if (event.type === "keydown" || event.type === "pointerdown") {
+					if (event.target instanceof Element && event.target.closest("[data-composer-seat]") !== null) return;
+					if (event.type === "keydown" && (!(event instanceof KeyboardEvent) || !SCROLL_KEYS.has(event.key))) return;
+				}
+				if (this.paging === null) return;
+				this.stopPreserving();
+				this.events?.interact();
+			};
+		};
+		/**
+		* Bind viewport resource ownership to the component's layout lifetime.
+		* @returns one viewport owner and the element refs attached for this mount.
+		*/
+		function useChatViewport() {
+			const listRef = (0, react.useRef)(null);
+			const columnRef = (0, react.useRef)(null);
+			const [viewport] = (0, react.useState)(() => new ChatViewport());
+			(0, react.useLayoutEffect)(() => {
+				if (listRef.current === null || columnRef.current === null) return;
+				viewport.attach(listRef.current, columnRef.current);
+				return () => {
+					viewport.detach();
+				};
+			}, [viewport]);
+			return {
+				viewport,
+				listRef,
+				columnRef
+			};
+		}
+		//#endregion
+		//#region lib/types/client/chat/use-chat-scroll.js
+		/** Composes viewport operations, reading policy, and history navigation for Chat. */
+		/**
+		* Coordinate scroll policy after Chat content commits.
+		* New submitted input supersedes pending reader sampling.
+		* @param input - current Chat content, scroll memory, and history operations.
+		* @returns element refs, visible reading state, and navigation callbacks.
+		*/
+		function useChatScroll(input) {
+			const { ready, order, firstSeq, lastKey, lastIsUser, steeringId, submissionId, running, loadedTurns, chatScroll, hasMore, loadingOlder, loadOlder, loadThrough } = input;
+			const { viewport, listRef, columnRef } = useChatViewport();
+			const { reading, state } = useChatReading(viewport, chatScroll, loadedTurns.at(-1)?.turn ?? null);
+			const navigationInput = (0, react.useMemo)(() => ({
+				firstSeq,
+				loadingOlder,
+				hasMore,
+				loadOlder,
+				loadThrough
+			}), [
+				firstSeq,
+				loadingOlder,
+				hasMore,
+				loadOlder,
+				loadThrough
+			]);
+			const { navigation, busyTurn } = useChatNavigation(viewport, reading, navigationInput);
+			const content = (0, react.useRef)({
+				input,
+				applied: null,
+				opened: false
+			});
+			const processContent = (0, react.useCallback)(() => {
+				const current = content.current.input;
+				const previous = content.current.applied;
+				const ownInput = current.lastIsUser && current.lastKey !== previous?.lastKey || current.steeringId !== null && current.steeringId !== previous?.steeringId && current.steeringId !== previous?.submissionId || current.submissionId !== null && current.submissionId !== previous?.submissionId && current.submissionId !== previous?.steeringId;
+				if (reading.pending && !ownInput) return;
+				content.current.applied = current;
+				if (current.ready && !content.current.opened) {
+					content.current.opened = true;
+					navigation.reset();
+					reading.restore();
+					return;
+				}
+				if (ownInput) {
+					navigation.cancel();
+					reading.followTail();
+					return;
+				}
+				if (navigation.contentCommitted()) {
+					navigation.reconcile();
+					return;
+				}
+				if ((previous === null || current.ready !== previous.ready || current.firstSeq !== previous.firstSeq || current.lastKey !== previous.lastKey || current.order.length !== previous.order.length || current.running !== previous.running || current.steeringId !== previous.steeringId || current.submissionId !== previous.submissionId) && reading.followingTail) {
+					navigation.cancel();
+					reading.followTail();
+				} else navigation.reconcile();
+			}, [reading, navigation]);
+			(0, react.useLayoutEffect)(() => {
+				const disconnectViewport = viewport.connect({
+					scroll: reading.onScroll,
+					scrollEnd: () => {
+						reading.onScrollEnd();
+						navigation.readerSettled();
+					},
+					interact: () => {
+						navigation.cancel();
+					},
+					resize: () => {
+						if (!navigation.contentCommitted()) reading.onResize();
+						navigation.reconcile();
+					}
+				});
+				const disconnectReading = reading.connect((sample) => {
+					navigation.readerSampled(sample);
+					processContent();
+				});
+				return () => {
+					disconnectViewport();
+					disconnectReading();
+					content.current.opened = false;
+					content.current.applied = null;
+				};
+			}, [
+				viewport,
+				reading,
+				navigation,
+				processContent
+			]);
+			(0, react.useLayoutEffect)(() => {
+				const previous = content.current.input;
+				content.current.input = {
+					ready,
+					order,
+					lastKey,
+					lastIsUser,
+					steeringId,
+					submissionId,
+					running,
+					loadedTurns,
+					chatScroll,
+					...navigationInput
+				};
+				viewport.updateTurns(loadedTurns);
+				const layoutChanged = previous.order !== order || previous.ready !== ready;
+				if (layoutChanged) viewport.invalidate();
+				processContent();
+				if (layoutChanged) reading.refreshActiveTurn();
+			}, [
+				viewport,
+				reading,
+				processContent,
+				navigationInput,
+				ready,
+				order,
+				lastKey,
+				lastIsUser,
+				steeringId,
+				submissionId,
+				running,
+				loadedTurns,
+				chatScroll
+			]);
+			const returnToBottom = (0, react.useCallback)(() => {
+				navigation.cancel();
+				reading.followTail();
+			}, [navigation, reading]);
+			return {
+				listRef,
+				columnRef,
+				...state,
+				busyTurn,
+				navigateToTurn: navigation.navigateToTurn,
+				loadEarlier: navigation.loadEarlier,
+				returnToBottom
+			};
+		}
+		//#endregion
+		//#region lib/types/client/chat/ChatView.js
 		/** Host/OS refusal text for the file-open dialog; empty throws keep a locale fallback. */
 		function openFailureMessage(error, fallback) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -2016,7 +4652,7 @@ window.__ModuleLoader__.load({
 		* atomic — no duplicate, no gap — regardless of when the echo leaves the
 		* session snapshot.
 		*/
-		function observedRpcIds(order, nodes, queue) {
+		function observedRpcIds(order, nodes, inbox) {
 			const observed = /* @__PURE__ */ new Set();
 			for (const key of order) {
 				const node = nodes.get(key);
@@ -2024,69 +4660,54 @@ window.__ModuleLoader__.load({
 				const source = node.data.source;
 				if (source?.kind === "user" && typeof source.rpcId === "string") observed.add(source.rpcId);
 			}
-			for (const item of queue) if (item.rpcId !== void 0) observed.add(item.rpcId);
-			return observed;
+			const pending = /* @__PURE__ */ new Set();
+			for (const { source } of [...inbox?.["next-turn"] ?? [], ...inbox?.["next-step"] ?? []]) if (source.kind === "user" && "rpcId" in source) pending.add(source.rpcId);
+			return {
+				durable: observed,
+				pending
+			};
 		}
-		function runningTurnStartTime(timeline) {
-			let latest = null;
-			for (const turn of timeline.turns.values()) if (turn.status === "open") latest = turn.start?.time ?? null;
-			return latest;
-		}
-		/** Turn-level model activity label retained across first-token, tool, and streaming phases. */
-		function TurnStatus({ startTime, t }) {
-			const [mountedAt] = (0, react.useState)(() => Date.now());
-			const anchor = startTime ?? mountedAt;
-			const [elapsedMs, setElapsedMs] = (0, react.useState)(() => Math.max(0, Date.now() - anchor));
-			(0, react.useEffect)(() => {
-				const tick = () => {
-					setElapsedMs(Math.max(0, Date.now() - anchor));
-				};
-				tick();
-				const id = setInterval(tick, 1e3);
-				return () => {
-					clearInterval(id);
-				};
-			}, [anchor]);
-			const showClock = elapsedMs >= 15e3;
-			return (0, react_jsx_runtime.jsxs)("div", {
-				className: ChatView_module_css_default.turnStatus,
-				role: "status",
-				"aria-live": "polite",
-				children: [t("chat.deepDiving"), showClock && (0, react_jsx_runtime.jsx)("span", {
-					className: ChatView_module_css_default.turnStatusClock,
-					"aria-hidden": true,
-					children: formatRunDuration(elapsedMs, t)
-				})]
+		const ChatNodeList = (0, react.memo)(function ChatNodeList({ entries, useChatGroup, ...seatProps }) {
+			return entries.map((entry) => {
+				switch (entry.kind) {
+					case "node": return (0, react.createElement)(ChatNodeSeat, {
+						...seatProps,
+						key: chatRenderKey(entry),
+						nodeKey: entry.key,
+						...entry.groupPart === void 0 ? {} : { groupPart: entry.groupPart }
+					});
+					case "group": return (0, react.createElement)(ChatGroupSeat, {
+						...seatProps,
+						key: chatRenderKey(entry),
+						groupKey: entry.key,
+						useChatGroup
+					});
+					default: return assertNever(entry);
+				}
 			});
-		}
-		const ChatNodeList = (0, react.memo)(function ChatNodeList({ order, ...seatProps }) {
-			return order.map((nodeKey) => (0, react_jsx_runtime.jsx)(ChatNodeSeat, {
-				nodeKey,
-				...seatProps
-			}, nodeKey));
 		});
 		/**
 		* The chat view slot entry: pure component over the composed props; each
 		* ordered business Node crosses the keyed renderer seat.
 		*/
-		function ChatView({ useSession, useChat, useChatNode, useChatNodeProcess, useSessions, useStore, actions, renderSlot, sessionId, openFile, loadOlder, loadThrough, loadImage, openView, chatScroll, forkAt, fileMentions, useTranscriptView, useProjection, t }) {
+		function ChatView({ useSession, useChat, useChatNode, useChatNodeProcess, useChatGroup, useConversation, useSessions, useStore, actions, renderSlot, sessionId, openFile, openSkill, openExternalLink, loadOlder, loadThrough, loadImage, inspectCall, chatScroll, forkAt, fileMentions, usePresentation, useProjection, t }) {
 			const order = useChat((s) => s.order);
+			const groupedEntries = useConversation((snapshot) => snapshot.views.grouped("chat")?.entries);
+			const entries = (0, react.useMemo)(() => groupedEntries ?? order.map((key) => ({
+				kind: "node",
+				key
+			})), [groupedEntries, order]);
 			const nodeStore = useChat((s) => s.nodes);
 			const turnNavigationItems = useChat((s) => s.navigation.items());
 			const turnOutline = useProjection("turnOutline");
 			const railItems = (0, react.useMemo)(() => mergeTurnRailItems(turnNavigationItems, turnOutline), [turnNavigationItems, turnOutline]);
-			const timeline = useChat((s) => s.timeline);
-			const inbox = useSession((s) => s.queue);
+			const inbox = useProjection("inbox");
 			const cwd = useSessions((s) => s.byId[sessionId]?.cwd);
 			const running = useSession((s) => s.running);
 			const openState = useSession((s) => s.openState);
 			const openError = useSession((s) => s.openError);
 			const hasMore = useSession((s) => s.hasMore);
 			const loadingOlder = useSession((s) => s.loadingOlder);
-			const compactTranscript = useTranscriptView((mode) => mode === "compact");
-			const inspectCall = (0, react.useCallback)((callId) => {
-				openView("trajectory", callId);
-			}, [openView]);
 			const [fileOpenError, setFileOpenError] = (0, react.useState)(null);
 			const [fileOpenBusy, setFileOpenBusy] = (0, react.useState)(false);
 			const fileOpenRequest = (0, react.useRef)(0);
@@ -2111,404 +4732,70 @@ window.__ModuleLoader__.load({
 				setFileOpenError(null);
 				setFileOpenBusy(false);
 			}, []);
-			const pendingSteering = (0, react.useMemo)(() => inbox.filter((item) => item.placement === "steering"), [inbox]);
+			const inboxSteering = (0, react.useMemo)(() => inbox?.["next-step"].filter((message) => message.source.kind === "user") ?? [], [inbox]);
 			const pendingSubmissions = useSession((s) => s.pendingSubmissions);
 			const visibleSubmissions = (0, react.useMemo)(() => {
 				if (pendingSubmissions.length === 0) return pendingSubmissions;
 				const observed = observedRpcIds(order, nodeStore, inbox);
-				return pendingSubmissions.filter((submission) => submission.placement !== "queued" && !observed.has(submission.requestId));
+				return pendingSubmissions.filter((submission) => submission.placement !== "queued" && !observed.durable.has(submission.requestId) && (submission.placement === "steering" || !observed.pending.has(submission.requestId)));
 			}, [
 				pendingSubmissions,
 				order,
 				nodeStore,
 				inbox
 			]);
+			const pendingInputs = (0, react.useMemo)(() => {
+				const local = new Map(visibleSubmissions.map((submission) => [submission.requestId, submission]));
+				return [...inboxSteering.map((item) => {
+					const source = item.source;
+					if (source.kind !== "user" || !("rpcId" in source)) return item;
+					const submission = local.get(source.rpcId);
+					if (submission === void 0) return item;
+					local.delete(source.rpcId);
+					return submission;
+				}), ...local.values()];
+			}, [inboxSteering, visibleSubmissions]);
 			const renderMessageImages = (0, react.useCallback)((owner) => renderSlot("conversation.message.images", {
 				...owner,
 				loadImage
 			}), [loadImage, renderSlot]);
-			const runningTurnStart = (0, react.useMemo)(() => runningTurnStartTime(timeline), [timeline]);
-			const listRef = (0, react.useRef)(null);
-			const columnRef = (0, react.useRef)(null);
-			const [atBottom, setAtBottom] = (0, react.useState)(() => chatScroll.read() === null);
-			const atBottomRef = (0, react.useRef)(atBottom);
-			const scrollSamplePendingRef = (0, react.useRef)(false);
-			const [, setScrollSampleTick] = (0, react.useState)(0);
-			const [activeTurn, setActiveTurn] = (0, react.useState)(() => turnNavigationItems.at(-1)?.turn ?? null);
-			/** Last position delivered or written on the main thread. */
-			const observedTopRef = (0, react.useRef)(0);
-			/** Paging anchor: semantic row/position at click, updated by reader scrolls
-			* while the request is pending and restored after the prepend lands. */
-			const anchorRef = (0, react.useRef)(null);
-			/** Unloaded-turn jump in flight: target turn plus its load-through seq. */
-			const pendingJumpRef = (0, react.useRef)(null);
-			/** Whether the in-flight jump already landed mid-paging (settle then only corrects an untouched landing). */
-			const jumpLandedRef = (0, react.useRef)(false);
-			const [busyJumpTurn, setBusyJumpTurn] = (0, react.useState)(null);
-			/** Bumped when a loadThrough completion settles, after its last page's commit. */
-			const [jumpSettleTick, setJumpSettleTick] = (0, react.useState)(0);
-			/** Window head at the last settle-time repage; an unmoved head falls back instead of repaging forever. */
-			const jumpRepageHeadRef = (0, react.useRef)(null);
-			const firstSeqRef = (0, react.useRef)(null);
-			const openedRef = (0, react.useRef)(false);
-			const lastKeyRef = (0, react.useRef)(null);
-			const lastSteeringIdRef = (0, react.useRef)(null);
-			const lastSubmissionIdRef = (0, react.useRef)(null);
-			/** Flow tip signature — follow-scroll only when this moves, never on a
-			*  scroll-driven at-bottom chrome re-render (which would snap inertial
-			*  scrolls the rest of the way to the floor). */
-			const followSigRef = (0, react.useRef)(null);
 			const firstKey = order[0];
 			const firstSeq = firstKey === void 0 ? null : nodeStore.get(firstKey)?.anchorSeq ?? null;
 			const lastKey = order.at(-1) ?? null;
-			const lastNode = lastKey === null ? void 0 : nodeStore.get(lastKey);
-			const lastSteeringId = pendingSteering[pendingSteering.length - 1]?.id ?? null;
-			const lastSubmissionId = visibleSubmissions[visibleSubmissions.length - 1]?.requestId ?? null;
-			const followSig = `${openState}:${firstSeq}:${lastKey}:${order.length}:${running ? 1 : 0}:${lastSteeringId ?? ""}:${lastSubmissionId ?? ""}`;
-			const syncActiveTurn = (0, react.useCallback)(() => {
-				if (scrollSamplePendingRef.current) return;
-				const local = listRef.current;
-				const first = turnNavigationItems[0];
-				if (local === null || first === void 0) {
-					setActiveTurn(null);
-					return;
-				}
-				const el = scrollerOf(local);
-				if (el.scrollHeight - el.scrollTop - el.clientHeight <= 25) {
-					const latest = turnNavigationItems.at(-1)?.turn ?? first.turn;
-					setActiveTurn((current) => current === latest ? current : latest);
-					return;
-				}
-				const reading = turnAtLine(local, el.getBoundingClientRect().top + Math.min(96, el.clientHeight * .2));
-				let next = first.turn;
-				if (reading !== null) for (const item of turnNavigationItems) {
-					if (item.turn > reading) break;
-					next = item.turn;
-				}
-				setActiveTurn((current) => current === next ? current : next);
-			}, [turnNavigationItems]);
-			const activeTurnRef = (0, react.useRef)(null);
-			const activeFrameRef = (0, react.useRef)(null);
-			const scheduleActiveTurn = (0, react.useCallback)(() => {
-				if (activeFrameRef.current !== null) return;
-				if (typeof requestAnimationFrame === "undefined") {
-					syncActiveTurn();
-					return;
-				}
-				activeFrameRef.current = requestAnimationFrame(() => {
-					activeFrameRef.current = null;
-					syncActiveTurn();
-				});
-			}, [syncActiveTurn]);
-			(0, react.useEffect)(() => () => {
-				if (activeFrameRef.current !== null && typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(activeFrameRef.current);
-			}, []);
-			activeTurnRef.current = scheduleActiveTurn;
-			(0, react.useLayoutEffect)(() => {
-				scheduleActiveTurn();
-			}, [scheduleActiveTurn]);
-			const toBottom = (el) => {
-				anchorRef.current = null;
-				pendingJumpRef.current = null;
-				setBusyJumpTurn((current) => current === null ? current : null);
-				el.scrollTop = el.scrollHeight;
-				observedTopRef.current = el.scrollTop;
-				atBottomRef.current = true;
-				setAtBottom(true);
-				chatScroll.save(null);
-				setActiveTurn(turnNavigationItems.at(-1)?.turn ?? null);
-			};
-			const landOnRowRef = (0, react.useRef)(() => {});
-			landOnRowRef.current = (local, el, row, turn) => {
-				el.scrollTop += flowTop(row, el) - 24;
-				observedTopRef.current = el.scrollTop;
-				const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 25;
-				atBottomRef.current = isAtBottom;
-				setAtBottom(isAtBottom);
-				setActiveTurn(turn);
-				const position = isAtBottom ? null : scrollPosition(local, el);
-				if (isAtBottom) chatScroll.save(null);
-				else if (position !== null) chatScroll.save(position);
-			};
-			/**
-			* Land the pending jump once its Turn has a rendered anchor row; false
-			* while it must keep waiting. Mid-jump landings (`settle` false) keep the
-			* jump armed with the target row as the paging anchor, so later chunks and
-			* the load-earlier button's unmount re-land on the same row; the settling
-			* call clears the jump.
-			*/
-			const realizePendingJump = (local, el, settle) => {
-				const pending = pendingJumpRef.current;
-				if (pending === null) return true;
-				const item = railItems.find((candidate) => candidate.turn === pending.turn);
-				if (item === void 0 || item.anchor.kind !== "loaded") return false;
-				const row = anchorElement(local, item.anchor.key);
-				if (row === null) return false;
-				if (settle) {
-					pendingJumpRef.current = null;
-					setBusyJumpTurn(null);
-					const held = anchorRef.current;
-					const landedEarlier = jumpLandedRef.current;
-					jumpLandedRef.current = false;
-					anchorRef.current = null;
-					if (!landedEarlier || held?.key === item.anchor.key) landOnRowRef.current(local, el, row, pending.turn);
-					return true;
-				}
-				landOnRowRef.current(local, el, row, pending.turn);
-				jumpLandedRef.current = true;
-				anchorRef.current = {
-					key: item.anchor.key,
-					top: flowTop(row, el)
-				};
-				return true;
-			};
-			(0, react.useLayoutEffect)(() => {
-				if (scrollSamplePendingRef.current) return;
-				const local = listRef.current;
-				/* v8 ignore next -- ref-null guard: React attaches the ref before layout effects run. */
-				if (local === null) return;
-				const el = scrollerOf(local);
-				if (openState === "open" && !openedRef.current) {
-					openedRef.current = true;
-					const saved = chatScroll.read();
-					if (saved === null) toBottom(el);
-					else {
-						el.scrollTop = saved.scrollTop;
-						const row = anchorElement(local, saved.anchorKey);
-						if (row !== null) el.scrollTop += flowTop(row, el) - saved.anchorTop;
-						observedTopRef.current = el.scrollTop;
-						const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 25;
-						atBottomRef.current = isAtBottom;
-						setAtBottom(isAtBottom);
-						const normalized = isAtBottom ? null : scrollPosition(local, el);
-						if (isAtBottom) chatScroll.save(null);
-						else if (normalized !== null) chatScroll.save(normalized);
-					}
-					firstSeqRef.current = firstSeq;
-					lastKeyRef.current = lastKey;
-					lastSteeringIdRef.current = lastSteeringId;
-					lastSubmissionIdRef.current = lastSubmissionId;
-					followSigRef.current = followSig;
-					return;
-				}
-				if (anchorRef.current !== null && firstSeq !== null && firstSeqRef.current !== null && firstSeq < firstSeqRef.current) {
-					const anchor = anchorRef.current;
-					anchorRef.current = null;
-					const row = anchorElement(local, anchor.key);
-					if (row !== null) el.scrollTop += flowTop(row, el) - anchor.top;
-					observedTopRef.current = el.scrollTop;
-					if (!realizePendingJump(local, el, false) && row !== null) anchorRef.current = {
-						key: anchor.key,
-						top: flowTop(row, el)
-					};
-					firstSeqRef.current = firstSeq;
-					/* v8 ignore next -- ?? arm: a prepend adds nodes, so the flow list here is never empty. */
-					lastKeyRef.current = lastKey;
-					lastSteeringIdRef.current = lastSteeringId;
-					lastSubmissionIdRef.current = lastSubmissionId;
-					followSigRef.current = followSig;
-					return;
-				}
-				firstSeqRef.current = firstSeq;
-				const appendedUser = lastKey !== lastKeyRef.current && lastNode?.kind === "user";
-				const appendedSteering = lastSteeringId !== null && lastSteeringId !== lastSteeringIdRef.current;
-				const appendedSubmission = lastSubmissionId !== null && lastSubmissionId !== lastSubmissionIdRef.current;
-				const tipMoved = followSigRef.current !== followSig;
-				lastKeyRef.current = lastKey;
-				lastSteeringIdRef.current = lastSteeringId;
-				lastSubmissionIdRef.current = lastSubmissionId;
-				followSigRef.current = followSig;
-				if (appendedUser || appendedSteering || appendedSubmission || tipMoved && atBottomRef.current) {
-					toBottom(el);
-					return;
-				}
-				if (pendingJumpRef.current !== null) realizePendingJump(local, el, false);
+			const latestSteering = pendingInputs.findLast((item) => "source" in item);
+			const steeringId = latestSteering?.source.kind === "user" && "rpcId" in latestSteering.source ? latestSteering.source.rpcId : latestSteering?.id ?? null;
+			const scroll = useChatScroll({
+				ready: openState === "open",
+				order,
+				firstSeq,
+				lastKey,
+				running,
+				loadingOlder,
+				hasMore,
+				chatScroll,
+				loadOlder,
+				loadThrough,
+				lastIsUser: lastKey !== null && nodeStore.get(lastKey)?.kind === "user",
+				steeringId,
+				submissionId: visibleSubmissions.at(-1)?.requestId ?? null,
+				loadedTurns: turnNavigationItems
 			});
-			const onScrollRef = (0, react.useRef)(() => {});
-			onScrollRef.current = () => {
-				const local = listRef.current;
-				/* v8 ignore next -- ref-null guard: the handler only fires while mounted. */
-				if (local === null) return;
-				const el = scrollerOf(local);
-				const floor = Math.max(0, el.scrollHeight - el.clientHeight);
-				const movedByReader = readerMovedScroll(el.scrollTop, floor, observedTopRef.current);
-				const isAtBottom = movedByReader ? floor - el.scrollTop <= 25 : atBottomRef.current;
-				if (!movedByReader && isAtBottom) {
-					toBottom(el);
-					return;
-				}
-				atBottomRef.current = isAtBottom;
-				setAtBottom(isAtBottom);
-				const position = isAtBottom ? null : scrollPosition(local, el);
-				if (isAtBottom) anchorRef.current = null;
-				else if (anchorRef.current !== null && position !== null) anchorRef.current = {
-					key: position.anchorKey,
-					top: position.anchorTop
-				};
-				if (isAtBottom) chatScroll.save(null);
-				else if (position !== null) chatScroll.save(position);
-				observedTopRef.current = el.scrollTop;
-				scheduleActiveTurn();
-			};
-			(0, react.useEffect)(() => {
-				const local = listRef.current;
-				/* v8 ignore next -- ref-null guard: effect runs after the list node commits. */
-				if (local === null) return;
-				const el = scrollerOf(local);
-				let sampleTimer;
-				const sample = () => {
-					if (!scrollSamplePendingRef.current) return;
-					scrollSamplePendingRef.current = false;
-					if (sampleTimer !== void 0) window.clearTimeout(sampleTimer);
-					sampleTimer = void 0;
-					onScrollRef.current();
-					setScrollSampleTick((tick) => tick + 1);
-				};
-				const onScroll = () => {
-					scrollSamplePendingRef.current = true;
-					if (atBottomRef.current) {
-						const floor = Math.max(0, el.scrollHeight - el.clientHeight);
-						if (!readerMovedScroll(el.scrollTop, floor, observedTopRef.current)) {
-							sample();
-							return;
-						}
-					}
-					sampleTimer ??= window.setTimeout(sample, SCROLL_SAMPLE_INTERVAL_MS);
-				};
-				el.addEventListener("scroll", onScroll, { passive: true });
-				el.addEventListener("scrollend", sample, { passive: true });
-				return () => {
-					el.removeEventListener("scroll", onScroll);
-					el.removeEventListener("scrollend", sample);
-					if (sampleTimer !== void 0) window.clearTimeout(sampleTimer);
-					scrollSamplePendingRef.current = false;
-				};
-			}, []);
-			const followRef = (0, react.useRef)(null);
-			followRef.current = () => {
-				if (scrollSamplePendingRef.current) return;
-				const local = listRef.current;
-				if (local !== null && atBottomRef.current) {
-					const el = scrollerOf(local);
-					el.scrollTop = el.scrollHeight;
-					observedTopRef.current = el.scrollTop;
-					chatScroll.save(null);
-				}
-			};
-			(0, react.useEffect)(() => {
-				const column = columnRef.current;
-				const local = listRef.current;
-				if (column === null || local === null || typeof ResizeObserver === "undefined") return;
-				const composer = scrollerOf(local).querySelector("[data-composer-seat]");
-				const observer = new ResizeObserver(() => {
-					followRef.current?.();
-					activeTurnRef.current?.();
-				});
-				observer.observe(column);
-				if (composer !== null) observer.observe(composer);
-				return () => {
-					observer.disconnect();
-				};
-			}, []);
-			(0, react.useEffect)(() => {
-				if (!loadingOlder) anchorRef.current = null;
-			}, [loadingOlder]);
-			(0, react.useEffect)(() => {
-				const pending = pendingJumpRef.current;
-				const local = listRef.current;
-				if (pending === null || local === null) return;
-				const el = scrollerOf(local);
-				if (realizePendingJump(local, el, true)) return;
-				if ((firstSeq === null || firstSeq > pending.seq) && hasMore) {
-					if (loadingOlder) return;
-					if (jumpRepageHeadRef.current !== firstSeq) {
-						jumpRepageHeadRef.current = firstSeq;
-						const held = pagingAnchor(local, el);
-						if (held !== null && held.dataset.chatAnchorKey !== void 0) anchorRef.current = {
-							key: held.dataset.chatAnchorKey,
-							top: flowTop(held, el)
-						};
-						loadThrough(pending.seq).finally(() => {
-							setJumpSettleTick((tick) => tick + 1);
-						});
-						return;
-					}
-				}
-				for (const row of local.querySelectorAll("[data-chat-turn]:not([hidden])")) {
-					const turn = Number(row.dataset.chatTurn);
-					if (!Number.isSafeInteger(turn) || turn < pending.turn) continue;
-					landOnRowRef.current(local, el, row, turn);
-					break;
-				}
-				pendingJumpRef.current = null;
-				setBusyJumpTurn(null);
-			}, [jumpSettleTick]);
-			(0, react.useEffect)(() => {
-				if (!loadingOlder && pendingJumpRef.current !== null) setJumpSettleTick((tick) => tick + 1);
-			}, [loadingOlder]);
-			const loadOlderAnchored = () => {
-				const local = listRef.current;
-				/* v8 ignore next -- ref-null guard: the paging button renders inside the list tree. */
-				if (local !== null) {
-					const el = scrollerOf(local);
-					const row = pagingAnchor(local, el);
-					if (row !== null && row.dataset.chatAnchorKey !== void 0) anchorRef.current = {
-						key: row.dataset.chatAnchorKey,
-						top: flowTop(row, el)
-					};
-				}
-				loadOlder();
-			};
-			const navigateToTurn = (0, react.useCallback)((item) => {
-				const local = listRef.current;
-				if (local === null) return;
-				const el = scrollerOf(local);
-				if (item.anchor.kind === "unloaded") {
-					atBottomRef.current = false;
-					setAtBottom(false);
-					const held = pagingAnchor(local, el);
-					if (held !== null && held.dataset.chatAnchorKey !== void 0) anchorRef.current = {
-						key: held.dataset.chatAnchorKey,
-						top: flowTop(held, el)
-					};
-					pendingJumpRef.current = {
-						turn: item.turn,
-						seq: item.anchor.seq
-					};
-					jumpRepageHeadRef.current = null;
-					jumpLandedRef.current = false;
-					setBusyJumpTurn(item.turn);
-					loadThrough(item.anchor.seq).finally(() => {
-						setJumpSettleTick((tick) => tick + 1);
-					});
-					return;
-				}
-				const row = anchorElement(local, item.anchor.key);
-				if (row === null) return;
-				pendingJumpRef.current = null;
-				setBusyJumpTurn((current) => current === null ? current : null);
-				landOnRowRef.current(local, el, row, item.turn);
-				const landed = loadingOlder ? pagingAnchor(local, el) : null;
-				anchorRef.current = landed === null || landed.dataset.chatAnchorKey === void 0 ? null : {
-					key: landed.dataset.chatAnchorKey,
-					top: flowTop(landed, el)
-				};
-			}, [loadingOlder, loadThrough]);
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: ChatView_module_css_default.root,
+				"data-chat-following-tail": scroll.followingTail ? "" : void 0,
 				children: [(0, react_jsx_runtime.jsxs)("div", {
-					ref: listRef,
+					ref: scroll.listRef,
 					className: ChatView_module_css_default.scroll,
 					children: [
-						(0, react_jsx_runtime.jsx)(TurnNavigator, {
+						scroll.initialized && (0, react_jsx_runtime.jsx)(TurnNavigator, {
 							items: railItems,
-							activeTurn,
-							busyTurn: busyJumpTurn,
-							onNavigate: navigateToTurn,
+							activeTurn: scroll.activeTurn,
+							busyTurn: scroll.busyTurn,
+							onNavigate: scroll.navigateToTurn,
 							t
 						}),
 						(0, react_jsx_runtime.jsxs)("div", {
-							ref: columnRef,
+							ref: scroll.columnRef,
 							className: ChatView_module_css_default.column,
 							"data-chat-flow": "",
 							children: [
@@ -2528,56 +4815,53 @@ window.__ModuleLoader__.load({
 									children: (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										disabled: loadingOlder,
-										onClick: loadOlderAnchored,
+										onClick: scroll.loadEarlier,
 										children: loadingOlder ? t("loading") : t("chat.loadOlder")
 									})
 								}),
-								(0, react_jsx_runtime.jsx)(ChatNodeList, {
-									order,
-									useChatNode,
-									useChatNodeProcess,
-									historyIncomplete: hasMore,
-									compactTranscript,
-									useStore,
-									actions,
-									cwd,
+								(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownDelegateProvider, {
+									openExternalLink,
 									openFile: requestOpenFile,
-									inspectCall,
-									forkAt,
-									loadImage,
+									children: (0, react_jsx_runtime.jsx)(ChatNodeList, {
+										entries,
+										nodeStore,
+										useChatGroup,
+										useChatNode,
+										useChatNodeProcess,
+										usePresentation,
+										useStore,
+										actions,
+										cwd,
+										openFile: requestOpenFile,
+										openSkill,
+										inspectCall,
+										forkAt,
+										loadImage,
+										renderMessageImages,
+										fileMentions,
+										renderSlot,
+										t
+									})
+								}),
+								pendingInputs.map((item) => "requestId" in item ? (0, react_jsx_runtime.jsx)(PendingSubmissionBubble, {
+									submission: item,
 									renderMessageImages,
-									fileMentions,
-									renderSlot,
 									t
-								}),
-								running && (0, react_jsx_runtime.jsx)(TurnStatus, {
-									startTime: runningTurnStart,
-									t
-								}),
-								pendingSteering.map((item) => (0, react_jsx_runtime.jsx)(PendingSteeringBubble, {
+								}, item.requestId) : (0, react_jsx_runtime.jsx)(PendingSteeringBubble, {
 									content: item.content,
 									renderMessageImages,
 									t
-								}, item.id)),
-								visibleSubmissions.map((submission) => (0, react_jsx_runtime.jsx)(PendingSubmissionBubble, {
-									submission,
-									renderMessageImages,
-									t
-								}, submission.requestId))
+								}, item.id))
 							]
 						}),
-						!atBottom && (0, react_jsx_runtime.jsx)("div", {
+						!scroll.followingTail && (0, react_jsx_runtime.jsx)("div", {
 							className: ChatView_module_css_default.toBottomSlot,
 							children: (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: ChatView_module_css_default.toBottom,
 								"aria-label": t("chat.toBottom"),
-								onClick: () => {
-									const local = listRef.current;
-									/* v8 ignore next -- ref-null guard: the button only renders alongside the mounted list. */
-									if (local !== null) toBottom(scrollerOf(local));
-								},
-								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {})
+								onClick: scroll.returnToBottom,
+								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, {})
 							})
 						})
 					]
@@ -2621,6 +4905,49 @@ window.__ModuleLoader__.load({
 		const NS = "chat";
 		/** Simplified Chinese dictionary and key-set source of truth. */
 		const zh = {
+			"message.stepProcess.thinking": "正在分析请求",
+			"message.stepProcess.read": "正在读取文件",
+			"message.stepProcess.search": "正在搜索代码",
+			"message.stepProcess.edit": "正在编辑文件",
+			"message.stepProcess.commands": "正在运行命令",
+			"message.stepProcess.code": "正在运行代码",
+			"message.stepProcess.webSearch": "正在搜索网页",
+			"message.stepProcess.webFetch": "正在访问网页",
+			"message.stepProcess.subagents": "正在协调子任务",
+			"message.stepProcess.plan": "正在更新计划",
+			"message.stepProcess.questions": "等待你的操作",
+			"message.stepProcess.tools": "正在调用工具",
+			"message.stepProcess.done.thinking": "已完成分析",
+			"message.stepProcess.done.read": "已读取文件",
+			"message.stepProcess.done.search": "已搜索代码",
+			"message.stepProcess.done.edit": "修改了文件",
+			"message.stepProcess.done.commands": "执行了命令",
+			"message.stepProcess.done.code": "运行了代码",
+			"message.stepProcess.done.webSearch": "已搜索网页",
+			"message.stepProcess.done.webFetch": "已访问网页",
+			"message.stepProcess.done.subagents": "已协调子任务",
+			"message.stepProcess.done.plan": "更新了计划",
+			"message.stepProcess.done.questions": "向用户提出了问题",
+			"message.stepProcess.done.tools": "已调用工具",
+			"message.stepProcess.joinTwo": "{first}并{second}",
+			"message.stepProcess.comma": "，",
+			"message.stepProcess.sharedPrefix": "已",
+			"message.stepProcess.more": "{title}等",
+			"message.trigger.request": "收到执行请求",
+			"message.trigger.goal": "继续执行目标",
+			"message.trigger.agent": "收到任务消息",
+			"message.trigger.team": "收到团队消息",
+			"message.trigger.subagent": "子任务状态更新",
+			"message.trigger.github": "收到 GitHub 事件",
+			"message.trigger.webhook": "收到外部事件",
+			"message.trigger.schedule": "定时任务",
+			"message.trigger.job": "后台任务状态更新",
+			"message.trigger.plugin": "插件状态更新",
+			"message.trigger.explanation": "这条通知触发了本轮回复。",
+			"message.turnProcess.worked": "已完成工作",
+			"message.turnProcess.deepDivingFor": "深度求索中，用时{duration}",
+			"message.turnProcess.took": "用时 {duration}",
+			"message.turnProcess.failed": "处理失败",
 			"view.chat": "对话",
 			"number.groupSeparator": ",",
 			"duration.compactSeconds": "{seconds}秒",
@@ -2638,15 +4965,24 @@ window.__ModuleLoader__.load({
 			"chat.loadError": "历史加载失败：{message}（{code}）",
 			"chat.loadOlder": "加载更早",
 			"chat.toBottom": "回到底部",
-			"chat.deepDiving": "深度求索中...",
+			"chat.deepDiving": "深度求索中",
 			"chat.turnNavigation.label": "轮次导航",
 			"chat.turnNavigation.jump": "跳转到第 {turn} 轮",
 			"chat.turnNavigation.jumpLoad": "加载并跳转到第 {turn} 轮",
 			"chat.turnNavigation.turn": "第 {turn} 轮",
-			"settings.transcript.title": "对话显示",
-			"settings.transcript.description": "控制已完成轮次的过程内容",
-			"settings.transcript.normal": "标准",
-			"settings.transcript.compact": "紧凑",
+			"settings.performance.title": "性能与用量",
+			"settings.performance.description": "选择性能与用量信息展示的详细程度",
+			"settings.performance.compact": "简洁",
+			"settings.performance.detailed": "详细",
+			"settings.links.title": "聊天链接打开方式",
+			"settings.links.description": "选择聊天中 HTTP(S) 链接的打开位置",
+			"settings.links.sidebar": "内置浏览器",
+			"settings.links.newTab": "浏览器新标签页",
+			"settings.transcript.title": "工作过程展示",
+			"settings.transcript.description": "控制轮次和步骤的默认展开方式",
+			"settings.transcript.compact": "简洁",
+			"settings.transcript.detailed": "详细",
+			"settings.transcript.expanded": "完全展开",
 			"fileOpen.title": "无法打开文件",
 			"fileOpen.unknown": "无法打开此文件",
 			"message.extraBlock": "附加内容块",
@@ -2697,7 +5033,6 @@ window.__ModuleLoader__.load({
 			"message.turnError": "本轮运行失败",
 			"message.maxTokens": "已达到输出 token 上限",
 			"message.maxTokens.hint": "回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。",
-			"message.ranFor": "用时 {duration}",
 			"message.tokensPerSecond": "{tps} tok/s",
 			"message.turnUsage.title": "本轮用量",
 			"message.turnUsage.consumed": "用量 {total}",
@@ -2709,12 +5044,9 @@ window.__ModuleLoader__.load({
 			"message.turnUsage.output": "输出",
 			"message.turnUsage.reasoning": "（其中推理 {tokens}）",
 			"message.turnUsage.count": "{count} tok",
-			"message.turnTime.title": "本轮用时和速度",
-			"message.turnTime.duration": "本轮总用时",
-			"message.turnTime.speed": "输出速度（TPS）",
-			"message.turnTime.ttft": "首 token 用时（TTFT）",
 			"duration.seconds": "{seconds}秒",
 			"duration.minutes": "{minutes}分{seconds}秒",
+			"duration.hours": "{hours}小时{minutes}分{seconds}秒",
 			"command.running": "执行中…",
 			"command.failed": "指令失败",
 			"command.done": "已完成",
@@ -2727,6 +5059,49 @@ window.__ModuleLoader__.load({
 		};
 		/** English dictionary, checked against the Chinese key set. */
 		const en = {
+			"message.stepProcess.thinking": "Analyzing the request",
+			"message.stepProcess.read": "Reading files",
+			"message.stepProcess.search": "Searching code",
+			"message.stepProcess.edit": "Editing files",
+			"message.stepProcess.commands": "Running commands",
+			"message.stepProcess.code": "Running code",
+			"message.stepProcess.webSearch": "Searching the web",
+			"message.stepProcess.webFetch": "Visiting web pages",
+			"message.stepProcess.subagents": "Coordinating subagents",
+			"message.stepProcess.plan": "Updating the plan",
+			"message.stepProcess.questions": "Waiting for your action",
+			"message.stepProcess.tools": "Calling tools",
+			"message.stepProcess.done.thinking": "Analysis completed",
+			"message.stepProcess.done.read": "Read files",
+			"message.stepProcess.done.search": "Searched code",
+			"message.stepProcess.done.edit": "Edited files",
+			"message.stepProcess.done.commands": "Ran commands",
+			"message.stepProcess.done.code": "Ran code",
+			"message.stepProcess.done.webSearch": "Searched the web",
+			"message.stepProcess.done.webFetch": "Visited web pages",
+			"message.stepProcess.done.subagents": "Coordinated subagents",
+			"message.stepProcess.done.plan": "Updated the plan",
+			"message.stepProcess.done.questions": "Asked questions",
+			"message.stepProcess.done.tools": "Called tools",
+			"message.stepProcess.joinTwo": "{first} and {second}",
+			"message.stepProcess.comma": ", ",
+			"message.stepProcess.sharedPrefix": "",
+			"message.stepProcess.more": "{title}, etc.",
+			"message.trigger.request": "Execution requested",
+			"message.trigger.goal": "Continuing goal",
+			"message.trigger.agent": "Task message received",
+			"message.trigger.team": "Team message received",
+			"message.trigger.subagent": "Subtask status updated",
+			"message.trigger.github": "GitHub event received",
+			"message.trigger.webhook": "External event received",
+			"message.trigger.schedule": "Scheduled task",
+			"message.trigger.job": "Background task updated",
+			"message.trigger.plugin": "Plugin status updated",
+			"message.trigger.explanation": "This notification triggered this response.",
+			"message.turnProcess.worked": "Worked",
+			"message.turnProcess.deepDivingFor": "Deep diving for {duration}",
+			"message.turnProcess.took": "Took {duration}",
+			"message.turnProcess.failed": "Failed",
 			"view.chat": "Chat",
 			"number.groupSeparator": ",",
 			"duration.compactSeconds": "{seconds}s",
@@ -2749,10 +5124,19 @@ window.__ModuleLoader__.load({
 			"chat.turnNavigation.jump": "Jump to turn {turn}",
 			"chat.turnNavigation.jumpLoad": "Load and jump to turn {turn}",
 			"chat.turnNavigation.turn": "Turn {turn}",
-			"settings.transcript.title": "Conversation display",
-			"settings.transcript.description": "Controls process content in completed turns",
-			"settings.transcript.normal": "Normal",
+			"settings.performance.title": "Performance & usage",
+			"settings.performance.description": "Choose how much performance and usage information to show",
+			"settings.performance.compact": "Compact",
+			"settings.performance.detailed": "Detailed",
+			"settings.links.title": "Open chat links in",
+			"settings.links.description": "Choose where HTTP(S) links in chat open",
+			"settings.links.sidebar": "Built-in browser",
+			"settings.links.newTab": "New browser tab",
+			"settings.transcript.title": "Work details",
+			"settings.transcript.description": "Controls how turns and steps expand by default",
 			"settings.transcript.compact": "Compact",
+			"settings.transcript.detailed": "Detailed",
+			"settings.transcript.expanded": "Expanded",
 			"fileOpen.title": "Couldn’t open file",
 			"fileOpen.unknown": "Couldn’t open this file",
 			"message.extraBlock": "Extra content block",
@@ -2803,7 +5187,6 @@ window.__ModuleLoader__.load({
 			"message.turnError": "This turn failed",
 			"message.maxTokens": "Output token limit reached",
 			"message.maxTokens.hint": "The reply was cut off; earlier output is preserved in the conversation. Send \"continue\" to let the model resume.",
-			"message.ranFor": "Ran for {duration}",
 			"message.tokensPerSecond": "{tps} tok/s",
 			"message.turnUsage.title": "Turn usage",
 			"message.turnUsage.consumed": "Usage {total}",
@@ -2815,12 +5198,9 @@ window.__ModuleLoader__.load({
 			"message.turnUsage.output": "Output",
 			"message.turnUsage.reasoning": " ({tokens} reasoning)",
 			"message.turnUsage.count": "{count} tok",
-			"message.turnTime.title": "Turn time and speed",
-			"message.turnTime.duration": "Total run time",
-			"message.turnTime.speed": "Tokens per second (TPS)",
-			"message.turnTime.ttft": "Time to first token (TTFT)",
 			"duration.seconds": "{seconds}s",
 			"duration.minutes": "{minutes}m {seconds}s",
+			"duration.hours": "{hours}h {minutes}m {seconds}s",
 			"command.running": "Running…",
 			"command.failed": "Command failed",
 			"command.done": "Completed",
@@ -2833,25 +5213,25 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/accessibility.module.css.mjs
-		const css$9 = ".TTCZqG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
-		const tagId$9 = "@deepseek-ai/dsh-client-ui-chat/accessibility.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$9) + "]") === null) {
+		const css$10 = ".TTCZqG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const tagId$10 = "@deepseek-ai/dsh-client-ui-chat/accessibility.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$10) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$9;
-			tag.textContent = css$9;
+			tag.dataset.pluginCss = tagId$10;
+			tag.textContent = css$10;
 			document.head.appendChild(tag);
 		}
 		var accessibility_module_css_default = { "visuallyHidden": "TTCZqG_visuallyHidden" };
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/ReasoningRow.module.css.mjs
-		const css$8 = ".lcKema_root{flex-direction:column;display:flex}.lcKema_root:not([data-expanded]){contain:size layout;height:calc(24px + var(--dsh-content-font-delta,0px))}.lcKema_row{position:relative;overflow:hidden}.lcKema_root[data-state=running] .lcKema_row:after{content:\"\";inset-block:0;background:linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%, transparent 100%);pointer-events:none;width:300px;animation:2.6s ease-out infinite lcKema_dsh-reasoning-row-sweep;position:absolute;left:0}@keyframes lcKema_dsh-reasoning-row-sweep{0%{left:-300px}90%,to{left:100%}}.lcKema_leading{flex-shrink:0}.lcKema_chevron{color:var(--dsw-alias-label-secondary)}.lcKema_title{font-weight:400}.lcKema_separator{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.lcKema_summary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));white-space:nowrap;flex:auto;overflow:hidden}.lcKema_summaryText{text-overflow:ellipsis;display:block;overflow:hidden}.lcKema_summary[data-follow-end]{justify-content:flex-end;display:flex}.lcKema_summary[data-follow-end] .lcKema_summaryText{text-align:start;text-overflow:clip;flex:none;width:max-content;min-width:100%;overflow:visible}.lcKema_thinkBody{padding:4px 0 4px calc(22px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));white-space:pre-wrap;word-break:break-word}@media (prefers-reduced-motion:reduce){.lcKema_root[data-state=running] .lcKema_row:after{animation:none}}";
-		const tagId$8 = "@deepseek-ai/dsh-client-ui-chat/ReasoningRow.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$8) + "]") === null) {
+		const css$9 = ".lcKema_root{flex-direction:column;display:flex}.lcKema_root:not([data-expanded]){contain:size layout;height:calc(24px + var(--dsh-content-font-delta,0px))}.lcKema_row{position:relative;overflow:hidden}.lcKema_root[data-expanded] [data-open] [data-disclosure-row]{z-index:1;background:var(--dsw-alias-bg-base);position:sticky;top:0}.lcKema_root[data-state=running] .lcKema_row:after{content:\"\";inset-block:0;background:linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%, transparent 100%);pointer-events:none;width:300px;animation:2.6s ease-out infinite lcKema_dsh-reasoning-row-sweep;position:absolute;left:0}@keyframes lcKema_dsh-reasoning-row-sweep{0%{left:-300px}90%,to{left:100%}}.lcKema_leading{flex-shrink:0}.lcKema_chevron{color:var(--dsw-alias-label-secondary)}.lcKema_title{font-weight:400}.lcKema_separator{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.lcKema_summary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));white-space:nowrap;flex:auto;overflow:hidden}.lcKema_summaryText{text-overflow:ellipsis;display:block;overflow:hidden}.lcKema_summary[data-streaming]{mask-image:linear-gradient(90deg,#000 calc(100% - 48px),#0000)}.lcKema_summary[data-streaming] .lcKema_summaryText{text-overflow:clip;overflow:visible}.lcKema_root:not([data-preview]) .lcKema_separator,.lcKema_root:not([data-preview]) .lcKema_summary{display:none}.lcKema_thinkBody{padding:4px 0 4px calc(22px + var(--dsh-content-font-delta,0px));min-width:0}@media (prefers-reduced-motion:reduce){.lcKema_root[data-state=running] .lcKema_row:after{animation:none}}";
+		const tagId$9 = "@deepseek-ai/dsh-client-ui-chat/ReasoningRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$9) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$8;
-			tag.textContent = css$8;
+			tag.dataset.pluginCss = tagId$9;
+			tag.textContent = css$9;
 			document.head.appendChild(tag);
 		}
 		var ReasoningRow_module_css_default = {
@@ -2869,32 +5249,77 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/chat/ReasoningRow.js
 		/** Assistant reasoning disclosure, independent of Tool-call presentation. */
+		const THINK_ICON = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconThinkOutlineRegular, { size: 14 });
 		function firstLine(text) {
 			const newline = text.indexOf("\n");
 			return newline === -1 ? text : text.slice(0, newline);
 		}
-		function latestLine(text) {
-			const visible = text.trimEnd();
-			const newline = visible.lastIndexOf("\n");
-			return newline === -1 ? visible : visible.slice(newline + 1);
+		function latestCompletedParagraphFirstLine(text) {
+			let summary = "";
+			let paragraphStart = 0;
+			const separator = /\r?\n(?:[\t ]*\r?\n)+/g;
+			while (true) {
+				const nextParagraph = separator.exec(text);
+				const paragraphEnd = nextParagraph === null ? text.length : nextParagraph.index + nextParagraph[0].indexOf("\n");
+				const newline = text.indexOf("\n", paragraphStart);
+				if (newline !== -1 && newline <= paragraphEnd) {
+					const candidate = text.slice(paragraphStart, newline).trim();
+					if (candidate !== "") summary = candidate;
+				}
+				if (nextParagraph === null) return summary;
+				paragraphStart = nextParagraph.index + nextParagraph[0].length;
+			}
 		}
 		/**
-		* Render one assistant reasoning block as the Think disclosure row. The
-		* collapsed summary omits double-asterisk markers; expanded content preserves
-		* the complete text.
+		* Render one assistant reasoning block collapsed until the reader opens it. The
+		* collapsed summary omits double-asterisk markers; expanded content renders
+		* the complete Markdown with secondary typography. A streaming preview advances
+		* when a paragraph's first line completes. Mode changes toggle CSS display without unmounting
+		* collapsed summaries.
 		* @param props.text - complete or streaming reasoning text.
 		* @param props.running - whether this block is the streaming tail.
-		* @param props.t - conversation locale seat for the running status.
+		* @param props.usePresentation - live display-policy selector for this reasoning row.
+		* @param props.useDisclosure - independent open state with enclosing-Turn resets.
+		* @param props.t - conversation locale seat for status and Markdown actions.
 		* @returns the reasoning disclosure.
 		*/
-		function ReasoningRow({ text, running, t }) {
-			const [expanded, setExpanded] = (0, react.useState)(false);
-			const summary = (running ? latestLine(text) : firstLine(text)).replaceAll("**", "");
+		const ReasoningRow = (0, react.memo)(function ReasoningRow({ text, running, usePresentation, useDisclosure, t }) {
+			const { expanded, toggle } = useDisclosure();
+			const labels = (0, react.useMemo)(() => markdownLabels(t), [t]);
+			const summaryText = running ? latestCompletedParagraphFirstLine(text) : firstLine(text);
+			const summary = (0, react.useMemo)(() => summaryText.replaceAll("**", ""), [summaryText]);
+			const preview = usePresentation((policy) => !expanded && summary !== "" && (running || policy.settledReasoningPreview));
+			const collapsedContent = (0, react.useMemo)(() => (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
+				className: ReasoningRow_module_css_default.separator,
+				"aria-hidden": true
+			}), (0, react_jsx_runtime.jsx)("span", {
+				className: ReasoningRow_module_css_default.summary,
+				"data-streaming": running || void 0,
+				children: (0, react_jsx_runtime.jsx)("span", {
+					className: ReasoningRow_module_css_default.summaryText,
+					children: summary
+				})
+			})] }), [running, summary]);
+			const content = (0, react.useMemo)(() => expanded ? (0, react_jsx_runtime.jsx)("div", {
+				className: ReasoningRow_module_css_default.thinkBody,
+				children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, {
+					text,
+					streaming: running,
+					labels,
+					variant: "compact"
+				})
+			}) : void 0, [
+				expanded,
+				labels,
+				running,
+				text
+			]);
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: ReasoningRow_module_css_default.root,
 				"data-variant": "think",
 				"data-state": running ? "running" : "ok",
 				"data-expanded": expanded || void 0,
+				"data-preview": preview || void 0,
 				children: [running && (0, react_jsx_runtime.jsx)("span", {
 					className: accessibility_module_css_default.visuallyHidden,
 					children: t("row.running")
@@ -2903,41 +5328,26 @@ window.__ModuleLoader__.load({
 					leadingClassName: ReasoningRow_module_css_default.leading,
 					titleClassName: ReasoningRow_module_css_default.title,
 					chevronClassName: ReasoningRow_module_css_default.chevron,
-					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconThinkOutline14, { size: 14 }),
+					icon: THINK_ICON,
 					title: t("message.think"),
 					open: expanded,
 					expandable: true,
 					expandOnRowClick: true,
-					onToggle: () => {
-						setExpanded((value) => !value);
-					},
-					collapsedContent: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
-						className: ReasoningRow_module_css_default.separator,
-						"aria-hidden": true
-					}), (0, react_jsx_runtime.jsx)("span", {
-						className: ReasoningRow_module_css_default.summary,
-						"data-follow-end": running || void 0,
-						children: (0, react_jsx_runtime.jsx)("span", {
-							className: ReasoningRow_module_css_default.summaryText,
-							children: summary
-						})
-					})] }),
-					children: (0, react_jsx_runtime.jsx)("div", {
-						className: ReasoningRow_module_css_default.thinkBody,
-						children: text
-					})
+					onToggle: toggle,
+					collapsedContent,
+					children: content
 				})]
 			});
-		}
+		});
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/AssistantMarkdown.module.css.mjs
-		const css$7 = ".hWmORq_root{font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-primary);flex-direction:column;display:flex}.hWmORq_body{flex-direction:column;gap:16px;display:flex}.hWmORq_body .md-table-wide{--dsh-table-spare:max(0px, calc((100cqw - var(--dsh-chat-content-width)) / 2));--dsh-table-lead:calc(var(--dsh-table-spare) + min(var(--dsh-chat-content-width), 100cqw) - 100%);box-sizing:border-box;width:calc(100% + var(--dsh-table-lead) + var(--dsh-table-spare));max-width:none;margin-left:calc(-1 * var(--dsh-table-lead));padding-left:var(--dsh-table-lead)}.hWmORq_body>[data-turn-process-inline][hidden]{margin-bottom:-16px}.hWmORq_stopped{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-tertiary);border-radius:6px;align-self:flex-start;padding:0 6px;font-size:11px;line-height:18px}.hWmORq_actions{margin-top:16px;margin-left:-6px}";
-		const tagId$7 = "@deepseek-ai/dsh-client-ui-chat/AssistantMarkdown.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
+		const css$8 = ".hWmORq_root{font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-primary);flex-direction:column;display:flex}.hWmORq_body{flex-direction:column;gap:16px;display:flex}.hWmORq_body .md-table-wide{--dsh-table-spare:max(0px, calc((100cqw - var(--dsh-chat-content-width)) / 2));--dsh-table-lead:calc(var(--dsh-table-spare) + min(var(--dsh-chat-content-width), 100cqw) - 100%);box-sizing:border-box;width:calc(100% + var(--dsh-table-lead) + var(--dsh-table-spare));max-width:none;margin-left:calc(-1 * var(--dsh-table-lead));padding-left:var(--dsh-table-lead)}.hWmORq_body .md-table-wide>table{z-index:1;position:relative}.hWmORq_body>[data-turn-process-inline][hidden]{margin-bottom:-16px}.hWmORq_stopped{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-tertiary);border-radius:6px;align-self:flex-start;padding:0 6px;font-size:11px;line-height:18px}.hWmORq_actions{margin-top:16px;margin-left:-6px}";
+		const tagId$8 = "@deepseek-ai/dsh-client-ui-chat/AssistantMarkdown.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$8) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$7;
-			tag.textContent = css$7;
+			tag.dataset.pluginCss = tagId$8;
+			tag.textContent = css$8;
 			document.head.appendChild(tag);
 		}
 		var AssistantMarkdown_module_css_default = {
@@ -2949,26 +5359,22 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/chat/AssistantMarkdown.js
 		/**
-		* Map one authored media destination to the same-origin workspace-file URL.
-		* @param protocol - `window.location.protocol` at render time.
-		* @param origin - `window.location.origin` at render time.
-		* @param value - The authored markdown destination, exactly as written.
-		* @returns The API URL for an absolute POSIX path on an HTTP(S) page, or
-		* undefined when the destination cannot be a Host-served local file
-		* (non-HTTP transport such as Electron `file://`, protocol-relative or
-		* relative destinations).
+		* Resolve an authored POSIX image path against the document's file API.
+		* @param base - canonical `document.baseURI` at render time.
+		* @param value - authored markdown destination.
+		* @returns an absolute HTTP(S) file-API URL, or undefined for unsupported
+		* protocols and non-local paths.
 		*/
-		function localPathMediaUrl(protocol, origin, value) {
-			if (protocol !== "http:" && protocol !== "https:") return void 0;
-			if (value.length === 0 || !value.startsWith("/") || value.startsWith("//")) return void 0;
-			return `${origin}/api/file?path=${encodeURIComponent(value)}`;
+		function localPathMediaUrl(base, value) {
+			if (!value.startsWith("/") || value.startsWith("//")) return void 0;
+			if (!base.startsWith("http:") && !base.startsWith("https:")) return void 0;
+			return new URL(`api/file?path=${encodeURIComponent(value)}`, base).href;
 		}
 		/** Reasoning block as the Think variant summary row (figma 39:28304). */
-		const AssistantMarkdown = (0, react.memo)(function AssistantMarkdown({ blocks, streaming, interrupted, renderMessageImages, reasoningHidden = false, revealProcess, mentions, t }) {
+		const AssistantMarkdown = (0, react.memo)(function AssistantMarkdown({ blocks, streaming, interrupted, renderMessageImages, groupPart, useDisclosure, reasoningHidden = false, usePresentation, revealProcess, mentions, t }) {
 			const labels = (0, react.useMemo)(() => markdownLabels(t), [t]);
 			const pathImages = (0, react.useMemo)(() => {
-				const { protocol, origin } = window.location;
-				return { resolve: (value) => localPathMediaUrl(protocol, origin, value) };
+				return { resolve: (value) => localPathMediaUrl(document.baseURI, value) };
 			}, []);
 			const last = blocks.length - 1;
 			if (!(streaming || interrupted === true || blocks.some((block) => block.kind !== "tool-call"))) return null;
@@ -2976,6 +5382,8 @@ window.__ModuleLoader__.load({
 			for (let i = 0; i < blocks.length; i++) {
 				const block = blocks[i];
 				if (block === void 0) continue;
+				if (groupPart === "reasoning" && block.kind !== "reasoning") continue;
+				if (groupPart === "response" && block.kind === "reasoning") continue;
 				switch (block.kind) {
 					case "text":
 						rendered.push((0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, {
@@ -2993,6 +5401,8 @@ window.__ModuleLoader__.load({
 							children: (0, react_jsx_runtime.jsx)(ReasoningRow, {
 								text: block.text,
 								running: streaming && i === last,
+								usePresentation,
+								useDisclosure,
 								t
 							})
 						}, i));
@@ -3025,7 +5435,7 @@ window.__ModuleLoader__.load({
 				"data-streaming": streaming || void 0,
 				children: (0, react_jsx_runtime.jsxs)("div", {
 					className: AssistantMarkdown_module_css_default.body,
-					children: [rendered, interrupted && (0, react_jsx_runtime.jsx)("span", {
+					children: [rendered, interrupted && (groupPart === void 0 || groupPart === "response" || !blocks.some((block) => block.kind !== "reasoning" && block.kind !== "tool-call")) && (0, react_jsx_runtime.jsx)("span", {
 						className: AssistantMarkdown_module_css_default.stopped,
 						children: t("message.stopped")
 					})]
@@ -3043,7 +5453,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/chat/AssistantNodeView.js
 		/** Streaming, settled, and interrupted Assistant states share one keyed renderer instance. */
-		const AssistantNodeView = (0, react.memo)(function AssistantNodeView({ node, useTurnData, turnProcess, openFile, renderMessageImages, fileMentions, t }) {
+		const AssistantNodeView = (0, react.memo)(function AssistantNodeView({ node, groupPart, useDisclosure, useTurnData, turnProcess, openFile, renderMessageImages, fileMentions, usePresentation, t }) {
 			const data = node.data;
 			const turn = node.location.kind === "turn" || node.location.kind === "step" ? node.location.turn : void 0;
 			const tail = useTurnData("turn-tail");
@@ -3068,10 +5478,13 @@ window.__ModuleLoader__.load({
 			}, [turnProcess]);
 			return (0, react_jsx_runtime.jsx)(AssistantMarkdown, {
 				blocks: data.blocks,
+				groupPart,
+				useDisclosure,
 				streaming: data.status === "running",
 				interrupted: data.status === "interrupted",
 				renderMessageImages,
 				reasoningHidden,
+				usePresentation,
 				revealProcess,
 				mentions,
 				t
@@ -3079,19 +5492,18 @@ window.__ModuleLoader__.load({
 		});
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/GenericCommandCard.module.css.mjs
-		const css$6 = "._5OnbHa_root{flex-direction:column;display:flex}._5OnbHa_row{position:relative;overflow:hidden}._5OnbHa_root[data-state=running] ._5OnbHa_row:after{content:\"\";inset-block:0;background:linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%, transparent 100%);pointer-events:none;width:300px;animation:2.6s ease-out infinite _5OnbHa_dsh-command-row-sweep;position:absolute;left:0}@keyframes _5OnbHa_dsh-command-row-sweep{0%{left:-300px}90%,to{left:100%}}._5OnbHa_leading{flex-shrink:0}._5OnbHa_chevron{color:var(--dsw-alias-label-secondary)}._5OnbHa_title{font-weight:400}._5OnbHa_separator{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}._5OnbHa_summary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:auto;overflow:hidden}._5OnbHa_summary[data-error],._5OnbHa_body[data-error]{color:var(--dsw-alias-state-error-primary)}._5OnbHa_body{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);max-height:260px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-markdown-code-block-small);white-space:pre-wrap;border-radius:12px;margin:4px 0 4px 4px;padding:12px 16px;overflow:auto}@media (prefers-reduced-motion:reduce){._5OnbHa_root[data-state=running] ._5OnbHa_row:after{animation:none}}";
-		const tagId$6 = "@deepseek-ai/dsh-client-ui-chat/GenericCommandCard.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
+		const css$7 = "._5OnbHa_root{flex-direction:column;display:flex}._5OnbHa_leading{flex-shrink:0}._5OnbHa_chevron{color:var(--dsw-alias-label-secondary)}._5OnbHa_title{font-weight:400;transition:color .1s}._5OnbHa_separator{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}._5OnbHa_summary{min-width:0;color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;flex:auto;transition:color .1s;overflow:hidden}._5OnbHa_row:hover ._5OnbHa_title,._5OnbHa_row:hover ._5OnbHa_summary:not([data-error]){color:var(--dsw-alias-label-primary)}._5OnbHa_summary[data-error],._5OnbHa_body[data-error]{color:var(--dsw-alias-state-error-primary)}._5OnbHa_body{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);max-height:260px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-markdown-code-block-small);white-space:pre-wrap;border-radius:12px;margin:4px 0 4px 4px;padding:12px 16px;overflow:auto}";
+		const tagId$7 = "@deepseek-ai/dsh-client-ui-chat/GenericCommandCard.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$6;
-			tag.textContent = css$6;
+			tag.dataset.pluginCss = tagId$7;
+			tag.textContent = css$7;
 			document.head.appendChild(tag);
 		}
 		var GenericCommandCard_module_css_default = {
 			"body": "_5OnbHa_body",
 			"chevron": "_5OnbHa_chevron",
-			"dsh-command-row-sweep": "_5OnbHa_dsh-command-row-sweep",
 			"leading": "_5OnbHa_leading",
 			"root": "_5OnbHa_root",
 			"row": "_5OnbHa_row",
@@ -3101,22 +5513,53 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/chat/GenericCommandCard.js
+		const COMMAND_ICON = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutlineRegular, { size: 14 });
 		/** Node state → row state semantic (running while unsettled; outcome kind after). */
 		function stateOf(outcome) {
 			if (outcome === null) return "running";
 			return outcome.kind === "error" ? "error" : "ok";
 		}
-		function leadingFor(state) {
-			return state === "error" ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "error" }) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconApiOutline14, { size: 14 });
-		}
-		function GenericCommandCard({ node, t, runningSummary }) {
+		/**
+		* Render a command summary and its lazily mounted multiline output.
+		* @param props - command, locale, and optional running label.
+		* @returns the command disclosure.
+		*/
+		const GenericCommandCard = (0, react.memo)(function GenericCommandCard({ node, t, runningSummary }) {
 			const [expanded, setExpanded] = (0, react.useState)(false);
 			const text = node.outcome?.text;
 			const summary = node.outcome === null ? runningSummary ?? t("command.running") : text ?? (node.outcome.kind === "error" ? t("command.failed") : t("command.done"));
 			const title = node.name ?? t("command.title");
 			const state = stateOf(node.outcome);
+			const running = state === "running";
 			const body = text !== void 0 && text.includes("\n") ? text : null;
 			const open = expanded && body !== null;
+			const toggle = (0, react.useCallback)(() => {
+				setExpanded((value) => !value);
+			}, []);
+			const collapsedContent = (0, react.useMemo)(() => (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
+				className: GenericCommandCard_module_css_default.separator,
+				"aria-hidden": true
+			}), (0, react_jsx_runtime.jsx)("span", {
+				className: GenericCommandCard_module_css_default.summary,
+				"data-error": state === "error" || void 0,
+				children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+					active: running,
+					children: summary
+				})
+			})] }), [
+				running,
+				state,
+				summary
+			]);
+			const content = (0, react.useMemo)(() => open ? (0, react_jsx_runtime.jsx)("pre", {
+				className: GenericCommandCard_module_css_default.body,
+				"data-error": state === "error" || void 0,
+				children: body
+			}) : void 0, [
+				body,
+				open,
+				state
+			]);
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: GenericCommandCard_module_css_default.root,
 				"data-variant": "others",
@@ -3135,32 +5578,20 @@ window.__ModuleLoader__.load({
 						leadingClassName: GenericCommandCard_module_css_default.leading,
 						titleClassName: GenericCommandCard_module_css_default.title,
 						chevronClassName: GenericCommandCard_module_css_default.chevron,
-						icon: leadingFor(state),
+						icon: COMMAND_ICON,
 						title,
+						running,
 						open,
 						expandable: body !== null,
 						expandOnRowClick: true,
 						keepContentWhenOpen: true,
-						onToggle: () => {
-							setExpanded((value) => !value);
-						},
-						collapsedContent: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
-							className: GenericCommandCard_module_css_default.separator,
-							"aria-hidden": true
-						}), (0, react_jsx_runtime.jsx)("span", {
-							className: GenericCommandCard_module_css_default.summary,
-							"data-error": state === "error" || void 0,
-							children: summary
-						})] }),
-						children: (0, react_jsx_runtime.jsx)("pre", {
-							className: GenericCommandCard_module_css_default.body,
-							"data-error": state === "error" || void 0,
-							children: body
-						})
+						onToggle: toggle,
+						collapsedContent,
+						children: content
 					})
 				]
 			});
-		}
+		});
 		//#endregion
 		//#region lib/types/client/chat/CompactionCommandCard.js
 		/** Render one manual compaction lifecycle without duplicating its checkpoint marker. */
@@ -3224,7 +5655,7 @@ window.__ModuleLoader__.load({
 			const [open, setOpen] = (0, react.useState)(false);
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.DisclosureRow, {
 				className: ContextInjectionRow_module_css_default.root,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, { size: 14 }),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size: 14 }),
 				chevronClassName: ContextInjectionRow_module_css_default.chevron,
 				title: t(update ? "message.systemPromptUpdate" : "message.systemPrompt"),
 				open,
@@ -3257,13 +5688,13 @@ window.__ModuleLoader__.load({
 		});
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/TurnProcessNodeView.module.css.mjs
-		const css$5 = ".l_V-RG_root{box-sizing:border-box;border:none;border-bottom:.5px solid var(--dsw-alias-border-l2);width:100%;min-width:0;height:33px;color:var(--dsw-alias-label-secondary);cursor:pointer;text-align:left;background:0 0;align-items:center;padding:0 0 8px;display:flex}.l_V-RG_root:not([data-open]){margin-bottom:8px}.l_V-RG_chevron{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;margin-left:6px;transition:transform .1s;transform:rotate(-90deg)}.l_V-RG_root[data-open] .l_V-RG_chevron{transform:rotate(0)}.l_V-RG_label{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:24px;overflow:hidden}@media (prefers-reduced-motion:reduce){.l_V-RG_chevron{transition:none}}";
-		const tagId$5 = "@deepseek-ai/dsh-client-ui-chat/TurnProcessNodeView.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
+		const css$6 = ".l_V-RG_root{box-sizing:border-box;width:100%;min-width:0;height:calc(33px + var(--dsh-content-font-delta,0px));border:none;border-bottom:.5px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);cursor:pointer;text-align:left;background:0 0;align-items:center;padding:0 0 8px;transition:color .1s;display:flex}.l_V-RG_root:disabled{cursor:default}.l_V-RG_root:not(:disabled):hover{color:var(--dsw-alias-label-primary)}.l_V-RG_root:not([data-open]){margin-bottom:8px}.l_V-RG_chevron{width:14px;height:14px;color:var(--dsw-alias-label-caption);flex:none;margin-left:4px;transition:transform .1s}.l_V-RG_root[data-open] .l_V-RG_chevron{transform:rotate(180deg)}.l_V-RG_label{min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));text-overflow:ellipsis;white-space:nowrap;overflow:hidden}@media (prefers-reduced-motion:reduce){.l_V-RG_root,.l_V-RG_chevron{transition:none}}";
+		const tagId$6 = "@deepseek-ai/dsh-client-ui-chat/TurnProcessNodeView.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$5;
-			tag.textContent = css$5;
+			tag.dataset.pluginCss = tagId$6;
+			tag.textContent = css$6;
 			document.head.appendChild(tag);
 		}
 		var TurnProcessNodeView_module_css_default = {
@@ -3276,14 +5707,35 @@ window.__ModuleLoader__.load({
 		/** Turn-level process disclosure controller. */
 		const TurnProcessNodeView = (0, react.memo)(function TurnProcessNodeView({ node, turnProcess, t }) {
 			if (turnProcess === void 0) throw new Error("turn-process node requires Turn process owner state");
-			if (!turnProcess.foldable) return null;
 			const open = turnProcess.open;
-			const labels = [];
-			if (node.data.toolCallCount > 0) labels.push(t(node.data.toolCallCount === 1 ? "message.turnProcess.toolCalls.one" : "message.turnProcess.toolCalls.other", { count: node.data.toolCallCount }));
-			if (node.data.messageCount > 0) labels.push(t(node.data.messageCount === 1 ? "message.turnProcess.messages.one" : "message.turnProcess.messages.other", { count: node.data.messageCount }));
-			if (node.data.subagentCount > 0) labels.push(t(node.data.subagentCount === 1 ? "message.turnProcess.subagents.one" : "message.turnProcess.subagents.other", { count: node.data.subagentCount }));
-			const label = labels.length === 0 ? t("message.turnProcess.thoughtForAWhile") : labels.join(t("message.turnProcess.separator"));
-			return (0, react_jsx_runtime.jsxs)("button", {
+			const turn = node.location.kind === "turn" || node.location.kind === "step" ? node.location.turn : void 0;
+			const [now, setNow] = (0, react.useState)(Date.now);
+			const ticking = turnProcess.foldable && turn?.status === "open";
+			(0, react.useEffect)(() => {
+				if (!ticking) return;
+				setNow(Date.now());
+				const timer = setInterval(() => {
+					setNow(Date.now());
+				}, LIVE_RUN_CLOCK_INTERVAL_MS);
+				return () => {
+					clearInterval(timer);
+				};
+			}, [ticking]);
+			if (!turnProcess.foldable) return null;
+			const canCollapse = turnProcess.hasContent && !turnProcessAlwaysOpen(node);
+			const running = turn?.status === "open";
+			const reason = turn?.end?.data.reason.kind;
+			const elapsedMs = turn?.start === void 0 ? void 0 : Math.max(1e3, (turn.end?.time ?? now) - turn.start.time);
+			const duration = elapsedMs === void 0 ? void 0 : running ? formatLiveRunDuration(elapsedMs, t) : formatRunDuration(elapsedMs, t);
+			const label = running ? duration === void 0 ? t("chat.deepDiving") : t("message.turnProcess.deepDivingFor", { duration }) : reason === "aborted" ? t("message.stopped") : reason === "error" ? t("message.turnProcess.failed") : duration === void 0 ? t("message.turnProcess.worked") : t("message.turnProcess.took", { duration });
+			const announcement = running ? t("chat.deepDiving") : reason === "aborted" ? t("message.stopped") : reason === "error" ? t("message.turnProcess.failed") : t("message.turnProcess.worked");
+			return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
+				className: accessibility_module_css_default.visuallyHidden,
+				role: "status",
+				"aria-live": "polite",
+				"aria-atomic": "true",
+				children: announcement
+			}), (0, react_jsx_runtime.jsxs)("button", {
 				type: "button",
 				className: TurnProcessNodeView_module_css_default.root,
 				"data-open": open || void 0,
@@ -3291,7 +5743,8 @@ window.__ModuleLoader__.load({
 				"data-turn-process-messages": node.data.messageCount,
 				"data-turn-process-tool-calls": node.data.toolCallCount,
 				"data-turn-process-subagents": node.data.subagentCount,
-				"aria-expanded": open,
+				disabled: !canCollapse,
+				"aria-expanded": turnProcess.hasContent ? open : void 0,
 				onClick: (event) => {
 					event.currentTarget.focus();
 					turnProcess.setOpen(!open);
@@ -3299,8 +5752,8 @@ window.__ModuleLoader__.load({
 				children: [(0, react_jsx_runtime.jsx)("span", {
 					className: TurnProcessNodeView_module_css_default.label,
 					children: label
-				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: TurnProcessNodeView_module_css_default.chevron })]
-			});
+				}), canCollapse && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: TurnProcessNodeView_module_css_default.chevron })]
+			})] });
 		});
 		//#endregion
 		//#region lib/types/client/chat/token-format.js
@@ -3439,13 +5892,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/TurnUsagePanel.module.css.mjs
-		const css$4 = ".Q51KRG_root{min-width:0;display:inline-flex}.Q51KRG_root+.Q51KRG_root{margin-left:-6px}.Q51KRG_trigger{min-width:0;height:calc(28px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);font-size:var(--dsh-content-font-size-secondary,13px);font-variant-numeric:tabular-nums;line-height:calc(24px + var(--dsh-content-font-delta,0px));white-space:nowrap;cursor:pointer;background:0 0;border:none;border-radius:28px;align-items:center;gap:4px;padding:6px 8px;display:inline-flex}.Q51KRG_label{text-overflow:ellipsis;min-width:0;overflow:hidden}.Q51KRG_trigger svg{width:calc(15px + var(--dsh-content-font-delta,0px));height:calc(15px + var(--dsh-content-font-delta,0px));flex:none}.Q51KRG_trigger:hover,.Q51KRG_trigger[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}@media (width<=480px){.Q51KRG_trigger{width:calc(28px + var(--dsh-content-font-delta,0px));justify-content:center;padding:6px}.Q51KRG_trigger .Q51KRG_label{display:none}.Q51KRG_root+.Q51KRG_root{margin-left:0}}";
-		const tagId$4 = "@deepseek-ai/dsh-client-ui-chat/TurnUsagePanel.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
+		const css$5 = ".Q51KRG_root{min-width:0;display:inline-flex}.Q51KRG_root+.Q51KRG_root{margin-left:-6px}.Q51KRG_trigger{min-width:0;height:calc(28px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);font-variant-numeric:tabular-nums;line-height:calc(24px + var(--dsh-content-font-delta,0px));white-space:nowrap;cursor:pointer;background:0 0;border:none;border-radius:28px;align-items:center;gap:4px;padding:6px 8px;display:inline-flex}.Q51KRG_label{text-overflow:ellipsis;min-width:0;overflow:hidden}.Q51KRG_trigger svg{width:calc(15px + var(--dsh-content-font-delta,0px));height:calc(15px + var(--dsh-content-font-delta,0px));flex:none}.Q51KRG_trigger:hover,.Q51KRG_trigger[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-tertiary)}@media (width<=480px){.Q51KRG_trigger{width:calc(28px + var(--dsh-content-font-delta,0px));justify-content:center;padding:6px}.Q51KRG_trigger .Q51KRG_label{display:none}.Q51KRG_root+.Q51KRG_root{margin-left:0}}";
+		const tagId$5 = "@deepseek-ai/dsh-client-ui-chat/TurnUsagePanel.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$4;
-			tag.textContent = css$4;
+			tag.dataset.pluginCss = tagId$5;
+			tag.textContent = css$5;
 			document.head.appendChild(tag);
 		}
 		var TurnUsagePanel_module_css_default = {
@@ -3455,13 +5908,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/stat-dialog.module.css.mjs
-		const css$3 = ".bRhRbq_panel{z-index:1100;box-sizing:border-box;background:var(--dsw-specific-menu);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);width:max-content;min-width:min(300px,100vw - 24px);max-width:min(440px,100vw - 24px);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-secondary);cursor:default;border:0;border-radius:12px;padding:16px;font-size:12px;line-height:18px;position:fixed}.bRhRbq_title{color:var(--dsw-alias-label-primary);justify-content:space-between;gap:16px;margin-bottom:8px;font-weight:500;display:flex}.bRhRbq_titleRule{border-top:.5px solid var(--dsw-alias-border-l2);margin-bottom:10px}.bRhRbq_titleValue{font-variant-numeric:tabular-nums}.bRhRbq_titleLabel{align-items:center;gap:6px;min-width:0;display:inline-flex}.bRhRbq_titleLabel svg{flex:none;width:14px;height:14px}.bRhRbq_details{color:var(--dsw-alias-label-tertiary);grid-template-columns:minmax(76px,auto) minmax(0,1fr);gap:6px 16px;margin:0;display:grid}.bRhRbq_details dt,.bRhRbq_details dd{min-width:0;margin:0}.bRhRbq_details dd{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;text-align:right}.bRhRbq_details .bRhRbq_route{overflow-wrap:anywhere}.bRhRbq_reasoning{color:var(--dsw-alias-label-tertiary);white-space:nowrap}";
-		const tagId$3 = "@deepseek-ai/dsh-client-ui-chat/stat-dialog.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
+		const css$4 = ".bRhRbq_panel{z-index:1100;box-sizing:border-box;background:var(--dsw-specific-menu);width:max-content;min-width:min(300px,100vw - 24px);max-width:min(440px,100vw - 24px);backdrop-filter:var(--dsw-menu-backdrop-filter);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-secondary);cursor:default;border:0;border-radius:12px;padding:16px;font-size:12px;line-height:18px;position:fixed}.bRhRbq_title{color:var(--dsw-alias-label-primary);justify-content:space-between;gap:16px;margin-bottom:8px;font-weight:500;display:flex}.bRhRbq_titleRule{border-top:.5px solid var(--dsw-alias-border-l2);margin-bottom:10px}.bRhRbq_titleValue{font-variant-numeric:tabular-nums}.bRhRbq_titleLabel{align-items:center;gap:6px;min-width:0;display:inline-flex}.bRhRbq_titleLabel svg{flex:none;width:14px;height:14px}.bRhRbq_details{color:var(--dsw-alias-label-tertiary);grid-template-columns:minmax(76px,auto) minmax(0,1fr);gap:6px 16px;margin:0;display:grid}.bRhRbq_details dt,.bRhRbq_details dd{min-width:0;margin:0}.bRhRbq_details dd{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;text-align:right}.bRhRbq_details .bRhRbq_route{overflow-wrap:anywhere}.bRhRbq_reasoning{color:var(--dsw-alias-label-tertiary);white-space:nowrap}";
+		const tagId$4 = "@deepseek-ai/dsh-client-ui-chat/stat-dialog.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$3;
-			tag.textContent = css$3;
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
 			document.head.appendChild(tag);
 		}
 		var stat_dialog_module_css_default = {
@@ -3476,6 +5929,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/chat/TurnUsagePanel.js
+		/** Completed-Turn token usage action and its accounting details dialog. */
 		function formatCompactCount(value, t) {
 			return t("message.turnUsage.count", { count: formatTokens(value, t) });
 		}
@@ -3503,7 +5957,7 @@ window.__ModuleLoader__.load({
 					onClick: () => {
 						setOpen(!open);
 					},
-					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutline16, {}), (0, react_jsx_runtime.jsx)("span", {
+					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutlineRegular, {}), (0, react_jsx_runtime.jsx)("span", {
 						className: TurnUsagePanel_module_css_default.label,
 						children: t("message.turnUsage.consumed", { total })
 					})]
@@ -3518,7 +5972,7 @@ window.__ModuleLoader__.load({
 							className: stat_dialog_module_css_default.title,
 							children: [(0, react_jsx_runtime.jsxs)("span", {
 								className: stat_dialog_module_css_default.titleLabel,
-								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutline16, {}), t("message.turnUsage.title")]
+								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutlineRegular, {}), t("message.turnUsage.title")]
 							}), (0, react_jsx_runtime.jsx)("span", {
 								className: stat_dialog_module_css_default.titleValue,
 								children: formatExactCount(usage.totalTokens, t)
@@ -3552,60 +6006,6 @@ window.__ModuleLoader__.load({
 				}), document.body)]
 			});
 		}
-		/**
-		* Turn-time IconActions pill with a click-open Turn-time details dialog.
-		* @param props - Turn timing facts and locale seat.
-		* @returns The clock-and-duration trigger and, while open, its portaled dialog anchored above the trigger.
-		*/
-		function TurnTimePanel({ runMs, tokensPerSecond, ttftMs, t }) {
-			const { open, setOpen, rootRef, panelRef, pos } = useStatDialog();
-			return (0, react_jsx_runtime.jsxs)("span", {
-				ref: rootRef,
-				className: TurnUsagePanel_module_css_default.root,
-				children: [(0, react_jsx_runtime.jsxs)("button", {
-					type: "button",
-					className: TurnUsagePanel_module_css_default.trigger,
-					"aria-haspopup": "dialog",
-					"aria-expanded": open,
-					onClick: () => {
-						setOpen(!open);
-					},
-					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconClockOutline16, {}), (0, react_jsx_runtime.jsx)("span", {
-						className: TurnUsagePanel_module_css_default.label,
-						children: t("message.ranFor", { duration: formatRunDuration(runMs, t) })
-					})]
-				}), open && (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)("div", {
-					ref: panelRef,
-					className: stat_dialog_module_css_default.panel,
-					role: "dialog",
-					"aria-label": t("message.turnTime.title"),
-					style: pos ?? MEASURE_STYLE,
-					children: [
-						(0, react_jsx_runtime.jsx)("div", {
-							className: stat_dialog_module_css_default.title,
-							children: (0, react_jsx_runtime.jsxs)("span", {
-								className: stat_dialog_module_css_default.titleLabel,
-								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconClockOutline16, {}), t("message.turnTime.title")]
-							})
-						}),
-						(0, react_jsx_runtime.jsx)("div", {
-							className: stat_dialog_module_css_default.titleRule,
-							"aria-hidden": true
-						}),
-						(0, react_jsx_runtime.jsxs)("dl", {
-							className: stat_dialog_module_css_default.details,
-							"data-turn-time-details": true,
-							children: [
-								(0, react_jsx_runtime.jsx)("dt", { children: t("message.turnTime.duration") }),
-								(0, react_jsx_runtime.jsx)("dd", { children: formatRunDuration(runMs, t) }),
-								tokensPerSecond !== void 0 && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("dt", { children: t("message.turnTime.speed") }), (0, react_jsx_runtime.jsx)("dd", { children: t("message.tokensPerSecond", { tps: formatTokensPerSecond(tokensPerSecond) }) })] }),
-								ttftMs !== void 0 && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("dt", { children: t("message.turnTime.ttft") }), (0, react_jsx_runtime.jsx)("dd", { children: t("duration.seconds", { seconds: formatLatencySeconds(ttftMs) }) })] })
-							]
-						})
-					]
-				}), document.body)]
-			});
-		}
 		//#endregion
 		//#region lib/types/client/chat/turn-assistant.js
 		/**
@@ -3617,14 +6017,29 @@ window.__ModuleLoader__.load({
 			return blocks.flatMap((block) => block.kind === "text" ? [block.text] : []).join("");
 		}
 		//#endregion
+		//#region lib/types/client/contract/assistant-content.js
+		/**
+		* Test whether Assistant blocks contain a user-facing reply rather than only
+		* reasoning or Tool-call protocol material.
+		* @param blocks - Assistant content blocks.
+		* @returns whether the blocks contain visible reply content.
+		*/
+		function hasAssistantReplyContent(blocks) {
+			return blocks.some((block) => {
+				if (block.kind === "reasoning" || block.kind === "tool-call") return false;
+				if (block.kind === "text") return block.text.trim() !== "";
+				return true;
+			});
+		}
+		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/TurnTailNodeView.module.css.mjs
-		const css$2 = ".TS9iAW_root{flex-direction:column;gap:16px;display:flex}.TS9iAW_actions{margin-top:4px;margin-left:-6px}";
-		const tagId$2 = "@deepseek-ai/dsh-client-ui-chat/TurnTailNodeView.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+		const css$3 = ".TS9iAW_root{flex-direction:column;gap:16px;display:flex}.TS9iAW_actions{margin-top:4px;margin-left:-6px}";
+		const tagId$3 = "@deepseek-ai/dsh-client-ui-chat/TurnTailNodeView.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId$2;
-			tag.textContent = css$2;
+			tag.dataset.pluginCss = tagId$3;
+			tag.textContent = css$3;
 			document.head.appendChild(tag);
 		}
 		var TurnTailNodeView_module_css_default = {
@@ -3633,60 +6048,227 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/chat/TurnTailNodeView.js
+		function lastContent(snapshot, turn, skipWarning) {
+			const keys = snapshot.locations.getTurn(turn);
+			for (let index = keys.length - 1; index >= 0; index--) {
+				const node = snapshot.nodes.get(keys[index]);
+				if (node === void 0 || node.kind === "turn-tail" || node.kind === "turn-process" || skipWarning && node.kind === "turn-max-tokens") continue;
+				return node;
+			}
+		}
 		/** Turn-local actions and feature tail over the Location index, independent of Assistant placement. */
-		const TurnTailNodeView = (0, react.memo)(function TurnTailNodeView({ node, openFile, forkAt, renderSlot, renderSlotChain, t, useChat }) {
+		const TurnTailNodeView = (0, react.memo)(function TurnTailNodeView({ node, openFile, forkAt, renderSlot, t, useChat, usePerformanceUsage }) {
+			const detailed = usePerformanceUsage((mode) => mode) === "detailed";
 			const data = node.data;
-			const hasLaterChatNode = useChat((snapshot) => snapshot.locations.getTurn(data.turn).at(-1) !== node.key);
-			const isLatestTurn = useChat((snapshot) => snapshot.timeline.turnOrder.at(-1) === data.turn);
+			const hasLaterChatNode = useChat((snapshot) => (lastContent(snapshot, data.turn, true)?.anchorSeq ?? -1) > (data.closing?.finalNode.seq ?? data.seq));
+			const endsWithResponse = useChat((snapshot) => {
+				if (snapshot.timeline.turnOrder.at(-1) !== data.turn) return false;
+				const last = lastContent(snapshot, data.turn, false);
+				const block = last?.kind === "assistant-step" ? last.data.blocks.findLast((candidate) => candidate.kind !== "text" && candidate.kind !== "reasoning" || candidate.text.trim() !== "") : void 0;
+				return block !== void 0 && hasAssistantReplyContent([block]);
+			});
 			const turn = node.location.kind === "turn" || node.location.kind === "step" ? node.location.turn : void 0;
 			if (turn === void 0) return null;
 			const closing = data.closing;
-			const tail = renderSlotChain("conversation.chat.turnTail", {
+			const tail = renderSlot("conversation.chat.turnTail", {
 				turn,
 				seq: closing?.finalNode.seq ?? data.seq,
 				openFile
 			});
 			if (closing === null) return tail === null ? null : (0, react_jsx_runtime.jsx)("div", {
 				className: TurnTailNodeView_module_css_default.root,
+				"data-turn-tail": data.turn,
 				children: tail
 			});
-			const runMs = turn.start === void 0 || turn.end === void 0 ? void 0 : Math.max(0, turn.end.time - turn.start.time);
 			const messageId = closing.finalNode.messageId;
 			const assistantActions = messageId === void 0 ? null : renderSlot("conversation.chat.assistant-actions", { messageId });
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: TurnTailNodeView_module_css_default.root,
 				"data-turn-tail": data.turn,
-				"data-actions-reveal": isLatestTurn ? "always" : "hover",
+				"data-actions-reveal": endsWithResponse ? "always" : "hover",
 				children: [tail, (0, react_jsx_runtime.jsx)(MessageIconActions, {
 					text: assistantText(closing.blocks),
 					time: closing.time,
 					clock: "end",
 					onBranch: () => {
-						forkAt(closing.finalNode.seq);
+						forkAt(data.seq);
 					},
 					branchUnavailable: data.branchUnavailable || hasLaterChatNode,
 					className: TurnTailNodeView_module_css_default.actions,
 					extraActions: assistantActions,
-					usageAction: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [data.tokenUsage !== void 0 && (0, react_jsx_runtime.jsx)(TurnUsagePanel, {
+					usageAction: detailed && data.tokenUsage !== void 0 ? (0, react_jsx_runtime.jsx)(TurnUsagePanel, {
 						usage: data.tokenUsage,
 						t
-					}), runMs !== void 0 && (0, react_jsx_runtime.jsx)(TurnTimePanel, {
-						runMs,
-						tokensPerSecond: data.tokensPerSecond,
-						ttftMs: data.ttftMs,
-						t
-					})] }),
+					}) : null,
 					t
 				})]
 			});
 		});
 		//#endregion
+		//#region lib/types/client/chat/turn-trigger.js
+		function record(value) {
+			return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+		}
+		function field(source, key) {
+			return typeof source[key] === "string" ? source[key] : "";
+		}
+		/**
+		* Describe a waking message using its source and recognized producer framing.
+		* @param node - durable context, including the original notification body.
+		* @returns localized title key and source-family icon.
+		*/
+		function turnTriggerDetails(node) {
+			const source = record(node.source);
+			const kind = field(source, "kind");
+			let title = "message.trigger.request";
+			let icon = "request";
+			switch (kind) {
+				case "goal":
+					title = "message.trigger.goal";
+					icon = "goal";
+					break;
+				case "agent-message":
+					title = "message.trigger.agent";
+					icon = "agent";
+					break;
+				case "team-message":
+					title = "message.trigger.team";
+					icon = "team";
+					break;
+				case "subagent-settled":
+					title = "message.trigger.subagent";
+					icon = "subagent";
+					break;
+				case "webhook": {
+					const github = field(source, "provider") === "github";
+					title = github ? "message.trigger.github" : "message.trigger.webhook";
+					icon = github ? "github" : "webhook";
+					break;
+				}
+				case "schedule":
+					title = "message.trigger.schedule";
+					icon = "schedule";
+					break;
+				case "tool-jobs":
+					title = "message.trigger.job";
+					icon = "job";
+					break;
+				case "cordis-host-runner":
+					title = "message.trigger.plugin";
+					icon = "plugin";
+					break;
+				default: break;
+			}
+			return {
+				title,
+				icon
+			};
+		}
+		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/TurnTriggerNodeView.module.css.mjs
+		const css$2 = ".oz9t_a_root{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);border-radius:16px;min-width:0;transition:background-color .1s}.oz9t_a_root:hover{background:var(--dsw-alias-interactive-bg-hover)}.oz9t_a_header{width:100%;color:var(--dsw-alias-label-primary);font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:10px;padding:12px 16px;display:flex}.oz9t_a_icon{color:var(--dsw-alias-label-tertiary);flex:none;display:inline-flex}.oz9t_a_title{font:var(--dsw-font-xs-13);flex:none}.oz9t_a_time{color:var(--dsw-alias-label-caption);font:var(--dsw-font-xxs-12);flex:none;margin-left:auto}.oz9t_a_chevron,.oz9t_a_openChevron{color:var(--dsw-alias-label-tertiary);flex:none}.oz9t_a_openChevron{transform:rotate(180deg)}.oz9t_a_body{padding:0 16px 12px 40px}.oz9t_a_explanation{color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);margin:8px 0}.oz9t_a_content{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;font:var(--dsw-font-xxs-12);overflow:auto}@media (prefers-reduced-motion:reduce){.oz9t_a_root{transition:none}}";
+		const tagId$2 = "@deepseek-ai/dsh-client-ui-chat/TurnTriggerNodeView.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
+			tag.dataset.pluginCss = tagId$2;
+			tag.textContent = css$2;
+			document.head.appendChild(tag);
+		}
+		var TurnTriggerNodeView_module_css_default = {
+			"body": "oz9t_a_body",
+			"chevron": "oz9t_a_chevron",
+			"content": "oz9t_a_content",
+			"explanation": "oz9t_a_explanation",
+			"header": "oz9t_a_header",
+			"icon": "oz9t_a_icon",
+			"openChevron": "oz9t_a_openChevron",
+			"root": "oz9t_a_root",
+			"time": "oz9t_a_time",
+			"title": "oz9t_a_title"
+		};
+		//#endregion
+		//#region lib/types/client/chat/TurnTriggerNodeView.js
+		/** An independent, expandable notice explaining a non-human Turn trigger. */
+		const TRIGGER_ICONS = {
+			request: _deepseek_ai_dsh_client_ui_primitives.IconContextInjectionOutlineRegular,
+			goal: _deepseek_ai_dsh_client_ui_primitives.IconGoalOutlineRegular,
+			agent: _deepseek_ai_dsh_client_ui_primitives.IconPaperPlaneOutlineRegular,
+			team: _deepseek_ai_dsh_client_ui_primitives.IconAgentPresetOutlineRegular,
+			subagent: _deepseek_ai_dsh_client_ui_primitives.IconAgentPresetOutlineRegular,
+			github: _deepseek_ai_dsh_client_ui_primitives.IconBranchOutlineRegular,
+			webhook: _deepseek_ai_dsh_client_ui_primitives.IconGlobeOutlineRegular,
+			schedule: _deepseek_ai_dsh_client_ui_primitives.IconAlarmClockOutlineRegular,
+			job: _deepseek_ai_dsh_client_ui_primitives.IconQueueOutlineRegular,
+			plugin: _deepseek_ai_dsh_client_ui_primitives.IconCordisPluginOutlineRegular
+		};
+		/** Render recorded trigger attribution above the whole-Turn disclosure. */
+		function TurnTriggerNodeView({ node, t }) {
+			const [open, setOpen] = (0, react.useState)(false);
+			const bodyId = (0, react.useId)();
+			const details = turnTriggerDetails(node.data);
+			const TriggerIcon = TRIGGER_ICONS[details.icon];
+			const date = new Date(node.data.time);
+			const time = formatMessageClock(node.data.time, t);
+			return (0, react_jsx_runtime.jsxs)("section", {
+				className: TurnTriggerNodeView_module_css_default.root,
+				"data-turn-trigger": true,
+				children: [(0, react_jsx_runtime.jsxs)("button", {
+					className: TurnTriggerNodeView_module_css_default.header,
+					type: "button",
+					"aria-expanded": open,
+					"aria-controls": bodyId,
+					onClick: () => {
+						setOpen(!open);
+					},
+					children: [
+						(0, react_jsx_runtime.jsx)("span", {
+							className: TurnTriggerNodeView_module_css_default.icon,
+							"aria-hidden": true,
+							children: (0, react_jsx_runtime.jsx)(TriggerIcon, { size: 14 })
+						}),
+						(0, react_jsx_runtime.jsx)("span", {
+							className: TurnTriggerNodeView_module_css_default.title,
+							children: t(details.title)
+						}),
+						(0, react_jsx_runtime.jsx)("time", {
+							className: TurnTriggerNodeView_module_css_default.time,
+							dateTime: date.toISOString(),
+							children: time
+						}),
+						(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, {
+							size: 12,
+							className: open ? TurnTriggerNodeView_module_css_default.openChevron : TurnTriggerNodeView_module_css_default.chevron
+						})
+					]
+				}), open && (0, react_jsx_runtime.jsxs)("div", {
+					id: bodyId,
+					className: TurnTriggerNodeView_module_css_default.body,
+					children: [(0, react_jsx_runtime.jsx)("p", {
+						className: TurnTriggerNodeView_module_css_default.explanation,
+						children: t("message.trigger.explanation")
+					}), (0, react_jsx_runtime.jsx)("div", {
+						className: TurnTriggerNodeView_module_css_default.content,
+						children: (0, react_jsx_runtime.jsx)(NoticeBody, {
+							content: node.data.content,
+							source: node.data.source,
+							t
+						})
+					})]
+				})]
+			});
+		}
+		//#endregion
 		//#region lib/types/client/chat/register-node-renderers.js
 		/**
 		* Register this package's business renderers behind the keyed Chat Node seat.
+		* Renderers whose output depends on the work-details mode receive the policy
+		* through their own registration; the seat and the other renderers do not.
 		* @param ctx - owning UI Conversation context.
+		* @param performanceUsage - live statistics detail preference.
+		* @param presentation - live presentation policy.
 		*/
-		function registerChatNodeRenderers(ctx) {
+		function registerChatNodeRenderers(ctx, performanceUsage, presentation) {
 			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
 				name: "conversation.chat.node",
 				key: "user",
@@ -3704,13 +6286,19 @@ window.__ModuleLoader__.load({
 			}, ContextMessageNodeView));
 			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
 				name: "conversation.chat.node",
+				key: "turn-trigger",
+				locale: NS
+			}, TurnTriggerNodeView));
+			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
+				name: "conversation.chat.node",
 				key: "system-prompt",
 				locale: NS
 			}, SystemPromptNodeView));
 			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
 				name: "conversation.chat.node",
 				key: "assistant-step",
-				locale: NS
+				locale: NS,
+				inject: () => ({ hooks: { presentation } })
 			}, AssistantNodeView));
 			ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
 				name: "conversation.chat.node",
@@ -3755,9 +6343,10 @@ window.__ModuleLoader__.load({
 				name: "conversation.chat.node",
 				key: "turn-tail",
 				locale: NS,
+				inject: () => ({ hooks: { performanceUsage } }),
 				children: {
 					"conversation.chat.turnTail": {
-						kind: "chain",
+						kind: "list",
 						scope: "session"
 					},
 					"conversation.chat.assistant-actions": {
@@ -3792,54 +6381,9 @@ window.__ModuleLoader__.load({
 				outputTokens: usageOutputTokens(node.usage)
 			};
 		}
-		/**
-		* Fold assistant nodes into per-turn footer metrics.
-		*
-		* TTFT is the turn's lowest-step request-dispatch-to-first-token reading, so
-		* it is only meaningful when the turn's start is inside
-		* the loaded window (the caller gates on `turnTimings`, which shares that
-		* window). Throughput divides summed output tokens by summed decode wall time,
-		* counting only steps that carry both.
-		* @param nodes - Snapshot nodes of the loaded window.
-		* @returns Turn number → available metrics; turns with none are absent.
-		*/
-		function deriveTurnMetrics(nodes) {
-			const folds = /* @__PURE__ */ new Map();
-			for (const node of nodes) {
-				if (node.kind !== "assistant") continue;
-				const reading = assistantStepReading(node);
-				let fold = folds.get(node.turn);
-				if (fold === void 0) {
-					fold = {
-						firstStep: node.step,
-						firstStepTtftMs: reading.ttftMs,
-						decodeMs: 0,
-						outputTokens: 0,
-						sampled: false
-					};
-					folds.set(node.turn, fold);
-				} else if (node.step < fold.firstStep) {
-					fold.firstStep = node.step;
-					fold.firstStepTtftMs = reading.ttftMs;
-				}
-				if (reading.decodeMs !== null && reading.outputTokens !== null) {
-					fold.decodeMs += reading.decodeMs;
-					fold.outputTokens += reading.outputTokens;
-					fold.sampled = true;
-				}
-			}
-			const metrics = /* @__PURE__ */ new Map();
-			for (const [turn, fold] of folds) {
-				const entry = {};
-				if (fold.firstStepTtftMs !== null) entry.ttftMs = fold.firstStepTtftMs;
-				if (fold.sampled && fold.decodeMs > 0) entry.tokensPerSecond = fold.outputTokens / (fold.decodeMs / 1e3);
-				if (entry.ttftMs !== void 0 || entry.tokensPerSecond !== void 0) metrics.set(turn, entry);
-			}
-			return metrics;
-		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/chat/StatsPills.module.css.mjs
-		const css$1 = ".bOPqQW_root{max-width:var(--dsh-chat-content-width);box-sizing:border-box;width:100%;padding:4px calc(var(--dsh-composer-side-clearance) + 16px) 0px;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));justify-content:center;gap:12px;margin:0 auto;display:flex}.bOPqQW_anchor{min-width:0;display:inline-flex}.bOPqQW_pill{box-sizing:border-box;max-width:100%;color:var(--dsw-alias-label-tertiary);font:inherit;font-variant-numeric:tabular-nums;line-height:inherit;white-space:nowrap;background:0 0;border:none;border-radius:24px;align-items:center;gap:6px;padding:1px 8px;display:inline-flex}.bOPqQW_pill svg{flex:none;width:14px;height:14px}button.bOPqQW_pill{cursor:pointer}button.bOPqQW_pill:hover,button.bOPqQW_pill[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}.bOPqQW_label{text-overflow:ellipsis;min-width:0;overflow:hidden}.bOPqQW_sep{color:var(--dsw-alias-separator-primary);margin:0 6px}";
+		const css$1 = ".bOPqQW_root{box-sizing:border-box;min-width:0;max-width:100%;font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);line-height:calc(20px + var(--dsh-content-font-delta-secondary,0px));justify-content:center;gap:12px;display:flex}.bOPqQW_anchor{min-width:0;display:inline-flex}.bOPqQW_pill{box-sizing:border-box;max-width:100%;color:var(--dsw-alias-label-tertiary);font:inherit;font-variant-numeric:tabular-nums;line-height:inherit;white-space:nowrap;background:0 0;border:none;border-radius:24px;align-items:center;gap:6px;padding:1px 8px;display:inline-flex}.bOPqQW_pill svg{flex:none;width:14px;height:14px}button.bOPqQW_pill{cursor:pointer}button.bOPqQW_pill:hover,button.bOPqQW_pill[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}.bOPqQW_label{text-overflow:ellipsis;min-width:0;overflow:hidden}.bOPqQW_sep{color:var(--dsw-alias-separator-primary);margin:0 6px}";
 		const tagId$1 = "@deepseek-ai/dsh-client-ui-chat/StatsPills.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
@@ -3963,7 +6507,7 @@ window.__ModuleLoader__.load({
 				className: StatsPills_module_css_default.anchor,
 				children: (0, react_jsx_runtime.jsxs)("span", {
 					className: StatsPills_module_css_default.pill,
-					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutline16, {}), label]
+					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutlineRegular, {}), label]
 				})
 			});
 			return (0, react_jsx_runtime.jsxs)("span", {
@@ -3978,7 +6522,7 @@ window.__ModuleLoader__.load({
 					onClick: () => {
 						setOpen(!open);
 					},
-					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutline16, {}), label]
+					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutlineRegular, {}), label]
 				}), open && (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)("div", {
 					ref: panelRef,
 					className: stat_dialog_module_css_default.panel,
@@ -3990,7 +6534,7 @@ window.__ModuleLoader__.load({
 							className: stat_dialog_module_css_default.title,
 							children: (0, react_jsx_runtime.jsxs)("span", {
 								className: stat_dialog_module_css_default.titleLabel,
-								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutline16, {}), t("stats.dialog.title")]
+								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutlineRegular, {}), t("stats.dialog.title")]
 							})
 						}),
 						(0, react_jsx_runtime.jsx)("div", {
@@ -4029,7 +6573,7 @@ window.__ModuleLoader__.load({
 					onClick: () => {
 						setOpen(!open);
 					},
-					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutline16, {}), (0, react_jsx_runtime.jsxs)("span", {
+					children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutlineRegular, {}), (0, react_jsx_runtime.jsxs)("span", {
 						className: StatsPills_module_css_default.label,
 						children: [totalText, cacheHitText !== null && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
 							className: StatsPills_module_css_default.sep,
@@ -4048,7 +6592,7 @@ window.__ModuleLoader__.load({
 							className: stat_dialog_module_css_default.title,
 							children: [(0, react_jsx_runtime.jsxs)("span", {
 								className: stat_dialog_module_css_default.titleLabel,
-								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutline16, {}), t("stats.dialog.usageTitle")]
+								children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutlineRegular, {}), t("stats.dialog.usageTitle")]
 							}), (0, react_jsx_runtime.jsx)("span", {
 								className: stat_dialog_module_css_default.titleValue,
 								children: exactCount(total, t)
@@ -4076,13 +6620,30 @@ window.__ModuleLoader__.load({
 				}), document.body)]
 			});
 		}
-		const StatsPills = (0, react.memo)(function StatsPills({ useChat, useProjection, t }) {
+		const StatsPills = (0, react.memo)(function StatsPills({ useChat, useProjection, usePerformanceUsage, t }) {
+			const mode = usePerformanceUsage((value) => value);
 			const settledNodes = useChat((s) => s.legacy.nodes);
 			const usage = useProjection("tokenUsage");
 			const [openPill, setOpenPill] = (0, react.useState)(null);
 			const projected = useProjection("sessionStats");
 			const stats = (0, react.useMemo)(() => projected ?? deriveStats(settledNodes), [projected, settledNodes]);
 			const hasTokens = usage !== void 0 && (billedInputTokens(usage) > 0 || usage.outputTokens > 0);
+			if (mode === "compact") {
+				const speed = stats.decodeMs > 0 ? t("message.tokensPerSecond", { tps: formatTokensPerSecond(stats.decodeTokens / (stats.decodeMs / 1e3)) }) : null;
+				const cacheHit = hasTokens ? cacheHitPercent(usage) : null;
+				if (speed === null && cacheHit === null) return null;
+				return (0, react_jsx_runtime.jsxs)("div", {
+					className: StatsPills_module_css_default.root,
+					"data-composer-stats": true,
+					children: [speed !== null && (0, react_jsx_runtime.jsxs)("span", {
+						className: StatsPills_module_css_default.pill,
+						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGaugeOutlineRegular, {}), speed]
+					}), cacheHit !== null && (0, react_jsx_runtime.jsxs)("span", {
+						className: StatsPills_module_css_default.pill,
+						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDatabaseOutlineRegular, {}), t("stats.cacheHit", { percent: cacheHit })]
+					})]
+				});
+			}
 			if (stats.steps === 0 && !hasTokens) return null;
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: StatsPills_module_css_default.root,
@@ -4200,7 +6761,7 @@ window.__ModuleLoader__.load({
 		* @param source - Logged `user/message` source.
 		* @returns Role and label rendered by Chat.
 		*/
-		function contextProvenance(source) {
+		function contextProducer(source) {
 			const record = asRecord(source);
 			const kind = record === null ? null : readString(record, "kind");
 			if (record === null || kind === null) return {
@@ -4215,10 +6776,6 @@ window.__ModuleLoader__.load({
 				case "agent-instructions": return {
 					role: "inject",
 					label: joined(collect(record, "changes", "path")) ?? kind
-				};
-				case "plugin": return {
-					role: "inject",
-					label: readString(record, "plugin") ?? kind
 				};
 				case "skill-invocation": return {
 					role: "inject",
@@ -4358,7 +6915,6 @@ window.__ModuleLoader__.load({
 				firstVisibleSeq: void 0,
 				firstVisibleTime: void 0,
 				firstTokenTime: void 0,
-				hidden: false,
 				final: void 0,
 				usage: void 0
 			};
@@ -4388,8 +6944,7 @@ window.__ModuleLoader__.load({
 		function resetForRetry(state) {
 			return {
 				...initialState(state.turn, state.step),
-				firstTokenTime: state.firstTokenTime,
-				hidden: true
+				firstTokenTime: state.firstTokenTime
 			};
 		}
 		function updateChunk(state, chunk, seq, time) {
@@ -4457,7 +7012,6 @@ window.__ModuleLoader__.load({
 				...state,
 				blocks,
 				visibleBlocks,
-				hidden: visibleBlocks > 0 ? false : state.hidden,
 				...visibleBlocks > 0 && state.firstVisibleSeq === void 0 ? {
 					firstVisibleSeq: seq,
 					firstVisibleTime: time
@@ -4471,7 +7025,6 @@ window.__ModuleLoader__.load({
 				...state,
 				blocks,
 				visibleBlocks: countVisibleBlocks(blocks),
-				hidden: false,
 				final: match,
 				usage: event.data.usage
 			};
@@ -4561,7 +7114,7 @@ window.__ModuleLoader__.load({
 			const location = context.start?.location ?? context.matches.at(-1)?.location;
 			return location?.kind === "step" ? location.step.data.get("assistant-step") : void 0;
 		}
-		/** Per-step Assistant streaming/final/interruption Definition. */
+		/** Per-step Assistant lifecycle; materialized keys survive cleared stream content as hidden Nodes. */
 		const assistantDefinition = {
 			kind: "assistant-step",
 			target: "chat",
@@ -4609,16 +7162,16 @@ window.__ModuleLoader__.load({
 				};
 			},
 			buildViewNode: (context) => {
+				const current = context.current.get("chat");
 				const state = context.state ?? fallbackState$5(context);
-				if (state === void 0) return null;
 				const data = publishedAssistantData(context);
-				if (data === void 0) return null;
+				if (state === void 0 || data === void 0) return current == null ? null : {
+					...current,
+					visibility: "hidden"
+				};
 				const settled = data.finalNode;
 				const visible = settled === void 0 ? state.visibleBlocks > 0 : hasVisibleContent(data.blocks);
-				if (settled === void 0 && !visible) {
-					const current = context.current.get("chat");
-					if (!state.hidden || current === void 0 || current === null) return null;
-				}
+				if (settled === void 0 && !visible && current == null) return null;
 				return chatNode(context, "assistant-step", settled?.seq ?? state.firstVisibleSeq ?? context.matches[0]?.event.seq ?? 0, data, { visibility: settled?.interrupted === true || visible ? "visible" : "hidden" });
 			}
 		};
@@ -4646,6 +7199,16 @@ window.__ModuleLoader__.load({
 		*/
 		function isRunningTool(block) {
 			return !isSettledTool(block);
+		}
+		//#endregion
+		//#region lib/types/client/contract/chat-visibility.js
+		/**
+		* Exclude system prompts, ordinary Context, and permission commands from visible Chat rows.
+		* @param node - projected Chat node.
+		* @returns whether the node contributes a visible Chat row.
+		*/
+		function isVisibleChatNode(node) {
+			return node.visibility === "visible" && node.kind !== "system-prompt" && node.kind !== "context" && !(node.kind === "command" && node.data.name === "permission");
 		}
 		//#endregion
 		//#region lib/types/client/conversation-nodes/turn-navigation.js
@@ -4705,7 +7268,7 @@ window.__ModuleLoader__.load({
 		* @returns the item, or undefined when the Turn has no visible loaded node.
 		*/
 		function turnNavigationItem(turn, locations, nodes) {
-			const loaded = locations.getTurn(turn).map((key) => nodes.get(key)).filter((node) => node !== void 0 && node.visibility === "visible");
+			const loaded = locations.getTurn(turn).map((key) => nodes.get(key)).filter((node) => node !== void 0 && isVisibleChatNode(node));
 			const user = loaded.find((node) => node.kind === "user");
 			const anchor = user ?? loaded[0];
 			if (anchor === void 0) return void 0;
@@ -4724,7 +7287,7 @@ window.__ModuleLoader__.load({
 			return location?.kind === "turn" || location?.kind === "step" ? location.turn.turn : void 0;
 		}
 		function samePresentation(left, right) {
-			return left === right || left !== void 0 && right !== void 0 && left.spec === right.spec && left.turn === right.turn && left.turnClosed === right.turnClosed && left.hasExternalProcess === right.hasExternalProcess && left.compactAnswer === right.compactAnswer;
+			return left === right || left !== void 0 && right !== void 0 && left.spec === right.spec && left.turn === right.turn && left.turnStarted === right.turnStarted && left.turnClosed === right.turnClosed && left.hasExternalProcess === right.hasExternalProcess && left.hasInterleavedInput === right.hasInterleavedInput && left.compactAnswer === right.compactAnswer;
 		}
 		function derivePresentation(turn, locations, nodes) {
 			const keys = locations.getTurn(turn);
@@ -4736,22 +7299,28 @@ window.__ModuleLoader__.load({
 			let openingHumanAnchor;
 			for (const key of keys) {
 				const node = nodes.get(key);
-				if ((node?.kind === "user" || node?.kind === "steering") && node.anchorSeq < spec.controlAnchorSeq) openingHumanAnchor = Math.min(openingHumanAnchor ?? node.anchorSeq, node.anchorSeq);
+				if ((node?.kind === "user" || node?.kind === "steering" || node?.kind === "turn-trigger") && (spec.controlAnchorSeq === location.turn.start?.seq || node.anchorSeq < spec.controlAnchorSeq)) openingHumanAnchor = Math.max(openingHumanAnchor ?? node.anchorSeq, node.anchorSeq);
 			}
 			let hasExternalProcess = false;
+			let hasInterleavedInput = false;
 			let compactAnswer = true;
 			for (const key of keys) {
 				const node = nodes.get(key);
-				if (node === void 0 || node.kind === "turn-process") continue;
-				if ((node.kind === "user" || node.kind === "steering") && (openingHumanAnchor === void 0 || node.anchorSeq > openingHumanAnchor) && (spec.answerAnchorSeq === null || node.anchorSeq < spec.answerAnchorSeq)) compactAnswer = false;
+				if (node === void 0 || !isVisibleChatNode(node) || node.kind === "turn-process") continue;
+				if ((node.kind === "user" || node.kind === "steering" || node.kind === "turn-trigger") && (openingHumanAnchor === void 0 || node.anchorSeq > openingHumanAnchor)) {
+					hasInterleavedInput = true;
+					if (spec.answerAnchorSeq === null || node.anchorSeq < spec.answerAnchorSeq) compactAnswer = false;
+				}
 				if (TURN_PROCESS_INDEPENDENT_KINDS.has(node.kind) || node.anchorSeq < spec.processStartSeq || spec.answerAnchorSeq !== null && node.anchorSeq >= spec.answerAnchorSeq) continue;
 				if (node.kind !== "assistant-step" || spec.answerStep === null || node.data.step !== spec.answerStep) hasExternalProcess = true;
 			}
 			return {
 				turn,
 				spec,
+				turnStarted: location.turn.start !== void 0,
 				turnClosed: location.turn.status === "closed",
 				hasExternalProcess,
+				hasInterleavedInput,
 				compactAnswer
 			};
 		}
@@ -4844,6 +7413,36 @@ window.__ModuleLoader__.load({
 				(0, _deepseek_ai_dsh_client_store.notifySubscribers)(this.listeners, this.label);
 			}
 		};
+		/** Membership is indexed on write; ordered arrays are materialized only for observed collections. */
+		var TurnKindNodes = class {
+			nodes = /* @__PURE__ */ new Map();
+			current = EMPTY_LIST;
+			dirty = false;
+			observable;
+			source() {
+				return this.observable ??= new MutableChatSource(() => this.read(), "[ui-chat] turn kind nodes");
+			}
+			set(node) {
+				const previous = this.nodes.get(node.key);
+				this.nodes.set(node.key, node);
+				if (previous !== void 0 && previous.data === node.data && previous.anchorSeq === node.anchorSeq) return;
+				this.dirty = true;
+			}
+			delete(key) {
+				this.nodes.delete(key);
+				this.dirty = true;
+			}
+			publish() {
+				this.observable?.publish();
+			}
+			read() {
+				if (this.dirty) {
+					this.current = [...this.nodes.values()].sort((a, b) => a.anchorSeq - b.anchorSeq).map((node) => node.data);
+					this.dirty = false;
+				}
+				return this.current;
+			}
+		};
 		var MutableChatNodeStore = class {
 			byKey = /* @__PURE__ */ new Map();
 			turnProcesses = new ChatTurnProcessProjector();
@@ -4851,6 +7450,8 @@ window.__ModuleLoader__.load({
 			processSources = /* @__PURE__ */ new Map();
 			dirtyKeys = /* @__PURE__ */ new Set();
 			dirtyProcessKeys = /* @__PURE__ */ new Set();
+			turnKinds = /* @__PURE__ */ new Map();
+			dirtyTurnKinds = /* @__PURE__ */ new Set();
 			valuesCache = EMPTY_LIST;
 			valuesDirty = false;
 			get(key) {
@@ -4858,6 +7459,26 @@ window.__ModuleLoader__.load({
 			}
 			source(key) {
 				return cachedSource(this.sources, key, () => new MutableChatSource(() => this.get(key), `[ui-chat] node source ${key}`));
+			}
+			turnDataSource(turn, kind) {
+				return this.turnKind(turn, kind).source();
+			}
+			turnKind(turn, kind) {
+				return cachedSource(cachedSource(this.turnKinds, turn, () => /* @__PURE__ */ new Map()), kind, () => new TurnKindNodes());
+			}
+			updateTurnKind(previous, next) {
+				const before = previous === void 0 ? void 0 : locationCoordinates(previous.location).turn;
+				const after = next === void 0 ? void 0 : locationCoordinates(next.location).turn;
+				if (previous !== void 0 && before !== void 0 && (before !== after || previous.kind !== next?.kind)) {
+					const collection = this.turnKind(before, previous.kind);
+					collection.delete(previous.key);
+					this.dirtyTurnKinds.add(collection);
+				}
+				if (next !== void 0 && after !== void 0) {
+					const collection = this.turnKind(after, next.kind);
+					collection.set(next);
+					this.dirtyTurnKinds.add(collection);
+				}
 			}
 			processSource(key) {
 				return cachedSource(this.processSources, key, () => new MutableChatSource(() => this.process(key), `[ui-chat] node process source ${key}`));
@@ -4878,12 +7499,14 @@ window.__ModuleLoader__.load({
 				for (const node of nodes) {
 					this.byKey.set(node.key, node);
 					if (previous.get(node.key) !== node) {
+						this.updateTurnKind(previous.get(node.key), node);
 						this.dirtyKeys.add(node.key);
 						this.dirtyProcessKeys.add(node.key);
 					}
 					previous.delete(node.key);
 				}
 				for (const key of previous.keys()) {
+					this.updateTurnKind(previous.get(key), void 0);
 					this.dirtyKeys.add(key);
 					this.dirtyProcessKeys.add(key);
 				}
@@ -4894,6 +7517,7 @@ window.__ModuleLoader__.load({
 				let changed = false;
 				for (const node of nodes) {
 					if (this.byKey.get(node.key) === node) continue;
+					this.updateTurnKind(this.byKey.get(node.key), node);
 					this.byKey.set(node.key, node);
 					this.dirtyKeys.add(node.key);
 					this.dirtyProcessKeys.add(node.key);
@@ -4913,28 +7537,49 @@ window.__ModuleLoader__.load({
 			publish() {
 				const dirty = [...this.dirtyKeys];
 				const dirtyProcesses = [...this.dirtyProcessKeys];
+				const dirtyTurnKinds = [...this.dirtyTurnKinds];
 				this.dirtyKeys.clear();
 				this.dirtyProcessKeys.clear();
+				this.dirtyTurnKinds.clear();
 				for (const key of dirty) this.sources.get(key)?.publish();
 				for (const key of dirtyProcesses) this.processSources.get(key)?.publish();
+				for (const collection of dirtyTurnKinds) collection.publish();
 			}
 		};
 		var MutableChatLocationIndex = class {
 			turns = /* @__PURE__ */ new Map();
 			steps = /* @__PURE__ */ new Map();
+			positions = /* @__PURE__ */ new Map();
 			getTurn(turn) {
 				return this.turns.get(turn) ?? EMPTY_KEYS;
 			}
 			getStep(turn, step) {
 				return this.steps.get(stepKey(turn, step)) ?? EMPTY_KEYS;
 			}
+			getPosition(key) {
+				return this.positions.get(key);
+			}
 			rebuild(order, store) {
 				const turns = /* @__PURE__ */ new Map();
 				const steps = /* @__PURE__ */ new Map();
-				for (const key of order) {
+				const positions = /* @__PURE__ */ new Map();
+				const changedTurns = /* @__PURE__ */ new Set();
+				for (const [index, key] of order.entries()) {
 					const location = store.get(key)?.location;
 					if (location === void 0) continue;
 					const coordinates = locationCoordinates(location);
+					const previous = this.positions.get(key);
+					const position = {
+						turn: coordinates.turn,
+						previous: order[index - 1],
+						next: order[index + 1]
+					};
+					const unchanged = previous !== void 0 && previous.turn === position.turn && previous.previous === position.previous && previous.next === position.next;
+					positions.set(key, unchanged ? previous : position);
+					if (!unchanged) {
+						if (previous?.turn !== void 0) changedTurns.add(previous.turn);
+						if (position.turn !== void 0) changedTurns.add(position.turn);
+					}
 					if (coordinates.turn === void 0) continue;
 					const turnKeys = turns.get(coordinates.turn) ?? [];
 					turnKeys.push(key);
@@ -4945,8 +7590,11 @@ window.__ModuleLoader__.load({
 					stepKeys.push(key);
 					steps.set(step, stepKeys);
 				}
+				for (const [key, position] of this.positions) if (!positions.has(key) && position.turn !== void 0) changedTurns.add(position.turn);
+				this.positions = positions;
 				this.turns = updateIndex(this.turns, turns);
 				this.steps = updateIndex(this.steps, steps);
+				return [...changedTurns];
 			}
 			/** Invalidate aggregate readers when member data changes without moving. */
 			touch(nodes) {
@@ -5056,10 +7704,11 @@ window.__ModuleLoader__.load({
 				const location = node.location;
 				if (location.kind !== "turn" && location.kind !== "step") continue;
 				const current = presentations.get(location.turn.turn) ?? {};
-				if ((node.kind === "user" || node.kind === "steering") && node.anchorSeq < (current.control?.data.controlAnchorSeq ?? Number.POSITIVE_INFINITY)) {
+				const controlAnchor = current.control?.data.controlAnchorSeq;
+				if ((node.kind === "user" || node.kind === "turn-trigger" || node.kind === "steering") && controlAnchor !== void 0 && (controlAnchor === location.turn.start?.seq || node.anchorSeq < controlAnchor)) {
 					presentations.set(location.turn.turn, {
 						...current,
-						openingHumanAnchor: Math.min(current.openingHumanAnchor ?? node.anchorSeq, node.anchorSeq)
+						openingInputAnchor: Math.max(current.openingInputAnchor ?? node.anchorSeq, node.anchorSeq)
 					});
 					continue;
 				}
@@ -5085,18 +7734,18 @@ window.__ModuleLoader__.load({
 				rank: 0,
 				originalAnchor: node.anchorSeq
 			};
-			const openingHumanAnchor = presentation.openingHumanAnchor;
-			if (openingHumanAnchor !== void 0 && node.anchorSeq < openingHumanAnchor && !TURN_PROCESS_INDEPENDENT_KINDS.has(node.kind)) return {
-				anchor: openingHumanAnchor,
+			const openingInputAnchor = presentation.openingInputAnchor;
+			if (openingInputAnchor !== void 0 && node.anchorSeq < openingInputAnchor && !TURN_PROCESS_INDEPENDENT_KINDS.has(node.kind)) return {
+				anchor: openingInputAnchor,
 				rank: 2,
 				originalAnchor: node.anchorSeq
 			};
-			if (presentation.control !== void 0 && node.key === presentation.control.key) return openingHumanAnchor === void 0 ? {
+			if (presentation.control !== void 0 && node.key === presentation.control.key) return openingInputAnchor === void 0 ? {
 				anchor: presentation.earliestProcessAnchor ?? node.anchorSeq,
 				rank: -1,
 				originalAnchor: node.anchorSeq
 			} : {
-				anchor: openingHumanAnchor,
+				anchor: openingInputAnchor,
 				rank: 1,
 				originalAnchor: node.anchorSeq
 			};
@@ -5108,13 +7757,13 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Order visible Chat Nodes without changing existing relative order as process
-		* eligibility changes. Opening human input precedes process candidates, while
+		* eligibility changes. Opening input precedes process candidates, while
 		* each synthetic process control sits between them.
 		* @param nodes - currently materialized Chat Nodes.
 		* @returns visible Nodes in presentation order.
 		*/
 		function orderedVisibleChatNodes(nodes) {
-			const visible = nodes.filter((node) => node.visibility === "visible");
+			const visible = nodes.filter((node) => isVisibleChatNode(node));
 			const presentations = turnProcessPresentations(visible);
 			return visible.sort((left, right) => {
 				const leftPosition = presentationPosition(left, presentations);
@@ -5575,6 +8224,10 @@ window.__ModuleLoader__.load({
 			referenceLabels = new ReferenceLabelProjector();
 			skillNames = new SkillNameProjector();
 			order = EMPTY_KEYS;
+			latestGroupInput;
+			readGroupNode = (key) => this.store.get(key);
+			readGroupTurn = (turn) => this.locations.getTurn(turn);
+			readGroupPosition = (key) => this.locations.getPosition(key);
 			/** Last published timeline: a Turn boundary can land without a new node. */
 			timeline = null;
 			empty;
@@ -5583,6 +8236,14 @@ window.__ModuleLoader__.load({
 					turnOrder: EMPTY_TURNS,
 					turns: /* @__PURE__ */ new Map()
 				});
+				this.latestGroupInput = {
+					kind: "replace",
+					order: this.order,
+					readNode: this.readGroupNode,
+					readTurn: this.readGroupTurn,
+					readPosition: this.readGroupPosition,
+					timeline: this.empty.timeline
+				};
 			}
 			replace(input) {
 				const nodes = this.skillNames.replace(this.referenceLabels.replace(input.nodes));
@@ -5592,17 +8253,28 @@ window.__ModuleLoader__.load({
 				this.store.replaceProcesses(this.order, this.locations);
 				this.navigation.rebuild(input.timeline, this.locations, this.store);
 				this.timeline = input.timeline;
-				const snapshot = this.snapshot(input.timeline, this.legacy.replace(nodes, input.timeline));
-				this.store.publish();
-				return snapshot;
+				this.latestGroupInput = {
+					kind: "replace",
+					order: this.order,
+					readNode: this.readGroupNode,
+					readTurn: this.readGroupTurn,
+					readPosition: this.readGroupPosition,
+					timeline: input.timeline
+				};
+				return this.snapshot(input.timeline, this.legacy.replace(nodes, input.timeline));
 			}
 			apply(input) {
 				const upserts = this.skillNames.apply(this.referenceLabels.apply(input.upserts, this.store), this.store);
 				const processTurns = /* @__PURE__ */ new Set();
 				let structural = false;
 				const contentOnly = [];
+				const changes = [];
 				for (const node of upserts) {
 					const previous = this.store.get(node.key);
+					if (previous !== node) changes.push({
+						previous,
+						current: node
+					});
 					const nodeStructural = previous === void 0 || previous.kind !== node.kind || previous.anchorSeq !== node.anchorSeq || previous.visibility !== node.visibility || locationIdentity(previous.location) !== locationIdentity(node.location);
 					structural ||= nodeStructural;
 					if (!nodeStructural) contentOnly.push(node);
@@ -5614,19 +8286,35 @@ window.__ModuleLoader__.load({
 					}
 				}
 				this.store.upsert(upserts);
+				let changedTurnOrders = EMPTY_TURNS;
 				if (structural) {
 					const next = orderedVisibleChatNodes(this.store.values()).map((node) => node.key);
 					this.order = sameReferences$1(this.order, next) ? this.order : next;
-					this.locations.rebuild(this.order, this.store);
+					changedTurnOrders = this.locations.rebuild(this.order, this.store);
 				}
 				this.locations.touch(contentOnly);
 				this.store.updateProcesses(processTurns, this.locations);
 				if (structural || input.timeline !== this.timeline) this.navigation.rebuild(input.timeline, this.locations, this.store);
 				else this.navigation.touch(turnsOf(contentOnly), this.locations, this.store);
 				this.timeline = input.timeline;
-				const snapshot = this.snapshot(input.timeline, this.legacy.apply(upserts, input.timeline));
+				this.latestGroupInput = {
+					kind: "apply",
+					changes,
+					order: this.order,
+					readNode: this.readGroupNode,
+					readTurn: this.readGroupTurn,
+					readPosition: this.readGroupPosition,
+					timeline: input.timeline,
+					changedTurns: input.changedTurns ?? EMPTY_TURNS,
+					changedTurnOrders
+				};
+				return this.snapshot(input.timeline, this.legacy.apply(upserts, input.timeline));
+			}
+			groupInput() {
+				return this.latestGroupInput;
+			}
+			publish() {
 				this.store.publish();
-				return snapshot;
 			}
 			snapshot(timeline, legacy = this.legacy.replace(EMPTY_LIST, timeline)) {
 				return {
@@ -5666,10 +8354,11 @@ window.__ModuleLoader__.load({
 			ctx.uiConversation.views.register(chatViewDefinition);
 		}
 		//#endregion
-		//#region ../../core/session/src/surface.ts
+		//#region ../../core/session/lib/types/surface.js
 		/** Runtime counterpart of the message-producing event union. */
 		const SURFACE_EVENT_TYPES = new Set([
 			"system/message",
+			"developer/message",
 			"user/message",
 			"assistant/message",
 			"tool/result"
@@ -5709,7 +8398,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region lib/types/client/conversation-nodes/command.js
-		const COMPACT_PLUGIN = "compact";
+		const COMPACT_KIND = "compact-checkpoint";
 		function commandFromRun(match) {
 			if (match.event.type !== "command/run") throw new Error("command start requires command/run");
 			const data = match.event.data;
@@ -5749,7 +8438,7 @@ window.__ModuleLoader__.load({
 		function compactSource(event) {
 			if (event.type !== "user/message" || !isReplacementSurfaceEvent(event)) return void 0;
 			const source = event.data.source;
-			if (source.kind !== "plugin" || source.plugin !== COMPACT_PLUGIN || typeof source.compactionId !== "string") return void 0;
+			if (source.kind !== COMPACT_KIND || typeof source.compactionId !== "string") return void 0;
 			return {
 				compactionId: source.compactionId,
 				...source.sourceCommandId === void 0 ? {} : { sourceCommandId: source.sourceCommandId }
@@ -5972,7 +8661,7 @@ window.__ModuleLoader__.load({
 		}
 		function withoutInserted(claimed, inserted) {
 			let next;
-			for (const id of inserted) {
+			for (const { id } of inserted) {
 				if (!claimed.has(id)) continue;
 				next ??= new Set(claimed);
 				next.delete(id);
@@ -5980,14 +8669,14 @@ window.__ModuleLoader__.load({
 			return next ?? claimed;
 		}
 		/**
-		* Apply one next-step splice under the AgentLoop's durable event ordering.
+		* Apply one Inbox splice under the AgentLoop's durable event ordering.
 		* An entered claim logs its complete message batch before another claim; a
 		* rejected claim logs no messages, so only the current claim can classify a
 		* later `user/message`.
 		*/
-		function applySplice(previous, splice) {
+		function applySplice(previous, splice, seq) {
 			const priorPending = previous?.state.pending ?? EMPTY_PENDING;
-			const inserted = splice.inserted.map((identity) => identity.id);
+			const inserted = splice.inserted;
 			const removedCount = splice.removedCount ?? 0;
 			if (removedCount > 0 && splice.outcome !== "canceled") {
 				const pending = materializePending(priorPending);
@@ -5997,7 +8686,9 @@ window.__ModuleLoader__.load({
 						kind: "snapshot",
 						ids: pending
 					},
-					currentClaimed: new Set(removed)
+					currentClaimed: new Set(removed.map((message) => message.id)),
+					claimSeq: seq,
+					claimedHuman: removed.some((message) => message.source.kind === "user")
 				};
 			}
 			const currentClaimed = withoutInserted(previous?.state.currentClaimed ?? EMPTY_CURRENT_CLAIMED, inserted);
@@ -6009,61 +8700,77 @@ window.__ModuleLoader__.load({
 					removedCount,
 					inserted
 				},
-				currentClaimed
+				currentClaimed,
+				claimSeq: previous?.state.claimSeq ?? -1,
+				claimedHuman: previous?.state.claimedHuman ?? false
 			};
 		}
-		const NEXT_STEP_INBOX_KIND = "inbox-next-step";
-		/** Persistent next-step Inbox state used to classify the current claimed batch as steering. */
-		const nextStepInboxDefinition = {
-			kind: NEXT_STEP_INBOX_KIND,
-			match: (event) => {
-				if (event.type === "agent/inbox/spliced" && event.data.target === "next-step") return {
+		function inboxDefinition(target) {
+			const kind = `inbox-${target}`;
+			return {
+				kind,
+				match: (event) => event.type === "agent/inbox/spliced" && event.data.target === target ? {
 					id: String(event.seq),
 					role: "start"
-				};
-				return null;
-			},
-			start: (_context, match, reader) => {
-				if (match.event.type !== "agent/inbox/spliced") throw new Error("inbox-next-step start requires agent/inbox/spliced");
-				return applySplice(reader.previous(NEXT_STEP_INBOX_KIND), match.event.data);
-			},
-			update: (context) => context.state,
-			publication: () => "none"
-		};
+				} : null,
+				start: (_context, match, reader) => {
+					if (match.event.type !== "agent/inbox/spliced") throw new Error("inbox start requires agent/inbox/spliced");
+					return applySplice(reader.previous(kind), match.event.data, match.event.seq);
+				},
+				update: (context) => context.state,
+				publication: () => "none"
+			};
+		}
+		/** Persistent next-step claims identify messages admitted into a running Turn. */
+		const nextStepInboxDefinition = inboxDefinition("next-step");
+		/** Persistent next-turn claims identify messages that wake a new Turn. */
+		const nextTurnInboxDefinition = inboxDefinition("next-turn");
 		/**
-		* Register the next-step Inbox state used by Chat message classification.
+		* Register the Inbox state used by Chat message classification.
 		* @param ctx - owning UI Conversation context.
 		*/
 		function registerInboxConversationNodes(ctx) {
 			ctx.uiConversation.events.register(nextStepInboxDefinition);
+			ctx.uiConversation.events.register(nextTurnInboxDefinition);
 		}
 		//#endregion
 		//#region lib/types/client/conversation-nodes/message.js
 		function isCompactionCheckpoint(event) {
 			if (event.type !== "user/message" || !isReplacementSurfaceEvent(event)) return false;
-			const source = event.data.source;
-			return source.kind === "plugin" && source.plugin === "compact";
+			return event.data.source.kind === "compact-checkpoint";
 		}
 		/** User, steering, and injected-context message classification Definition. */
 		const messageDefinition = {
 			kind: "input-message",
 			target: "chat",
-			match: (event) => event.type === "user/message" && isAppendSurfaceEvent(event) && !isCompactionCheckpoint(event) ? {
-				id: String(event.data.id),
-				role: "start"
-			} : null,
+			match: (event) => {
+				if (event.type === "user/message") return isAppendSurfaceEvent(event) && !isCompactionCheckpoint(event) ? {
+					id: String(event.data.id),
+					role: "start"
+				} : null;
+				if (event.type === "developer/message") throw new Error("Chat developer messages are not supported yet");
+				return null;
+			},
 			start: (_context, match, reader) => {
 				if (match.event.type !== "user/message") throw new Error("input-message start requires user/message");
 				const event = match.event;
-				if (event.data.source.kind !== "user") return {
-					kind: "context",
-					seq: event.seq,
-					time: event.time,
-					content: event.data.content,
-					source: event.data.source,
-					provenance: contextProvenance(event.data.source),
-					form: contextForm(event.data.source)
-				};
+				if (event.data.source.kind !== "user") {
+					const nextTurn = reader.previous("inbox-next-turn")?.state;
+					const nextStep = reader.previous("inbox-next-step")?.state;
+					const location = match.location;
+					const turnStart = location.kind === "step" ? location.turn.start?.seq : void 0;
+					const idleSteer = location.kind === "step" && location.step.step === 1 && turnStart !== void 0 && (nextStep?.claimSeq ?? -1) > turnStart && (nextTurn?.claimSeq ?? -1) < turnStart && nextStep?.claimedHuman === false && nextStep.currentClaimed.has(String(event.data.id));
+					return {
+						kind: "context",
+						waking: nextTurn?.currentClaimed.has(String(event.data.id)) === true || idleSteer,
+						seq: event.seq,
+						time: event.time,
+						content: event.data.content,
+						source: event.data.source,
+						producer: contextProducer(event.data.source),
+						form: contextForm(event.data.source)
+					};
+				}
 				return reader.previous("inbox-next-step")?.state.currentClaimed.has(String(event.data.id)) === true ? {
 					kind: "steering",
 					messageId: event.data.id,
@@ -6082,7 +8789,7 @@ window.__ModuleLoader__.load({
 			update: (context) => context.state,
 			buildViewNode: (context) => {
 				if (context.state === void 0) return null;
-				return chatNode(context, context.state.kind, context.state.seq, context.state);
+				return chatNode(context, context.state.kind === "context" && context.start?.event.type === "user/message" && context.state.waking === true ? "turn-trigger" : context.state.kind, context.state.seq, context.state);
 			}
 		};
 		/**
@@ -6303,19 +9010,19 @@ window.__ModuleLoader__.load({
 		}
 		function rootResult(match, previous) {
 			if (match.event.type !== "tool/result") return void 0;
-			const result = match.event.data.message.content[0];
+			const message = match.event.data.message;
 			return {
 				kind: "tool-result",
 				seq: match.event.seq,
 				time: match.event.time,
-				callId: String(match.event.data.message.source.callId),
+				callId: String(message.source.callId),
 				call: previous === void 0 ? null : {
 					name: previous.name,
 					argsRaw: previous.argsRaw
 				},
 				callTime: previous?.time ?? null,
-				content: result.content,
-				isError: result.isError === true,
+				content: message.content,
+				isError: message.isError === true,
 				...match.event.data.error === void 0 ? {} : { error: match.event.data.error },
 				meta: match.event.data.meta,
 				subCalls: []
@@ -6347,6 +9054,7 @@ window.__ModuleLoader__.load({
 				callTime: previous?.time ?? null,
 				content: data.content ?? [],
 				isError: data.isError === true,
+				...data.error === void 0 ? {} : { error: data.error },
 				subCalls: []
 			};
 		}
@@ -6675,21 +9383,6 @@ window.__ModuleLoader__.load({
 			ctx.uiConversation.events.register(turnMaxTokensDefinition);
 		}
 		//#endregion
-		//#region lib/types/client/contract/assistant-content.js
-		/**
-		* Test whether Assistant blocks contain a user-facing reply rather than only
-		* reasoning or Tool-call protocol material.
-		* @param blocks - Assistant content blocks.
-		* @returns whether the blocks contain visible reply content.
-		*/
-		function hasAssistantReplyContent(blocks) {
-			return blocks.some((block) => {
-				if (block.kind === "reasoning" || block.kind === "tool-call") return false;
-				if (block.kind === "text") return block.text.trim() !== "";
-				return true;
-			});
-		}
-		//#endregion
 		//#region lib/types/client/conversation-nodes/turn-process.js
 		function eventTurn(event) {
 			const data = event.data;
@@ -6754,7 +9447,7 @@ window.__ModuleLoader__.load({
 			return data.blocks.some((block) => block.kind === "tool-call") ? null : data;
 		}
 		function processSpec(state, turn) {
-			const controlAnchorSeq = state.controlAnchorSeq;
+			const controlAnchorSeq = state.controlAnchorSeq ?? turn.start?.seq;
 			if (controlAnchorSeq === void 0) return null;
 			const answer = latestAnswer(turn);
 			const counts = {
@@ -6892,7 +9585,7 @@ window.__ModuleLoader__.load({
 			ctx.uiConversation.events.register(turnProcessDefinition);
 		}
 		//#endregion
-		//#region ../../llm/llm/src/assistant-stream.ts
+		//#region ../../llm/llm/lib/types/assistant-stream.js
 		/**
 		* The last raw chunk of one never-packed type, scanning backwards and stopping at the first hit.
 		* @param stream - compact records from one durable Assistant settlement.
@@ -6906,7 +9599,7 @@ window.__ModuleLoader__.load({
 			}
 		}
 		//#endregion
-		//#region ../../llm/token-meter/src/turn-usage.ts
+		//#region ../../llm/token-meter/lib/types/turn-usage.js
 		function isCount(value) {
 			return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 		}
@@ -7124,13 +9817,6 @@ window.__ModuleLoader__.load({
 		function isSessionEvent(event) {
 			return event.type !== "assistant/live-chunk";
 		}
-		function hasTextAssistant(event) {
-			return event.type === "assistant/message" && event.surfaceOp === "append" && toAssistantBlocks(event.data.message.content).some((block) => block.kind === "text" && block.text.trim() !== "");
-		}
-		function chunkHasText(chunk) {
-			if (chunk.type === "text-delta") return chunk.text.trim() !== "";
-			return chunk.type === "block-end" && chunk.block.type === "text" && chunk.block.text.trim() !== "";
-		}
 		function turnCoordinates(event) {
 			if (event.type === "assistant/message" || event.type === "assistant/attempt" || event.type === "assistant/live-chunk" || event.type === "step/start" || event.type === "step/end") return {
 				turn: event.data.turn,
@@ -7140,44 +9826,6 @@ window.__ModuleLoader__.load({
 				turn: event.data.turn,
 				step: event.data.step
 			};
-		}
-		function closingAnchor(context) {
-			let anchor = context.matches.find((match) => match.event.type === "turn/end")?.event.seq ?? context.start?.event.seq ?? context.matches[0]?.event.seq ?? 0;
-			const steps = /* @__PURE__ */ new Map();
-			for (const match of context.matches) {
-				const event = match.event;
-				if (event.type === "turn/end") continue;
-				const coordinates = turnCoordinates(event);
-				if (coordinates?.step === void 0) continue;
-				const previous = steps.get(coordinates.step) ?? {
-					streamedText: false,
-					finalized: false
-				};
-				if (event.type === "assistant/live-chunk") {
-					steps.set(coordinates.step, {
-						...previous,
-						streamedText: previous.streamedText || chunkHasText(event.data.chunk)
-					});
-					continue;
-				}
-				if (event.type === "assistant/message") {
-					steps.set(coordinates.step, {
-						streamedText: false,
-						finalized: true
-					});
-					if (hasTextAssistant(event)) anchor = event.seq + CHAT_SYNTHETIC_SEQ_OFFSETS.finalizedFollowup;
-					continue;
-				}
-				if (event.type === "llm/retry") {
-					steps.set(coordinates.step, {
-						streamedText: false,
-						finalized: false
-					});
-					continue;
-				}
-				if (event.type === "step/end" && previous.streamedText && !previous.finalized) anchor = event.seq + CHAT_SYNTHETIC_SEQ_OFFSETS.interruptedFollowup;
-			}
-			return anchor;
 		}
 		function turnLocation(context) {
 			const location = context.start?.location ?? context.matches[0]?.location;
@@ -7199,7 +9847,6 @@ window.__ModuleLoader__.load({
 				const candidate = event.type === "tool/call" || event.type === "tool/result" && event.surfaceOp === "append" || event.type === "turn/end" && event.data.reason.kind === "error" || event.type === "llm/retry" ? event.seq : void 0;
 				if (candidate !== void 0 && (latestTranscriptSeq === void 0 || candidate > latestTranscriptSeq)) latestTranscriptSeq = candidate;
 			}
-			const metrics = deriveTurnMetrics(finalized.map((candidate) => candidate.finalNode)).get(end.event.data.turn);
 			const tokenUsage = context.start?.event.type === "turn/start" ? deriveTurnTokenUsage(context.matches.map((match) => match.event).filter(isSessionEvent)) : void 0;
 			return {
 				turn: end.event.data.turn,
@@ -7207,8 +9854,6 @@ window.__ModuleLoader__.load({
 				time: end.event.time,
 				closing,
 				branchUnavailable: closing === null || latestTranscriptSeq !== closing.finalNode.seq,
-				...metrics?.ttftMs === void 0 ? {} : { ttftMs: metrics.ttftMs },
-				...metrics?.tokensPerSecond === void 0 ? {} : { tokensPerSecond: metrics.tokensPerSecond },
 				...tokenUsage === void 0 ? {} : { tokenUsage }
 			};
 		}
@@ -7257,7 +9902,7 @@ window.__ModuleLoader__.load({
 			},
 			buildViewNode: (context) => {
 				const data = turnLocation(context)?.data.get("turn-tail");
-				return data === void 0 ? null : chatNode(context, "turn-tail", closingAnchor(context), data);
+				return data === void 0 ? null : chatNode(context, "turn-tail", data.seq + CHAT_SYNTHETIC_SEQ_OFFSETS.finalizedFollowup, data);
 			}
 		};
 		/**
@@ -7267,6 +9912,475 @@ window.__ModuleLoader__.load({
 		function registerTurnTailConversationNode(ctx) {
 			ctx.uiConversation.events.register(turnTailDefinition);
 		}
+		//#endregion
+		//#region lib/types/client/conversation-nodes/process-activity.js
+		function activity(name) {
+			if ([
+				"read",
+				"read_image",
+				"list_mcp_resources",
+				"list_mcp_resource_templates",
+				"read_mcp_resource"
+			].includes(name)) return "read";
+			if (name === "grep" || name === "glob" || name.endsWith("_inspect")) return "search";
+			if ([
+				"write",
+				"edit",
+				"apply_patch"
+			].includes(name)) return "edit";
+			if ([
+				"bash",
+				"pwsh",
+				"exec_command",
+				"write_stdin"
+			].includes(name) || name.startsWith("terminal_")) return "commands";
+			if (name === "run_code") return "code";
+			if (name === "web_search") return "webSearch";
+			if (name === "web_fetch") return "webFetch";
+			if (name === "subagent" || name.startsWith("subagent_")) return "subagents";
+			if ([
+				"todo_write",
+				"create_goal",
+				"update_goal",
+				"get_goal"
+			].includes(name)) return "plan";
+			if (name === "ask_user_question" || name === "request_user_input") return "questions";
+			return "tools";
+		}
+		const LIVE_TOOL_DETAIL_MAX_CHARS = 160;
+		const LIVE_TOOL_DETAIL_SEGMENTER = new Intl.Segmenter(void 0, { granularity: "grapheme" });
+		const LIVE_TOOL_DETAIL_KEYS = [
+			"title",
+			"description",
+			"objective",
+			"task",
+			"task_name",
+			"name",
+			"question",
+			"questions",
+			"prompt",
+			"message",
+			"command",
+			"cmd",
+			"queries",
+			"query",
+			"pattern",
+			"url",
+			"uri",
+			"file_path",
+			"path",
+			"target",
+			"action",
+			"status"
+		];
+		function normalizeLiveToolDetail(value) {
+			const normalized = (typeof value === "string" ? value : Array.isArray(value) && value.every((item) => typeof item === "string") ? value.join(", ") : "").replace(/\s+/g, " ").trim();
+			const chars = Array.from(LIVE_TOOL_DETAIL_SEGMENTER.segment(normalized), (part) => part.segment);
+			return chars.length <= LIVE_TOOL_DETAIL_MAX_CHARS ? normalized : `${chars.slice(0, LIVE_TOOL_DETAIL_MAX_CHARS - 1).join("").trimEnd()}…`;
+		}
+		function questionDetail(value) {
+			if (!Array.isArray(value)) return "";
+			for (const item of value) {
+				if (item === null || typeof item !== "object") continue;
+				const detail = normalizeLiveToolDetail(Reflect.get(item, "question"));
+				if (detail !== "") return detail;
+			}
+			return "";
+		}
+		function liveReasoningDetail(nodes) {
+			for (let nodeIndex = nodes.length - 1; nodeIndex >= 0; nodeIndex--) {
+				const node = nodes[nodeIndex];
+				if (node?.kind !== "assistant-step" || node.data.status !== "running") continue;
+				for (let blockIndex = node.data.blocks.length - 1; blockIndex >= 0; blockIndex--) {
+					const block = node.data.blocks[blockIndex];
+					if (block?.kind !== "reasoning") continue;
+					const paragraphs = block.text.split(/\r?\n[\t ]*\r?\n/);
+					for (let paragraphIndex = paragraphs.length - 1; paragraphIndex >= 0; paragraphIndex--) {
+						const detail = normalizeLiveToolDetail(paragraphs[paragraphIndex]?.replaceAll("**", ""));
+						if (detail !== "") return detail;
+					}
+				}
+			}
+			return "";
+		}
+		function liveToolDetail(name, argsRaw) {
+			let args;
+			try {
+				args = JSON.parse(argsRaw);
+			} catch (_error) {
+				return normalizeLiveToolDetail(name);
+			}
+			if (args === null || typeof args !== "object") return normalizeLiveToolDetail(name);
+			for (const key of LIVE_TOOL_DETAIL_KEYS) if (key in args) {
+				const value = Reflect.get(args, key);
+				const detail = key === "questions" ? questionDetail(value) : normalizeLiveToolDetail(value);
+				if (detail !== "") return detail;
+			}
+			return normalizeLiveToolDetail(name);
+		}
+		/**
+		* Rank categories by distinct call count, breaking ties by first appearance.
+		* @param nodes - process members, including recursive tools.
+		* @returns all ranked categories and the latest running tool category and bounded task detail.
+		*/
+		function processActivity(nodes) {
+			const counts = /* @__PURE__ */ new Map();
+			const seen = /* @__PURE__ */ new Set();
+			let running;
+			let runningDetail = "";
+			let runningTime = -Infinity;
+			const visit = (tool) => {
+				if (seen.has(tool.callId)) return;
+				seen.add(tool.callId);
+				const call = isRunningTool(tool) ? tool : tool.call;
+				if (call !== null) {
+					const kind = activity(call.name);
+					if (isRunningTool(tool) && tool.time >= runningTime) {
+						running = kind;
+						runningDetail = liveToolDetail(tool.name, tool.argsRaw);
+						runningTime = tool.time;
+					}
+					counts.set(kind, (counts.get(kind) ?? 0) + 1);
+				}
+				for (const child of tool.subCalls) visit(child);
+			};
+			for (const node of nodes) if (node.kind === "tool-call") visit(node.data.root);
+			if (running === void 0) runningDetail = liveReasoningDetail(nodes);
+			return {
+				counts: [...counts].map(([kind, count]) => ({
+					kind,
+					count
+				})).sort((a, b) => b.count - a.count),
+				running,
+				runningDetail
+			};
+		}
+		//#endregion
+		//#region lib/types/client/conversation-nodes/process-groups.js
+		/** Chat-owned segmentation and incremental summaries over materialized Node inputs. */
+		const INDEPENDENT = new Set([
+			"user",
+			"steering",
+			"turn-trigger",
+			"model-retry",
+			"turn-error",
+			"turn-max-tokens",
+			"turn-tail"
+		]);
+		function turnOf(node) {
+			const location = node.location;
+			return location.kind === "turn" || location.kind === "step" ? location.turn.turn : void 0;
+		}
+		function reasoning(node) {
+			return node.kind === "assistant-step" && node.data.blocks.some((block) => block.kind === "reasoning" && block.text.trim() !== "");
+		}
+		function reply(node) {
+			return node.kind === "assistant-step" && hasAssistantReplyContent(node.data.blocks);
+		}
+		function sameSummary(left, right) {
+			return left.running === right.running && left.runningDetail === right.runningDetail && left.counts.length === right.counts.length && left.counts.every((value, index) => value.kind === right.counts[index]?.kind && value.count === right.counts[index].count);
+		}
+		function sameMembers(left, right) {
+			return left.length === right.length && left.every((value, index) => value.key === right[index]?.key && value.groupPart === right[index].groupPart);
+		}
+		function structureChanged(previous, current) {
+			if (!isVisibleChatNode(current) && (previous === void 0 || !isVisibleChatNode(previous))) return false;
+			return previous === void 0 || previous.kind !== current.kind || turnOf(previous) !== turnOf(current) || isVisibleChatNode(previous) !== isVisibleChatNode(current) || reasoning(previous) !== reasoning(current) || reply(previous) !== reply(current);
+		}
+		function readNode(input, key) {
+			const node = input.readNode(key);
+			if (node === void 0) throw new Error(`Chat grouping input is missing Node ${key}`);
+			return node;
+		}
+		/** One group's members and cached summary, refreshed together when its content changes. */
+		var ProcessGroup = class {
+			key;
+			turn;
+			members;
+			nodes = [];
+			snapshot;
+			constructor(key, turn, members) {
+				this.key = key;
+				this.turn = turn;
+				this.members = members;
+				this.snapshot = {
+					key,
+					members,
+					data: {
+						turn,
+						closed: false,
+						summary: {
+							counts: [],
+							running: void 0,
+							runningDetail: ""
+						}
+					}
+				};
+			}
+			refresh(input, closed) {
+				const nodes = this.members.map((member) => readNode(input, member.key));
+				const unchanged = nodes.length === this.nodes.length && nodes.every((node, index) => node === this.nodes[index]);
+				const previous = this.snapshot.data;
+				const activity = unchanged && previous.closed === closed ? previous.summary : processActivity(nodes);
+				const summary = closed ? {
+					...activity,
+					running: void 0,
+					runningDetail: ""
+				} : activity;
+				this.nodes = nodes;
+				if (previous.closed !== closed || !sameSummary(previous.summary, summary)) this.snapshot = {
+					key: this.key,
+					members: this.members,
+					data: {
+						turn: this.turn,
+						closed,
+						summary
+					}
+				};
+			}
+		};
+		/** One Turn's grouping result and member lookup; summaries stay with their groups. */
+		var TurnGroups = class {
+			turn;
+			groups = /* @__PURE__ */ new Map();
+			membership = /* @__PURE__ */ new Map();
+			roots = /* @__PURE__ */ new Map();
+			constructor(turn) {
+				this.turn = turn;
+			}
+			references(key) {
+				return this.roots.get(key) ?? [];
+			}
+			snapshots() {
+				return [...this.groups.values()].map((group) => group.snapshot);
+			}
+			refresh(input, changed) {
+				const dirty = /* @__PURE__ */ new Set();
+				for (const node of changed) {
+					const group = this.membership.get(node);
+					if (group !== void 0) dirty.add(group);
+				}
+				const ended = input.timeline.turns.get(this.turn)?.status === "closed";
+				if (ended) {
+					for (const group of this.groups.values()) if (!group.snapshot.data.closed) dirty.add(group.key);
+				}
+				const upserts = [];
+				for (const key of dirty) {
+					const group = this.groups.get(key);
+					const previous = group.snapshot;
+					group.refresh(input, previous.data.closed || ended);
+					if (group.snapshot !== previous) upserts.push(group.snapshot);
+				}
+				return upserts;
+			}
+			rebuild(input, added) {
+				const roots = /* @__PURE__ */ new Map();
+				const groups = /* @__PURE__ */ new Map();
+				const membership = /* @__PURE__ */ new Map();
+				let pending = [];
+				const upserts = [];
+				const emit = (key, entry) => {
+					roots.set(key, [...roots.get(key) ?? [], entry]);
+				};
+				const flush = (closed) => {
+					const first = pending[0];
+					if (first === void 0) return;
+					const key = this.extendedGroup(pending, added)?.key ?? brandString(JSON.stringify([
+						"process",
+						first.key,
+						first.groupPart ?? null
+					]));
+					const previous = this.groups.get(key);
+					const before = previous?.snapshot;
+					const group = previous !== void 0 && sameMembers(previous.members, pending) ? previous : new ProcessGroup(key, this.turn, pending);
+					group.refresh(input, closed || input.timeline.turns.get(this.turn)?.status === "closed");
+					groups.set(group.key, group);
+					emit(first.key, {
+						kind: "group",
+						key: group.key
+					});
+					for (const member of pending) membership.set(member.key, group.key);
+					if (group.snapshot !== before) upserts.push(group.snapshot);
+					pending = [];
+				};
+				let previous;
+				let followed = false;
+				for (const key of input.readTurn(this.turn)) {
+					const position = readPosition(input, key);
+					if (previous !== void 0 && position.previous !== previous) flush(true);
+					previous = key;
+					followed = position.next !== void 0;
+					const node = readNode(input, key);
+					if (INDEPENDENT.has(node.kind)) {
+						flush(true);
+						emit(key, {
+							kind: "node",
+							key
+						});
+					} else if (node.kind === "turn-process") emit(key, {
+						kind: "node",
+						key
+					});
+					else if (node.kind === "assistant-step") {
+						if (reasoning(node)) pending.push({
+							kind: "node",
+							key,
+							groupPart: "reasoning"
+						});
+						if (reply(node)) {
+							flush(true);
+							emit(key, {
+								kind: "node",
+								key,
+								groupPart: "response"
+							});
+						}
+					} else pending.push({
+						kind: "node",
+						key
+					});
+				}
+				flush(followed);
+				const removes = [...this.groups.keys()].filter((key) => !groups.has(key));
+				this.groups = groups;
+				this.membership = membership;
+				this.roots = roots;
+				return {
+					upserts,
+					removes
+				};
+			}
+			extendedGroup(members, added) {
+				const offset = members.findIndex((member) => !added.has(member.key));
+				const first = members[offset];
+				if (first === void 0) return void 0;
+				const key = this.membership.get(first.key);
+				const previous = key === void 0 ? void 0 : this.groups.get(key);
+				if (previous === void 0 || offset + previous.members.length > members.length) return void 0;
+				for (let index = 0; index < previous.members.length; index++) {
+					const before = previous.members[index];
+					const after = members[offset + index];
+					if (before.key !== after.key || before.groupPart !== after.groupPart) return void 0;
+				}
+				for (let index = offset + previous.members.length; index < members.length; index++) if (!added.has(members[index].key)) return void 0;
+				return previous;
+			}
+		};
+		function readPosition(input, key) {
+			const position = input.readPosition(key);
+			if (position === void 0) throw new Error(`Chat grouping order is missing position for Node ${key}`);
+			return position;
+		}
+		/** Session-local Turn results; ordinary updates never read other Turns' Node contents. */
+		var ProcessState = class {
+			turns = /* @__PURE__ */ new Map();
+			order = [];
+			pending = null;
+			/**
+			* Consume one synchronous Builder input without retaining its readers.
+			* @param input - projected Node changes, indexed positions, and Turn lifecycle.
+			*/
+			accept(input) {
+				if (input.kind === "replace") {
+					const previousKeys = new Set(this.order);
+					const added = new Set(input.order.filter((key) => !previousKeys.has(key)));
+					const turns = /* @__PURE__ */ new Map();
+					for (const key of input.order) {
+						const turn = readPosition(input, key).turn;
+						if (turn === void 0 || turns.has(turn)) continue;
+						const groups = this.turns.get(turn) ?? new TurnGroups(turn);
+						groups.rebuild(input, added);
+						turns.set(turn, groups);
+					}
+					this.turns = turns;
+					this.order = input.order;
+					this.pending = {
+						entries: this.rootEntries(input),
+						groups: {
+							kind: "replace",
+							snapshots: [...turns.values()].flatMap((turn) => turn.snapshots())
+						}
+					};
+					return;
+				}
+				const regroup = new Set(input.changedTurnOrders);
+				const added = /* @__PURE__ */ new Set();
+				const changed = /* @__PURE__ */ new Map();
+				const touch = (turn) => {
+					let keys = changed.get(turn);
+					if (keys === void 0) {
+						keys = /* @__PURE__ */ new Set();
+						changed.set(turn, keys);
+					}
+					return keys;
+				};
+				for (const change of input.changes) {
+					const before = change.previous;
+					const after = change.current;
+					const turn = turnOf(after);
+					if (before === void 0 || !isVisibleChatNode(before)) added.add(after.key);
+					if (structureChanged(before, after)) {
+						const previousTurn = before === void 0 ? void 0 : turnOf(before);
+						if (previousTurn !== void 0) regroup.add(previousTurn);
+						if (turn !== void 0) regroup.add(turn);
+					}
+					if (turn !== void 0) touch(turn).add(after.key);
+				}
+				for (const turn of input.changedTurns) touch(turn);
+				const upserts = [];
+				const removes = [];
+				for (const turn of regroup) {
+					const groups = this.turns.get(turn) ?? new TurnGroups(turn);
+					const update = groups.rebuild(input, added);
+					upserts.push(...update.upserts);
+					removes.push(...update.removes);
+					if (input.readTurn(turn).length === 0) this.turns.delete(turn);
+					else this.turns.set(turn, groups);
+				}
+				for (const [turn, keys] of changed) if (!regroup.has(turn)) upserts.push(...this.turns.get(turn)?.refresh(input, keys) ?? []);
+				const reordered = input.order !== this.order || regroup.size > 0;
+				this.order = input.order;
+				const installed = new Set(upserts.map((group) => group.key));
+				this.pending = reordered || upserts.length > 0 || removes.length > 0 ? {
+					...reordered ? { entries: this.rootEntries(input) } : {},
+					groups: {
+						kind: "apply",
+						upserts,
+						removes: removes.filter((key) => !installed.has(key))
+					}
+				} : null;
+			}
+			rootEntries(input) {
+				return input.order.flatMap((key) => {
+					const turn = readPosition(input, key).turn;
+					if (turn === void 0) return [{
+						kind: "node",
+						key
+					}];
+					const groups = this.turns.get(turn);
+					if (groups === void 0) throw new Error(`Chat grouping order is missing Turn ${turn}`);
+					return groups.references(key);
+				});
+			}
+			/**
+			* Read pending output without advancing State.
+			* @returns the repeatable update for the last input batch.
+			*/
+			output() {
+				return this.pending;
+			}
+		};
+		/** Chat's registered business grouping; presentation modes never enter its State. */
+		const processGroupDefinition = {
+			kind: "process-groups",
+			target: "chat",
+			create: () => new ProcessState(),
+			update: (context, input) => {
+				context.state.accept(input);
+				return context.state;
+			},
+			buildGroups: (context) => context.state.output()
+		};
 		//#endregion
 		//#region lib/types/client/conversation-nodes/register.js
 		/**
@@ -7288,90 +10402,10 @@ window.__ModuleLoader__.load({
 			registerTurnTailConversationNode(ctx);
 			registerUnknownConversationFallback(ctx);
 			registerChatConversationView(ctx);
+			ctx.uiConversation.groups.register(processGroupDefinition);
 		}
 		//#endregion
-		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/settings/TranscriptViewRow.module.css.mjs
-		const css = ".lats3W_row{border-bottom:.5px solid var(--dsw-alias-border-l2);align-items:center;gap:8px;padding:16px 0;display:flex}.lats3W_rowText{flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:48px;display:flex}.lats3W_title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}.lats3W_desc{color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:400;line-height:18px}.lats3W_selector{background:var(--dsw-alias-bg-module-platform);height:36px;font:inherit;color:var(--dsw-alias-label-primary);cursor:pointer;border:none;border-radius:18px;align-items:center;gap:12px;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex}.lats3W_selector:hover{background:var(--dsw-alias-interactive-bg-hover)}.lats3W_chevron{flex:none}";
-		const tagId = "@deepseek-ai/dsh-client-ui-chat/TranscriptViewRow.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
-			tag.dataset.pluginCss = tagId;
-			tag.textContent = css;
-			document.head.appendChild(tag);
-		}
-		var TranscriptViewRow_module_css_default = {
-			"chevron": "lats3W_chevron",
-			"desc": "lats3W_desc",
-			"row": "lats3W_row",
-			"rowText": "lats3W_rowText",
-			"selector": "lats3W_selector",
-			"title": "lats3W_title"
-		};
-		//#endregion
-		//#region lib/types/client/settings/TranscriptViewRow.js
-		/** General Settings row for completed-Turn transcript presentation. */
-		const OPTIONS = [{
-			id: "normal",
-			label: "settings.transcript.normal"
-		}, {
-			id: "compact",
-			label: "settings.transcript.compact"
-		}];
-		/**
-		* Render the completed-Turn transcript mode selector.
-		* @param props - composed Settings slot props.
-		* @returns the preference row.
-		*/
-		function TranscriptViewRow({ useTranscriptView, setTranscriptView, t }) {
-			const mode = useTranscriptView((value) => value);
-			const [open, setOpen] = (0, react.useState)(false);
-			const selectedLabel = mode === "normal" ? "settings.transcript.normal" : "settings.transcript.compact";
-			const closeMenu = () => {
-				setOpen(false);
-			};
-			const selectMode = (id) => {
-				closeMenu();
-				setTranscriptView(id);
-			};
-			const selector = (0, react_jsx_runtime.jsxs)("button", {
-				type: "button",
-				className: TranscriptViewRow_module_css_default.selector,
-				"aria-haspopup": "menu",
-				"aria-expanded": open,
-				onClick: () => {
-					setOpen((value) => !value);
-				},
-				children: [t(selectedLabel), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: TranscriptViewRow_module_css_default.chevron })]
-			});
-			return (0, react_jsx_runtime.jsxs)("div", {
-				className: TranscriptViewRow_module_css_default.row,
-				children: [(0, react_jsx_runtime.jsxs)("div", {
-					className: TranscriptViewRow_module_css_default.rowText,
-					children: [(0, react_jsx_runtime.jsx)("div", {
-						className: TranscriptViewRow_module_css_default.title,
-						children: t("settings.transcript.title")
-					}), (0, react_jsx_runtime.jsx)("div", {
-						className: TranscriptViewRow_module_css_default.desc,
-						children: t("settings.transcript.description")
-					})]
-				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
-					open,
-					onClose: closeMenu,
-					items: OPTIONS.map((option) => ({
-						id: option.id,
-						label: t(option.label)
-					})),
-					selectedId: mode,
-					onSelect: selectMode,
-					align: "end",
-					portal: true,
-					anchor: selector
-				})]
-			});
-		}
-		//#endregion
-		//#region ../../../vendor/cosmokit/src/misc.ts
+		//#region ../../../vendor/cosmokit/lib/index.js
 		/** Return true when a value is `null` or `undefined`. */
 		function isNullable(value) {
 			return value === null || value === void 0;
@@ -7395,8 +10429,43 @@ window.__ModuleLoader__.load({
 			for (const key of keys) if (forced || source[key] !== void 0) result[key] = source[key];
 			return result;
 		}
-		//#endregion
-		//#region ../../../vendor/cosmokit/src/types.ts
+		/** Shared config references used by schema validators and plugin runtimes. */
+		const write = Symbol.for("cosmokit.volatile.write");
+		function snapshot(value, ancestors = /* @__PURE__ */ new Set()) {
+			if (typeof value === "function") throw new TypeError("volatile config cannot contain functions");
+			if (value === null || typeof value !== "object") return value;
+			if (ancestors.has(value)) throw new TypeError("volatile config cannot contain cycles");
+			ancestors.add(value);
+			try {
+				if (Array.isArray(value)) return Object.freeze(value.map((item) => snapshot(item, ancestors)));
+				if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new TypeError("volatile config objects must be plain objects or arrays");
+				return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, snapshot(item, ancestors)])));
+			} finally {
+				ancestors.delete(value);
+			}
+		}
+		/**
+		* Create a detached reference containing an immutable copy of the supplied data.
+		* @param value - validated config data; class instances and functions are unsupported.
+		* @returns a reference whose value is updated only by its owning runtime.
+		*/
+		function createVolatile(value) {
+			let current = snapshot(value);
+			return Object.freeze({
+				get: () => current,
+				[write]: (value) => {
+					current = value;
+				}
+			});
+		}
+		/**
+		* Identify references across ESM/CJS copies of the shared library.
+		* @param value - a parsed config value.
+		* @returns whether the value implements the shared reference protocol.
+		*/
+		function isVolatile(value) {
+			return typeof value === "object" && value !== null && write in value;
+		}
 		/** Test values using `instanceof` with a `toStringTag` fallback. */
 		function is(type, value) {
 			if (arguments.length === 1) return (value) => is(type, value);
@@ -7408,15 +10477,16 @@ window.__ModuleLoader__.load({
 		function isArrayBufferSource(value) {
 			return isArrayBufferLike(value) || ArrayBuffer.isView(value);
 		}
-		let Binary;
-		(function(_Binary) {
-			_Binary.is = isArrayBufferLike;
-			_Binary.isSource = isArrayBufferSource;
+		/** Binary source detection and base64/hex conversion helpers. */
+		var Binary;
+		(function(Binary) {
+			Binary.is = isArrayBufferLike;
+			Binary.isSource = isArrayBufferSource;
 			function fromSource(source) {
 				if (ArrayBuffer.isView(source)) return source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
 				else return source;
 			}
-			_Binary.fromSource = fromSource;
+			Binary.fromSource = fromSource;
 			function toBase64(source) {
 				source = fromSource(source);
 				if (typeof Buffer !== "undefined") return Buffer.from(source).toString("base64");
@@ -7425,18 +10495,18 @@ window.__ModuleLoader__.load({
 				for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
 				return btoa(binary);
 			}
-			_Binary.toBase64 = toBase64;
+			Binary.toBase64 = toBase64;
 			function fromBase64(source) {
 				if (typeof Buffer !== "undefined") return fromSource(Buffer.from(source, "base64"));
 				return Uint8Array.from(atob(source), (c) => c.charCodeAt(0));
 			}
-			_Binary.fromBase64 = fromBase64;
+			Binary.fromBase64 = fromBase64;
 			function toHex(source) {
 				source = fromSource(source);
 				if (typeof Buffer !== "undefined") return Buffer.from(source).toString("hex");
 				return Array.from(new Uint8Array(source), (byte) => byte.toString(16).padStart(2, "0")).join("");
 			}
-			_Binary.toHex = toHex;
+			Binary.toHex = toHex;
 			function fromHex(source) {
 				if (typeof Buffer !== "undefined") return fromSource(Buffer.from(source, "hex"));
 				const hex = source.length % 2 === 0 ? source : source.slice(0, source.length - 1);
@@ -7444,7 +10514,7 @@ window.__ModuleLoader__.load({
 				for (let i = 0; i < hex.length; i += 2) buffer.push(parseInt(`${hex[i]}${hex[i + 1]}`, 16));
 				return Uint8Array.from(buffer).buffer;
 			}
-			_Binary.fromHex = fromHex;
+			Binary.fromHex = fromHex;
 		})(Binary || (Binary = {}));
 		Binary.fromBase64;
 		Binary.toBase64;
@@ -7476,58 +10546,78 @@ window.__ModuleLoader__.load({
 			}
 			return result;
 		}
-		/** Deeply compare arrays, dates, regexps, buffers, and plain object fields. */
+		/**
+		* Compare values recursively, treating two volatile references as equal regardless of value.
+		* Strict comparison distinguishes null/undefined, treats opaque objects by identity,
+		* compares URLs by normalized href, treats array holes as undefined, and considers distinct cyclic structures unequal.
+		* @param a - first value.
+		* @param b - second value.
+		* @param strict - whether to require strict data equality outside volatile references.
+		* @returns whether the values compare equal.
+		*/
 		function deepEqual(a, b, strict) {
-			if (a === b) return true;
-			if (!strict && isNullable(a) && isNullable(b)) return true;
-			if (typeof a !== typeof b) return false;
-			if (typeof a !== "object") return false;
-			if (!a || !b) return false;
-			function check(test, then) {
-				return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : void 0;
+			const ancestors = /* @__PURE__ */ new Set();
+			function compare(a, b) {
+				if (a === b) return true;
+				if (isVolatile(a) || isVolatile(b)) return isVolatile(a) && isVolatile(b);
+				if (!strict && isNullable(a) && isNullable(b)) return true;
+				if (typeof a !== typeof b || typeof a !== "object" || !a || !b) return false;
+				if (ancestors.has(a)) return false;
+				function check(test, then) {
+					return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : void 0;
+				}
+				ancestors.add(a);
+				try {
+					return check(Array.isArray, (a, b) => {
+						if (a.length !== b.length) return false;
+						for (let index = 0; index < a.length; index++) if (!compare(a[index], b[index])) return false;
+						return true;
+					}) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("URL"), (a, b) => a.href === b.href) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
+						if (a.byteLength !== b.byteLength) return false;
+						const viewA = new Uint8Array(a);
+						const viewB = new Uint8Array(b);
+						for (let i = 0; i < viewA.length; i++) if (viewA[i] !== viewB[i]) return false;
+						return true;
+					}) ?? ((!strict || [a, b].every((value) => Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)) && Object.keys({
+						...a,
+						...b
+					}).every((key) => compare(a[key], b[key])));
+				} finally {
+					ancestors.delete(a);
+				}
 			}
-			return check(Array.isArray, (a, b) => a.length === b.length && a.every((item, index) => deepEqual(item, b[index]))) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
-				if (a.byteLength !== b.byteLength) return false;
-				const viewA = new Uint8Array(a);
-				const viewB = new Uint8Array(b);
-				for (let i = 0; i < viewA.length; i++) if (viewA[i] !== viewB[i]) return false;
-				return true;
-			}) ?? Object.keys({
-				...a,
-				...b
-			}).every((key) => deepEqual(a[key], b[key], strict));
+			return compare(a, b);
 		}
-		//#endregion
-		//#region ../../../vendor/cosmokit/src/time.ts
-		let Time;
-		(function(_Time) {
-			_Time.millisecond = 1;
-			const second = _Time.second = 1e3;
-			const minute = _Time.minute = second * 60;
-			const hour = _Time.hour = minute * 60;
-			const day = _Time.day = hour * 24;
-			const week = _Time.week = day * 7;
+		/** Time constants plus parsing and formatting helpers. */
+		var Time;
+		(function(Time) {
+			Time.millisecond = 1;
+			Time.second = 1e3;
+			Time.minute = Time.second * 60;
+			Time.hour = Time.minute * 60;
+			Time.day = Time.hour * 24;
+			Time.week = Time.day * 7;
 			let timezoneOffset = (/* @__PURE__ */ new Date()).getTimezoneOffset();
 			function setTimezoneOffset(offset) {
 				timezoneOffset = offset;
 			}
-			_Time.setTimezoneOffset = setTimezoneOffset;
+			Time.setTimezoneOffset = setTimezoneOffset;
 			function getTimezoneOffset() {
 				return timezoneOffset;
 			}
-			_Time.getTimezoneOffset = getTimezoneOffset;
+			Time.getTimezoneOffset = getTimezoneOffset;
 			function getDateNumber(date = /* @__PURE__ */ new Date(), offset) {
 				if (typeof date === "number") date = new Date(date);
 				if (offset === void 0) offset = timezoneOffset;
-				return Math.floor((date.valueOf() / minute - offset) / 1440);
+				return Math.floor((date.valueOf() / Time.minute - offset) / 1440);
 			}
-			_Time.getDateNumber = getDateNumber;
+			Time.getDateNumber = getDateNumber;
 			function fromDateNumber(value, offset) {
-				const date = new Date(value * day);
+				const date = new Date(value * Time.day);
 				if (offset === void 0) offset = timezoneOffset;
-				return new Date(+date + offset * minute);
+				return new Date(+date + offset * Time.minute);
 			}
-			_Time.fromDateNumber = fromDateNumber;
+			Time.fromDateNumber = fromDateNumber;
 			const numeric = /\d+(?:\.\d+)?/.source;
 			const timeRegExp = new RegExp(`^${[
 				"w(?:eek(?:s)?)?",
@@ -7539,9 +10629,9 @@ window.__ModuleLoader__.load({
 			function parseTime(source) {
 				const capture = timeRegExp.exec(source);
 				if (!capture) return 0;
-				return (parseFloat(capture[1]) * week || 0) + (parseFloat(capture[2]) * day || 0) + (parseFloat(capture[3]) * hour || 0) + (parseFloat(capture[4]) * minute || 0) + (parseFloat(capture[5]) * second || 0);
+				return (parseFloat(capture[1]) * Time.week || 0) + (parseFloat(capture[2]) * Time.day || 0) + (parseFloat(capture[3]) * Time.hour || 0) + (parseFloat(capture[4]) * Time.minute || 0) + (parseFloat(capture[5]) * Time.second || 0);
 			}
-			_Time.parseTime = parseTime;
+			Time.parseTime = parseTime;
 			function parseDate(date) {
 				const parsed = parseTime(date);
 				if (parsed) date = Date.now() + parsed;
@@ -7549,27 +10639,27 @@ window.__ModuleLoader__.load({
 				else if (/^\d{1,2}-\d{1,2}-\d{1,2}(:\d{1,2}){1,2}$/.test(date)) date = `${(/* @__PURE__ */ new Date()).getFullYear()}-${date}`;
 				return date ? new Date(date) : /* @__PURE__ */ new Date();
 			}
-			_Time.parseDate = parseDate;
+			Time.parseDate = parseDate;
 			function format(ms) {
 				const abs = Math.abs(ms);
-				if (abs >= day - hour / 2) return Math.round(ms / day) + "d";
-				else if (abs >= hour - minute / 2) return Math.round(ms / hour) + "h";
-				else if (abs >= minute - second / 2) return Math.round(ms / minute) + "m";
-				else if (abs >= second) return Math.round(ms / second) + "s";
+				if (abs >= Time.day - Time.hour / 2) return Math.round(ms / Time.day) + "d";
+				else if (abs >= Time.hour - Time.minute / 2) return Math.round(ms / Time.hour) + "h";
+				else if (abs >= Time.minute - Time.second / 2) return Math.round(ms / Time.minute) + "m";
+				else if (abs >= Time.second) return Math.round(ms / Time.second) + "s";
 				return ms + "ms";
 			}
-			_Time.format = format;
+			Time.format = format;
 			function toDigits(source, length = 2) {
 				return source.toString().padStart(length, "0");
 			}
-			_Time.toDigits = toDigits;
+			Time.toDigits = toDigits;
 			function template(template, time = /* @__PURE__ */ new Date()) {
 				return template.replace("yyyy", time.getFullYear().toString()).replace("yy", time.getFullYear().toString().slice(2)).replace("MM", toDigits(time.getMonth() + 1)).replace("dd", toDigits(time.getDate())).replace("hh", toDigits(time.getHours())).replace("mm", toDigits(time.getMinutes())).replace("ss", toDigits(time.getSeconds())).replace("SSS", toDigits(time.getMilliseconds(), 3));
 			}
-			_Time.template = template;
+			Time.template = template;
 		})(Time || (Time = {}));
 		//#endregion
-		//#region ../../../vendor/schemastery/src/index.ts
+		//#region ../../../vendor/schemastery/lib/index.mjs
 		const kSchema = Symbol.for("schemastery");
 		const kValidationError = Symbol.for("ValidationError");
 		globalThis.__schemastery_index__ ??= 0;
@@ -7745,6 +10835,7 @@ window.__ModuleLoader__.load({
 			return schema;
 		};
 		Schema.prototype.simplify = function simplify(value) {
+			if (isVolatile(value)) value = value.get();
 			if (deepEqual(value, this.meta.default, this.type === "dict")) return null;
 			if (isNullable(value)) return value;
 			if (this.type === "object" || this.type === "dict") {
@@ -7801,12 +10892,49 @@ window.__ModuleLoader__.load({
 			};
 			return schema;
 		} });
+		Schema.prototype.volatile = function volatile() {
+			if (this.meta.volatile) throw new TypeError("volatile schema is already wrapped");
+			return this.extra("volatile", true);
+		};
 		const resolvers = {};
+		const checkedVolatile = Symbol("checked-volatile-schema");
+		function validateVolatileSchema(schema, path = [], blocked = false, seen = /* @__PURE__ */ new Map()) {
+			const states = seen.get(schema) ?? /* @__PURE__ */ new Set();
+			if (states.has(blocked)) return;
+			states.add(blocked);
+			seen.set(schema, states);
+			if (schema.meta?.volatile && blocked) throw new ValidationError("volatile fields require a fixed object path without an enclosing volatile field", { path });
+			const nested = blocked || !!schema.meta?.volatile;
+			if (schema.dict) for (const [key, child] of Object.entries(schema.dict)) validateVolatileSchema(child, [...path, key], nested, seen);
+			if (schema.sKey) validateVolatileSchema(schema.sKey, [...path, "<key>"], true, seen);
+			if (schema.inner && (schema.type !== "lazy" || schema.inner[kSchema])) validateVolatileSchema(schema.inner, [...path, "*"], true, seen);
+			if (schema.list) for (let index = 0; index < schema.list.length; index++) validateVolatileSchema(schema.list[index], [...path, String(index)], true, seen);
+		}
 		Schema.extend = function extend(type, resolve) {
 			resolvers[type] = resolve;
 		};
 		Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
 			if (!schema) return [data];
+			if (!options[checkedVolatile]) {
+				validateVolatileSchema(schema, options.path);
+				options = {
+					...options,
+					[checkedVolatile]: true
+				};
+			}
+			if (schema.meta?.volatile) {
+				const inner = Schema(schema);
+				inner.meta = {
+					...schema.meta,
+					volatile: false
+				};
+				const [value, adapted] = Schema.resolve(data, inner, options, strict);
+				try {
+					return [createVolatile(value), adapted];
+				} catch (error) {
+					throw new ValidationError(error instanceof Error ? error.message : String(error), options);
+				}
+			}
 			if (options.ignore?.(data, schema)) return [data];
 			if (isNullable(data) && schema.type !== "lazy") {
 				if (schema.meta.required) throw new ValidationError(`missing required value`, options);
@@ -7909,6 +11037,7 @@ window.__ModuleLoader__.load({
 					...schema.meta,
 					...schema.inner.meta
 				};
+				validateVolatileSchema(schema.inner, options.path, true);
 			}
 			return Schema.resolve(data, schema.inner, options, strict);
 		});
@@ -8008,7 +11137,7 @@ window.__ModuleLoader__.load({
 			} catch (e) {
 				if (!options?.autofix) throw e;
 				delete data[key];
-				return schema.meta.default;
+				return schema.meta.volatile ? createVolatile(schema.meta.default) : schema.meta.default;
 			}
 		}
 		Schema.extend("array", (data, { inner, meta }, options) => {
@@ -8164,22 +11293,144 @@ window.__ModuleLoader__.load({
 		], ({ inner }, isInner) => inner.toString(isInner));
 		//#endregion
 		//#region lib/types/chat-settings.js
-		/** Chat transcript preferences stored in the Host user-settings document. */
+		/** Chat display preferences stored in the Host user-settings document. */
 		/** Settings namespace owned by the Chat target. */
 		const CHAT_SETTINGS_NAMESPACE = "ui-chat";
-		/** Field carrying the completed-Turn transcript presentation mode. */
+		/** Field carrying the work-details presentation mode. */
 		const TRANSCRIPT_VIEW_FIELD = "transcriptView";
-		/** Transcript presentation modes accepted at settings boundaries. */
-		const TRANSCRIPT_VIEW_MODES = ["normal", "compact"];
+		/** Work-details presentation modes a user can choose. */
+		const TRANSCRIPT_VIEW_MODES = [
+			"compact",
+			"detailed",
+			"expanded"
+		];
+		/**
+		* Saved value from the two-mode generation of this setting. Read as `detailed`;
+		* never offered as a choice and never written back.
+		*/
+		const LEGACY_TRANSCRIPT_VIEW_MODE = "normal";
+		/** Every value the durable field accepts: current modes plus the legacy saved value. */
+		const TRANSCRIPT_VIEW_SETTING_VALUES = [...TRANSCRIPT_VIEW_MODES, LEGACY_TRANSCRIPT_VIEW_MODE];
 		/** Default preserves the compact process disclosure introduced by Chat. */
 		const DEFAULT_TRANSCRIPT_VIEW_MODE = "compact";
-		Schema.object({ [TRANSCRIPT_VIEW_FIELD]: Schema.union([...TRANSCRIPT_VIEW_MODES]).default(DEFAULT_TRANSCRIPT_VIEW_MODE) });
+		/** Performance and usage detail levels accepted by user settings. */
+		const PERFORMANCE_USAGE_MODES = ["compact", "detailed"];
+		/** Preserve detailed accounting for users without an explicit preference. */
+		const DEFAULT_PERFORMANCE_USAGE = "detailed";
+		/** Durable Chat schema; also the wire envelope the browser scope validates against. */
+		const ChatSettingsFields = {
+			linkOpening: Schema.union(["sidebar", "new-tab"]).default("sidebar"),
+			performanceUsage: Schema.union([...PERFORMANCE_USAGE_MODES]).default(DEFAULT_PERFORMANCE_USAGE),
+			[TRANSCRIPT_VIEW_FIELD]: Schema.union([...TRANSCRIPT_VIEW_SETTING_VALUES]).default(DEFAULT_TRANSCRIPT_VIEW_MODE)
+		};
+		Schema.object(ChatSettingsFields);
+		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-chat/src/client/settings/PreferenceRow.module.css.mjs
+		const css = "._2XZxNq_row{border-bottom:.5px solid var(--dsw-alias-border-l2);align-items:center;gap:8px;padding:16px 0;display:flex}._2XZxNq_rowText{flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:48px;display:flex}._2XZxNq_title{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}._2XZxNq_desc{color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:400;line-height:18px}._2XZxNq_selector{background:var(--dsw-alias-bg-module-platform);height:36px;font:inherit;color:var(--dsw-alias-label-primary);cursor:pointer;border:none;border-radius:18px;align-items:center;gap:12px;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex}._2XZxNq_selector:hover{background:var(--dsw-alias-interactive-bg-hover)}._2XZxNq_chevron{flex:none}";
+		const tagId = "@deepseek-ai/dsh-client-ui-chat/PreferenceRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-chat";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var PreferenceRow_module_css_default = {
+			"chevron": "_2XZxNq_chevron",
+			"desc": "_2XZxNq_desc",
+			"row": "_2XZxNq_row",
+			"rowText": "_2XZxNq_rowText",
+			"selector": "_2XZxNq_selector",
+			"title": "_2XZxNq_title"
+		};
+		//#endregion
+		//#region lib/types/client/settings/PreferenceRow.js
+		/** Localized two-column selector shared by Chat preference rows. */
+		/**
+		* Render a preference label and its menu; selection restores focus before publishing the new value.
+		* @param props - localized copy, selected value, choices, and mutation callback.
+		* @returns the settings row.
+		*/
+		function PreferenceRow({ title, description, value, selectedLabel, options, onSelect }) {
+			const [open, setOpen] = (0, react.useState)(false);
+			const selectorRef = (0, react.useRef)(null);
+			const closeMenu = () => {
+				setOpen(false);
+			};
+			const selectMode = (id) => {
+				selectorRef.current?.focus({ preventScroll: true });
+				closeMenu();
+				onSelect(id);
+			};
+			const selector = (0, react_jsx_runtime.jsxs)("button", {
+				ref: selectorRef,
+				type: "button",
+				className: PreferenceRow_module_css_default.selector,
+				"aria-haspopup": "menu",
+				"aria-expanded": open,
+				onClick: () => {
+					setOpen((value) => !value);
+				},
+				children: [selectedLabel, (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: PreferenceRow_module_css_default.chevron })]
+			});
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: PreferenceRow_module_css_default.row,
+				children: [(0, react_jsx_runtime.jsxs)("div", {
+					className: PreferenceRow_module_css_default.rowText,
+					children: [(0, react_jsx_runtime.jsx)("div", {
+						className: PreferenceRow_module_css_default.title,
+						children: title
+					}), (0, react_jsx_runtime.jsx)("div", {
+						className: PreferenceRow_module_css_default.desc,
+						children: description
+					})]
+				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+					open,
+					onClose: closeMenu,
+					items: options,
+					selectedId: value,
+					onSelect: selectMode,
+					align: "end",
+					portal: true,
+					anchor: selector
+				})]
+			});
+		}
+		//#endregion
+		//#region lib/types/client/settings/TranscriptViewRow.js
+		const LABELS = {
+			compact: "settings.transcript.compact",
+			detailed: "settings.transcript.detailed",
+			expanded: "settings.transcript.expanded"
+		};
+		/**
+		* Render the work-details mode selector.
+		* @param props - composed Settings slot props.
+		* @returns the preference row.
+		*/
+		function TranscriptViewRow({ useTranscriptView, setTranscriptView, t }) {
+			const mode = useTranscriptView((value) => value);
+			return (0, react_jsx_runtime.jsx)(PreferenceRow, {
+				title: t("settings.transcript.title"),
+				description: t("settings.transcript.description"),
+				value: mode,
+				selectedLabel: t(LABELS[mode]),
+				options: TRANSCRIPT_VIEW_MODES.map((id) => ({
+					id,
+					label: t(LABELS[id])
+				})),
+				onSelect: (value) => {
+					setTranscriptView(value);
+				}
+			});
+		}
 		//#endregion
 		//#region lib/types/client/transcript-view.js
-		/** Host-backed completed-Turn transcript presentation policy. */
-		/** Live transcript preference consumed by Chat and its Settings row. */
+		/** Host-backed work-details presentation policy. */
+		/** Live work-details preference consumed by Chat and its Settings row. */
 		var TranscriptViewPolicy = class {
 			host;
+			unsubscribe;
 			/** Reactive current mode; defaults to Compact before Host settings arrive. */
 			mode = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)(DEFAULT_TRANSCRIPT_VIEW_MODE);
 			/**
@@ -8187,14 +11438,18 @@ window.__ModuleLoader__.load({
 			*/
 			constructor(host) {
 				this.host = host;
-				host.subscribe(() => {
+				this.unsubscribe = host.subscribe(() => {
 					this.adopt();
 				});
 				this.adopt();
 			}
+			/** Release the accepted-value subscription. */
+			dispose() {
+				this.unsubscribe();
+			}
 			/**
 			* Publish and persist one explicit user choice.
-			* @param mode - Normal or Compact transcript presentation.
+			* @param mode - Compact, Detailed, or Expanded work details.
 			*/
 			setMode(mode) {
 				if (this.mode.getSnapshot() === mode) return;
@@ -8204,8 +11459,142 @@ window.__ModuleLoader__.load({
 			/** Adopt the latest accepted Host section without writing it back. */
 			adopt() {
 				const section = this.host.getSnapshot().value;
-				if (section === void 0 || this.mode.getSnapshot() === section.transcriptView) return;
-				this.mode.set(section.transcriptView);
+				if (section === void 0) return;
+				const mode = section.transcriptView === "normal" ? "detailed" : section.transcriptView;
+				if (this.mode.getSnapshot() !== mode) this.mode.set(mode);
+			}
+		};
+		//#endregion
+		//#region lib/types/client/presentation-policy.js
+		/**
+		* Runtime vocabulary derived from the persisted work-details mode. Renderers
+		* and seats select single fields of this policy; none of them compares the
+		* mode enum, so adding a mode changes only the table below.
+		*/
+		const POLICIES = {
+			compact: {
+				mode: "compact",
+				foldCompletedTurns: true,
+				stepGrouping: "collapsed",
+				liveProcessDetail: false,
+				settledReasoningPreview: false
+			},
+			detailed: {
+				mode: "detailed",
+				foldCompletedTurns: true,
+				stepGrouping: "collapsed",
+				liveProcessDetail: true,
+				settledReasoningPreview: true
+			},
+			expanded: {
+				mode: "expanded",
+				foldCompletedTurns: true,
+				stepGrouping: "none",
+				liveProcessDetail: true,
+				settledReasoningPreview: true
+			}
+		};
+		/**
+		* Derive a policy observable from the mode observable without a subscription of
+		* its own: reads are a table lookup and change notifications are the mode's.
+		* @param mode - live work-details mode.
+		* @returns observable policy that changes exactly when the mode changes.
+		*/
+		function derivePresentationPolicy(mode) {
+			return {
+				getSnapshot: () => POLICIES[mode.getSnapshot()],
+				subscribe: (listener) => mode.subscribe(listener)
+			};
+		}
+		//#endregion
+		//#region lib/types/client/settings/LinkOpeningRow.js
+		/**
+		* Render the link-opening destination selector.
+		* @param props - Composed Settings slot props.
+		* @returns The preference row.
+		*/
+		function LinkOpeningRow({ useLinkOpening, useBrowserAvailable, setLinkOpening, t }) {
+			const destination = useLinkOpening((value) => value);
+			if (!useBrowserAvailable((value) => value)) return null;
+			return (0, react_jsx_runtime.jsx)(PreferenceRow, {
+				title: t("settings.links.title"),
+				description: t("settings.links.description"),
+				value: destination,
+				selectedLabel: t(destination === "sidebar" ? "settings.links.sidebar" : "settings.links.newTab"),
+				options: [{
+					id: "sidebar",
+					label: t("settings.links.sidebar")
+				}, {
+					id: "new-tab",
+					label: t("settings.links.newTab")
+				}],
+				onSelect: (value) => {
+					setLinkOpening(value);
+				}
+			});
+		}
+		//#endregion
+		//#region lib/types/client/settings/PerformanceUsageRow.js
+		const OPTIONS = [{
+			id: "compact",
+			label: "settings.performance.compact"
+		}, {
+			id: "detailed",
+			label: "settings.performance.detailed"
+		}];
+		/**
+		* Render the performance and usage detail selector.
+		* @param props - composed Settings slot props.
+		* @returns the preference row.
+		*/
+		function PerformanceUsageRow({ usePerformanceUsage, setPerformanceUsage, t }) {
+			const mode = usePerformanceUsage((value) => value);
+			const selectedLabel = mode === "detailed" ? "settings.performance.detailed" : "settings.performance.compact";
+			return (0, react_jsx_runtime.jsx)(PreferenceRow, {
+				title: t("settings.performance.title"),
+				description: t("settings.performance.description"),
+				value: mode,
+				selectedLabel: t(selectedLabel),
+				options: OPTIONS.map((option) => ({
+					id: option.id,
+					label: t(option.label)
+				})),
+				onSelect: (value) => {
+					setPerformanceUsage(value);
+				}
+			});
+		}
+		//#endregion
+		//#region lib/types/client/performance-usage.js
+		/** Performance detail preference with process-local choices on memory-only settings scopes. */
+		/** Shared live preference for the settings row and chat statistics. */
+		var PerformanceUsagePolicy = class {
+			host;
+			unsubscribe;
+			/** Current choice, reconciled with accepted Host settings when available. */
+			mode = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)(DEFAULT_PERFORMANCE_USAGE);
+			/** @param host - Chat settings scope, durable on loopback and memory-only elsewhere. */
+			constructor(host) {
+				this.host = host;
+				const adopt = () => {
+					const accepted = host.getSnapshot().value?.performanceUsage;
+					if (accepted !== void 0) this.mode.set(accepted);
+				};
+				this.unsubscribe = host.subscribe(adopt);
+				adopt();
+			}
+			/** Release the accepted-value subscription. */
+			dispose() {
+				this.unsubscribe();
+			}
+			/**
+			* Publish a choice immediately and persist it when the scope supports writes.
+			* @param mode - Statistics detail selected by the user.
+			*/
+			setMode(mode) {
+				if (mode === this.mode.getSnapshot()) return;
+				this.mode.set(mode);
+				this.host.set("performanceUsage", mode);
 			}
 		};
 		//#endregion
@@ -8226,17 +11615,21 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region lib/types/client/apply.js
-		const CHAT_NODE_INJECT = { hooks: { turnData: (_standard, data) => function useTurnData(key) {
-			return useTurnDataValue(data, key);
-		} } };
+		const CHAT_NODE_INJECT = { hooks: {
+			turnData: (_standard, { turnData }) => function useTurnData(key) {
+				return useTurnDataValue(turnData, key);
+			},
+			disclosure: (_standard, { disclosureReset }) => bindDisclosure(disclosureReset)
+		} };
 		/** Services required by the Chat target and its presentation registrations. */
 		const inject = [
 			"slots",
 			"sessions",
+			"uiWorkspace",
 			"uiSession",
 			"uiConversation",
 			"locale",
-			"settingsScope",
+			"configForms",
 			"remote",
 			"remote.session",
 			"sidebarRight"
@@ -8260,7 +11653,6 @@ window.__ModuleLoader__.load({
 				return source;
 			};
 			registerConversationNodes(ctx);
-			registerChatNodeRenderers(ctx);
 			ctx.uiSession.provide({
 				hooks: ["chat"],
 				resolve: (binding) => ({ hooks: { chat: chatSource(binding) } })
@@ -8272,7 +11664,56 @@ window.__ModuleLoader__.load({
 			const t = ctx.locale.bind(NS);
 			const chatStore = createChatStore();
 			const chatScrollPositions = /* @__PURE__ */ new Map();
-			const transcriptView = new TranscriptViewPolicy(ctx.settingsScope.bind({ namespace: CHAT_SETTINGS_NAMESPACE }));
+			const chatSettings = ctx.configForms.get(CHAT_SETTINGS_NAMESPACE);
+			const linkOpening = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)(chatSettings.getSnapshot().value?.linkOpening ?? "sidebar");
+			ctx.effect(() => chatSettings.subscribe(() => {
+				const accepted = chatSettings.getSnapshot().value?.linkOpening;
+				if (accepted !== void 0) linkOpening.set(accepted);
+			}));
+			ctx.inject(["sidebarRightTabs"], (scope) => {
+				const tabs = scope.sidebarRightTabs;
+				const browserAvailable = {
+					getSnapshot: () => tabs.get("browser") !== void 0,
+					subscribe: (listener) => tabs.subscribe(listener)
+				};
+				scope.slots.inject("settings.general.item", () => scope.slots.register({
+					name: "settings.general.item",
+					id: "link-opening",
+					order: 14,
+					locale: NS,
+					inject: () => ({
+						hooks: {
+							linkOpening,
+							browserAvailable
+						},
+						setLinkOpening: (destination) => {
+							linkOpening.set(destination);
+							chatSettings.set("linkOpening", destination).catch((_error) => {});
+						}
+					})
+				}, LinkOpeningRow));
+			});
+			const transcriptView = new TranscriptViewPolicy(chatSettings);
+			const presentation = derivePresentationPolicy(transcriptView.mode);
+			const performancePolicy = new PerformanceUsagePolicy(chatSettings);
+			ctx.effect(() => () => {
+				transcriptView.dispose();
+				performancePolicy.dispose();
+			});
+			const performanceUsage = performancePolicy.mode;
+			registerChatNodeRenderers(ctx, performanceUsage, presentation);
+			ctx.slots.inject("settings.general.item", () => ctx.slots.register({
+				name: "settings.general.item",
+				id: "performance-usage",
+				order: 13,
+				locale: NS,
+				inject: () => ({
+					hooks: { performanceUsage },
+					setPerformanceUsage: (mode) => {
+						performancePolicy.setMode(mode);
+					}
+				})
+			}, PerformanceUsageRow));
 			ctx.slots.inject("settings.general.item", () => ctx.slots.register({
 				name: "settings.general.item",
 				id: "transcript-view",
@@ -8309,11 +11750,13 @@ window.__ModuleLoader__.load({
 						if (binding === void 0) throw new Error(`ui-chat: unknown session "${sessionId}"`);
 						const session = binding.session;
 						const chat = chatSource(binding);
+						const conversation = ctx.uiConversation.binding(binding);
 						return {
-							hooks: { transcriptView: transcriptView.mode },
+							hooks: { presentation },
 							keyedHooks: {
 								chatNode: (key) => chat.getSnapshot().nodes.source(key),
-								chatNodeProcess: (key) => chat.getSnapshot().nodes.processSource(key)
+								chatNodeProcess: (key) => chat.getSnapshot().nodes.processSource(key),
+								chatGroup: (key) => conversation.snapshot.getSnapshot().views.grouped("chat")?.groupSource(key)
 							},
 							fileMentions: (owner) => ctx.get("chatFileMentions")?.forClosing(owner, sessionId),
 							openFile: async (path, options) => {
@@ -8322,6 +11765,15 @@ window.__ModuleLoader__.load({
 								if (options?.line === void 0) ctx.sidebarRight.openResource(url);
 								else ctx.sidebarRight.openResource(url, { params: { line: options.line } });
 								await Promise.resolve();
+							},
+							openSkill: (name) => {
+								const scope = ctx.sessions.scope(sessionId);
+								if (scope === void 0) return;
+								ctx.get("inputTriggers")?.sessionOf(scope).openReference("skill", { ref: `/${name}` });
+							},
+							openExternalLink: (url) => {
+								if (linkOpening.getSnapshot() === "sidebar" && ctx.get("sidebarRightTabs")?.get("browser") !== void 0) ctx.sidebarRight.openTab("browser", { params: { url } });
+								else window.open(url, "_blank", "noopener,noreferrer");
 							},
 							loadOlder: () => {
 								session.loadOlder();
@@ -8341,7 +11793,7 @@ window.__ModuleLoader__.load({
 									atSeq: seq,
 									increaseTitle: true
 								}).then((childId) => {
-									ctx.sessions.open(childId);
+									ctx.uiWorkspace.openSession(childId);
 								}).catch(() => {});
 							}
 						};
@@ -8352,7 +11804,8 @@ window.__ModuleLoader__.load({
 				name: "conversation.composer.dock",
 				id: "stats",
 				order: 0,
-				locale: NS
+				locale: NS,
+				inject: () => ({ hooks: { performanceUsage } })
 			}, StatsPills));
 			ctx.slots.inject("conversation.approval.detail", () => ctx.slots.register({ name: "conversation.approval.detail" }, ApprovalCommand));
 		}

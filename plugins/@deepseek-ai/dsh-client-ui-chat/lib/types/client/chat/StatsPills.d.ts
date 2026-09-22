@@ -1,7 +1,7 @@
 import type { UseProjection } from '@deepseek-ai/dsh-api-session-controller/client';
-import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots';
+import type { InjectFace, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots';
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client';
-import type { ChatViewSlotProps } from '../contract/slots.ts';
+import type { ChatViewSlotProps, PerformanceUsageInjected } from '../contract/slots.ts';
 import type { ChatSnapshot } from '../contract/snapshot.ts';
 interface WindowStats {
     turns: number;
@@ -53,12 +53,12 @@ export declare function cacheHitPercent(usage: TokenUsageProjection): string | n
  */
 export declare function billedInputTokens(usage: TokenUsageProjection): number;
 /** Props: the conversation-snapshot selector plus the projection read seat. */
-export interface StatsPillsProps {
+export interface StatsPillsProps extends InjectFace<PerformanceUsageInjected> {
     useChat: SnapshotSelectorHook<ChatSnapshot>;
     useProjection: UseProjection;
     /** The owning dock's locale seat. */
     t: ChatViewSlotProps['t'];
 }
-export declare const StatsPills: import("react").MemoExoticComponent<({ useChat, useProjection, t }: StatsPillsProps) => import("react").JSX.Element | null>;
+export declare const StatsPills: import("react").MemoExoticComponent<({ useChat, useProjection, usePerformanceUsage, t }: StatsPillsProps) => import("react").JSX.Element | null>;
 export {};
 //# sourceMappingURL=StatsPills.d.ts.map

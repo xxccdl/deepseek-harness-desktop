@@ -15,6 +15,7 @@
  * @module
  */
 import type { Context } from '@deepseek-ai/cordis';
+import type { ServerContext } from './server-context.ts';
 import type { Config } from './index.ts';
 /** Automatic reconnect policy for one MCP server connection. */
 export interface ReconnectConfig {
@@ -29,6 +30,8 @@ export interface ReconnectConfig {
 }
 /** Defaults shared by the Config schema and {@link resolveReconnectPolicy}. */
 export declare const RECONNECT_DEFAULTS: Required<ReconnectConfig>;
+/** Default UTF-8 byte limit for attributed server instructions. */
+export declare const DEFAULT_MAX_INSTRUCTION_BYTES = 32768;
 /** Fully resolved reconnect policy captured at plugin load. */
 export type ResolvedReconnectPolicy = Readonly<Required<ReconnectConfig>>;
 /**
@@ -48,7 +51,7 @@ export interface ConnectionOutcome {
     error?: unknown;
 }
 /** Handle for one plugin instance's supervised connection. */
-export interface ConnectionHandle {
+export interface ConnectionHandle extends ServerContext {
     /**
      * Settles when the first connection attempt completes (success or failure).
      * The supervisor enters its reconnect loop regardless; the caller decides
@@ -56,9 +59,9 @@ export interface ConnectionHandle {
      */
     ready: Promise<ConnectionOutcome>;
     /**
-     * Stop reconnection, close the live client, wait for the in-flight attempt
-     * and queued tool syncs to quiesce, then unregister every tool this server
-     * still owns.
+     * Stop reconnection, close the negotiating transport or live client, wait
+     * for the in-flight attempt and queued tool syncs to quiesce, then
+     * unregister every tool this server still owns.
      */
     dispose(): Promise<void>;
 }

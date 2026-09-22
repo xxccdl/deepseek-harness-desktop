@@ -1,7 +1,8 @@
 import type { ConversationNode, ConversationTimelineSnapshot, PartialAssistant, RunningToolCall } from '@deepseek-ai/dsh-client-ui-conversation/client';
-import type { ChatConversationViewNode } from './chat-nodes.ts';
+import type { ChatConversationViewNode, ChatNodeDataMap, ChatNodeKind } from './chat-nodes.ts';
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store';
 import type { TurnProcessSpec } from './turn-process.ts';
-export type { AssistantBlock, AssistantMessageNode, AssistantProvenanceView, AssistantRequestConfig, AssistantTiming, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode, ModelRetryNode, PartialAssistant, RunningToolCall, SteeringMessageNode, TodoItem, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UnknownSurfaceNode, UserMessageNode, } from '@deepseek-ai/dsh-client-ui-conversation/client';
+export type { AssistantBlock, AssistantMessageNode, AssistantProviderMetadataView, AssistantRequestConfig, AssistantTiming, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode, ModelRetryNode, PartialAssistant, RunningToolCall, SteeringMessageNode, TodoItem, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UnknownSurfaceNode, UserMessageNode, } from '@deepseek-ai/dsh-client-ui-conversation/client';
 /** Per-key observable used by one mounted Chat Node Seat. */
 export interface ChatNodeSource {
     /** @returns the current Node for this source's stable key. */
@@ -22,6 +23,14 @@ export interface ChatNodeStore {
     get(key: string): ChatConversationViewNode | undefined;
     /** @param key - stable Conversation Context key. @returns its identity-stable observable source. */
     source(key: string): ChatNodeSource;
+    /**
+     * Observe one Turn's data for a single Node kind, including hidden Nodes, in anchor order.
+     * Other Turns and kinds do not notify this source.
+     * @param turn - resolved owning Turn.
+     * @param kind - business Node kind.
+     * @returns an identity-stable source whose array changes only with its members.
+     */
+    turnDataSource<Kind extends ChatNodeKind>(turn: number, kind: Kind): ObservableSnapshot<readonly ChatNodeDataMap[Kind][]>;
     /** @param key - stable Conversation Context key. @returns its Turn-process presentation source. */
     processSource(key: string): ChatNodeProcessSource;
     /** @returns all currently materialized Nodes without imposing render order. */
@@ -58,8 +67,12 @@ export interface ChatLocationNodeIndex {
 export interface ChatTurnProcessPresentation {
     readonly turn: number;
     readonly spec: TurnProcessSpec;
+    /** Whether the loaded window contains this Turn's `turn/start`; folding is decided per Turn on this fact. */
+    readonly turnStarted: boolean;
     readonly turnClosed: boolean;
     readonly hasExternalProcess: boolean;
+    /** A visible input after process output prevents one disclosure from hiding its surrounding groups. */
+    readonly hasInterleavedInput: boolean;
     readonly compactAnswer: boolean;
 }
 /** Compatibility projection backing StatsPills and the legacy top-level snapshot fields. */

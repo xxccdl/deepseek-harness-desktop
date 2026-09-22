@@ -13,6 +13,7 @@ export interface SessionLogDownloadEntry {
 export interface SessionLogDownloadState {
     bySession: Record<string, SessionLogDownloadEntry | undefined>;
 }
+/** HTTP carrier for the export route. */
 type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
 type Save = (url: string, filename: string) => void;
 /**
@@ -22,8 +23,9 @@ type Save = (url: string, filename: string) => void;
  */
 export declare function sessionLogZipFilename(sessionId: SessionId): string;
 /**
- * Hand a Host download URL to the browser download manager.
- * @param url - same-origin Host download URL.
+ * Hand a Host download route to the browser download manager, which resolves it
+ * against the document's own base.
+ * @param url - document-relative Host download route.
  * @param filename - browser download filename.
  */
 export declare function downloadUrl(url: string, filename: string): void;

@@ -563,9 +563,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region plugin
 		const NS = "settings.memory";
-		const inject = ["slots", "locale", "settingsScope"];
+		const inject = ["slots", "locale", "configForms"];
 		function apply(ctx) {
-			scopeRef = ctx.settingsScope.bind({ namespace: "memory" });
+			// The Host entry that owns these settings is the `tool-memory` row.
+			scopeRef = ctx.configForms.get("tool-memory");
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh: {
 					"nav": "记忆",

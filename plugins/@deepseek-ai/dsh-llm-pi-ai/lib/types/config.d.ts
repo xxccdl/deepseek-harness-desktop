@@ -12,6 +12,7 @@
  *
  * @module dsh-llm-pi-ai/config
  */
+import type { Volatile } from '@deepseek-ai/cordis';
 import type { CacheRetention, ModelThinkingLevel, Provider, ThinkingBudgets, Transport } from '@earendil-works/pi-ai';
 import z from '@deepseek-ai/schemastery';
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials';
@@ -183,10 +184,140 @@ export interface Config {
      * the dormant settings-driven posture: the adapter mounts with no routes
      * and registers them the moment a settings section supplies profiles.
      */
-    providers?: Record<string, PiAiProviderProfile>;
+    providers: Volatile<Record<string, PiAiProviderProfile>>;
 }
+/** Plain options accepted by the provider resolver. */
+export type Options = {
+    [K in keyof Config]?: Config[K] extends Volatile<infer T> ? T : never;
+};
 /** Runtime schema for {@link Config}. */
-export declare const Config: z<Config>;
+export declare const Config: z<Schemastery.ObjectS<NoInfer<{
+    providers: z<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
+        apiKeyEnv?: string | null;
+        displayName?: string | null;
+        api?: string | null;
+        baseURL?: string | null;
+        models?: PiAiModelProfile[] | null;
+        modelOverrides?: import("@deepseek-ai/cosmokit").Dict<PiAiModelOverride, string> | null;
+        compat?: PiAiCompatProfile | null;
+        defaultContextWindow?: number | null;
+        defaultMaxTokens?: number | null;
+        defaultInput?: ("text" | "image")[] | null;
+        headers?: import("@deepseek-ai/cosmokit").Dict<string, string> | null;
+        reasoning?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | null;
+        thinkingBudgets?: ({
+            minimal?: number | null;
+            low?: number | null;
+            medium?: number | null;
+            high?: number | null;
+        } & import("@deepseek-ai/cosmokit").Dict) | null;
+        cacheRetention?: "none" | "short" | "long" | null;
+        transport?: "auto" | "sse" | "websocket" | "websocket-cached" | null;
+        timeoutMs?: number | null;
+        websocketConnectTimeoutMs?: number | null;
+        streamIdleTimeoutMs?: number | null;
+        maxRequestImageBytes?: number | null;
+        requestImagePixelBudget?: number | null;
+        requestImageMaxBytes?: number | null;
+        retryPolicy?: RetryPolicyConfig | null;
+    } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+        apiKeyEnv: z<string, string, "plain">;
+        displayName: z<string, string, "plain">;
+        api: z<string, string, "plain">;
+        baseURL: z<string, string, "plain">;
+        models: z<PiAiModelProfile[], PiAiModelProfile[], "plain">;
+        modelOverrides: z<import("@deepseek-ai/cosmokit").Dict<PiAiModelOverride, string>, import("@deepseek-ai/cosmokit").Dict<PiAiModelOverride, string>, "plain">;
+        compat: z<PiAiCompatProfile>;
+        defaultContextWindow: z<number, number, "defined">;
+        defaultMaxTokens: z<number, number, "defined">;
+        defaultInput: z<("text" | "image")[], ("text" | "image")[], "defined">;
+        headers: z<import("@deepseek-ai/cosmokit").Dict<string, string>, import("@deepseek-ai/cosmokit").Dict<string, string>, "plain">;
+        reasoning: z<"off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max", "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max", "plain">;
+        thinkingBudgets: z<Schemastery.ObjectS<NoInfer<{
+            minimal: z<number, number, "plain">;
+            low: z<number, number, "plain">;
+            medium: z<number, number, "plain">;
+            high: z<number, number, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            minimal: z<number, number, "plain">;
+            low: z<number, number, "plain">;
+            medium: z<number, number, "plain">;
+            high: z<number, number, "plain">;
+        }>>, "plain">;
+        cacheRetention: z<"none" | "short" | "long", "none" | "short" | "long", "plain">;
+        transport: z<"auto" | "sse" | "websocket" | "websocket-cached", "auto" | "sse" | "websocket" | "websocket-cached", "plain">;
+        timeoutMs: z<number, number, "plain">;
+        websocketConnectTimeoutMs: z<number, number, "plain">;
+        streamIdleTimeoutMs: z<number, number, "defined">;
+        maxRequestImageBytes: z<number, number, "defined">;
+        requestImagePixelBudget: z<number, number, "defined">;
+        requestImageMaxBytes: z<number, number, "defined">;
+        retryPolicy: z<RetryPolicyConfig>;
+    }>>, string>>, "volatile-defined">;
+}>>, Schemastery.ObjectT<NoInfer<{
+    providers: z<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
+        apiKeyEnv?: string | null;
+        displayName?: string | null;
+        api?: string | null;
+        baseURL?: string | null;
+        models?: PiAiModelProfile[] | null;
+        modelOverrides?: import("@deepseek-ai/cosmokit").Dict<PiAiModelOverride, string> | null;
+        compat?: PiAiCompatProfile | null;
+        defaultContextWindow?: number | null;
+        defaultMaxTokens?: number | null;
+        defaultInput?: ("text" | "image")[] | null;
+        headers?: import("@deepseek-ai/cosmokit").Dict<string, string> | null;
+        reasoning?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | null;
+        thinkingBudgets?: ({
+            minimal?: number | null;
+            low?: number | null;
+            medium?: number | null;
+            high?: number | null;
+        } & import("@deepseek-ai/cosmokit").Dict) | null;
+        cacheRetention?: "none" | "short" | "long" | null;
+        transport?: "auto" | "sse" | "websocket" | "websocket-cached" | null;
+        timeoutMs?: number | null;
+        websocketConnectTimeoutMs?: number | null;
+        streamIdleTimeoutMs?: number | null;
+        maxRequestImageBytes?: number | null;
+        requestImagePixelBudget?: number | null;
+        requestImageMaxBytes?: number | null;
+        retryPolicy?: RetryPolicyConfig | null;
+    } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+        apiKeyEnv: z<string, string, "plain">;
+        displayName: z<string, string, "plain">;
+        api: z<string, string, "plain">;
+        baseURL: z<string, string, "plain">;
+        models: z<PiAiModelProfile[], PiAiModelProfile[], "plain">;
+        modelOverrides: z<import("@deepseek-ai/cosmokit").Dict<PiAiModelOverride, string>, import("@deepseek-ai/cosmokit").Dict<PiAiModelOverride, string>, "plain">;
+        compat: z<PiAiCompatProfile>;
+        defaultContextWindow: z<number, number, "defined">;
+        defaultMaxTokens: z<number, number, "defined">;
+        defaultInput: z<("text" | "image")[], ("text" | "image")[], "defined">;
+        headers: z<import("@deepseek-ai/cosmokit").Dict<string, string>, import("@deepseek-ai/cosmokit").Dict<string, string>, "plain">;
+        reasoning: z<"off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max", "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max", "plain">;
+        thinkingBudgets: z<Schemastery.ObjectS<NoInfer<{
+            minimal: z<number, number, "plain">;
+            low: z<number, number, "plain">;
+            medium: z<number, number, "plain">;
+            high: z<number, number, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            minimal: z<number, number, "plain">;
+            low: z<number, number, "plain">;
+            medium: z<number, number, "plain">;
+            high: z<number, number, "plain">;
+        }>>, "plain">;
+        cacheRetention: z<"none" | "short" | "long", "none" | "short" | "long", "plain">;
+        transport: z<"auto" | "sse" | "websocket" | "websocket-cached", "auto" | "sse" | "websocket" | "websocket-cached", "plain">;
+        timeoutMs: z<number, number, "plain">;
+        websocketConnectTimeoutMs: z<number, number, "plain">;
+        streamIdleTimeoutMs: z<number, number, "defined">;
+        maxRequestImageBytes: z<number, number, "defined">;
+        requestImagePixelBudget: z<number, number, "defined">;
+        requestImageMaxBytes: z<number, number, "defined">;
+        retryPolicy: z<RetryPolicyConfig>;
+    }>>, string>>, "volatile-defined">;
+}>>, "plain">;
 /**
  * Reject new or changed provider profiles that cannot be served. Unchanged
  * stored profiles may need repair after a catalog upgrade and do not block
@@ -195,7 +326,7 @@ export declare const Config: z<Config>;
  * @param previous - current resolved section; omission checks every provider.
  * @throws Error naming the route and configuration entry that cannot be served.
  */
-export declare function assertServiceable(config: Config, previous?: Config): void;
+export declare function assertServiceable(config: Options, previous?: Options): void;
 /**
  * Resolve scalar defaults and materialize each route's serviceable models.
  * Deferred catalog validation retains diagnostics without deleting configured

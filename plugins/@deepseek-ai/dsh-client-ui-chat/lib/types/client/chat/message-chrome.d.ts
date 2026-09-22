@@ -2,7 +2,9 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots';
 /** The date-template share of the conversation dictionary the clock consumes. */
 export type ClockTranslate = Translate<'clock.md' | 'clock.ymd'>;
 /** The elapsed-duration share of the conversation dictionary. */
-export type RunDurationTranslate = Translate<'duration.seconds' | 'duration.minutes'>;
+export type RunDurationTranslate = Translate<'duration.seconds' | 'duration.minutes' | 'duration.hours'>;
+/** Refresh interval for whole-second live run clocks. */
+export declare const LIVE_RUN_CLOCK_INTERVAL_MS = 1000;
 /**
  * Local calendar-day epoch (ms at local midnight) for an instant.
  * @param ms - Unix epoch ms.
@@ -16,19 +18,22 @@ export declare function startOfLocalDay(ms: number): number;
  */
 export declare function msUntilNextLocalMidnight(ms: number): number;
 /**
- * Localized elapsed-time label shared by running and settled turn chrome.
+ * Localized elapsed-time label for the running conversation clock.
  * @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
  * @param t - Translate seat supplying the duration templates.
- * @returns Display string in whole seconds.
+ * @returns Display string in whole seconds; minutes and seconds once the
+ * duration reaches a minute; hours, minutes, and seconds once it reaches an
+ * hour, with the smaller units zero-padded.
  */
 export declare function formatRunDuration(ms: number, t: RunDurationTranslate): string;
 /**
- * Sub-turn latency figure: one decimal under ten seconds, whole seconds
- * beyond. Unit-less so the locale template owns the second suffix.
- * @param ms - Latency in milliseconds (negatives clamp to zero).
- * @returns Display number in seconds without unit.
+ * Localized live elapsed time without padded seconds or early rollover.
+ * @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
+ * @param t - Translate seat supplying the duration templates.
+ * @returns Whole seconds without a leading zero; minutes start at 60 seconds
+ * and hours start at exactly 60 minutes.
  */
-export declare function formatLatencySeconds(ms: number): string;
+export declare function formatLiveRunDuration(ms: number, t: RunDurationTranslate): string;
 /**
  * Decode-throughput figure: whole tokens from ten up, one decimal below.
  * @param tps - Tokens per second.

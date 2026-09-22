@@ -29,21 +29,19 @@ import { installModelSelection } from "@deepseek-ai/dsh-agent";
 
 /** Cordis plugin name. */
 const name = "task-notify";
-/** Required services: the settings registry (configuration) and the session bus. */
-const inject = ["settings"];
+/** Required services: none beyond the optional web server read lazily below. */
+const inject = [];
 
-/** Settings namespace owned by the notify plugin. */
-const NOTIFY_SETTINGS_NS = "notify";
-/** Durable notify settings; the harness Settings document edits it. */
-const NotifySettingsSchema = z.object({
+/** The plugin's editable settings; the profile entry's config form edits it. */
+const Config = z.object({
   /** Master switch: when false, no notifications are emitted at all. */
-  enabled: z.boolean().default(true),
+  enabled: z.boolean().default(true).volatile(),
   /** Notify when the AI starts handling a task. */
-  notifyStart: z.boolean().default(true),
+  notifyStart: z.boolean().default(true).volatile(),
   /** Notify when the AI finishes a task. */
-  notifyDone: z.boolean().default(true),
+  notifyDone: z.boolean().default(true).volatile(),
   /** Notify when a scheduled task fires. */
-  notifySchedule: z.boolean().default(true)
+  notifySchedule: z.boolean().default(true).volatile()
 });
 
 /** Scheduled-task store under the harness home. */
@@ -137,9 +135,10 @@ async function runAiTask(ctx, prompt) {
 /**
  * Register the notify surface on the calling context: session-event watchers,
  * the scheduler (persistence + timers + HTTP), and the settings-driven gates.
- * @param ctx - registrant context carrying the settings registry and session bus.
+ * @param ctx - registrant context carrying the session bus.
+ * @param config - resolved plugin config; volatile fields are live references.
  */
-function apply(ctx) {
+function apply(ctx, config) {
   let notifyConfig = { enabled: true, notifyStart: true, notifyDone: true, notifySchedule: true };
   const notify = (title, body) => {
     try {
@@ -298,6 +297,9 @@ function apply(ctx) {
   // ── scheduler HTTP (settings viewer) ──
   const httpDisposers = [];
   const syncHttp = () => {
+    // The same event fires while the tree unloads, when this fiber is already
+    // beyond state 2 and `ctx.effect` would throw INACTIVE_EFFECT.
+    if (ctx.fiber.state !== 2) return;
     for (const dispose of httpDisposers) dispose();
     httpDisposers.length = 0;
     const webServer = ctx.get("webServer", false);
@@ -401,13 +403,16 @@ function apply(ctx) {
   syncHttp();
 
   // ── settings gates ──
-  ctx.inject(["settings"], (settingsCtx) => {
-    const scope = settingsCtx.settings.register(NOTIFY_SETTINGS_NS, NotifySettingsSchema);
-    scope.watch((next) => {
-      notifyConfig = next;
-    });
-    notifyConfig = scope.get();
-  });
+  const refreshConfig = () => {
+    notifyConfig = {
+      enabled: config.enabled.get(),
+      notifyStart: config.notifyStart.get(),
+      notifyDone: config.notifyDone.get(),
+      notifySchedule: config.notifySchedule.get()
+    };
+  };
+  refreshConfig();
+  ctx.on("loader/volatile-update", () => { refreshConfig(); });
 }
 
-export { apply, inject, name };
+export { Config, apply, inject, name };

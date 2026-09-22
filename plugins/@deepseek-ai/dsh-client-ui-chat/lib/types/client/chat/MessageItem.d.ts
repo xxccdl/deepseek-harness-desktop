@@ -26,7 +26,7 @@ export declare function PendingSubmissionBubble({ submission, renderMessageImage
     t: ChatViewSlotProps['t'];
 }): ReactNode;
 /** User and admitted-steering keyed Chat renderer. */
-export declare const UserMessageNodeView: import("react").MemoExoticComponent<({ node, renderMessageImages, t, }: ChatNodeViewProps<"user" | "steering">) => import("react").JSX.Element>;
+export declare const UserMessageNodeView: import("react").MemoExoticComponent<({ node, renderMessageImages, openFile, openSkill, t, }: ChatNodeViewProps<"user" | "steering">) => import("react").JSX.Element>;
 /** Injected-context keyed Chat renderer. */
 export declare const ContextMessageNodeView: import("react").MemoExoticComponent<({ node, t }: ChatNodeViewProps<"context">) => import("react").JSX.Element>;
 /** Automatic compaction keyed Chat renderer. */

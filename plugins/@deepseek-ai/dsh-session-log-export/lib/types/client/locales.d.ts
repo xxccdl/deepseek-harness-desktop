@@ -4,6 +4,7 @@ export declare const NS = "session-log-download";
 export declare const zh: {
     readonly 'header.more': "更多操作";
     readonly 'menu.download': "下载 Session 日志";
+    readonly 'menu.feedback': "反馈";
     readonly 'dialog.preparingTitle': "正在导出 Session";
     readonly 'dialog.preparingDescription': "正在准备包含当前 Session、子 Session 和附件的 ZIP 文件。";
     readonly 'dialog.successTitle': "Session 导出已开始下载";

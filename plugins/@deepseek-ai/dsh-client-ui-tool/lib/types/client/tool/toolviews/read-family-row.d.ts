@@ -22,5 +22,5 @@ export type ReadFamilyCard = Pick<ToolRowProps, 'read' | 'image' | 'renderSlot' 
  * @param card - the card props this row owns.
  * @returns the assembled ToolRow.
  */
-export declare function readFamilyRow({ toolName, block, cwd, home, openFile, inspect, t }: ReadFamilyRowProps, card: ReadFamilyCard): ReactNode;
+export declare function readFamilyRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }: ReadFamilyRowProps, card: ReadFamilyCard): ReactNode;
 //# sourceMappingURL=read-family-row.d.ts.map

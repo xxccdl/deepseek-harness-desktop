@@ -4,7 +4,7 @@
  * @module dsh-llm-pi-ai/context
  */
 import type { GenerateOptions, ImageAttachmentAccessResolver } from '@deepseek-ai/dsh-llm';
-import type { AttachmentStore, ImageRequestPolicy } from '@deepseek-ai/dsh-attachment';
+import type { AttachmentStore } from '@deepseek-ai/dsh-attachment';
 import type { Context as PiContext } from '@earendil-works/pi-ai';
 /** Inputs that bind deterministic request images to one current tool execution world. */
 export interface PiImageRequestContext {
@@ -12,10 +12,17 @@ export interface PiImageRequestContext {
     attachments: AttachmentStore;
     /** Resolve current tool access separately from deterministic request-image versions. */
     resolveImageAccess: ImageAttachmentAccessResolver;
-    /** Request-level bound on base64-encoded image payload; omission leaves every image in place. */
+    /** Request-level bound on the base64-encoded payload of retained images; omission leaves the bound unchecked. */
     maxRequestImageBytes?: number;
     /** Route pixel and raw encoded-byte budgets. */
-    requestImagePolicy?: ImageRequestPolicy;
+    requestImagePolicy?: PiImageRequestBudget;
+}
+/** Per-route budgets from which each request image's target is derived. */
+export interface PiImageRequestBudget {
+    /** Total-pixel budget; larger sources are downscaled proportionally. */
+    maxPixels: number;
+    /** Encoded-byte target for one request image. */
+    maxBytes: number;
 }
 /**
  * Convert text-only harness history to a synchronous pi-ai Context. Tool
@@ -29,10 +36,11 @@ export interface PiImageRequestContext {
 export declare function toPiContext(options: GenerateOptions, images?: undefined, onReplayDegrade?: (reason: string) => void): PiContext;
 /**
  * Convert harness history to a pi-ai Context while resolving durable images.
- * Tool result names are recovered from preceding assistant tool calls. When
- * the accumulated base64 image payload exceeds `maxRequestImageBytes`, the
- * oldest images are replaced by text placeholders until the request fits, so
- * an image-heavy session keeps clearing gateway request-size caps.
+ * Tool result names are recovered from preceding assistant tool calls. Image
+ * occurrences the surface marks offloaded become text placeholders; when the
+ * retained occurrences' exact base64 payload still exceeds
+ * `maxRequestImageBytes`, the call fails with `IMAGE_OFFLOAD_REQUIRED` naming
+ * how many more oldest occurrences must be offloaded.
  * @param options - the harness request; `options.system`, else a leading `system` message, maps to pi-ai's single `systemPrompt` slot.
  * @param images - attachment provider, current path resolver, and request limits.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.

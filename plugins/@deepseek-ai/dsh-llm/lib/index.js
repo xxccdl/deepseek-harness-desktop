@@ -8,9 +8,9 @@ import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 //#region lib/types/message.js
 /** Message value types, identity, and immutable construction helpers. */
 /**
-* Bound for a `notice` summary. The account rides a collapsed transcript row
-* and is committed to the durable log, while its inputs — task labels, goal
-* objectives, tool arguments — are caller text with no length of their own.
+* Bound for a `notice` summary. Producers commit the one-line account to the
+* durable log; its inputs — task labels, goal objectives, tool arguments —
+* are caller text with no length of their own.
 */
 const CONTEXT_SUMMARY_MAX_CHARS = 120;
 /**
@@ -35,9 +35,20 @@ function freezeMessage(message) {
 * @returns an immutable message with a fresh stable identity.
 */
 function createMessage(input) {
-	return freezeMessage({
+	return deepFreeze(structuredClone({
 		...input,
 		id: brandString(randomUUID())
+	}));
+}
+/**
+* Create an identified, immutable developer message.
+* @param input - content and producer source for the new message.
+* @returns a detached developer message with a fresh identity.
+*/
+function createDeveloperMessage(input) {
+	return createMessage({
+		...input,
+		role: "developer"
 	});
 }
 /**
@@ -70,39 +81,33 @@ function createAssistantMessage(input) {
 * Create and freeze one identified system-role message holding a rendered
 * system prompt.
 * @param text - the complete rendered prompt; `''` records "no system prompt".
-* @param plugin - the plugin that assembled the prompt.
 * @returns an immutable system message with a fresh stable identity.
 */
-function createSystemMessage(text, plugin) {
+function createSystemMessage(text) {
 	return createMessage({
 		role: "system",
 		content: text.length === 0 ? [] : [{
 			type: "text",
 			text
 		}],
-		source: {
-			kind: "plugin",
-			plugin
-		}
+		source: { kind: "system-prompt" }
 	});
 }
 /**
 * Create and freeze one identified tool-result message.
 * @param input - call identity, raw result blocks, and outcome.
-* @returns an immutable user-role tool-result message.
+* @returns an immutable tool-role message that answers the tool call.
 */
 function createToolResultMessage(input) {
-	return createUserMessage({
+	return createMessage({
+		role: "tool",
 		source: {
 			kind: "tool",
 			callId: input.callId
 		},
-		content: [{
-			type: "tool-result",
-			toolCallId: input.callId,
-			content: input.content,
-			isError: input.isError
-		}]
+		toolCallId: input.callId,
+		content: input.content,
+		isError: input.isError
 	});
 }
 //#endregion
@@ -219,6 +224,14 @@ function errorChain(value) {
 function isHarnessError(value) {
 	return value instanceof HarnessError;
 }
+/**
+* Canonical code for a request an image-capable route cannot send until more
+* of its images are offloaded. The failure's `offloadImages` names how many
+* more of the oldest retained occurrences must be offloaded;
+* `dsh-compaction-image-offload` records an `image/offload` selection before
+* the agent or summarizer retries with freshly derived input.
+*/
+const IMAGE_OFFLOAD_REQUIRED_CODE = "IMAGE_OFFLOAD_REQUIRED";
 //#endregion
 //#region lib/types/retry-policy.js
 /**
@@ -430,13 +443,15 @@ function failureSnapshot(value) {
 		const status = candidate.status;
 		const providerRetryAfterMs = candidate.providerRetryAfterMs;
 		const requestId = candidate.requestId;
-		if (typeof message !== "string" || message.length === 0 || typeof code !== "string" || code.length === 0 || status !== void 0 && (!Number.isInteger(status) || status < 100 || status > 599) || providerRetryAfterMs !== void 0 && (!Number.isFinite(providerRetryAfterMs) || providerRetryAfterMs <= 0) || requestId !== void 0 && (typeof requestId !== "string" || requestId.length === 0)) return void 0;
+		const offloadImages = candidate.offloadImages;
+		if (typeof message !== "string" || message.length === 0 || typeof code !== "string" || code.length === 0 || status !== void 0 && (!Number.isInteger(status) || status < 100 || status > 599) || providerRetryAfterMs !== void 0 && (!Number.isFinite(providerRetryAfterMs) || providerRetryAfterMs <= 0) || requestId !== void 0 && (typeof requestId !== "string" || requestId.length === 0) || offloadImages !== void 0 && (!Number.isSafeInteger(offloadImages) || offloadImages <= 0)) return void 0;
 		return Object.freeze({
 			message,
 			code,
 			...status === void 0 ? {} : { status },
 			...providerRetryAfterMs === void 0 ? {} : { providerRetryAfterMs },
-			...requestId === void 0 ? {} : { requestId }
+			...requestId === void 0 ? {} : { requestId },
+			...offloadImages === void 0 ? {} : { offloadImages }
 		});
 	} catch (_sdkFailureGetter) {
 		return;
@@ -567,25 +582,23 @@ function offloadedImageText(ref, access) {
 	return `[${identity}${normalizedAccessText(ref, access)}]`;
 }
 /**
-* True when typed model content contains an image block, walking nested
-* tool-result content. This is the one recursive image walk shared by every
-* image policy (capability gating, text-only serialization, compaction
-* survey), so a consumer cannot silently diverge on nesting depth.
+* True when typed model content contains an image block. This is the one image
+* walk shared by every image policy (capability gating, text-only
+* serialization, compaction survey), so a consumer cannot silently diverge.
 * @param content - typed model content blocks.
-* @returns whether any nested block is an image.
+* @returns whether any block is an image.
 */
 function contentHasImage(content) {
-	return content.some((block) => block.type === "image" || block.type === "tool-result" && contentHasImage(block.content));
+	return content.some((block) => block.type === "image");
 }
 /**
-* True when typed model content contains a file block, walking nested
-* tool-result content on the same recursion every file policy shares.
+* True when typed model content contains a file block.
 * Reads current content on every call without retaining scan results.
 * @param content - typed model content blocks.
-* @returns whether any nested block is a file.
+* @returns whether any block is a file.
 */
 function contentHasFile(content) {
-	for (const block of content) if (block.type === "file" || block.type === "tool-result" && contentHasFile(block.content)) return true;
+	for (const block of content) if (block.type === "file") return true;
 	return false;
 }
 /**
@@ -602,7 +615,7 @@ function fileHandleText(ref, readonlyPath) {
 	if (readonlyPath === void 0) return `[${identity} was uploaded, but the current execution environment cannot access a readable path. Report that limitation if its contents are needed; do not claim to have read it.]`;
 	return `[${identity}: verbatim read-only copy saved at ${quoted(readonlyPath)}. Read that path with your file tools when its contents are needed; copy it to a writable location before modifying it. When delegating file work, include this saved path in the delegation prompt; only subagents sharing this execution environment can read it.]`;
 }
-/** Replace every file occurrence, including nested tool results, with handle text. */
+/** Replace every file occurrence with handle text. */
 function replaceFilesWithHandles(blocks, resolvePath) {
 	let next;
 	for (const [index, block] of blocks.entries()) {
@@ -614,29 +627,10 @@ function replaceFilesWithHandles(blocks, resolvePath) {
 			});
 			continue;
 		}
-		if (block.type === "tool-result") {
-			const content = replaceFilesWithHandles(block.content, resolvePath);
-			if (content !== block.content) {
-				next ??= blocks.slice(0, index);
-				next.push({
-					...block,
-					content
-				});
-				continue;
-			}
-		}
 		next?.push(block);
 	}
 	return next ?? blocks;
 }
-/**
-* Project durable file history into deterministic handle text for every model
-* route. Unlike images, no provider receives file blocks natively, so this
-* projection is unconditional in request assembly.
-* @param messages - complete request history.
-* @param resolvePath - resolve one reference's current execution-world read path.
-* @returns the original list without files, otherwise shallow message copies with handle text.
-*/
 function projectFilesToText(messages, resolvePath) {
 	if (!messages.some((message) => contentHasFile(message.content))) return messages;
 	return messages.map((message) => {
@@ -651,19 +645,19 @@ function projectFilesToText(messages, resolvePath) {
 function base64Length(bytes) {
 	return Math.ceil(bytes / 3) * 4;
 }
-/** Collect represented image lengths in request and nested-block order. */
-function collectImageLengths(blocks, lengths, policy) {
-	for (const block of blocks) if (block.type === "image") {
-		const bytes = policy.byteLength === void 0 ? block.attachment.bytes : policy.byteLength(block.attachment);
-		lengths.push(policy.representation === "base64" ? base64Length(bytes) : bytes);
-	} else if (block.type === "tool-result") collectImageLengths(block.content, lengths, policy);
+/**
+* Visit every image occurrence of typed content in message order.
+* @param content - typed model content blocks.
+* @param visit - called once per occurrence.
+*/
+function visitImageBlocks(content, visit) {
+	for (const block of content) if (block.type === "image") visit(block);
 }
-/** Replace the first `remaining.count` image occurrences without mutating durable messages. */
-function replaceOldestImages(blocks, remaining, placeholder) {
+/** Replace every offloaded occurrence with its placeholder. */
+function replaceOffloadedImages(blocks, placeholder) {
 	let next;
 	for (const [index, block] of blocks.entries()) {
-		if (block.type === "image" && remaining.count > 0) {
-			remaining.count -= 1;
+		if (block.type === "image" && block.offloaded === true) {
 			next ??= blocks.slice(0, index);
 			next.push({
 				type: "text",
@@ -671,57 +665,13 @@ function replaceOldestImages(blocks, remaining, placeholder) {
 			});
 			continue;
 		}
-		if (block.type === "tool-result") {
-			const content = replaceOldestImages(block.content, remaining, placeholder);
-			if (content !== block.content) {
-				next ??= blocks.slice(0, index);
-				next.push({
-					...block,
-					content
-				});
-				continue;
-			}
-		}
 		next?.push(block);
 	}
 	return next ?? blocks;
 }
-/** Replace every image occurrence, including nested tool results, for a text-only model. */
-function replaceImagesForTextModel(blocks) {
-	let next;
-	for (const [index, block] of blocks.entries()) {
-		if (block.type === "image") {
-			next ??= blocks.slice(0, index);
-			next.push({
-				type: "text",
-				text: textOnlyImageText(block.attachment)
-			});
-			continue;
-		}
-		if (block.type === "tool-result") {
-			const content = replaceImagesForTextModel(block.content);
-			if (content !== block.content) {
-				next ??= blocks.slice(0, index);
-				next.push({
-					...block,
-					content
-				});
-				continue;
-			}
-		}
-		next?.push(block);
-	}
-	return next ?? blocks;
-}
-/**
-* Project durable image history into deterministic text for an exact text-only model.
-* @param messages - complete request history.
-* @returns the original list without images, otherwise shallow message copies with stable placeholders.
-*/
-function projectImagesForTextModel(messages) {
-	if (!messages.some((message) => contentHasImage(message.content))) return messages;
+function projectOffloadedImages(messages, placeholder) {
 	return messages.map((message) => {
-		const content = replaceImagesForTextModel(message.content);
+		const content = replaceOffloadedImages(message.content, placeholder);
 		return content === message.content ? message : {
 			...message,
 			content
@@ -729,21 +679,21 @@ function projectImagesForTextModel(messages) {
 	});
 }
 /**
-* Number of oldest image occurrences one request projection removes, in whole
-* count and byte quanta, once a route budget is exceeded. The result depends
-* only on the represented lengths, so provider request pricing reproduces the
-* exact serialization decision without building the projected messages.
-* @param lengths - represented byte length of every occurrence, in request order.
-* @param policy - count/byte budgets and removal quanta; unbounded when absent.
-* @returns how many leading occurrences the projection replaces with placeholders.
+* Number of oldest retained image occurrences one route budget removes, in
+* whole count and byte quanta, once the budget is exceeded. The result depends
+* only on the represented lengths, so every route names the count the same
+* way.
+* @param lengths - represented byte length of every retained occurrence, oldest first.
+* @param budget - count/byte budgets and removal quanta; unbounded when absent.
+* @returns how many leading occurrences to offload.
 */
-function offloadedImagePrefixCount(lengths, policy) {
+function offloadedImagePrefixCount(lengths, budget) {
 	const total = lengths.reduce((sum, bytes) => sum + bytes, 0);
-	const excessCount = policy.maxImages === void 0 ? 0 : Math.max(0, lengths.length - policy.maxImages);
-	const excessBytes = policy.maxBytes === void 0 ? 0 : Math.max(0, total - policy.maxBytes);
+	const excessCount = budget.maxImages === void 0 ? 0 : Math.max(0, lengths.length - budget.maxImages);
+	const excessBytes = budget.maxBytes === void 0 ? 0 : Math.max(0, total - budget.maxBytes);
 	if (excessCount === 0 && excessBytes === 0) return 0;
-	const countQuantum = policy.countQuantum ?? 1;
-	const byteQuantum = policy.byteQuantum ?? 1;
+	const countQuantum = budget.countQuantum ?? 1;
+	const byteQuantum = budget.byteQuantum ?? 1;
 	const removeCount = excessCount === 0 ? 0 : Math.ceil(excessCount / countQuantum) * countQuantum;
 	const removeBytes = excessBytes === 0 ? 0 : Math.ceil(excessBytes / byteQuantum) * byteQuantum;
 	let count = 0;
@@ -756,24 +706,44 @@ function offloadedImagePrefixCount(lengths, policy) {
 	return count;
 }
 /**
-* Return a deterministic transient projection whose oldest images are replaced
-* in whole count and byte quanta after a route budget is exceeded. The target
-* depends only on complete durable history: at 129 one-megabyte images under
-* a 128 MiB bound with a 64 MiB quantum, the oldest 65 images are removed so
-* 64 MiB remain; that removed prefix stays fixed until total history exceeds
-* 192 MiB.
-* @param messages - complete request history, oldest first.
-* @param policy - route representation, budgets, and removal quanta.
-* @returns original messages below both bounds, otherwise shallow copies with deterministic placeholders.
+* Number of oldest retained occurrences a route must still offload before a
+* derived request fits its budget at the exact byte length the route sends;
+* zero when the request fits. A route fails with `IMAGE_OFFLOAD_REQUIRED`
+* carrying this count instead of offloading on its own.
+* @param messages - derived request history carrying the surface's `offloaded` marks.
+* @param budget - route representation, budgets, and removal quanta.
+* @param versionBytes - exact request-version byte length of one retained occurrence.
+* @returns how many more leading retained occurrences to offload.
 */
-function offloadRequestImagesWithPolicy(messages, policy) {
+function requiredImageOffload(messages, budget, versionBytes) {
 	const lengths = [];
-	for (const message of messages) collectImageLengths(message.content, lengths, policy);
-	const count = offloadedImagePrefixCount(lengths, policy);
-	if (count === 0) return messages;
-	const remaining = { count };
+	for (const message of messages) visitImageBlocks(message.content, (block) => {
+		if (block.offloaded === true) return;
+		const bytes = versionBytes(block);
+		lengths.push(budget.representation === "base64" ? base64Length(bytes) : bytes);
+	});
+	return offloadedImagePrefixCount(lengths, budget);
+}
+/** Replace every image occurrence for a text-only model. */
+function replaceImagesForTextModel(blocks) {
+	let next;
+	for (const [index, block] of blocks.entries()) {
+		if (block.type === "image") {
+			next ??= blocks.slice(0, index);
+			next.push({
+				type: "text",
+				text: textOnlyImageText(block.attachment)
+			});
+			continue;
+		}
+		next?.push(block);
+	}
+	return next ?? blocks;
+}
+function projectImagesForTextModel(messages) {
+	if (!messages.some((message) => contentHasImage(message.content))) return messages;
 	return messages.map((message) => {
-		const content = replaceOldestImages(message.content, remaining, policy.placeholder);
+		const content = replaceImagesForTextModel(message.content);
 		return content === message.content ? message : {
 			...message,
 			content
@@ -1056,15 +1026,11 @@ var BlockAssembler = class {
 	}
 	/**
 	* The assembled assistant message.
-	* @param source - producer attribution for the assembled message.
+	* @param source - provider/model attribution (without the `kind` tag) for the assembled message.
 	* @returns a frozen assistant-role message over `blocks()` (same open-block assembly rules).
 	*/
-	message(source = {
-		kind: "plugin",
-		plugin: "dsh-llm/assembler"
-	}) {
-		return createMessage({
-			role: "assistant",
+	message(source) {
+		return createAssistantMessage({
 			content: this.blocks(),
 			source
 		});
@@ -1582,7 +1548,8 @@ var LlmError = class extends HarnessError {
 			code,
 			...options?.status === void 0 ? {} : { status: options.status },
 			...options?.providerRetryAfterMs === void 0 ? {} : { providerRetryAfterMs: options.providerRetryAfterMs },
-			...options?.requestId === void 0 ? {} : { requestId: options.requestId }
+			...options?.requestId === void 0 ? {} : { requestId: options.requestId },
+			...options?.offloadImages === void 0 ? {} : { offloadImages: options.offloadImages }
 		});
 	}
 };
@@ -1953,7 +1920,8 @@ let LlmRuntime = (() => {
 					id: model.id,
 					...model.name === void 0 ? {} : { name: model.name },
 					...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
-					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens }
+					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
+					...model.inputModalities === void 0 ? {} : { inputModalities: [...model.inputModalities] }
 				});
 			}
 			return models;
@@ -2182,8 +2150,9 @@ let LlmRuntime = (() => {
 		/** Remove replay state whose historical route is owned by another adapter. */
 		forAdapter(options, adapter) {
 			const messages = options.messages.map((message) => {
+				if (message.role !== "assistant") return message;
 				const source = message.source;
-				if (message.role !== "assistant" || source.kind !== "model" || source.replayState === void 0) return message;
+				if (source.replayState === void 0) return message;
 				if (this.adapters.get(source.provider)?.adapter === adapter) return message;
 				return freezeMessage({
 					...message,
@@ -2323,4 +2292,4 @@ function adapterFailureChunk(error, signal) {
 	};
 }
 //#endregion
-export { APP_IDENTITY, AssistantStreamAccumulator, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmAttemptId, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assembleAssistantStream, assertUsableApiKey, assistantStreamChunks, assistantStreamFirstTokenTime, assistantStreamHasVisibleContent, assistantStreamHasVisibleText, attributionHeaders, boundContextSummary, callConfigEquals, chunkHasVisibleText, contentHasFile, contentHasImage, createAssistantMessage, createMessage, createSystemMessage, createToolResultMessage, createUserMessage, errorChain, expandAssistantStream, fileHandleText, freezeMessage, isAgentLoopRequest, isContextWindowExceededError, isHarnessError, isQuotaExceededError, isTokenDelta, isVisibleChunk, joinAssistantStreamText, lastAssistantStreamChunk, markAgentLoopRequest, normalizeApiKey, offloadRequestImagesWithPolicy, offloadedImagePrefixCount, offloadedImageText, projectFilesToText, projectImagesForTextModel, requestImageHandleText, resolveImageAttachmentAccess, resolveRetryPolicy, runFirstTokenTime, runFirstVisibleTime, textOnlyImageText, userAgent };
+export { APP_IDENTITY, AssistantStreamAccumulator, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, IMAGE_OFFLOAD_REQUIRED_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmAttemptId, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assembleAssistantStream, assertUsableApiKey, assistantStreamChunks, assistantStreamFirstTokenTime, assistantStreamHasVisibleContent, assistantStreamHasVisibleText, attributionHeaders, boundContextSummary, callConfigEquals, chunkHasVisibleText, contentHasFile, contentHasImage, createAssistantMessage, createDeveloperMessage, createMessage, createSystemMessage, createToolResultMessage, createUserMessage, errorChain, expandAssistantStream, fileHandleText, freezeMessage, isAgentLoopRequest, isContextWindowExceededError, isHarnessError, isQuotaExceededError, isTokenDelta, isVisibleChunk, joinAssistantStreamText, lastAssistantStreamChunk, markAgentLoopRequest, normalizeApiKey, offloadedImageText, projectFilesToText, projectImagesForTextModel, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, runFirstTokenTime, runFirstVisibleTime, textOnlyImageText, userAgent };

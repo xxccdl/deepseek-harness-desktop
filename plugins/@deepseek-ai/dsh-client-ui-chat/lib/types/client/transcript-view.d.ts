@@ -1,19 +1,22 @@
-/** Host-backed completed-Turn transcript presentation policy. */
+/** Host-backed work-details presentation policy. */
 import { type SnapshotStore } from '@deepseek-ai/dsh-client-store';
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client';
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import { type ChatSettings, type TranscriptViewMode } from '../chat-settings.ts';
-/** Live transcript preference consumed by Chat and its Settings row. */
+/** Live work-details preference consumed by Chat and its Settings row. */
 export declare class TranscriptViewPolicy {
     private readonly host;
+    private readonly unsubscribe;
     /** Reactive current mode; defaults to Compact before Host settings arrive. */
     readonly mode: SnapshotStore<TranscriptViewMode>;
     /**
      * @param host - durable Chat settings scope.
      */
-    constructor(host: SettingsScope<ChatSettings>);
+    constructor(host: ConfigForm<ChatSettings>);
+    /** Release the accepted-value subscription. */
+    dispose(): void;
     /**
      * Publish and persist one explicit user choice.
-     * @param mode - Normal or Compact transcript presentation.
+     * @param mode - Compact, Detailed, or Expanded work details.
      */
     setMode(mode: TranscriptViewMode): void;
     /** Adopt the latest accepted Host section without writing it back. */

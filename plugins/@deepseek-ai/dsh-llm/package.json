@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-llm",
   "description": "Provider-neutral LLM service interface for the DeepSeek Harness",
-  "version": "0.1.5-rc.2",
+  "version": "0.1.7-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -61,20 +61,20 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2"
+    "@deepseek-ai/cordis": "^4.0.3"
   },
   "dependencies": {
     "zod": "^4.4.3",
-    "@deepseek-ai/dsh-timeout": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-brand": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-util-crypto": "^0.1.5-rc.2",
-    "@deepseek-ai/schemastery": "^3.18.2"
+    "@deepseek-ai/dsh-util-crypto": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-brand": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-util-values": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.7-alpha.1",
+    "@deepseek-ai/dsh-timeout": "^0.1.7-alpha.1",
+    "@deepseek-ai/schemastery": "^3.18.3"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.2",
-    "@deepseek-ai/dsh-attachment": "^0.1.5-rc.2",
-    "@deepseek-ai/cordis": "^4.0.2"
+    "@deepseek-ai/dsh-invariants": "^0.1.7-alpha.1",
+    "@deepseek-ai/cordis": "^4.0.3",
+    "@deepseek-ai/dsh-attachment": "^0.1.7-alpha.1"
   }
 }

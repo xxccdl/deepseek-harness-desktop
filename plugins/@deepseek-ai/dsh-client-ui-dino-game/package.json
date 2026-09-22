@@ -1,0 +1,28 @@
+{
+  "name": "@deepseek-ai/dsh-client-ui-dino-game",
+  "version": "1.0.0",
+  "private": false,
+  "description": "小恐龙跳跃：界面右下角一个可玩的横版跳跃小游戏，空格/点击起跳，躲避仙人掌，记录最高分",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js"
+  ],
+  "license": "MIT"
+}

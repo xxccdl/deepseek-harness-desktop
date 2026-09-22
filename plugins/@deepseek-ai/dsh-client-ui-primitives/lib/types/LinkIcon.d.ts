@@ -1,25 +1,16 @@
 /**
- * Leading category glyph for clickable artifact links (anchors, file
- * mentions, produced-file chips). One component keyed by link category;
- * every glyph renders fill="currentColor" and so rides the link's own
- * color. Glyphs stay private to this module: the public surface is the
- * category vocabulary, not the individual glyph components, so consumers
- * cannot compose a glyph outside a link. Design sources:
- * ic_globe_language_outline_20, ic_code_outline_20, ic_folder_outline_20,
- * ic_photo_outline_20, ic_paper_doc_outline_20, ic_paper_outline_20.
+ * Leading current-color category glyphs for clickable artifact links. The
+ * public component keeps individual artwork private to the link vocabulary.
  */
 import type { ReactNode } from 'react';
 import type { IconProps } from './icons/props.ts';
-/**
- * Link categories with distinct leading glyphs. `url` and `folder` are
- * destination categories the consumer states directly; the rest are file
- * categories `classifyLinkPath` derives from a path. Code, web, and data
- * files share the `code` glyph by design.
- */
+/** Link categories with distinct leading glyphs. */
 export type LinkIconKind = 'url' | 'folder' | 'code' | 'image' | 'document' | 'other';
-/** Props for {@link LinkIcon}: the category plus the shared icon sizing seat. */
+/** Props for link icons: the category plus the shared icon sizing seat. */
 export interface LinkIconProps extends IconProps {
     kind: LinkIconKind;
+    /** Destination of a URL link; known HTTP(S) hosts render their site mark. */
+    href?: string | undefined;
 }
 /**
  * Derive a file path's link-icon category from its extension. Unknown and
@@ -29,10 +20,15 @@ export interface LinkIconProps extends IconProps {
  */
 export declare function classifyLinkPath(path: string): LinkIconKind;
 /**
- * Render the leading glyph for one clickable artifact link.
- * @param props - The link category, optional size (default 14px — the inline
- * link text size these glyphs sit beside), and optional CSS class.
- * @returns The category's SVG glyph, riding currentColor.
+ * Render a regular one-pixel link icon.
+ * @param props - Link category, size, and optional class.
+ * @returns The regular decorative link glyph.
  */
-export declare function LinkIcon({ kind, size, className }: LinkIconProps): ReactNode;
+export declare function LinkIconRegular(props: LinkIconProps): ReactNode;
+/**
+ * Render a medium 1.3px link icon.
+ * @param props - Link category, size, and optional class.
+ * @returns The medium decorative link glyph.
+ */
+export declare function LinkIconMedium(props: LinkIconProps): ReactNode;
 //# sourceMappingURL=LinkIcon.d.ts.map

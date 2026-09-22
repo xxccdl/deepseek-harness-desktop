@@ -3,5 +3,5 @@ import type { ToolCallOwnerProps, ToolTreeProps } from '../../contract/slots.ts'
 export interface GenericToolCardProps extends ToolCallOwnerProps {
     t: ToolTreeProps['t'];
 }
-export declare function GenericToolCard({ toolName, block, cwd, home, openFile, inspect, t }: GenericToolCardProps): import("react").JSX.Element;
+export declare function GenericToolCard({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }: GenericToolCardProps): import("react").JSX.Element;
 //# sourceMappingURL=GenericToolCard.d.ts.map

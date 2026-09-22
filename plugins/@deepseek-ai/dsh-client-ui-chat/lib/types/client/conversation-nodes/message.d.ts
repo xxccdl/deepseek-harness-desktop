@@ -12,7 +12,9 @@ interface ReferencedSteeringMessageNode extends SteeringMessageNode {
     /** Skill names the same step's `skill-invocation` injections loaded. */
     readonly skillNames?: readonly string[];
 }
-type MessageNode = ReferencedUserMessageNode | ReferencedSteeringMessageNode | ContextMessageNode;
+type MessageNode = ReferencedUserMessageNode | ReferencedSteeringMessageNode | (ContextMessageNode & {
+    readonly waking?: boolean;
+});
 declare module '../contract/chat-nodes.ts' {
     interface ChatNodeDataMap {
         /** Ordinary turn-opening user message. */
@@ -21,6 +23,8 @@ declare module '../contract/chat-nodes.ts' {
         steering: ReferencedSteeringMessageNode;
         /** Non-user context injected into model history. */
         context: ContextMessageNode;
+        /** Non-human input that starts a Turn. */
+        'turn-trigger': ContextMessageNode;
     }
 }
 /** User, steering, and injected-context message classification Definition. */

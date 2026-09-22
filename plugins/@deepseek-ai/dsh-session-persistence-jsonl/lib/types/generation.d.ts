@@ -24,6 +24,8 @@ export interface JsonlGenerationFormatAdapter {
 }
 /** Inputs for preparing one historical generation and publishing its current successor later. */
 export interface PrepareJsonlMigrationOptions {
+    /** Revalidate related source facts before preparation returns and immediately before publication. */
+    readonly validateRelatedSources?: () => Promise<void>;
     /** Immutable generation selected by the backend resolver. */
     readonly sourcePath: string;
     /** Version selected from the source filename and independently checked against its header. */
@@ -159,5 +161,19 @@ export declare function prepareJsonlMigration(options: PrepareJsonlMigrationOpti
  * @returns bound generation operations.
  */
 export declare function createJsonlGenerationRuntime(overrides?: JsonlGenerationRuntimeOverrides): JsonlGenerationRuntime;
+/**
+ * Read one stable source through the shared streaming parser without publishing a generation.
+ * @param path - selected source generation path.
+ * @param version - physical source version identified by its filename.
+ * @param compression - source encoding.
+ * @param format - codec/restore factory, independent of current-generation publication.
+ * @param signal - cancellation observed during source reads and decode yields.
+ * @returns decoded artifact and physical source identity for later revalidation.
+ * @throws SessionFormatError for physical decoding failures; storage, cancellation, and unsupported migration errors retain their category.
+ */
+export declare function readDecodedJsonlSource(path: string, version: number, compression: JsonlCompression, format: Pick<JsonlGenerationFormatAdapter, 'createRestore'>, signal?: AbortSignal): Promise<{
+    artifact: SessionFormatArtifact;
+    identity: JsonlPhysicalIdentity;
+}>;
 export {};
 //# sourceMappingURL=generation.d.ts.map

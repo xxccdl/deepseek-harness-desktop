@@ -32,6 +32,17 @@ export interface JsonTreeProps {
     label: string;
     /** Optional positioning class owned by the caller. */
     className?: string | undefined;
+    /** Maximum visible lines per collapsed string; defaults to 3. */
+    collapsedStringLines?: number;
+    /** Optional wrap toggle; each expansion reads the shared default without changing other open strings. */
+    stringWrapping?: {
+        /** Localized label for the wrapping toggle. */
+        label: string;
+        /** Read the wrapping preference when a string is expanded. @returns Whether to wrap long lines. */
+        getDefault: () => boolean;
+        /** Remember a user toggle for future expansions. @param wrapped - Whether to wrap long lines. */
+        setDefault: (wrapped: boolean) => void;
+    } | undefined;
     /** Whether JSON rows expose copy actions. */
     copyable?: boolean;
     /** Whether the top-level object or array is always expanded. */
@@ -44,5 +55,5 @@ export interface JsonTreeProps {
  * @param props - Parsed data, accessible label, and display options.
  * @returns A read-only JSON tree with an optionally fixed-open top level.
  */
-export declare function JsonTree({ data, label, className, copyable, expandTopLevel, labels, }: JsonTreeProps): import("react").JSX.Element;
+export declare function JsonTree({ data, label, className, collapsedStringLines, stringWrapping, copyable, expandTopLevel, labels, }: JsonTreeProps): import("react").JSX.Element;
 //# sourceMappingURL=JsonTree.d.ts.map

@@ -24,7 +24,7 @@ const inject = ["tools", "skills", "systemPrompt"];
 
 /** Default cap on how many records a listing/search returns. */
 const DEFAULT_MAX_RESULTS = 50;
-/** Live result cap, overridable through the `memory` settings namespace. */
+/** Live result cap, overridable through this entry's config form. */
 let runtimeMax = DEFAULT_MAX_RESULTS;
 
 /** Memory store directory under the harness home. */
@@ -1028,37 +1028,38 @@ function registerMemoryHttp(ctx) {
       }
     }), `tool-memory: ${MEMORY_IMPORT_PATH} route`));
   };
-  ctx.on("internal/service", () => sync());
+  ctx.on("internal/service", () => {
+    if (ctx.fiber.state !== 2) return;
+    sync();
+  });
   sync();
 }
 
 // ── plugin ────────────────────────────────────────────────────────────────────
-/** Settings namespace owned by the memory plugin. */
-const MEMORY_SETTINGS_NS = "memory";
-/** Durable memory settings; the harness Settings document (`settings.yaml`) edits it. */
-const MemorySettingsSchema = z.object({
+const Config = z.object({
   /** Master switch: when false, no memory tools, skill, or reminder are mounted. */
-  enabled: z.boolean().default(true),
+  enabled: z.boolean().default(true).volatile(),
   /** Mount the text-memory tools (memory_remember/recall/list/forget). */
-  text: z.boolean().default(true),
+  text: z.boolean().default(true).volatile(),
   /** Mount the KV graph-memory tools (memory_kv_set/get/list/delete). */
-  kv: z.boolean().default(true),
+  kv: z.boolean().default(true).volatile(),
   /** Mount the mind-map-memory tools (memory_map_add/get/remove). */
-  map: z.boolean().default(true),
+  map: z.boolean().default(true).volatile(),
   /** Mount the persistent `memory:usage` system-prompt reminder. */
-  autoRemind: z.boolean().default(true),
+  autoRemind: z.boolean().default(true).volatile(),
   /** Cap on records returned by memory_recall / memory_list / memory_kv_list. */
-  maxResults: z.natural().min(1).max(500).default(DEFAULT_MAX_RESULTS)
+  maxResults: z.natural().min(1).max(500).default(DEFAULT_MAX_RESULTS).volatile()
 });
 
 /**
  * Register the memory tools, skill, and persistent usage reminder on the
  * calling context (global layer, so every agent in the harness sees them).
- * Whether each surface is mounted is driven by the `memory` settings namespace,
- * which is re-applied live when the settings document changes.
- * @param ctx - registrant context carrying the tool, skill, prompt, and settings registries.
+ * Whether each surface is mounted is driven by this entry's volatile config
+ * form, which commits new values into the running references in place.
+ * @param ctx - registrant context carrying the tool, skill, and prompt registries.
+ * @param config - resolved plugin config; volatile fields are live references.
  */
-function apply(ctx) {
+function apply(ctx, config) {
   registerMemoryHttp(ctx);
   const disposers = [];
   const sync = (config) => {
@@ -1088,15 +1089,20 @@ function apply(ctx) {
       disposers.push(ctx.systemPrompt.variable("memorytags", () => currentMemoryTags() || "（暂无标签）"));
     }
   };
-  ctx.inject(["settings"], (settingsCtx) => {
-    const scope = settingsCtx.settings.register(MEMORY_SETTINGS_NS, MemorySettingsSchema);
-    scope.watch((next) => {
-      runtimeMax = next.maxResults;
-      sync(next);
-    });
-    runtimeMax = scope.get().maxResults;
-    sync(scope.get());
-  });
+  const applyConfig = () => {
+    const values = {
+      enabled: config.enabled.get(),
+      text: config.text.get(),
+      kv: config.kv.get(),
+      map: config.map.get(),
+      autoRemind: config.autoRemind.get(),
+      maxResults: config.maxResults.get()
+    };
+    runtimeMax = values.maxResults;
+    sync(values);
+  };
+  applyConfig();
+  ctx.on("loader/volatile-update", () => { applyConfig(); });
 }
 
-export { apply, inject, name };
+export { Config, apply, inject, name };

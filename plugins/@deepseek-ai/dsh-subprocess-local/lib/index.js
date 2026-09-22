@@ -1,13 +1,14 @@
-import { C as bindManagedProcess, D as validateSubprocessSpec, E as spawnSubprocess, O as createProcessInspector, S as loadLinuxExecve, T as prepareManagedProcessBinding, _ as parseWindowsRunnerResult, c as runnerStdio, d as cleanupLinuxLaunchFiles, l as spawnRunnerInvocation, m as deserializeRunnerError, n as WINDOWS_RUNNER_SELECTION, o as runnerEnvironment, p as createLinuxLaunchFiles, s as runnerInvocationAvailable, u as targetEnvironment, w as childEnv, y as readLinuxStartupError } from "./runner-launch-COYGu0Dl.js";
-import { closeSync, constants, existsSync, openSync } from "node:fs";
+import { C as bindManagedProcess, D as createProcessInspector, E as validateSubprocessSpec, O as controlPipe, S as loadLinuxExecve, T as spawnSubprocess, _ as parseWindowsRunnerResult, c as runnerStdio, d as cleanupLinuxLaunchFiles, l as spawnRunnerInvocation, m as deserializeRunnerError, n as WINDOWS_RUNNER_SELECTION, o as runnerEnvironment, p as createLinuxLaunchFiles, s as runnerInvocationAvailable, u as targetEnvironment, w as childEnv, y as readLinuxStartupError } from "./runner-launch-DGV26RBf.js";
+import { prepareManagedProcessBinding } from "./output.js";
+import { closeSync, constants, existsSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { access, stat } from "node:fs/promises";
-import { delimiter, extname, isAbsolute, resolve } from "node:path";
-import * as nodePty from "node-pty";
-import { SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
+import { constants as constants$1, devNull, tmpdir, userInfo } from "node:os";
+import { basename, delimiter, extname, isAbsolute, join, resolve } from "node:path";
+import { createLazyRequire } from "@deepseek-ai/dsh-lazy-require";
+import { SubprocessExecutableNotFoundError, SubprocessRuntime } from "@deepseek-ai/dsh-subprocess";
 import { execFile, spawn, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { constants as constants$1, devNull } from "node:os";
 import { setTimeout as setTimeout$1 } from "node:timers/promises";
+import { randomBytes } from "node:crypto";
 import { loadWin32ProcessBindings, probeCurrentTokenJobSupport } from "@deepseek-ai/dsh-win32-process";
 import { Buffer } from "node:buffer";
 import { PassThrough } from "node:stream";
@@ -118,9 +119,24 @@ function probeLinuxManager(internals = {}) {
 function probeLinuxNative(internals = {}) {
 	return probeLinuxBootstrap(internals) && probeLinuxScope(internals);
 }
+var LinuxScopeStartup = class {
+	files;
+	kind;
+	terminationSignals = /* @__PURE__ */ new Set();
+	constructor(files, kind) {
+		this.files = files;
+		this.kind = kind;
+	}
+	resolveOutcome(outcome) {
+		const startup = readLinuxStartupError(this.files.startupErrorPath);
+		if (startup !== void 0) throw deserializeRunnerError(startup.error);
+		if (existsSync(this.files.requestPath) && !(outcome.signal !== null && this.terminationSignals.has(outcome.signal))) throw new Error(`${this.kind} scope exited before its bootstrap consumed the launch request`);
+		return outcome;
+	}
+};
 var SystemdScopeOwner = class {
 	unit;
-	files;
+	startup;
 	direct;
 	systemctl;
 	runSync;
@@ -128,24 +144,46 @@ var SystemdScopeOwner = class {
 	sleep;
 	establishment = "pending";
 	stopped = false;
+	terminationRequested = false;
 	observation;
 	killFailure;
+	directKillSettlement;
 	wakeGeneration = 0;
 	wakeWaiter;
-	constructor(unit, files, direct, systemctl, runSync, query, sleep) {
+	constructor(unit, startup, direct, systemctl, runSync, query, sleep) {
 		this.unit = unit;
-		this.files = files;
+		this.startup = startup;
 		this.direct = direct;
 		this.systemctl = systemctl;
 		this.runSync = runSync;
 		this.query = query;
 		this.sleep = sleep;
 	}
+	inspectTaskCount() {
+		const result = this.runSync(this.systemctl, [
+			"--user",
+			"show",
+			"--property=LoadState",
+			"--property=ActiveState",
+			"--property=TasksCurrent",
+			this.unit
+		], {
+			encoding: "utf8",
+			env: managerEnvironment(),
+			timeout: SYSTEMCTL_TIMEOUT_MS
+		});
+		if (result.error !== void 0 || result.status !== 0 || typeof result.stdout !== "string") return void 0;
+		const state = this.parseUnitState(result.stdout);
+		return state.loadState === "loaded" && state.activeState === "active" ? state.tasksCurrent : void 0;
+	}
 	signal(signal) {
 		if (this.stopped) return;
+		this.terminationRequested = true;
+		if (this.direct.running()) this.startup.terminationSignals.add(signal);
 		this.observeRequestConsumption();
 		const directFallbackRequired = this.establishment === "pending";
-		if (directFallbackRequired && this.direct.running()) this.direct.signal(signal);
+		let directSignalled = false;
+		if (directFallbackRequired && this.direct.running()) directSignalled = this.direct.signal(signal);
 		const result = this.runSync(this.systemctl, [
 			"--user",
 			"kill",
@@ -159,13 +197,19 @@ var SystemdScopeOwner = class {
 		});
 		this.wakeObservation();
 		if (result.error === void 0 && result.status === 0) {
-			if (signal === "SIGKILL") this.killFailure = void 0;
+			if (signal === "SIGKILL") {
+				this.killFailure = void 0;
+				this.directKillSettlement = void 0;
+			}
 			return;
 		}
-		if (!directFallbackRequired && this.direct.running()) this.direct.signal(signal);
+		if (!directFallbackRequired && this.direct.running()) directSignalled = this.direct.signal(signal);
 		if (signal === "SIGKILL") {
 			const output = `${result.stdout}\n${result.stderr}`;
-			if (!MISSING_UNIT.test(output)) this.killFailure = result.error ?? /* @__PURE__ */ new Error(`systemctl could not signal ${this.unit}: ${output.trim() || `exit ${String(result.status)}`}`);
+			if (!MISSING_UNIT.test(output)) {
+				this.killFailure = result.error ?? /* @__PURE__ */ new Error(`systemctl could not signal ${this.unit}: ${output.trim() || `exit ${String(result.status)}`}`);
+				this.directKillSettlement = directSignalled ? this.direct.settled.then(() => {}, () => {}) : void 0;
+			}
 		}
 	}
 	terminateForHostExit() {
@@ -188,14 +232,39 @@ var SystemdScopeOwner = class {
 		} catch {}
 	}
 	observeRequestConsumption() {
-		if (this.establishment === "pending" && !existsSync(this.files.requestPath)) this.establishment = "established";
+		if (this.establishment === "pending" && !existsSync(this.startup.files.requestPath)) this.establishment = "established";
 	}
 	absentUnit() {
 		this.observeRequestConsumption();
 		if (this.establishment === "established") return false;
-		if (!this.direct.running() && existsSync(this.files.requestPath)) return false;
+		if (!this.direct.running() && existsSync(this.startup.files.requestPath)) return false;
 		if (this.killFailure !== void 0) throw this.killFailure;
 		return true;
+	}
+	/**
+	* Prove an active unit with no processes is the empty managed range rather
+	* than a launch still placing its payload. systemd ends a scope only on the
+	* populated-to-empty transition, so a payload killed before it entered the
+	* cgroup leaves the unit active forever. A departed client cannot add another
+	* payload; a consumed request proves the payload already entered the scope,
+	* even while its direct-process exit notification is pending.
+	*/
+	emptyRange(tasksCurrent) {
+		return this.terminationRequested && tasksCurrent === 0 && (!this.direct.running() || !existsSync(this.startup.files.requestPath));
+	}
+	/** Release a leftover empty scope so the transient unit is collected and cannot accumulate. */
+	releaseEmptyRange() {
+		try {
+			this.runSync(this.systemctl, [
+				"--user",
+				"stop",
+				this.unit
+			], {
+				env: managerEnvironment(),
+				stdio: "ignore",
+				timeout: SYSTEMCTL_TIMEOUT_MS
+			});
+		} catch {}
 	}
 	parseUnitState(stdout) {
 		const values = /* @__PURE__ */ new Map();
@@ -209,24 +278,32 @@ var SystemdScopeOwner = class {
 		}
 		const loadState = values.get("LoadState");
 		const activeState = values.get("ActiveState");
-		if (values.size !== 2 || loadState === void 0 || activeState === void 0) throw new Error(`systemctl returned incomplete state for ${this.unit}: ${JSON.stringify(stdout.trim())}`);
+		const reportedTasks = values.get("TasksCurrent");
+		const tasksCurrent = reportedTasks === "[not set]" ? void 0 : reportedTasks;
+		if (values.size !== (reportedTasks === void 0 ? 2 : 3) || loadState === void 0 || activeState === void 0) throw new Error(`systemctl returned incomplete state for ${this.unit}: ${JSON.stringify(stdout.trim())}`);
+		if (tasksCurrent !== void 0 && !/^\d+$/u.test(tasksCurrent)) throw new Error(`systemctl returned a non-numeric TasksCurrent for ${this.unit}: ${JSON.stringify(tasksCurrent)}`);
 		return {
 			loadState,
-			activeState
+			activeState,
+			tasksCurrent: tasksCurrent === void 0 ? void 0 : Number(tasksCurrent)
 		};
 	}
 	async rangeActive() {
 		this.observeRequestConsumption();
+		const generation = this.wakeGeneration;
+		const directRunning = this.direct.running();
 		const result = await this.query(this.systemctl, [
 			"--user",
 			"show",
 			this.unit,
 			"--property=LoadState",
-			"--property=ActiveState"
+			"--property=ActiveState",
+			"--property=TasksCurrent"
 		]);
+		if (generation !== this.wakeGeneration) return true;
 		const output = `${result.stdout}\n${result.stderr}`;
 		if (result.status === 0) {
-			const { loadState, activeState } = this.parseUnitState(result.stdout);
+			const { loadState, activeState, tasksCurrent } = this.parseUnitState(result.stdout);
 			if (loadState === "not-found" && activeState === "inactive") return this.absentUnit();
 			if (loadState !== "loaded") throw new Error(`systemctl returned unknown state for ${this.unit}: ${JSON.stringify({
 				loadState,
@@ -240,7 +317,19 @@ var SystemdScopeOwner = class {
 				"reloading",
 				"deactivating"
 			].includes(activeState)) throw new Error(`systemctl returned unknown ActiveState for ${this.unit}: ${JSON.stringify(activeState)}`);
-			if (this.killFailure !== void 0) throw this.killFailure;
+			if (this.emptyRange(tasksCurrent)) {
+				this.releaseEmptyRange();
+				return false;
+			}
+			if (this.killFailure !== void 0) {
+				if (directRunning && this.directKillSettlement !== void 0) {
+					const settlement = this.directKillSettlement;
+					this.directKillSettlement = void 0;
+					await settlement;
+					return this.rangeActive();
+				}
+				throw this.killFailure;
+			}
 			return true;
 		}
 		if (!MISSING_UNIT.test(output)) {
@@ -288,7 +377,7 @@ var SystemdScopeOwner = class {
 		await this.observation;
 	}
 	cleanup() {
-		cleanupLinuxLaunchFiles(this.files);
+		cleanupLinuxLaunchFiles(this.startup.files);
 	}
 };
 function scopeArgs(unitBase, invocation, argv) {
@@ -305,7 +394,7 @@ function scopeArgs(unitBase, invocation, argv) {
 		...argv
 	];
 }
-function directOutcome(child, files) {
+function directOutcome(child, startup) {
 	return new Promise((resolveOutcome, rejectOutcome) => {
 		let settled = false;
 		child.once("error", (error) => {
@@ -317,40 +406,47 @@ function directOutcome(child, files) {
 			if (settled) return;
 			settled = true;
 			try {
-				const startup = readLinuxStartupError(files.startupErrorPath);
-				if (startup !== void 0) {
-					rejectOutcome(deserializeRunnerError(startup.error));
-					return;
-				}
-				if (existsSync(files.requestPath)) {
-					rejectOutcome(/* @__PURE__ */ new Error("subprocess scope exited before its bootstrap consumed the launch request"));
-					return;
-				}
-				resolveOutcome({
+				resolveOutcome(startup.resolveOutcome({
 					exitCode,
 					signal
-				});
+				}));
 			} catch (error) {
 				rejectOutcome(error instanceof Error ? error : new Error(String(error)));
 			}
 		});
 	});
 }
-function signalChildGroup(child, signal) {
+/**
+* Send a direct-process signal, distinguishing an absent PID from failed delivery.
+* @param pid - owned direct-process identity whose exit notification can still be pending.
+* @param send - platform signal operation; true means the signal was submitted.
+* @returns whether the signal was submitted or the owned PID is already absent.
+*/
+function signalLinuxDirectProcess(pid, send) {
 	try {
-		process.kill(-child.pid, signal);
-	} catch {
-		try {
-			child.kill(signal);
-		} catch {}
+		if (send()) return true;
+	} catch {}
+	try {
+		process.kill(pid, 0);
+		return false;
+	} catch (error) {
+		return error.code === "ESRCH";
 	}
+}
+function signalChildGroup(child, signal) {
+	let groupSignalled = false;
+	try {
+		groupSignalled = process.kill(-child.pid, signal);
+	} catch {}
+	if (groupSignalled && signal === "SIGTERM") return true;
+	return signalLinuxDirectProcess(child.pid, () => process.kill(child.pid, signal));
 }
 /**
 * Prepare one Linux PTY scope using the same launch request and bootstrap core.
 * @param spec - terminal target request.
 * @param targetEnv - validated complete target environment.
 * @param internals - optional runner and systemd seams used by tests.
-* @returns invocation facts and ownership callbacks for node-pty.
+* @returns invocation and ownership callbacks; requested termination preserves the observed signal even before bootstrap consumption.
 */
 function prepareLinuxTerminalScope(spec, targetEnv, internals = {}) {
 	const invocation = internals.runnerInvocation ?? spawnRunnerInvocation();
@@ -358,19 +454,15 @@ function prepareLinuxTerminalScope(spec, targetEnv, internals = {}) {
 		cwd: spec.cwd,
 		env: targetEnv
 	});
+	const startup = new LinuxScopeStartup(files, "terminal");
 	const unitBase = unitStem("dsh-terminal");
 	return {
 		command: internals.systemdRun ?? "systemd-run",
 		args: scopeArgs(unitBase, invocation, spec.argv),
 		cwd: process.cwd(),
 		env: runnerEnvironment(files.requestPath, invocation),
-		bindOwner: (direct) => new SystemdScopeOwner(`${unitBase}.scope`, files, direct, internals.systemctl ?? "systemctl", internals.spawnSync ?? spawnSync, internals.systemctlQuery ?? querySystemctl, internals.sleep ?? sleepWithAbort),
-		resolveOutcome: (outcome) => {
-			const startup = readLinuxStartupError(files.startupErrorPath);
-			if (startup !== void 0) throw deserializeRunnerError(startup.error);
-			if (existsSync(files.requestPath)) throw new Error("terminal scope exited before its bootstrap consumed the launch request");
-			return outcome;
-		},
+		bindOwner: (direct) => new SystemdScopeOwner(`${unitBase}.scope`, startup, direct, internals.systemctl ?? "systemctl", internals.spawnSync ?? spawnSync, internals.systemctlQuery ?? querySystemctl, internals.sleep ?? sleepWithAbort),
+		resolveOutcome: (outcome) => startup.resolveOutcome(outcome),
 		cleanup: () => {
 			cleanupLinuxLaunchFiles(files);
 		}
@@ -381,14 +473,16 @@ function prepareLinuxTerminalScope(spec, targetEnv, internals = {}) {
 * @param spec - ordinary target request.
 * @param targetEnv - validated complete target environment.
 * @param internals - optional runner and systemd seams used by tests.
-* @returns direct streams, result, and managed-scope owner.
+* @returns streams, result, and scope owner; requested termination preserves the observed signal even before bootstrap consumption.
 */
 function launchLinuxScope(spec, targetEnv, internals = {}) {
 	const invocation = internals.runnerInvocation ?? spawnRunnerInvocation();
 	const files = createLinuxLaunchFiles({
 		cwd: spec.cwd,
-		env: targetEnv
+		env: targetEnv,
+		...spec.stdio.control === void 0 ? {} : { control: spec.stdio.control }
 	});
+	const startup = new LinuxScopeStartup(files, "subprocess");
 	const unitBase = unitStem("dsh-subprocess");
 	let child;
 	try {
@@ -402,17 +496,18 @@ function launchLinuxScope(spec, targetEnv, internals = {}) {
 		cleanupLinuxLaunchFiles(files);
 		throw error;
 	}
-	const owner = new SystemdScopeOwner(`${unitBase}.scope`, files, {
+	const direct = directOutcome(child, startup);
+	const owner = new SystemdScopeOwner(`${unitBase}.scope`, startup, {
 		running: () => child.pid !== void 0 && child.exitCode === null && child.signalCode === null,
-		signal: (signal) => {
-			signalChildGroup(child, signal);
-		}
+		signal: (signal) => signalChildGroup(child, signal),
+		settled: direct
 	}, internals.systemctl ?? "systemctl", internals.spawnSync ?? spawnSync, internals.systemctlQuery ?? querySystemctl, internals.sleep ?? sleepWithAbort);
 	return {
 		stdin: child.stdin,
 		stdout: child.stdout,
 		stderr: child.stderr,
-		direct: directOutcome(child, files),
+		control: controlPipe(child, spec.stdio.control),
+		direct,
 		owner
 	};
 }
@@ -502,6 +597,7 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
 			...spec.argv
 		], {
 			cwd: process.cwd(),
+			windowsHide: true,
 			env: runnerEnvironment(WINDOWS_RUNNER_SELECTION, invocation),
 			stdio: runnerStdio(spec, true, ignoredStdinFd ?? "pipe")
 		});
@@ -513,9 +609,24 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
 	const rangeExit = Promise.withResolvers();
 	let directResultType;
 	let runnerSpawned = false;
+	let runnerExit;
+	let ipcDisconnected = false;
 	const failInfrastructure = (error) => {
 		direct.reject(error);
 		rangeExit.reject(error);
+	};
+	const settleRange = () => {
+		if (!runnerSpawned || runnerExit === void 0) return;
+		const { exitCode, signal } = runnerExit;
+		if (exitCode === 0 && signal === null) {
+			if (directResultType !== void 0) {
+				rangeExit.resolve();
+				return;
+			}
+			if (!ipcDisconnected) return;
+		}
+		const status = signal !== null ? `signal ${signal}` : exitCode === null ? "without an exit status" : `exit code ${String(exitCode)}`;
+		failInfrastructure(/* @__PURE__ */ new Error(`subprocess-local: Windows Job runner exited with ${status} before proving its managed range empty`));
 	};
 	const owner = new WindowsJobOwner(child, rangeExit.promise, () => directResultType, failInfrastructure);
 	child.on("message", (value) => {
@@ -538,6 +649,7 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
 			signal: null
 		});
 		else direct.reject(owner.mapStartFailure(deserializeRunnerError(result.error), result.error));
+		settleRange();
 	});
 	child.once("spawn", () => {
 		runnerSpawned = true;
@@ -546,7 +658,8 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
 			child.send({
 				type: "start",
 				cwd: spec.cwd,
-				env: targetEnv
+				env: targetEnv,
+				...spec.stdio.control === void 0 ? {} : { control: spec.stdio.control }
 			}, (error) => {
 				if (error === null) return;
 				failInfrastructure(error);
@@ -565,19 +678,22 @@ function launchWindowsJob(spec, targetEnv, internals = {}) {
 		}
 		failInfrastructure(error);
 	});
-	child.once("close", (exitCode, signal) => {
-		if (!runnerSpawned) return;
-		if (exitCode === 0 && signal === null && directResultType !== void 0) {
-			rangeExit.resolve();
-			return;
-		}
-		const status = signal !== null ? `signal ${signal}` : exitCode === null ? "without an exit status" : `exit code ${String(exitCode)}`;
-		failInfrastructure(/* @__PURE__ */ new Error(`subprocess-local: Windows Job runner exited with ${status} before proving its managed range empty`));
+	child.once("exit", (exitCode, signal) => {
+		runnerExit = {
+			exitCode,
+			signal
+		};
+		settleRange();
+	});
+	child.once("disconnect", () => {
+		ipcDisconnected = true;
+		settleRange();
 	});
 	return {
 		stdin: spec.stdio.stdin === "ignore" ? null : targetStdin,
 		stdout: child.stdio[5],
 		stderr: child.stdio[6],
+		control: controlPipe(child, spec.stdio.control),
 		direct: direct.promise,
 		owner
 	};
@@ -625,6 +741,9 @@ var LocalTerminalHandle = class {
 	platform;
 	managedOwner;
 	resolveManagedOutcome;
+	shellActivity;
+	onQuiescence;
+	observeShellExit;
 	pid;
 	output = new PassThrough();
 	done;
@@ -634,7 +753,12 @@ var LocalTerminalHandle = class {
 	cleanup;
 	managedOwnerCleaned = false;
 	exited = false;
+	outputPaused = false;
 	trackedDescendants = [];
+	activityRevision = 0;
+	activityKey = "";
+	quiescent = false;
+	managedRangeEmpty = false;
 	/** The spawned shell's start identity; scans stop adopting members once the root pid no longer carries it. */
 	rootIdentity;
 	/**
@@ -643,22 +767,44 @@ var LocalTerminalHandle = class {
 	* @param graceMs - TERM-to-KILL and exit-wait grace.
 	* @param platform - host platform; defaults to the running platform, injectable for deterministic tests.
 	*/
-	constructor(terminal, inspector, graceMs, platform = process.platform, managedOwner, resolveManagedOutcome) {
+	constructor(terminal, inspector, graceMs, platform = process.platform, managedOwner, resolveManagedOutcome, shellActivity, onQuiescence, observeShellExit = false) {
 		this.terminal = terminal;
 		this.inspector = inspector;
 		this.graceMs = graceMs;
 		this.platform = platform;
 		this.managedOwner = managedOwner;
 		this.resolveManagedOutcome = resolveManagedOutcome;
+		this.shellActivity = shellActivity;
+		this.onQuiescence = onQuiescence;
+		this.observeShellExit = observeShellExit;
 		this.pid = terminal.pid;
-		this.rootIdentity = inspector.snapshot().tree(this.pid).find((member) => member.pid === this.pid);
+		try {
+			this.rootIdentity = inspector.snapshot().tree(this.pid).find((member) => member.pid === this.pid);
+		} catch (_rootIdentityUnavailable) {
+			this.rootIdentity = void 0;
+		}
 		this.done = this.outcome.promise;
+		const resume = () => {
+			if (!this.outputPaused) return;
+			this.outputPaused = false;
+			if (!this.exited) terminal.resume();
+		};
+		this.output.on("drain", resume);
+		this.output.once("close", () => {
+			this.output.off("drain", resume);
+		});
 		this.dataDisposable = terminal.onData((data) => {
-			this.output.write(Buffer.from(data, "utf8"));
+			if (!this.output.write(Buffer.from(data, "utf8")) && this.cleanup === void 0 && !this.outputPaused) {
+				this.outputPaused = true;
+				terminal.pause();
+			}
 		});
 		this.exitDisposable = terminal.onExit(({ exitCode, signal: exitSignal }) => {
 			if (this.exited) return;
 			this.exited = true;
+			if (this.managedOwner !== void 0 && this.observeShellExit) this.managedOwner.waitForExit().then(() => {
+				this.managedRangeEmpty = true;
+			}).catch(() => {});
 			this.output.end();
 			const outcome = {
 				exitCode: exitSignal === void 0 || exitSignal === 0 ? exitCode : null,
@@ -677,7 +823,12 @@ var LocalTerminalHandle = class {
 	}
 	async write(data) {
 		if (this.exited) throw new Error("terminal process has exited");
+		this.shellActivity?.invalidate();
 		this.terminal.write(data);
+	}
+	async resize(cols, rows) {
+		if (this.exited) throw new Error("terminal process has exited");
+		this.terminal.resize(cols, rows);
 	}
 	async inspectForeground() {
 		this.descendants(this.inspector.snapshot());
@@ -688,7 +839,44 @@ var LocalTerminalHandle = class {
 			inputWaiting: this.inspector.isStdinWaiting(processGroupId, this.pid)
 		};
 	}
+	async inspectActivity() {
+		let state = this.quiescent ? "idle" : "unknown";
+		let revision = 0;
+		if (!this.quiescent) try {
+			const shell = this.shellActivity?.inspect(this.pid) ?? {
+				state: "unknown",
+				revision: 0
+			};
+			revision = shell.revision;
+			const observed = this.inspector.snapshot();
+			const descendants = this.descendants(observed);
+			const root = observed.tree(this.pid).find((member) => member.pid === this.pid);
+			if (this.exited && this.managedRangeEmpty) state = "idle";
+			else if (descendants.length > 0) state = "busy";
+			else if (this.exited && this.managedOwner === void 0 && this.platform === "linux" && observed.complete === true && root === void 0) state = observed.session(this.pid).some((member) => observed.alive(member)) ? "busy" : "idle";
+			else if (observed.complete === true && root?.started === this.rootIdentity?.started && root !== void 0) {
+				const foreground = this.inspector.foregroundPgid(this.pid);
+				state = foreground === void 0 ? "unknown" : foreground === this.pid ? shell.state : "busy";
+				if (state === "idle" && this.managedOwner !== void 0) {
+					const tasks = this.managedOwner.inspectTaskCount?.();
+					state = tasks === void 0 || tasks < 1 ? "unknown" : tasks === 1 ? "idle" : "busy";
+				}
+			}
+		} catch (_incompleteActivityObservation) {
+			state = "unknown";
+		}
+		const key = `${revision}:${state}`;
+		if (key !== this.activityKey) {
+			this.activityKey = key;
+			this.activityRevision++;
+		}
+		return {
+			state,
+			revision: this.activityRevision
+		};
+	}
 	async signalForeground(signal) {
+		this.shellActivity?.invalidate();
 		const foreground = await this.inspectForeground();
 		if (foreground === void 0) throw new Error(`cannot resolve foreground process group for terminal ${this.pid}`);
 		if (signal === "SIGKILL" && foreground.processGroupId === this.pid) throw new Error("refusing to SIGKILL the terminal shell; terminate the terminal session instead");
@@ -704,7 +892,15 @@ var LocalTerminalHandle = class {
 	}
 	terminate() {
 		if (this.cleanup !== void 0) return this.cleanup;
-		const cleanup = this.closeOnce();
+		if (this.outputPaused) {
+			this.outputPaused = false;
+			this.terminal.resume();
+		}
+		const cleanup = this.closeOnce().then(() => {
+			this.quiescent = true;
+			this.shellActivity?.dispose();
+			this.onQuiescence?.();
+		});
 		this.cleanup = cleanup;
 		cleanup.catch(() => {
 			this.cleanup = void 0;
@@ -894,6 +1090,164 @@ var LocalTerminalHandle = class {
 	}
 };
 //#endregion
+//#region lib/types/shell-activity.js
+/** Private shell lifecycle files; ordinary output never authorizes terminal reclamation. */
+function quote(value) {
+	return `'${value.replaceAll("'", "'\\''")}'`;
+}
+/** Opt-in startup integration and revision tracking for one ordinary interactive shell. */
+var ShellActivity = class {
+	directory;
+	argv;
+	env;
+	revision = 0;
+	observed = "";
+	invalidated;
+	state = "unknown";
+	/**
+	* @param directory - private startup and status file directory.
+	* @param argv - shell launch preserving supported user startup files.
+	* @param env - environment with any temporary startup redirect.
+	*/
+	constructor(directory, argv, env) {
+		this.directory = directory;
+		this.argv = argv;
+		this.env = env;
+	}
+	/** Invalidate prompt evidence before delivering input or a foreground signal. */
+	invalidate() {
+		this.invalidated = this.read();
+		this.revision++;
+		this.state = "unknown";
+	}
+	/**
+	* Read the latest top-level shell transition, fenced against input since that transition.
+	* @param pid - original shell process id.
+	* @returns lifecycle evidence; process ownership must be checked separately.
+	*/
+	inspect(pid) {
+		const record = this.read();
+		if (record !== this.observed) {
+			this.observed = record;
+			this.revision++;
+		}
+		const match = /^(\d+):(\d+):(idle|busy)\n?$/u.exec(record);
+		this.state = record === this.invalidated || match?.[1] !== String(pid) ? "unknown" : match[3];
+		return {
+			state: this.state,
+			revision: this.revision
+		};
+	}
+	/** Remove private startup and status files after process quiescence. */
+	dispose() {
+		rmSync(this.directory, {
+			recursive: true,
+			force: true
+		});
+	}
+	read() {
+		try {
+			return readFileSync(join(this.directory, "state"), "utf8");
+		} catch (_unavailableShellObservation) {
+			return "";
+		}
+	}
+};
+/**
+* Prepare optional Bash or Zsh integration for a plain, non-login interactive launch.
+* @param spec - terminal request; custom arguments and wrapped executables remain unmodified.
+* @param env - scrubbed target environment.
+* @param platform - execution platform.
+* @returns private integration, or undefined for unsupported launches.
+*/
+function prepareShellActivity(spec, env, platform) {
+	if (spec.shellActivity !== true || platform === "win32" || spec.argv.length !== 2 || spec.argv[1] !== "-i") return void 0;
+	const shell = basename(spec.argv[0]);
+	if (shell !== "bash" && shell !== "zsh") return void 0;
+	const directory = mkdtempSync(join(tmpdir(), "dsh-shell-"));
+	const state = quote(join(directory, "state"));
+	const guards = quote(join(directory, "guards"));
+	try {
+		if (shell === "bash") {
+			const rc = join(directory, "bashrc");
+			writeFileSync(rc, [
+				"[[ ! -r ~/.bashrc ]] || builtin source ~/.bashrc",
+				"if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4) )) && [[ ! $(declare -p PROMPT_COMMAND PS0 2>/dev/null) =~ declare\\ -[^[:space:]]*r ]]; then",
+				"  __dsh_shell_pid=$BASHPID; __dsh_shell_sequence=0",
+				"  __dsh_shell_idle() {",
+				"    local result=$?",
+				"    if [[ $BASHPID == \"$__dsh_shell_pid\" ]]; then",
+				"      (( ++__dsh_shell_sequence ))",
+				"      local activity=idle",
+				`      builtin trap -p >| ${guards}`,
+				`      [[ ! -s ${guards} ]] || activity=unknown`,
+				`      builtin printf '%s:%s:%s\\n' "$BASHPID" "$__dsh_shell_sequence" "$activity" >| ${state}`,
+				"    fi",
+				"    return \"$result\"",
+				"  }",
+				"  if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == \"declare -a \"* ]]; then",
+				"    PROMPT_COMMAND+=(__dsh_shell_idle)",
+				"  else",
+				"    PROMPT_COMMAND=\"${PROMPT_COMMAND}\"$'\\n'\"__dsh_shell_idle\"",
+				"  fi",
+				`  PS0+=${quote(`$(builtin printf '%s:%s:busy' "$__dsh_shell_pid" "$__dsh_shell_sequence" >| ${state})`)}`,
+				"fi",
+				""
+			].join("\n"), {
+				mode: 384,
+				flag: "wx"
+			});
+			return new ShellActivity(directory, [
+				spec.argv[0],
+				"--rcfile",
+				rc,
+				"-i"
+			], env);
+		}
+		writeFileSync(join(directory, ".zshenv"), [
+			env.ZDOTDIR === void 0 ? "unset ZDOTDIR" : `ZDOTDIR=${quote(env.ZDOTDIR)}`,
+			"[[ ! -r ${ZDOTDIR:-$HOME}/.zshenv ]] || builtin source \"${ZDOTDIR:-$HOME}/.zshenv\"",
+			"typeset -g __dsh_shell_pid=$$ __dsh_shell_sequence=0",
+			"__dsh_shell_activity() {",
+			"  (( ZSH_SUBSHELL == 0 && $$ == __dsh_shell_pid )) || return",
+			"  (( ++__dsh_shell_sequence ))",
+			`  builtin printf '%s:%s:%s\\n' "$$" "$__dsh_shell_sequence" "$1" >| ${state}`,
+			"  return 0",
+			"}",
+			"__dsh_shell_idle() {",
+			`  { builtin trap; zle -F; } >| ${guards}`,
+			"  if [[ $CONTEXT != start || -n $BUFFER ]]; then __dsh_shell_activity busy",
+			`  elif [[ -s ${guards} || -n \${(k)functions[(I)TRAP*]} ]]; then __dsh_shell_activity unknown`,
+			"  else __dsh_shell_activity idle; fi",
+			"}",
+			"__dsh_shell_busy() { __dsh_shell_activity busy }",
+			"__dsh_shell_init() {",
+			"  autoload -Uz add-zle-hook-widget add-zsh-hook",
+			"  add-zle-hook-widget line-init __dsh_shell_idle",
+			"  add-zle-hook-widget line-finish __dsh_shell_busy",
+			"  add-zsh-hook preexec __dsh_shell_busy",
+			"  precmd_functions=(${precmd_functions:#__dsh_shell_init})",
+			"}",
+			"typeset -ga precmd_functions",
+			"precmd_functions+=(__dsh_shell_init)",
+			""
+		].join("\n"), {
+			mode: 384,
+			flag: "wx"
+		});
+		return new ShellActivity(directory, spec.argv, {
+			...env,
+			ZDOTDIR: directory
+		});
+	} catch (error) {
+		rmSync(directory, {
+			recursive: true,
+			force: true
+		});
+		throw error;
+	}
+}
+//#endregion
 //#region lib/types/index.js
 /**
 * Local Service Provider for the subprocess capability seam. Each spawn owns a
@@ -904,6 +1258,7 @@ var LocalTerminalHandle = class {
 * stay with the caller's config (the bash executor's, the LSP host's, …).
 * @module @deepseek-ai/dsh-subprocess-local
 */
+const requireNodePty = createLazyRequire("node-pty", import.meta.url);
 /**
 * Local subprocess service: platform-selected managed ranges, Node-shaped stdio
 * dispositions (raw pipes, inherit, bounded tail-keep collection with spill
@@ -916,6 +1271,8 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 	live = /* @__PURE__ */ new Set();
 	/** Live terminals retained through normal quiescence or host-exit finalization. */
 	terminals = /* @__PURE__ */ new Set();
+	/** Caller endpoints retained until close, independently of managed process lifetime. */
+	controlChannels = /* @__PURE__ */ new Set();
 	/** Test hook: process, spill, and platform operations forwarded to spawnSubprocess. */
 	internals = {};
 	/** Provider-lifetime latch suppressing repeated weaker-containment warnings. */
@@ -957,6 +1314,13 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 			this.terminals.delete(terminal);
 		}));
 		const outcomes = await Promise.allSettled(pending);
+		await Promise.all([...this.controlChannels].map((control) => new Promise((resolveClose) => {
+			control.once("close", () => {
+				resolveClose();
+			});
+			control.destroy();
+		})));
+		this.controlChannels.clear();
 		const failures = [];
 		for (const outcome of outcomes) if (outcome.status === "rejected") failures.push(outcome.reason);
 		if (failures.length > 0) this.terminateForHostExit();
@@ -980,7 +1344,7 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 			} catch {}
 		}
 		signal?.throwIfAborted();
-		throw new Error(absolute ? `subprocess-local: command ${JSON.stringify(command)} is not an executable file` : `subprocess-local: command ${JSON.stringify(command)} was not found on PATH`);
+		throw new SubprocessExecutableNotFoundError(absolute ? `subprocess-local: command ${JSON.stringify(command)} is not an executable file` : `subprocess-local: command ${JSON.stringify(command)} was not found on PATH`);
 	}
 	executableCandidates(command, env) {
 		const path = environmentValue(env, "PATH") ?? "";
@@ -998,6 +1362,13 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 			handle = bindManagedProcess(spec, containmentMode === "linux-scope" ? launchLinuxScope(spec, env) : launchWindowsJob(spec, env), binding);
 		}
 		this.live.add(handle);
+		const control = handle.control;
+		if (control !== void 0) {
+			this.controlChannels.add(control);
+			control.once("close", () => {
+				this.controlChannels.delete(control);
+			});
+		}
 		const release = () => handle.waitForExit().then(() => {
 			this.live.delete(handle);
 		});
@@ -1025,47 +1396,71 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 		const reason = selectedReason ?? (platform === "darwin" ? "macOS has no supported persistent process-range owner" : platform === "win32" ? kind === "terminal" ? "Windows ConPTY remains outside Job containment" : "the Win32 Job runner is unavailable" : `platform ${platform} has no native managed range`);
 		this.ctx.logger.warn(`subprocess-local is using weaker process-tree containment because ${reason}; descendants that escape the process group or direct-parent tree are not guaranteed to terminate or delay waitForExit()`);
 	}
+	/** @inheritdoc */
+	async terminalEnvironment(signal) {
+		signal?.throwIfAborted();
+		const platform = process.platform === "win32" ? "windows" : "posix";
+		const defaultShell = platform === "windows" ? process.env.ComSpec || void 0 : process.env.SHELL || userInfo().shell || void 0;
+		return {
+			platform,
+			...defaultShell === void 0 ? {} : { defaultShell }
+		};
+	}
 	async spawnTerminal(spec) {
 		const file = spec.argv[0];
 		if (file === void 0 || file.length === 0) throw new Error("subprocess-local: terminal argv must contain a program");
 		spec.signal?.throwIfAborted();
+		const inspector = this.terminalInspector ?? createProcessInspector();
+		const containmentMode = this.selectContainmentMode("terminal");
 		const env = targetEnvironment(spec);
+		const activity = prepareShellActivity(spec, env, this.internals.platform ?? process.platform);
+		const launch = activity === void 0 ? spec : {
+			...spec,
+			argv: activity.argv,
+			env: activity.env
+		};
 		const options = {
-			name: "dumb",
+			name: spec.terminalType,
 			rows: spec.rows,
 			cols: spec.cols,
 			cwd: spec.cwd,
-			env
+			env: {
+				...activity?.env ?? env,
+				TERM: spec.terminalType
+			}
 		};
-		const inspector = this.terminalInspector ?? createProcessInspector();
-		const scope = this.selectContainmentMode("terminal") === "linux-scope" ? prepareLinuxTerminalScope(spec, {
-			...env,
-			PWD: spec.cwd,
-			TERM: "dumb"
-		}) : void 0;
-		if (scope !== void 0) {
-			options.cwd = scope.cwd;
-			options.env = scope.env;
-		}
+		let scope;
 		let terminal;
 		try {
-			terminal = nodePty.spawn(scope?.command ?? file, scope?.args ?? [...spec.argv.slice(1)], options);
+			scope = containmentMode === "linux-scope" ? prepareLinuxTerminalScope(launch, {
+				...activity?.env ?? env,
+				PWD: spec.cwd,
+				TERM: spec.terminalType
+			}) : void 0;
+			if (scope !== void 0) {
+				options.cwd = scope.cwd;
+				options.env = scope.env;
+			}
+			terminal = requireNodePty().spawn(scope?.command ?? file, scope?.args ?? [...launch.argv.slice(1)], options);
 		} catch (error) {
 			scope?.cleanup();
+			activity?.dispose();
 			throw error;
 		}
 		let handle;
+		const directSettlement = Promise.withResolvers();
 		const owner = scope?.bindOwner({
 			running: () => handle?.running ?? true,
-			signal: (signal) => {
-				try {
-					terminal.kill(signal);
-				} catch {}
-			}
+			settled: directSettlement.promise,
+			signal: (signal) => signalLinuxDirectProcess(terminal.pid, () => process.kill(terminal.pid, signal))
 		});
-		handle = new LocalTerminalHandle(terminal, inspector, spec.graceMs, this.internals.platform ?? process.platform, owner, scope?.resolveOutcome);
+		handle = new LocalTerminalHandle(terminal, inspector, spec.graceMs, this.internals.platform ?? process.platform, owner, scope?.resolveOutcome, activity, () => {
+			this.terminals.delete(handle);
+		}, spec.shellActivity === true);
 		this.terminals.add(handle);
 		const release = async () => {
+			directSettlement.resolve();
+			if (spec.shellActivity === true) return;
 			await handle.terminate();
 			this.terminals.delete(handle);
 		};

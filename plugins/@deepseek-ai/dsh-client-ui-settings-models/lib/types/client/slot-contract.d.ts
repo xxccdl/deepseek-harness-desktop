@@ -32,6 +32,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
             scope: 'root';
             owner: ProviderCardExtrasOwnerProps;
         };
+        /** Optional account login choice before the credential editor. */
+        'settings.models.sign-in': {
+            kind: 'single';
+            scope: 'root';
+            owner: {
+                complete: () => void;
+                useApiKey: () => void;
+            };
+        };
         /**
          * Ordered extension area after the provider rows and the add controls.
          * Without a registrant the area renders nothing.

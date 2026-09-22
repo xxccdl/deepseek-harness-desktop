@@ -3,8 +3,8 @@ import type { RequestImageAttachment } from '@deepseek-ai/dsh-attachment';
 import type { DeepSeekFileId } from './file-id.ts';
 import { DeepSeekUploadIndex } from './upload-index.ts';
 import type { DeepSeekUploadRecord } from './upload-index.ts';
-/** DeepSeek chat accepts at most 32 MiB per image even when it is referenced by file id. */
-export declare const MAX_CHAT_IMAGE_BYTES: number;
+/** Shared Files-store limit for each request image, including file-id references. */
+export declare const MAX_IMAGE_BYTES: number;
 /** Resolved file-store policy from the plugin configuration. */
 export interface DeepSeekFilePolicy {
     expiresAfterSeconds: number;
@@ -15,6 +15,8 @@ export interface DeepSeekFilePolicy {
 export interface DeepSeekFileConnection {
     baseURL: string;
     apiKey: string;
+    /** Use the DSH account header; omitted for ordinary API keys. */
+    accountCredential?: boolean;
 }
 /** Result of one file-id resolution. */
 export interface DeepSeekFileReference {
@@ -48,7 +50,7 @@ export declare class DeepSeekFileStore {
     ensureUploaded(version: RequestImageAttachment, connection: DeepSeekFileConnection, policy: DeepSeekFilePolicy, signal?: AbortSignal): Promise<DeepSeekFileReference>;
     private ensureUploadedOnce;
     /**
-     * Invalidate one exact local mapping after the chat endpoint rejects its remote id.
+     * Invalidate one exact local mapping after a model request rejects its remote id.
      * @param version - request-image version whose remote generation failed.
      * @param fileId - exact rejected file id.
      * @param connection - endpoint and API-key snapshot.

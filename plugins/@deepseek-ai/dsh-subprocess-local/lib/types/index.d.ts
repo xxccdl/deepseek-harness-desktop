@@ -9,7 +9,7 @@
  */
 import { Context } from '@deepseek-ai/cordis';
 import { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess';
-import type { SubprocessHandle, SubprocessSpawnSpec, SubprocessTerminalHandle, SubprocessTerminalSpawnSpec } from '@deepseek-ai/dsh-subprocess';
+import type { SubprocessHandle, SubprocessSpawnSpec, SubprocessTerminalHandle, SubprocessTerminalEnvironment, SubprocessTerminalSpawnSpec } from '@deepseek-ai/dsh-subprocess';
 import type { SpawnInternals } from './spawn.ts';
 import type { ProcessInspector } from './process-inspector.ts';
 /**
@@ -24,6 +24,8 @@ export declare class LocalSubprocessRuntime extends SubprocessRuntime {
     private live;
     /** Live terminals retained through normal quiescence or host-exit finalization. */
     private terminals;
+    /** Caller endpoints retained until close, independently of managed process lifetime. */
+    private controlChannels;
     /** Test hook: process, spill, and platform operations forwarded to spawnSubprocess. */
     internals: SpawnInternals;
     /** Provider-lifetime latch suppressing repeated weaker-containment warnings. */
@@ -40,6 +42,8 @@ export declare class LocalSubprocessRuntime extends SubprocessRuntime {
     spawn(spec: SubprocessSpawnSpec): SubprocessHandle;
     private selectContainmentMode;
     private warnFallback;
+    /** @inheritdoc */
+    terminalEnvironment(signal?: AbortSignal): Promise<SubprocessTerminalEnvironment>;
     spawnTerminal(spec: SubprocessTerminalSpawnSpec): Promise<SubprocessTerminalHandle>;
 }
 export default LocalSubprocessRuntime;

@@ -10,8 +10,13 @@ import type { LocaleKeysOf } from '@deepseek-ai/dsh-client-ui-slots';
 export type { ToolCallBlock } from '@deepseek-ai/dsh-client-ui-chat/client';
 /** Tool-call row variants selected by the generic atomic renderer. */
 export type ToolRowVariant = 'search' | 'read' | 'bash' | 'write' | 'edit' | 'code' | 'others';
-/** Row state semantic; colors self-supplied via StateDot (design gives none). */
+/** Row lifecycle state used by summary styling and accessible status text. */
 export type ToolRowState = 'running' | 'ok' | 'error' | 'stopped';
+/** Locale-neutral structured fact consumed only by the user-facing Tool row. */
+export interface AutoReviewDenial {
+    /** Raw persisted reviewer reason; display normalization happens at render time. */
+    reason: string | null;
+}
 type ToolTitleKey = Extract<LocaleKeysOf<'conversation'>, `tool.title.${string}`>;
 /** Locale key per generic row variant. */
 export declare const VARIANT_TITLE_KEYS: {
@@ -46,6 +51,8 @@ export interface ToolRowModel {
     output: string | null;
     /** First line of the result text on an error row; null for every other state. */
     errorSummary: string | null;
+    /** Structured Auto-review denial identity; null for every ordinary result. */
+    autoReviewDenial: AutoReviewDenial | null;
     state: ToolRowState;
 }
 /**

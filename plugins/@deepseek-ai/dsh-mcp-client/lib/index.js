@@ -1,14 +1,12 @@
 import z from "@deepseek-ai/schemastery";
 import { scopeOf } from "@deepseek-ai/dsh-scope";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { ListToolsResultSchema, ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Client, StreamableHTTPClientTransport, specTypeSchemas } from "@modelcontextprotocol/client";
+import { assertNever } from "@deepseek-ai/dsh-util-values";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import { z as z$1 } from "zod";
 import { isImageAdmissionError } from "@deepseek-ai/dsh-attachment";
 import { assertSupportedJsonSchema } from "@deepseek-ai/dsh-tools";
 //#region lib/types/transport.js
@@ -72,8 +70,6 @@ const MAX_PUBLIC_NAME_LENGTH = 64;
 const INVALID_NAME_CHARS = /[^A-Za-z0-9_-]/g;
 /** Hex chars of the SHA-256 identity hash appended on lossy normalization. */
 const HASH_LENGTH = 12;
-/** Raw result record: the bridge owns JSON-value validation after transport. */
-const RawCallToolResultSchema = z$1.record(z$1.string(), z$1.unknown());
 /** Raster formats supported by the durable attachment vocabulary. */
 const IMAGE_MEDIA_TYPES = [
 	"image/png",
@@ -83,26 +79,6 @@ const IMAGE_MEDIA_TYPES = [
 ];
 /** Canonical RFC 4648 base64, excluding whitespace and URL-safe aliases. */
 const CANONICAL_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-/** List without mutating the SDK's per-page output-validator cache. */
-function listToolsUncached(client, cursor) {
-	return client.request({
-		method: "tools/list",
-		...cursor === void 0 ? {} : { params: { cursor } }
-	}, ListToolsResultSchema);
-}
-/** Call without the SDK pre-validating an output schema the bridge may not support. */
-function callToolUncached(client, rawName, args, exec, opts) {
-	return client.request({
-		method: "tools/call",
-		params: {
-			name: rawName,
-			arguments: args
-		}
-	}, RawCallToolResultSchema, {
-		signal: exec.signal,
-		timeout: opts.toolCallTimeoutMs
-	});
-}
 /**
 * Derive the model-facing public name for one MCP tool.
 *
@@ -129,9 +105,9 @@ function publicToolName(serverName, rawName) {
 *
 * Two phases keep the swap safe:
 *
-* 1. Fetch: drain uncached `tools/list` pagination and build the full next
+* 1. Fetch: let the SDK aggregate `tools/list` and build the full next
 *    generation of `ToolDefinition`s under public names. Any failure here
-*    (network error, duplicate raw name, repeated continuation cursor) rejects
+*    (network error or duplicate raw name) rejects
 *    and leaves the previous generation registered untouched.
 * 2. Swap: dispose the previous generation, register the new one. A registry
 *    conflict here can only mean a foreign registration squats on this
@@ -150,21 +126,27 @@ function publicToolName(serverName, rawName) {
 */
 async function syncTools(client, ctx, opts, previous) {
 	const definitions = /* @__PURE__ */ new Map();
-	const seenCursors = /* @__PURE__ */ new Set();
-	let cursor;
-	do {
-		const response = await listToolsUncached(client, cursor);
-		for (const tool of response.tools) {
-			const publicName = publicToolName(opts.serverName, tool.name);
-			if (definitions.has(publicName)) throw new Error(`mcp-client(${opts.serverName}): server listed tool "${tool.name}" more than once — invalid tool list`);
-			definitions.set(publicName, createDefinition(client, ctx, publicName, tool.name, tool.description ?? "", tool.inputSchema, supportedOutputSchema(tool.outputSchema), tool.execution?.taskSupport === "required", opts));
-		}
-		cursor = response.nextCursor;
-		if (cursor) {
-			if (seenCursors.has(cursor)) throw new Error(`mcp-client(${opts.serverName}): server repeated a tools/list continuation cursor — invalid tool list`);
-			seenCursors.add(cursor);
-		}
-	} while (cursor);
+	const response = client.getServerCapabilities()?.tools === void 0 ? { tools: [] } : await client.listTools(void 0, { cacheMode: "refresh" });
+	for (const tool of response.tools) {
+		const publicName = publicToolName(opts.serverName, tool.name);
+		if (definitions.has(publicName)) throw new Error(`mcp-client(${opts.serverName}): server listed tool "${tool.name}" more than once — invalid tool list`);
+		definitions.set(publicName, createMcpToolDefinition(ctx, {
+			name: publicName,
+			rawName: tool.name,
+			description: tool.description ?? "",
+			inputSchema: tool.inputSchema,
+			outputSchema: tool.outputSchema,
+			taskRequired: tool.execution?.taskSupport === "required",
+			call: (args, execution) => client.callTool({
+				name: tool.name,
+				arguments: args
+			}, {
+				signal: execution.signal,
+				timeout: opts.toolCallTimeoutMs,
+				toolDefinition: tool
+			})
+		}));
+	}
 	for (const dispose of previous.values()) dispose();
 	const disposers = /* @__PURE__ */ new Map();
 	try {
@@ -188,26 +170,21 @@ function supportedOutputSchema(candidate) {
 	}
 }
 /**
-* Build one generation-local tool definition and its execution-local rich projections.
-* @param client - connected MCP client used for calls.
+* Adapt an upstream MCP tool to canonical values and durable image content.
+* Registration, provider lifetime, deadlines, and transport belong to the caller.
 * @param ctx - plugin context carrying optional attachment and model services.
-* @param publicName - registry-qualified public tool name.
-* @param rawName - MCP wire tool name.
-* @param description - model-facing tool description.
-* @param parameters - MCP input schema.
-* @param structuredSchema - supported structured-output schema, when advertised.
-* @param taskRequired - whether this MCP tool requires unsupported task execution.
-* @param opts - bridge timeout and namespace options.
-* @returns a complete ToolRuntime definition.
+* @param options - upstream tool fields and its raw-result callback.
+* @returns the unregistered ToolRuntime definition.
 */
-function createDefinition(client, ctx, publicName, rawName, description, parameters, structuredSchema, taskRequired, opts) {
+function createMcpToolDefinition(ctx, options) {
+	const { name, rawName, description, inputSchema } = options;
 	const projections = /* @__PURE__ */ new WeakMap();
 	return {
-		name: publicName,
+		name,
 		description,
-		parameters,
-		output: createOutput(rawName, structuredSchema),
-		execute: createExecutor(client, ctx, rawName, taskRequired, opts, projections),
+		parameters: inputSchema,
+		output: createOutput(rawName, supportedOutputSchema(options.outputSchema)),
+		execute: createExecutor(ctx, options, projections),
 		finalizeContent(exec, result) {
 			const projection = projections.get(exec);
 			if (projection === void 0) return void 0;
@@ -243,31 +220,17 @@ function createOutput(rawName, structuredSchema) {
 	};
 }
 /**
-* Create an execute function for one MCP tool. The executor closes over the
-* raw MCP tool name and sends an uncached `tools/call` request with it (never
-* the public name), with abort signal and timeout, then maps the result to
-* harness ContentBlocks. Owning the raw request prevents the SDK's internal
-* per-page schema cache from pre-validating a different contract.
-*
-* When the MCP server returns `isError: true`, the executor throws so that
-* the ToolRuntime's catch path produces an `isError` result for the model.
+* Invoke the caller-owned raw-result callback and prepare canonical content.
+* MCP isError results reject before image storage so ToolRuntime records failure.
 */
-function createExecutor(client, ctx, rawName, taskRequired, opts, projections) {
+function createExecutor(ctx, options, projections) {
+	const { rawName, taskRequired } = options;
 	return async (args, exec) => {
 		if (taskRequired) throw new Error(`Tool "${rawName}" requires task-based execution, which this bridge does not support`);
-		const result = await callToolUncached(client, rawName, typeof args === "object" && args !== null ? args : {}, exec, opts);
-		if (!Array.isArray(result.content)) {
-			const rendered = "toolResult" in result ? JSON.stringify(result.toolResult) : "(no output)";
-			const text = typeof rendered === "string" ? rendered : "(no output)";
-			if (result.isError === true) throw new Error(text);
-			return {
-				content: [{
-					type: "text",
-					text
-				}],
-				...result.structuredContent !== void 0 ? { structuredContent: result.structuredContent } : {}
-			};
-		}
+		const argsObj = typeof args === "object" && args !== null ? args : {};
+		const parsed = specTypeSchemas.CallToolResult["~standard"].validate(await options.call(argsObj, exec));
+		if (parsed.issues !== void 0) throw new Error(`Tool "${rawName}" returned an invalid MCP result: ${parsed.issues.map((issue) => issue.message).join("; ")}`);
+		const result = parsed.value;
 		const content = result.content;
 		const text = extractText(content, rawName);
 		if (result.isError === true) throw new Error(text);
@@ -302,10 +265,10 @@ function isRecord(value) {
 function isImageMediaType(value) {
 	return IMAGE_MEDIA_TYPES.includes(value);
 }
-/** Decode one untrusted MCP image block without accepting base64 aliases. */
+/** Decode one projected image without accepting base64 aliases. */
 function decodeImage(block) {
-	if (block.mimeType === void 0 || !isImageMediaType(block.mimeType)) throw new Error("the declared media type is not PNG, JPEG, WebP, or GIF");
-	if (block.data === void 0 || !CANONICAL_BASE64.test(block.data)) throw new Error("the image data is not canonical base64");
+	if (!isImageMediaType(block.mimeType)) throw new Error("the declared media type is not PNG, JPEG, WebP, or GIF");
+	if (!CANONICAL_BASE64.test(block.data)) throw new Error("the image data is not canonical base64");
 	const data = Buffer.from(block.data, "base64");
 	if (data.toString("base64") !== block.data) throw new Error("the image data is not canonical base64");
 	return {
@@ -393,8 +356,7 @@ async function prepareImageProjection(ctx, exec, content, toolName) {
 * - text blocks: join with '\n'
 * - image/audio/resource blocks: replaced with a placeholder
 *
-* Defensive: fields that the MCP spec declares required (mimeType, text) are
-* guarded with fallbacks because this is a network trust boundary.
+* Policy-owned canonical-value replacements may omit fields required on the MCP wire.
 */
 function extractText(mcpContent, toolName) {
 	return projectContent(mcpContent, toolName).map((block) => block.text).join("\n");
@@ -475,6 +437,8 @@ const RECONNECT_DEFAULTS = Object.freeze({
 	maxDelayMs: 3e4,
 	maxAttempts: 10
 });
+/** Default UTF-8 byte limit for attributed server instructions. */
+const DEFAULT_MAX_INSTRUCTION_BYTES = 32768;
 const GENERATION_CLOSE_TIMEOUT_MS = 5e3;
 /**
 * The one explicit resolve step from raw reconnect config to the policy the
@@ -516,6 +480,7 @@ function resolveReconnectPolicy(config, path) {
 */
 function startConnection(ctx, config, policy) {
 	const label = `mcp-client(${config.serverName})`;
+	const incompleteDisposalMessage = `${label}: transport closure could not be confirmed during disposal — server shutdown may be incomplete`;
 	const opts = {
 		registrationFailure: "contain",
 		serverName: config.serverName,
@@ -526,10 +491,12 @@ function startConnection(ctx, config, policy) {
 		registrationFailure: "throw"
 	} : opts;
 	let disposed = false;
+	const maxInstructionBytes = config.maxInstructionBytes ?? 32768;
+	let serverInstructions = "";
 	/** Current generation: the connecting or connected client; undefined during backoff waits and after final failure. */
 	let client;
-	/** Close signal paired with {@link client}; captured by dispose before current ownership is cleared. */
-	let clientClosed;
+	/** Transport-aware close operation paired with {@link client}. */
+	let closeClient;
 	/** Live tool registrations owned by this server; only {@link enqueueSync} and dispose swap it. */
 	let disposers = /* @__PURE__ */ new Map();
 	let reconnectTimer;
@@ -560,8 +527,19 @@ function startConnection(ctx, config, policy) {
 	function generationDown(generation) {
 		if (!isCurrent(generation)) return;
 		client = void 0;
-		clientClosed = void 0;
+		closeClient = void 0;
 		scheduleReconnect();
+	}
+	/** Decide retry ownership after a failed connection's close barrier settles. */
+	function settleFailedGeneration(generation, quiesced) {
+		if (!isCurrent(generation)) return;
+		if (!quiesced) {
+			client = void 0;
+			closeClient = void 0;
+			ctx.logger.error(`${label}: failed generation could not confirm transport closure — reconnect stopped to avoid overlapping server processes; reload the plugin or restart the Host to retry`);
+			return;
+		}
+		generationDown(generation);
 	}
 	/** Wait for the transport-owned close signal without letting a broken transport wedge teardown forever. */
 	function waitForClose(closed) {
@@ -590,6 +568,7 @@ function startConnection(ctx, config, policy) {
 			syncChain = syncChain.then(() => {
 				for (const dispose of disposers.values()) dispose();
 				disposers = /* @__PURE__ */ new Map();
+				serverInstructions = "";
 			});
 			ctx.logger.error(`${label}: giving up after ${policy.maxAttempts} consecutive failed reconnect attempts — tools unregistered; reload the plugin or restart the Host to reconnect`);
 			return;
@@ -617,19 +596,40 @@ function startConnection(ctx, config, policy) {
 		const generation = new Client({
 			name: "dsh-mcp-client",
 			version: "0.0.1"
-		}, { capabilities: {} });
+		}, {
+			capabilities: {},
+			versionNegotiation: { mode: "auto" },
+			listChanged: { tools: {
+				autoRefresh: false,
+				debounceMs: 0,
+				onChanged: () => {
+					refreshTools();
+				}
+			} }
+		});
 		const closed = Promise.withResolvers();
 		let attemptSettled = false;
 		let closeObserved = false;
+		let transport;
 		const hasClosed = () => closeObserved;
 		client = generation;
-		clientClosed = closed.promise;
+		closeClient = closeGeneration;
 		generation.onclose = () => {
 			closeObserved = true;
 			closed.resolve();
 			if (attemptSettled) generationDown(generation);
 		};
-		generation.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+		/** Unattached probes close through their transport; attached clients must also report transport closure. */
+		async function closeGeneration() {
+			const attached = generation.transport !== void 0;
+			try {
+				await (attached ? generation.close() : transport?.close());
+			} catch (_error) {
+				if (!attached) return hasClosed();
+			}
+			return !attached || hasClosed() || await waitForClose(closed.promise);
+		}
+		async function refreshTools() {
 			if (!isCurrent(generation)) return;
 			ctx.logger.info(`${label}: tool list changed, re-syncing`);
 			try {
@@ -637,31 +637,30 @@ function startConnection(ctx, config, policy) {
 			} catch (error) {
 				if (!disposed) ctx.logger.error(`${label}: tool re-sync failed: ${String(error)}`);
 			}
-		});
+		}
+		let instructions;
 		try {
-			await generation.connect(createTransport(config));
+			transport = createTransport(config);
+			await generation.connect(transport);
 			if (hasClosed()) {
 				attemptSettled = true;
 				generationDown(generation);
 				return;
 			}
+			if (!isCurrent(generation)) {
+				if (!await closeGeneration()) ctx.logger.error(incompleteDisposalMessage);
+				return;
+			}
+			const serverText = generation.getInstructions()?.trimEnd() ?? "";
+			instructions = serverText ? `### MCP server: ${config.serverName}\n\n${serverText}` : "";
+			if (Buffer.byteLength(instructions) > maxInstructionBytes) throw new Error(`${label}: server instructions exceed maxInstructionBytes (${maxInstructionBytes})`);
 			await enqueueSync(generation, startup ? startupOpts : opts);
 		} catch (error) {
 			if (firstAttemptError === void 0) firstAttemptError = error;
 			if (isCurrent(generation)) ctx.logger.warn(`${label}: connection attempt failed: ${String(error)}`);
-			try {
-				await generation.close();
-			} catch {}
-			const quiesced = hasClosed() || await waitForClose(closed.promise);
+			const quiesced = await closeGeneration();
 			attemptSettled = true;
-			if (!isCurrent(generation)) return;
-			if (!quiesced) {
-				client = void 0;
-				clientClosed = void 0;
-				ctx.logger.error(`${label}: failed generation did not close within ${GENERATION_CLOSE_TIMEOUT_MS}ms — reconnect stopped to avoid overlapping server processes; reload the plugin or restart the Host to retry`);
-				return;
-			}
-			generationDown(generation);
+			settleFailedGeneration(generation, quiesced);
 			return;
 		}
 		attemptSettled = true;
@@ -670,6 +669,7 @@ function startConnection(ctx, config, policy) {
 			return;
 		}
 		if (!isCurrent(generation)) return;
+		serverInstructions = instructions;
 		connectedAt = Date.now();
 		if (failedAttempts > 0) ctx.logger.info(`${label}: reconnected and re-synced tools (attempt ${failedAttempts}/${policy.maxAttempts})`);
 	}
@@ -681,28 +681,65 @@ function startConnection(ctx, config, policy) {
 			/* v8 ignore next -- defensive: firstAttemptError is always set when connect/sync fails */
 			return { error: firstAttemptError ?? /* @__PURE__ */ new Error(`${label}: initial connection failed`) };
 		}),
+		instructions: () => serverInstructions,
+		resources: { async request(request, exec) {
+			const generation = client;
+			if (!generation || connectedAt === void 0) throw new Error(`${label}: server is disconnected`);
+			const options = {
+				signal: exec.signal,
+				timeout: config.toolCallTimeoutMs
+			};
+			switch (request.method) {
+				case "resources/list": return await generation.listResources(request.cursor === void 0 ? void 0 : { cursor: request.cursor }, options);
+				case "resources/templates/list": return await generation.listResourceTemplates(request.cursor === void 0 ? void 0 : { cursor: request.cursor }, options);
+				case "resources/read": return await generation.readResource({ uri: request.uri }, options);
+				/* v8 ignore next 2 -- resource requests are the closed, typed tool operation union */
+				default: return assertNever(request);
+			}
+		} },
 		async dispose() {
 			disposed = true;
+			serverInstructions = "";
 			if (reconnectTimer !== void 0) {
 				clearTimeout(reconnectTimer);
 				reconnectTimer = void 0;
 			}
-			const current = client;
-			const currentClosed = clientClosed;
+			const close = closeClient;
 			client = void 0;
-			clientClosed = void 0;
-			if (current !== void 0) {
-				try {
-					await current.close();
-				} catch {}
-				if (currentClosed !== void 0 && !await waitForClose(currentClosed)) ctx.logger.error(`${label}: generation did not close within ${GENERATION_CLOSE_TIMEOUT_MS}ms during disposal — server shutdown may be incomplete`);
-			}
+			closeClient = void 0;
+			if (close !== void 0 && !await close()) ctx.logger.error(incompleteDisposalMessage);
 			await settling;
 			await syncChain;
 			for (const dispose of disposers.values()) dispose();
 			disposers = /* @__PURE__ */ new Map();
 		}
 	};
+}
+//#endregion
+//#region lib/types/server-context.js
+/**
+* Publish connection-owned MCP resources and literal server instructions.
+*
+* @module @deepseek-ai/dsh-mcp-client
+*/
+/**
+* Contribute server context to the services enabled by this composition.
+* @param ctx - server plugin's registration scope and effect owner.
+* @param server - configured server identity.
+* @param connection - live resource operations and successful instruction snapshot.
+*/
+function registerServerContext(ctx, server, connection) {
+	ctx.inject(["mcpResources"], (inner) => {
+		inner.mcpResources.register(server, connection.resources);
+	});
+	ctx.inject(["systemPrompt"], (inner) => {
+		inner.systemPrompt.section({
+			name: `mcp:${server}`,
+			order: inner.systemPrompt.getSectionOrder("MCP_SERVERS"),
+			interpolate: false,
+			text: () => connection.instructions()
+		});
+	});
 }
 //#endregion
 //#region lib/types/index.js
@@ -724,7 +761,7 @@ function startConnection(ctx, config, policy) {
 const name = "mcp-client";
 /** Services required by this plugin. */
 const inject = ["tools"];
-/** Default timeout for individual MCP tool calls (ms). */
+/** Default timeout for individual MCP tool calls and resource requests (ms). */
 const DEFAULT_TOOL_CALL_TIMEOUT_MS = 6e4;
 /** Valid `serverName`, kept below the public tool-name budget. */
 const SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
@@ -749,6 +786,7 @@ const Config = z.union([z.object({
 	cwd: z.string().default(""),
 	toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
 	failOnStartupError: z.boolean().default(false),
+	maxInstructionBytes: z.number().step(1).min(1).default(DEFAULT_MAX_INSTRUCTION_BYTES),
 	reconnect: Reconnect
 }), z.object({
 	transport: z.const("streamable-http"),
@@ -757,6 +795,7 @@ const Config = z.union([z.object({
 	headers: z.dict(String).default({}),
 	toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
 	failOnStartupError: z.boolean().default(false),
+	maxInstructionBytes: z.number().step(1).min(1).default(DEFAULT_MAX_INSTRUCTION_BYTES),
 	reconnect: Reconnect
 })]);
 /**
@@ -781,11 +820,16 @@ async function apply(ctx, config) {
 		return () => void names.delete(config.serverName);
 	}, "mcp-client.serverName");
 	const connection = startConnection(ctx, config, reconnect);
-	ctx.effect(() => {
-		return () => connection.dispose();
-	}, "mcp-client.connection");
+	registerServerContext(ctx, config.serverName, connection);
+	let stopping;
+	const dispose = () => stopping ??= connection.dispose();
+	ctx.on("internal/plugin", (fiber) => {
+		if (fiber !== ctx.fiber || fiber.uid !== null) return;
+		return dispose();
+	}, { global: true });
+	ctx.effect(() => dispose, "mcp-client.connection");
 	const outcome = await connection.ready;
 	if (outcome.error !== void 0 && config.failOnStartupError) throw new Error(`mcp-client(${config.serverName}): initial connection or tool synchronization failed`, { cause: outcome.error });
 }
 //#endregion
-export { Config, apply, inject, name };
+export { Config, apply, createMcpToolDefinition, inject, name };

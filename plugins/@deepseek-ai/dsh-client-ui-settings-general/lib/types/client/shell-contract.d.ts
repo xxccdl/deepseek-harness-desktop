@@ -8,6 +8,7 @@
  */
 import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client';
 import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
+import type { DesktopUpdateView } from '../types.ts';
 /** One nav row projected from a settings.section registration's options. */
 export interface SettingsSectionRow {
     id: string;
@@ -25,9 +26,13 @@ export interface SettingsOnboardingStep {
  * sources, while the reconnect command remains a plain callback.
  */
 export type SettingsRootInjected = {
+    /** Request the current shell-owned update action. */
+    openDesktopUpdate: () => void;
     /** Request a fresh logical generation and physical WebSocket immediately. */
     reconnect: () => void;
     hooks: {
+        /** Shared Electron status for both sidebar locations. */
+        desktopUpdate: HostObservable<DesktopUpdateView>;
         /** Connection-owned state for the current Host connection. */
         connectionState: HostObservable<ConnectionState | undefined>;
         /** settings.section ledger projected into ordered nav rows. */
@@ -42,5 +47,5 @@ export type SettingsRootInjected = {
  * (hooks compartment bound to useSections). No store is registered — modal
  * open state and active section id are component-local viewing state.
  */
-export type SettingsRootComponentProps = PropsRuntime<'sidebar.settings'> & PropsRenderSlots<'settings.trigger' | 'settings.header' | 'settings.action' | 'settings.close' | 'settings.section' | 'settings.onboarding'> & InjectFace<SettingsRootInjected> & PropsLocale<'settings'>;
+export type SettingsRootComponentProps = PropsRuntime<'sidebar.settings'> & PropsRenderSlots<'settings.launcher' | 'settings.trigger' | 'settings.header' | 'settings.action' | 'settings.close' | 'settings.section' | 'settings.onboarding'> & InjectFace<SettingsRootInjected> & PropsLocale<'settings'>;
 //# sourceMappingURL=shell-contract.d.ts.map

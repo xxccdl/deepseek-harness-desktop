@@ -4,12 +4,75 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let _deepseek_ai_cordis = require("@deepseek-ai/cordis");
 		let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react = require("react");
 		let react_dom = require("react-dom");
-		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
+		//#region ../../util/values/src/index.ts
+		/**
+		* Weak-key lookup with a strongly retained iterable set of associated values.
+		*
+		* Each value must belong to only one key. The container performs no automatic
+		* cleanup; owners delete associations or clear the container at lifecycle end.
+		*/
+		var WeakMapWithValues = class {
+			keys = /* @__PURE__ */ new WeakMap();
+			valueSet = /* @__PURE__ */ new Set();
+			/** Live strongly retained values in insertion order. */
+			values = this.valueSet;
+			/**
+			* Read the value associated with a key.
+			* @param key - weakly held lookup key.
+			* @returns the associated value, or absence.
+			*/
+			get(key) {
+				return this.keys.get(key);
+			}
+			/**
+			* Test whether a key has an association.
+			* @param key - weakly held lookup key.
+			* @returns whether the key is present.
+			*/
+			has(key) {
+				return this.keys.has(key);
+			}
+			/**
+			* Associate one key with one caller-unique value.
+			* @param key - weakly held lookup key.
+			* @param value - strongly retained value that belongs to no other key.
+			* @returns this container.
+			*/
+			set(key, value) {
+				if (this.keys.has(key)) {
+					const previous = this.keys.get(key);
+					if (previous === value) return this;
+					this.valueSet.delete(previous);
+				}
+				this.keys.set(key, value);
+				this.valueSet.add(value);
+				return this;
+			}
+			/**
+			* Remove one association and its strongly retained value.
+			* @param key - weakly held lookup key.
+			* @returns whether an association was removed.
+			*/
+			delete(key) {
+				if (!this.keys.has(key)) return false;
+				const value = this.keys.get(key);
+				const deleted = this.keys.delete(key);
+				this.valueSet.delete(value);
+				return deleted;
+			}
+			/** Remove every association and strongly retained value. */
+			clear() {
+				this.keys = /* @__PURE__ */ new WeakMap();
+				this.valueSet.clear();
+			}
+		};
+		//#endregion
 		//#region lib/types/client/catalog.js
 		/** One Host-generation model catalog shared by every Session selector. */
 		/** Loads at most one model catalog for the current Host generation. */
@@ -146,8 +209,9 @@ window.__ModuleLoader__.load({
 			/**
 			* Select the complete provider/model/reasoning selection. The durable
 			* projection frame updates the shared current; failures surface on the store
-			* and throw so each entry's own retry surface engages.
+			* and return with the operation so each entry can present its own failure.
 			* @param selection - provider, provider-owned model id, and optional adapter-owned effort.
+			* @returns the selection outcome, including the original Remote failure.
 			*/
 			async select(selection) {
 				this.assertAvailable();
@@ -162,22 +226,26 @@ window.__ModuleLoader__.load({
 					model: selection.model,
 					...selection.reasoningEffort === void 0 ? {} : { reasoningEffort: selection.reasoningEffort }
 				});
-				if (this.disposed || generation !== this.generation) {
-					if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`);
-					return;
-				}
+				if (this.disposed || generation !== this.generation) return result.ok ? {
+					ok: true,
+					value: void 0
+				} : result;
 				if (!result.ok) {
 					this.store.update((s) => {
 						s.status = "error";
 						s.error = `${result.error.code}: ${result.error.message}`;
 					});
-					throw new Error(`session.selectModel failed: ${result.error.code}: ${result.error.message}`);
+					return result;
 				}
 				this.store.update((s) => {
 					s.status = "ready";
 					s.error = null;
 				});
 				this.syncInputs();
+				return {
+					ok: true,
+					value: void 0
+				};
 			}
 			/**
 			* Invalidate an in-flight selection response from the previous Host generation.
@@ -260,7 +328,7 @@ window.__ModuleLoader__.load({
 				"remote",
 				"remote.session"
 			];
-			live = { directories: /* @__PURE__ */ new Map() };
+			live = { directories: new WeakMapWithValues() };
 			catalog;
 			/** Localized composer-block copy; this plugin owns the string it raises. */
 			blockReason;
@@ -275,7 +343,7 @@ window.__ModuleLoader__.load({
 				this.catalog.load().catch(() => {});
 				ctx.on("connection/reset", () => {
 					this.catalog.resetGeneration();
-					for (const directory of this.live.directories.values()) directory.resetConnected();
+					for (const directory of this.live.directories.values) directory.resetConnected();
 				});
 				ctx.remote.$on("llm/adapters-updated", () => {
 					this.catalog.refresh();
@@ -295,18 +363,19 @@ window.__ModuleLoader__.load({
 			*/
 			directoryFor(sessionId) {
 				const { live } = this;
-				const existing = live.directories.get(sessionId);
-				if (existing !== void 0) return existing;
 				const sessions = this.ctx.sessions;
 				const actx = sessions.scope(sessionId);
 				if (actx === void 0) throw new Error(`ui-model-selection: session "${String(sessionId)}" resolved no scope`);
 				const binding = sessions.binding(sessionId);
 				if (binding === void 0) throw new Error(`ui-model-selection: session "${String(sessionId)}" resolved no binding`);
+				const existing = live.directories.get(binding);
+				if (existing !== void 0) return existing;
 				const directory = new ModelDirectory(this.ctx.remote.session, sessionId, () => sessions.subagentAddress(sessionId) === void 0, this.catalog, binding.session.projections.faceOf("modelSelection"));
-				live.directories.set(sessionId, directory);
+				live.directories.set(binding, directory);
 				const conversation = this.ctx.get("conversation");
 				if (conversation !== void 0) {
 					const publish = () => {
+						if (sessions.binding(sessionId) !== binding) return;
 						conversation.blocks.set(sessionId, directory.store.getSnapshot().routable === false ? { reason: this.blockReason() } : void 0);
 					};
 					publish();
@@ -314,13 +383,15 @@ window.__ModuleLoader__.load({
 						const stop = directory.store.subscribe(publish);
 						return () => {
 							stop();
+							const current = sessions.binding(sessionId);
+							if (current !== void 0 && current !== binding && live.directories.get(current) !== void 0) return;
 							conversation.blocks.set(sessionId, void 0);
 						};
 					}, "ui-model-selection: composer block");
 				}
 				actx.effect(() => () => {
 					directory.dispose();
-					live.directories.delete(sessionId);
+					live.directories.delete(binding);
 				}, "ui-model-selection: session directory");
 				return directory;
 			}
@@ -342,7 +413,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-model-selection/src/client/ModelSelect.module.css.mjs
-		const css = "._7KE1Ra_root{min-width:0;position:relative}._7KE1Ra_trigger{min-width:0;max-width:min(360px,45cqw);height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:24px;outline:none;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:13px;font-weight:500;line-height:20px;display:flex}._7KE1Ra_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-border-l3)}._7KE1Ra_trigger:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_triggerLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._7KE1Ra_triggerEffort{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-caption);flex-shrink:1000;overflow:hidden}._7KE1Ra_triggerIcon{flex:none;display:none}@container (width<=360px){._7KE1Ra_triggerIcon{display:block}._7KE1Ra_triggerLabel,._7KE1Ra_triggerEffort{display:none}}._7KE1Ra_chevron{color:var(--dsw-alias-label-caption);flex:none;transition:transform .12s}._7KE1Ra_chevronOpen{transform:rotate(180deg)}._7KE1Ra_menu{z-index:1100;background:var(--dsw-specific-menu);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);width:max-content;min-width:min(240px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(360px,100vh - 96px);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;border-radius:20px;flex-direction:column;padding:4px;display:flex;position:fixed;overflow:hidden}._7KE1Ra_status,._7KE1Ra_empty{color:var(--dsw-alias-label-tertiary);padding:10px;font-size:13px;line-height:20px}._7KE1Ra_error,._7KE1Ra_warning{background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);border-radius:8px;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;padding:7px 8px;font-size:12px;line-height:18px;display:flex}._7KE1Ra_warning{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-warn-label)}._7KE1Ra_retry{color:inherit;font:inherit;cursor:pointer;background:0 0;border:none;flex:none;padding:0;font-weight:600}._7KE1Ra_groups{min-height:0;overflow-y:auto}._7KE1Ra_group+._7KE1Ra_group{margin-top:4px}._7KE1Ra_groupTitle{z-index:1;background:var(--dsw-specific-menu);color:var(--dsw-alias-label-tertiary);padding:5px 8px 3px;font-size:12px;font-weight:500;line-height:18px;position:sticky;top:0}._7KE1Ra_option{box-sizing:border-box;width:auto;min-width:100%;min-height:38px;color:inherit;text-align:left;cursor:pointer;background:0 0;border:none;border-radius:10px;outline:none;align-items:center;gap:8px;padding:6px 8px;display:flex}._7KE1Ra_option:hover:not(:disabled),._7KE1Ra_option:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_selected{background:0 0}._7KE1Ra_option:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_optionCopy{flex-direction:column;flex:1;min-width:0;display:flex}._7KE1Ra_modelName{color:inherit;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:500;line-height:20px;overflow:hidden}._7KE1Ra_check{color:var(--dsw-alias-label-primary);flex:0 0 18px;place-items:center;display:grid}._7KE1Ra_cell{box-sizing:border-box;width:auto;min-width:100%;height:40px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;border-radius:10px;align-items:center;gap:8px;padding:0 10px;font-size:14px;line-height:22px;display:flex}._7KE1Ra_cell:hover{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_cellLabel{white-space:nowrap;flex:none}._7KE1Ra_cellValue{text-overflow:ellipsis;white-space:nowrap;text-align:right;min-width:0;color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}._7KE1Ra_cellChevron{color:var(--dsw-alias-label-tertiary);flex:none}";
+		const css = "._7KE1Ra_root{min-width:0;position:relative}._7KE1Ra_trigger{min-width:0;max-width:min(360px,45cqw);height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:24px;outline:none;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:13px;font-weight:500;line-height:20px;display:flex}._7KE1Ra_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-border-l3)}._7KE1Ra_trigger:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_triggerLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._7KE1Ra_triggerEffort{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-caption);flex-shrink:1000;overflow:hidden}._7KE1Ra_triggerIcon{display:var(--dsh-composer-model-icon-display,none);flex:none}._7KE1Ra_triggerLabel,._7KE1Ra_triggerEffort{display:var(--dsh-composer-model-text-display,block)}._7KE1Ra_chevron{color:var(--dsw-alias-label-caption);flex:none;transition:transform .12s}._7KE1Ra_chevronOpen{transform:rotate(180deg)}._7KE1Ra_menu{z-index:1100;background:var(--dsw-specific-menu);width:max-content;min-width:min(240px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(360px,100vh - 96px);backdrop-filter:var(--dsw-menu-backdrop-filter);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;border-radius:16px;flex-direction:column;padding:3px;display:flex;position:fixed;overflow:hidden}._7KE1Ra_status,._7KE1Ra_empty{color:var(--dsw-alias-label-tertiary);padding:8px;font-size:12px;line-height:18px}._7KE1Ra_error,._7KE1Ra_warning{background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);border-radius:7px;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;padding:6px 7px;font-size:11px;line-height:16px;display:flex}._7KE1Ra_warning{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-warn-label)}._7KE1Ra_retry{color:inherit;font:inherit;cursor:pointer;background:0 0;border:none;flex:none;padding:0;font-weight:600}._7KE1Ra_groups{min-height:0;overflow-y:auto}._7KE1Ra_group+._7KE1Ra_group{margin-top:3px}._7KE1Ra_groupTitle{z-index:1;background:var(--dsw-specific-menu);color:var(--dsw-alias-label-tertiary);padding:4px 7px 2px;font-size:11px;font-weight:500;line-height:16px;position:sticky;top:0}._7KE1Ra_option{box-sizing:border-box;width:auto;min-width:100%;min-height:34px;color:inherit;text-align:left;cursor:pointer;background:0 0;border:none;border-radius:8px;outline:none;align-items:center;gap:6px;padding:5px 7px;display:flex}._7KE1Ra_option:hover:not(:disabled),._7KE1Ra_option:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_selected{background:0 0}._7KE1Ra_option:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_optionCopy{flex-direction:column;flex:1;min-width:0;display:flex}._7KE1Ra_modelName{color:inherit;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}._7KE1Ra_check{color:var(--dsw-alias-label-primary);flex:0 0 14px;place-items:center;display:grid}._7KE1Ra_check svg{width:14px;height:14px}._7KE1Ra_cell{box-sizing:border-box;width:auto;min-width:100%;height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;border-radius:8px;align-items:center;gap:6px;padding:0 8px;font-size:13px;line-height:20px;display:flex}._7KE1Ra_cell:hover{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_cellLabel{white-space:nowrap;flex:none}._7KE1Ra_cellValue{text-overflow:ellipsis;white-space:nowrap;text-align:right;min-width:0;color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}._7KE1Ra_cellChevron{width:12px;height:12px;color:var(--dsw-alias-label-tertiary);flex:none}";
 		const tagId = "@deepseek-ai/dsh-client-ui-model-selection/ModelSelect.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -403,12 +474,6 @@ window.__ModuleLoader__.load({
 			".dsms-effort{--dsms-max:#7c5cff;min-width:272px;padding:4px 6px 2px}",
 			".dsms-effort-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 11px;font-size:12px;color:var(--dsw-alias-label-tertiary)}",
 			".dsms-effort-value{color:var(--dsw-alias-label-primary);font-weight:500}",
-			/* The way back out of a drilled-in pane, sitting where the eye already
-			   is rather than leaving Escape as the only way back. */
-			".dsms-back{box-sizing:border-box;display:flex;flex:none;align-items:center;gap:4px;width:100%;height:26px;margin:0 0 5px;padding:0 8px;border:0;border-radius:8px;background:0 0;color:var(--dsw-alias-label-tertiary);font-family:inherit;font-size:12px;line-height:18px;text-align:left;cursor:pointer}",
-			".dsms-back:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
-			".dsms-back:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-border-l3)}",
-			".dsms-back svg{flex:none}",
 			/* the slider itself: the whole box is the hit area, so a tap anywhere
 			   on a level name is the same gesture as a tap on the rail */
 			".dsms-slider{position:relative;box-sizing:border-box;padding:6px 0 0;border-radius:10px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;outline:none}",
@@ -488,18 +553,18 @@ window.__ModuleLoader__.load({
 		* each drilling into its own list — the provider-grouped model list over
 		* the shared directory, and the effort levels. The trigger (313:14108's
 		* ToggleButton) shows both: model name + effort in the caption tone.
-		* Data and submission ride the SAME per-session ModelDirectory as the
-		* /model popup; exact-model reasoning metadata and the selected effort come
-		* from the Host rather than a client-owned vocabulary. A rejected selection
-		* announces through the shared transient Toast anchored to the composer
-		* card; the in-menu strip with Retry remains the catalog-load surface.
+		* While open, ↑/↓ move focus across the rows of the shown pane (wrapping; a
+		* step taken while the trigger still holds focus enters at the near end), Tab
+		* settles like Enter, and Escape and Shift+Tab leave a drilled pane first and
+		* otherwise close back to the trigger. A drilled pane hands focus to the row
+		* of the value in use, and returning to the root pane hands it back to the
+		* cell that opened it. Data and submission ride the SAME per-session
+		* ModelDirectory as the /model popup; exact-model reasoning metadata and the
+		* selected effort come from the Host rather than a client-owned vocabulary. A
+		* rejected selection announces through the shared transient Toast anchored to
+		* the composer card; the in-menu strip with Retry remains the catalog-load
+		* surface.
 		*/
-		/** Unplaced portal card: hidden but laid out at a fixed origin so offsetWidth/offsetHeight are real (Menu primitive's measure pass). */
-		const MEASURE_STYLE = {
-			visibility: "hidden",
-			left: 0,
-			top: 0
-		};
 		/**
 		* Reasoning-effort picker built as a real slider, the way Codex asks for a
 		* level: one rail, a fill that grows with the level, and a knob.
@@ -673,6 +738,12 @@ window.__ModuleLoader__.load({
 			const value = t(key);
 			return value === key ? fallback : value;
 		}
+		/** Unplaced portal card: hidden but laid out at a fixed origin so offsetWidth/offsetHeight are real (Menu primitive's measure pass). */
+		const MEASURE_STYLE = {
+			visibility: "hidden",
+			left: 0,
+			top: 0
+		};
 		/**
 		* Render the composer model seat.
 		* @param props - owner share (locked) + injected face (shared directory
@@ -683,9 +754,8 @@ window.__ModuleLoader__.load({
 			const state = (0, react.useSyncExternalStore)((fn) => directory.subscribe(fn), () => directory.getSnapshot());
 			const [open, setOpen] = (0, react.useState)(false);
 			const [pane, setPane] = (0, react.useState)("root");
-			// Which way the pane on screen came from, so its entrance reads as
-			// drilling in or stepping back out. Null on the pane the menu opens on,
-			// which rises with the menu itself instead.
+			// Which way the shown pane travelled to get here — null on the pane the
+			// menu opens on, so its first paint carries no entrance animation.
 			const [dir, setDir] = (0, react.useState)(null);
 			const lastActionRef = (0, react.useRef)("load");
 			const [toast, setToast] = (0, react.useState)(null);
@@ -725,14 +795,9 @@ window.__ModuleLoader__.load({
 			};
 			(0, react.useEffect)(() => {
 				if (!open) return;
-				// The menu must survive an interaction with the window's own chrome:
-				// the custom title bar is a real drag region, and pressing it is how
-				// the window is moved, not how the menu is dismissed.
 				const closeOutside = (event) => {
-					const target = event.target;
-					if (target instanceof Element && target.closest("#dsh-titlebar") !== null) return;
-					if (rootRef.current?.contains(target) === true) return;
-					if (menuRef.current?.contains(target) === true) return;
+					if (rootRef.current?.contains(event.target) === true) return;
+					if (menuRef.current?.contains(event.target) === true) return;
 					setOpen(false);
 				};
 				document.addEventListener("mousedown", closeOutside);
@@ -740,6 +805,18 @@ window.__ModuleLoader__.load({
 					document.removeEventListener("mousedown", closeOutside);
 				};
 			}, [open]);
+			const paneFocus = (0, react.useRef)(null);
+			(0, react.useEffect)(() => {
+				const intent = paneFocus.current;
+				paneFocus.current = null;
+				if (!open || intent === null) return;
+				if (intent === "drill") {
+					(menuRef.current?.querySelector("[role=\"menuitemradio\"][aria-checked=\"true\"]:not([disabled])") ?? itemRefs.current.find((item) => item !== null && !item.disabled) ?? triggerRef.current)?.focus();
+					return;
+				}
+				const cell = itemRefs.current[intent === "effort" ? 1 : 0];
+				(cell !== null && cell !== void 0 && !cell.disabled ? cell : triggerRef.current)?.focus();
+			}, [open, pane]);
 			(0, react.useLayoutEffect)(() => {
 				if (!open) {
 					setMenuPos(null);
@@ -774,12 +851,6 @@ window.__ModuleLoader__.load({
 				state
 			]);
 			if (!available) return null;
-			// Every pane change goes through here, so the entrance motion always
-			// knows whether the menu went a level deeper or came back out.
-			const go = (next) => {
-				setDir(next === "root" ? "back" : "forward");
-				setPane(next);
-			};
 			const show = () => {
 				setDir(null);
 				setPane("root");
@@ -794,55 +865,80 @@ window.__ModuleLoader__.load({
 					triggerRef.current?.focus();
 				});
 			};
+			const drill = (next) => {
+				paneFocus.current = "drill";
+				setDir(next === "root" ? "back" : "forward");
+				setPane(next);
+			};
+			/** Leave a drilled pane for the root one, handing the keyboard back to its cell. */
+			const back = (from) => {
+				paneFocus.current = from;
+				setDir("back");
+				setPane("root");
+			};
 			const moveFocus = (offset) => {
 				const items = itemRefs.current.filter((item) => item !== null);
 				if (items.length === 0) return;
 				const active = items.findIndex((item) => item === document.activeElement);
-				items[(Math.max(active, 0) + offset + items.length) % items.length]?.focus();
+				items[active === -1 ? offset > 0 ? 0 : items.length - 1 : (active + offset + items.length) % items.length]?.focus();
 			};
 			const onRootKeyDown = (event) => {
 				if (event.key === "Escape" && open) {
 					event.preventDefault();
-					if (pane !== "root") go("root");
+					if (pane !== "root") back(pane);
 					else close(true);
 					return;
 				}
 				if (!open) return;
+				if (event.key === "Tab") {
+					if (event.shiftKey) {
+						event.preventDefault();
+						if (pane !== "root") back(pane);
+						else close(true);
+						return;
+					}
+					const focused = document.activeElement;
+					const rows = itemRefs.current.filter((item) => item !== null);
+					if (focused instanceof HTMLButtonElement && rows.includes(focused)) {
+						event.preventDefault();
+						focused.click();
+						return;
+					}
+					if (focused !== triggerRef.current) return;
+					event.preventDefault();
+					(menuRef.current?.querySelector("[role=\"menuitemradio\"][aria-checked=\"true\"]:not([disabled])") ?? rows.find((item) => !item.disabled))?.focus();
+					return;
+				}
 				if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 					event.preventDefault();
 					moveFocus(event.key === "ArrowDown" ? 1 : -1);
 				}
 			};
 			const onBlur = (event) => {
-				// A null `relatedTarget` means focus left the document entirely — the
-				// window chrome was pressed, or the app itself lost focus — rather
-				// than moving on to another control. Dismissing there is what made
-				// the menu vanish mid-drag; a genuine outside click still closes it
-				// through the document listener above.
-				const next = event.relatedTarget;
-				if (!(next instanceof Node)) return;
-				if (rootRef.current?.contains(next) === true) return;
-				if (menuRef.current?.contains(next) === true) return;
+				if (event.relatedTarget instanceof Node && (rootRef.current?.contains(event.relatedTarget) === true || menuRef.current?.contains(event.relatedTarget) === true)) return;
 				close();
 			};
-			const settleSelection = (accepted, keepOpen = false) => {
-				// A level chosen on the slider keeps the pane up: the gesture is the
-				// point, and firing it away the moment the Host agrees made the slider
-				// impossible to feel. Dismissal stays with an outside click, Escape or
-				// the trigger — same as every other menu here.
-				if (accepted) {
-					if (keepOpen) return;
-					if (rootRef.current !== null) close(true);
+			const settleSelection = (result, keepOpen = false) => {
+				if (result === void 0) return;
+				if (result.ok) {
+					if (!keepOpen && rootRef.current !== null) close(true);
 					return;
 				}
-				const message = directory.getSnapshot().error;
-				if (message !== null) {
-					toastSeq.current += 1;
-					setToast({
-						seq: toastSeq.current,
-						text: t("error.action", { message })
-					});
-				}
+				const { error } = result;
+				toastSeq.current += 1;
+				setToast({
+					seq: toastSeq.current,
+					text: error.code === "session/writer-held" ? t("error.sessionInUse") : t("error.action", { message: `${error.code}: ${error.message}` })
+				});
+			};
+			/**
+			* Settle an effort change without closing the pane. The level the gesture
+			* landed on IS the thing being chosen, so the menu stays up with the knob
+			* on it — the slider has to be visible to mean anything, and adjusting
+			* again must not cost a reopen.
+			*/
+			const settleEffort = (result) => {
+				settleSelection(result, true);
 			};
 			const choose = (selection) => {
 				if (state.current?.provider === selection.provider && state.current.model === selection.model) {
@@ -854,9 +950,8 @@ window.__ModuleLoader__.load({
 			};
 			const chooseEffort = (effort) => {
 				if (state.current === null) return;
-				// Re-picking the level already in force is a no-op on the Host, and it
-				// must not dismiss the pane either — a slider that closes when you land
-				// on the stop you started from reads as a glitch.
+				// Landing on the level already in effect is not a change: stay where
+				// the user is instead of folding the pane away under the pointer.
 				if (effectiveEffort === effort) return;
 				const selection = {
 					provider: state.current.provider,
@@ -864,7 +959,7 @@ window.__ModuleLoader__.load({
 					...effort === void 0 ? {} : { reasoningEffort: effort }
 				};
 				lastActionRef.current = "select";
-				select(selection).then((accepted) => settleSelection(accepted, true));
+				select(selection).then(settleEffort);
 			};
 			const waiting = state.current === null && state.status === "loading";
 			const modelLabel = waiting ? t("trigger.loading") : currentChoice?.model.name ?? (state.current === null ? t("trigger.fallback") : `${state.current.provider}/${state.current.model}`);
@@ -881,21 +976,6 @@ window.__ModuleLoader__.load({
 					itemRefs.current[at] = node;
 				};
 			};
-			// Escape leaves a drilled-in pane, but the pointer had no visible way
-			// out of one; this is that way, and it joins the roving focus order. It
-			// carries the pane's own entrance so a header and the body it belongs to
-			// travel together, rather than the body sliding under a header that was
-			// already on screen.
-			const backRow = () => (0, react_jsx_runtime.jsx)("button", {
-				ref: itemRef(),
-				type: "button",
-				className: "dsms-back dsms-pane",
-				"data-dir": dir,
-				onClick: () => {
-					go("root");
-				},
-				children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronLeftOutline14, {}), (0, react_jsx_runtime.jsx)("span", { children: t("menu.back") })]
-			});
 			return (0, react_jsx_runtime.jsxs)("div", {
 				ref: rootRef,
 				className: ModelSelect_module_css_default.root,
@@ -917,7 +997,7 @@ window.__ModuleLoader__.load({
 							else show();
 						},
 						children: [
-							(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDataOutline16, {
+							(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDataOutlineRegular, {
 								className: ModelSelect_module_css_default.triggerIcon,
 								size: 16
 							}),
@@ -930,7 +1010,7 @@ window.__ModuleLoader__.load({
 								key: effortLabel,
 								children: effortLabel
 							}),
-							(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: clsx(ModelSelect_module_css_default.chevron, open && ModelSelect_module_css_default.chevronOpen) })
+							(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: clsx(ModelSelect_module_css_default.chevron, open && ModelSelect_module_css_default.chevronOpen) })
 						]
 					}),
 					open && (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)("div", {
@@ -946,47 +1026,45 @@ window.__ModuleLoader__.load({
 								className: "dsms-pane dsms-rootpane",
 								"data-dir": dir,
 								children: [(0, react_jsx_runtime.jsxs)("button", {
-									ref: itemRef(),
-									type: "button",
-									role: "menuitem",
-									className: ModelSelect_module_css_default.cell,
-									onClick: () => {
-										go("model");
-									},
-									children: [
-										(0, react_jsx_runtime.jsx)("span", {
-											className: ModelSelect_module_css_default.cellLabel,
-											children: t("menu.model")
-										}),
-										(0, react_jsx_runtime.jsx)("span", {
-											className: ModelSelect_module_css_default.cellValue,
-											children: modelLabel
-										}),
-										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, { className: ModelSelect_module_css_default.cellChevron })
-									]
-								}), reasoning !== void 0 && (0, react_jsx_runtime.jsxs)("button", {
-									ref: itemRef(),
-									type: "button",
-									role: "menuitem",
-									className: ModelSelect_module_css_default.cell,
-									onClick: () => {
-										go("effort");
-									},
-									children: [
-										(0, react_jsx_runtime.jsx)("span", {
-											className: ModelSelect_module_css_default.cellLabel,
-											children: t("menu.effort")
-										}),
-										(0, react_jsx_runtime.jsx)("span", {
-											className: ModelSelect_module_css_default.cellValue,
-											children: effortLabel
-										}),
-										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutline14, { className: ModelSelect_module_css_default.cellChevron })
-									]
-								})]
-							}),
+								ref: itemRef(),
+								type: "button",
+								role: "menuitem",
+								className: ModelSelect_module_css_default.cell,
+								onClick: () => {
+									drill("model");
+								},
+								children: [
+									(0, react_jsx_runtime.jsx)("span", {
+										className: ModelSelect_module_css_default.cellLabel,
+										children: t("menu.model")
+									}),
+									(0, react_jsx_runtime.jsx)("span", {
+										className: ModelSelect_module_css_default.cellValue,
+										children: modelLabel
+									}),
+									(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutlineRegular, { className: ModelSelect_module_css_default.cellChevron })
+								]
+							}), reasoning !== void 0 && (0, react_jsx_runtime.jsxs)("button", {
+								ref: itemRef(),
+								type: "button",
+								role: "menuitem",
+								className: ModelSelect_module_css_default.cell,
+								onClick: () => {
+									drill("effort");
+								},
+								children: [
+									(0, react_jsx_runtime.jsx)("span", {
+										className: ModelSelect_module_css_default.cellLabel,
+										children: t("menu.effort")
+									}),
+									(0, react_jsx_runtime.jsx)("span", {
+										className: ModelSelect_module_css_default.cellValue,
+										children: effortLabel
+									}),
+									(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronRightOutlineRegular, { className: ModelSelect_module_css_default.cellChevron })
+								]
+							})] }),
 							pane === "model" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-								backRow(),
 								state.status === "loading" && (0, react_jsx_runtime.jsx)("div", {
 									className: ModelSelect_module_css_default.status,
 									children: t("status.loading")
@@ -997,7 +1075,7 @@ window.__ModuleLoader__.load({
 										type: "button",
 										className: ModelSelect_module_css_default.retry,
 										onClick: reload,
-										children: t("action.reload")
+										children: t("retry")
 									})]
 								}),
 								state.failures.map((failure) => (0, react_jsx_runtime.jsxs)("div", {
@@ -1009,12 +1087,11 @@ window.__ModuleLoader__.load({
 										type: "button",
 										className: ModelSelect_module_css_default.retry,
 										onClick: reload,
-										children: t("action.reload")
+										children: t("retry")
 									})]
 								}, failure.id)),
 								(0, react_jsx_runtime.jsx)("div", {
-									className: clsx(ModelSelect_module_css_default.groups, "scrollable", "dsms-pane"),
-									"data-dir": dir,
+									className: clsx(ModelSelect_module_css_default.groups, "scrollable"),
 									children: state.groups.map((group) => {
 										const headingId = `${id}-${group.id}`;
 										return (0, react_jsx_runtime.jsxs)("section", {
@@ -1049,7 +1126,7 @@ window.__ModuleLoader__.load({
 														})
 													}), (0, react_jsx_runtime.jsx)("span", {
 														className: ModelSelect_module_css_default.check,
-														children: selected ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutline16, {}) : null
+														children: selected ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineRegular, {}) : null
 													})]
 												}, model.id);
 											})]
@@ -1061,7 +1138,7 @@ window.__ModuleLoader__.load({
 									children: t("empty.models")
 								})
 							] }),
-							pane === "effort" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [backRow(), state.error !== null && lastActionRef.current === "load" && (0, react_jsx_runtime.jsxs)("div", {
+							pane === "effort" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [state.error !== null && lastActionRef.current === "load" && (0, react_jsx_runtime.jsxs)("div", {
 								className: ModelSelect_module_css_default.error,
 								children: [(0, react_jsx_runtime.jsx)("span", { children: t("error.action", { message: state.error }) }), (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
@@ -1079,13 +1156,14 @@ window.__ModuleLoader__.load({
 								dir,
 								onChoose: chooseEffort,
 								describe: (effort) => {
-									// Dictionary first, then the Host's own hint, then the
-									// level name as the last resort.
+									// The fork's own hint for a level it knows, then whatever
+									// the Host declared for this exact level, and only then
+									// the level's own name — so an unknown provider level
+									// still shows its own wording rather than a raw key.
 									const translated = effort === void 0 ? void 0 : localized(t, `effort.${effort}.desc`, void 0);
 									if (translated !== void 0) return translated;
 									const listed = reasoning === void 0 ? void 0 : reasoning.efforts.find((level) => level.id === effort);
-									if (listed?.description !== void 0 && listed.description !== "") return listed.description;
-									return effortChoices.find((choice) => choice.effort === effort)?.label ?? "";
+									return listed?.description ?? effortChoices.find((choice) => choice.effort === effort)?.label ?? "";
 								},
 								t
 							})] })
@@ -1093,7 +1171,7 @@ window.__ModuleLoader__.load({
 					}), document.body),
 					toast !== null && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
 						text: toast.text,
-						icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconWarningOutline16, {}),
+						icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconWarningOutlineRegular, {}),
 						anchor: rootRef.current?.closest("[data-composer-card]") ?? null,
 						onDone: () => {
 							setToast(null);
@@ -1113,7 +1191,6 @@ window.__ModuleLoader__.load({
 		* `trigger.aria` would announce the degenerate "Select model, current Select
 		* model".
 		*/
-		/** Simplified Chinese dictionary (the key-set source of truth). */
 		/**
 		* The `effort.*` entries are an OVERRIDE layer, not the vocabulary: the
 		* level names and descriptions come from the Host (the provider adapter
@@ -1122,7 +1199,9 @@ window.__ModuleLoader__.load({
 		* falls back to the Host string for any id that is absent here — so a new
 		* provider level shows its own copy instead of a raw key.
 		*/
+		/** Simplified Chinese dictionary (the key-set source of truth). */
 		const zh = {
+			"command.label": "模型",
 			"command.description": "选择本会话使用的模型",
 			"option.loadError": "目录加载失败：{message}",
 			"option.deepseekV4Flash.description": "快速、高效且经济；适合目标明确、常规或并行任务。",
@@ -1135,7 +1214,6 @@ window.__ModuleLoader__.load({
 			"menu.aria": "模型与推理等级",
 			"menu.model": "模型",
 			"menu.effort": "推理等级",
-			"menu.back": "返回",
 			"effort.providerDefault": "默认",
 			"effort.off": "关闭",
 			"effort.low": "低",
@@ -1147,6 +1225,7 @@ window.__ModuleLoader__.load({
 			"effort.max.desc": "留给最难、最看重质量的任务。",
 			"status.loading": "正在刷新模型列表…",
 			"error.action": "模型操作失败：{message}",
+			"error.sessionInUse": "当前会话已被占用，可能是其他正在运行的 DSH 导致的（如其他 dsh web、桌面端），请退出其他正在运行的 DSH 后重试。",
 			"action.reload": "重新加载",
 			"warning.groupLoad": "{name} 加载失败：{message}",
 			"empty.models": "没有可用的模型。",
@@ -1155,6 +1234,7 @@ window.__ModuleLoader__.load({
 		};
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
+			"command.label": "Model",
 			"command.description": "Select the model for this conversation",
 			"option.loadError": "Catalog failed to load: {message}",
 			"option.deepseekV4Flash.description": "Fast, efficient, and economical; suited to focused, routine, or parallel tasks.",
@@ -1167,7 +1247,6 @@ window.__ModuleLoader__.load({
 			"menu.aria": "Model and reasoning effort",
 			"menu.model": "Model",
 			"menu.effort": "Effort",
-			"menu.back": "Back",
 			"effort.providerDefault": "Default",
 			"effort.off": "Off",
 			"effort.low": "Low",
@@ -1179,6 +1258,7 @@ window.__ModuleLoader__.load({
 			"effort.max.desc": "Reserve for the hardest quality-first tasks.",
 			"status.loading": "Refreshing model list…",
 			"error.action": "Model operation failed: {message}",
+			"error.sessionInUse": "This session is already in use, possibly by another running DSH instance (such as dsh web or the desktop app). Quit other running DSH instances and try again.",
 			"action.reload": "Reload",
 			"warning.groupLoad": "{name} failed to load: {message}",
 			"empty.models": "No models available.",
@@ -1266,7 +1346,9 @@ window.__ModuleLoader__.load({
 				const sessions = scope.sessions;
 				scope.effect(() => command.register({
 					name: "model",
+					label: () => t("command.label"),
 					description: () => t("command.description"),
+					icon: _deepseek_ai_dsh_client_ui_primitives.IconDataOutlineRegular,
 					available: (session) => sessions.subagentAddress(session.sessionId) === void 0,
 					ui: {
 						kind: "popupSelect",
@@ -1279,7 +1361,11 @@ window.__ModuleLoader__.load({
 							const directory = models.directoryFor(session.sessionId);
 							const selection = selectionOf(directory.store.getSnapshot(), option.id);
 							if (selection === void 0) throw new Error("this provider's catalog failed to load — pick a model from a loaded group");
-							await directory.select(selection);
+							const result = await directory.select(selection);
+							if (!result.ok) {
+								if (result.error.code === "session/writer-held") throw new Error(t("error.sessionInUse"));
+								throw result.error;
+							}
 						}
 					}
 				}), "ui-model-selection: /model contribution");
@@ -1299,7 +1385,7 @@ window.__ModuleLoader__.load({
 							load: () => {
 								if (available) directory.load().catch(() => {});
 							},
-							select: (selection) => available ? directory.select(selection).then(() => true, () => false) : Promise.resolve(false)
+							select: (selection) => available ? directory.select(selection) : Promise.resolve(void 0)
 						};
 					}
 				}, ModelSelect));

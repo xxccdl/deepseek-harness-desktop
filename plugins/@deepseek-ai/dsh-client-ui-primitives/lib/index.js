@@ -1,35 +1,47 @@
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import clsx from "clsx";
 import css from "./StateDot.module.css";
-import css$1 from "./DisclosureRow.module.css";
-import css$2 from "./Button.module.css";
-import css$3 from "./Pill.module.css";
-import css$4 from "./Tag.module.css";
-import css$5 from "./Switch.module.css";
-import css$6 from "./Input.module.css";
-import { Fragment as Fragment$1, cloneElement, createElement, memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment as Fragment$1, cloneElement, createContext, createElement, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import css$1 from "./TextShimmer.module.css";
+import css$2 from "./DisclosureRow.module.css";
+import css$3 from "./Button.module.css";
+import css$4 from "./Pill.module.css";
+import css$5 from "./SegmentedTabs.module.css";
+import css$6 from "./Tag.module.css";
+import { pathPartsOf } from "@deepseek-ai/dsh-util-workspace-path";
+import css$7 from "./PathLabel.module.css";
+import css$8 from "./Switch.module.css";
+import css$9 from "./SegmentedControl.module.css";
+import css$10 from "./Checkbox.module.css";
+import css$11 from "./Input.module.css";
 import { createPortal } from "react-dom";
-import css$7 from "./Menu.module.css";
-import css$8 from "./HoverCard.module.css";
-import css$9 from "./Modal.module.css";
-import css$10 from "./OnboardingSurface.module.css";
-import css$11 from "./RiskConfirmation.module.css";
-import css$12 from "./ConnectionIndicator.module.css";
-import css$13 from "./FileTypeIcon.module.css";
-import css$14 from "./user-text.module.css";
-import css$15 from "./Tooltip.module.css";
-import css$16 from "./Toast.module.css";
-import css$17 from "./JsonTree.module.css";
-import Anser from "anser";
-import css$18 from "./TerminalBlock.module.css";
+import css$12 from "./Menu.module.css";
+import css$13 from "./HoverCard.module.css";
+import css$14 from "./Modal.module.css";
+import css$15 from "./OnboardingSurface.module.css";
+import css$16 from "./RiskConfirmation.module.css";
+import css$17 from "./ConnectionIndicator.module.css";
+import css$18 from "./FileTypeIcon.module.css";
+import { siAliexpress, siApple, siBaidu, siBilibili, siCsdn, siDuckduckgo, siEbay, siFacebook, siGithub, siGitlab, siGoogle, siInstagram, siJuejin, siMdnwebdocs, siNetflix, siNpm, siPypi, siQq, siQuora, siReddit, siSinaweibo, siSpotify, siStackoverflow, siTaobao, siTelegram, siTiktok, siV2ex, siWechat, siWhatsapp, siWikipedia, siX, siYcombinator, siYoutube, siZhihu } from "simple-icons";
+import css$19 from "./user-text.module.css";
+import markdownCss from "./markdown/MarkdownText.module.css";
+import css$20 from "./Tooltip.module.css";
+import css$21 from "./Toast.module.css";
+import css$22 from "./settings-form/SettingsForm.module.css";
+import css$23 from "./settings-form/fields.module.css";
+import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { createCssVariablesTheme, createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine, defaultJavaScriptRegexConstructor } from "shiki/engine/javascript";
 import langTs from "@shikijs/langs/typescript";
 import langBash from "@shikijs/langs/shellscript";
 import langJson from "@shikijs/langs/json";
-import css$19 from "./ReadBlock.module.css";
-import css$20 from "./DiffBlock.module.css";
-import css$21 from "./SearchBlock.module.css";
+import css$24 from "./JsonTree.module.css";
+import Anser from "anser";
+import css$25 from "./TerminalBlock.module.css";
+import css$26 from "./ReadBlock.module.css";
+import { structuredPatch } from "diff";
+import css$27 from "./DiffBlock.module.css";
+import css$28 from "./SearchBlock.module.css";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { mathFromMarkdown } from "mdast-util-math";
@@ -41,1385 +53,2956 @@ import { classifyCharacter } from "micromark-util-classify-character";
 import { codes, constants, types } from "micromark-util-symbol";
 import { factorySpace } from "micromark-factory-space";
 import { normalizeUri } from "micromark-util-sanitize-uri";
-import css$22 from "./markdown/CodeBlock.module.css";
+import css$29 from "./markdown/CodeBlock.module.css";
 import katex from "katex";
-import css$23 from "./markdown/MarkdownText.module.css";
 import "katex/dist/katex.min.css";
-import css$24 from "./WebBlock.module.css";
-import css$25 from "./markdown/JsonBlock.module.css";
-//#region lib/types/StateDot.js
-/** Outer 3x3 matrix cells (2px pixels on a 10px grid), clockwise from top-left. */
-const MATRIX_CELLS = [
-	[0, 0],
-	[4, 0],
-	[8, 0],
-	[8, 4],
-	[8, 8],
-	[4, 8],
-	[0, 8],
-	[0, 4]
-];
+import css$30 from "./WebBlock.module.css";
+import css$31 from "./markdown/JsonBlock.module.css";
+//#region lib/types/icons/shared-artwork.js
 /**
-* Render a state dot.
-* @param props.state - which of `done`, `warning`, `ongoing`, `error`, or `idle` to show.
-* @param props.size - outer diameter in px (default 10, the figma size).
-* @param props.className - extra class for layout placement.
-* @returns the dot element (aria-hidden; pair with text for accessibility).
+* Render shared new-conversation geometry for product and reference icons.
+* @param props - Size, optional CSS class, and inherited stroke width.
+* @returns The decorative SVG artwork.
 */
-function StateDot({ state, size = 10, className }) {
-	if (state === "ongoing") return jsx("svg", {
-		className: clsx(css.matrix, className),
-		"data-state": "ongoing",
-		width: size,
-		height: size,
-		viewBox: "0 0 10 10",
-		shapeRendering: "crispEdges",
-		"aria-hidden": "true",
-		children: MATRIX_CELLS.map(([x, y], index) => jsx("rect", {
-			className: css.cell,
-			x,
-			y,
-			width: "2",
-			height: "2",
-			style: { animationDelay: `${(index - MATRIX_CELLS.length) * 125}ms` }
-		}, `${x}-${y}`))
-	});
-	return jsx("span", {
-		className: clsx(css.dot, className),
-		"data-state": state,
-		style: {
-			width: size,
-			height: size
-		},
-		"aria-hidden": "true"
-	});
-}
-//#endregion
-//#region lib/types/icons/index.js
-/** NewChat — stroke glyph on the shared 1.5px language. */
-const IconNewChatOutline16 = ({ size = 16, className }) => jsx("svg", {
+const NewChatOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 8, r: 5.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 5.4v5.2M5.4 8h5.2", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Search — stroke glyph on the shared 1.5px language. */
-const IconSearchOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 6.9, cy: 6.9, r: 4.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M10.55 10.55 14.3 14.3", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Globe — stroke glyph on the shared 1.5px language. */
-const IconGlobeOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 7, cy: 7, r: 5.4, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M7 1.6c2.1 1.7 2.1 9.1 0 10.8-2.1-1.7-2.1-9.1 0-10.8Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M1.7 7h10.6", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Settings — stroke glyph on the shared 1.5px language. */
-const IconSettingsOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M12.66 5.735A5.8 5.8 0 0 1 12.66 8.265L11.065 8.684A4.4 4.4 0 0 1 11.065 8.684L11.897 10.108A5.8 5.8 0 0 1 10.108 11.897L8.684 11.065A4.4 4.4 0 0 1 8.684 11.065L8.265 12.66A5.8 5.8 0 0 1 5.735 12.66L5.316 11.065A4.4 4.4 0 0 1 5.316 11.065L3.892 11.897A5.8 5.8 0 0 1 2.103 10.108L2.935 8.684A4.4 4.4 0 0 1 2.935 8.684L1.34 8.265A5.8 5.8 0 0 1 1.34 5.735L2.935 5.316A4.4 4.4 0 0 1 2.935 5.316L2.103 3.892A5.8 5.8 0 0 1 3.892 2.103L5.316 2.935A4.4 4.4 0 0 1 5.316 2.935L5.735 1.34A5.8 5.8 0 0 1 8.265 1.34L8.684 2.935A4.4 4.4 0 0 1 8.684 2.935L10.108 2.103A5.8 5.8 0 0 1 11.897 3.892L11.065 5.316A4.4 4.4 0 0 1 11.065 5.316Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 7, cy: 7, r: 2.1, vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Settings — stroke glyph on the shared 1.5px language. */
-const IconSettingsOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M14.441 6.56A6.6 6.6 0 0 1 14.441 9.44L12.619 9.913A5 5 0 0 1 12.619 9.913L13.573 11.536A6.6 6.6 0 0 1 11.536 13.573L9.913 12.619A5 5 0 0 1 9.913 12.619L9.44 14.441A6.6 6.6 0 0 1 6.56 14.441L6.087 12.619A5 5 0 0 1 6.087 12.619L4.464 13.573A6.6 6.6 0 0 1 2.427 11.536L3.381 9.913A5 5 0 0 1 3.381 9.913L1.559 9.44A6.6 6.6 0 0 1 1.559 6.56L3.381 6.087A5 5 0 0 1 3.381 6.087L2.427 4.464A6.6 6.6 0 0 1 4.464 2.427L6.087 3.381A5 5 0 0 1 6.087 3.381L6.56 1.559A6.6 6.6 0 0 1 9.44 1.559L9.913 3.381A5 5 0 0 1 9.913 3.381L11.536 2.427A6.6 6.6 0 0 1 13.573 4.464L12.619 6.087A5 5 0 0 1 12.619 6.087Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 8, cy: 8, r: 2.4, vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** PanelLeft — stroke glyph on the shared 1.5px language. */
-const IconPanelLeftOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 1.9, y: 2.7, width: 12.2, height: 10.6, rx: 2.6, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.4 2.7v10.6", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Ellipsis — stroke glyph on the shared 1.5px language. */
-const IconEllipsisOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 3.5, cy: 8, r: 1.25, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 8, cy: 8, r: 1.25, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 12.5, cy: 8, r: 1.25, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Plus — stroke glyph on the shared 1.5px language. */
-const IconPlusOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M8 3.2v9.6M3.2 8h9.6", vectorEffect: "non-scaling-stroke" })
-});
-/** Check — stroke glyph on the shared 1.5px language. */
-const IconCheckOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M2.9 8.4 6.3 11.8 13.1 4.6", vectorEffect: "non-scaling-stroke" })
-});
-/** Check — stroke glyph on the shared 1.5px language. */
-const IconCheckOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M2.5 7.4 5.5 10.4 11.5 4.2", vectorEffect: "non-scaling-stroke" })
-});
-/** Branch — stroke glyph on the shared 1.5px language. */
-const IconBranchOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 4.5, cy: 4, r: 1.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 4.5, cy: 12, r: 1.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 11.5, cy: 4, r: 1.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M4.5 5.9v4.2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M11.5 5.9v1.1a3.5 3.5 0 0 1-3.5 3.5H6.4", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** ChevronDown — stroke glyph on the shared 1.5px language. */
-const IconChevronDownOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M3.4 5.4 7 8.6 10.6 5.4", vectorEffect: "non-scaling-stroke" })
-});
-/** ChevronLeft — stroke glyph on the shared 1.5px language. */
-const IconChevronLeftOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M8.6 3.4 5.4 7l3.2 3.6", vectorEffect: "non-scaling-stroke" })
-});
-/** ChevronRight — stroke glyph on the shared 1.5px language. */
-const IconChevronRightOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M5.4 3.4 8.6 7l-3.2 3.6", vectorEffect: "non-scaling-stroke" })
-});
-/** ic_ds_triangle_right_fill_14 — tree expand arrow; points right, consumers rotate it 90° for the open state. */
-const IconTriangleRightFill14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: jsx("path", {
-		d: "M4.25 2.82782L4.25 11.1722C4.25 11.6622 4.84243 11.9076 5.18891 11.5611L9.36109 7.38891C9.57588 7.17412 9.57588 6.82588 9.36109 6.61109L5.18891 2.43891C4.84243 2.09243 4.25 2.33782 4.25 2.82782Z",
-		fill: "currentColor"
-	})
-});
-/** ChevronUp — stroke glyph on the shared 1.5px language. */
-const IconChevronUpOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M3.4 8.6 7 5.4l3.6 3.2", vectorEffect: "non-scaling-stroke" })
-});
-/** Close — stroke glyph on the shared 1.5px language. */
-const IconCloseOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M4.3 4.3 11.7 11.7M11.7 4.3 4.3 11.7", vectorEffect: "non-scaling-stroke" })
-});
-/** ic_ds_close_fill_14 */
-const IconCloseFill14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: jsx("path", {
-		d: "M10.6074 4.40278L8.00975 6.99973L10.6074 9.59739L9.59736 10.6074L6.9997 8.00978L4.40274 10.6074L3.3927 9.59739L5.98966 6.99973L3.3927 4.40278L4.40274 3.39273L6.9997 5.98969L9.59736 3.39273L10.6074 4.40278Z",
-		fill: "currentColor"
-	})
-});
-/** Copy — stroke glyph on the shared 1.5px language. */
-const IconCopyOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 5.5, y: 1.9, width: 8.6, height: 8.6, rx: 2.2, vectorEffect: "non-scaling-stroke" }),
-		jsx("rect", { x: 1.9, y: 5.5, width: 8.6, height: 8.6, rx: 2.2, vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Refresh — stroke glyph on the shared 1.5px language. */
-const IconRefreshOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M13.6 8A5.6 5.6 0 1 1 11.9 4", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M13.6 2.6v3.4h-3.4", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Refresh — stroke glyph on the shared 1.5px language. */
-const IconRefreshOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M11.9 7A4.9 4.9 0 1 1 10.4 3.5", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M11.9 2.3v3h-3", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Like — stroke glyph on the shared 1.5px language. */
-const IconLikeOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M5.3 7.3V13.4M5.3 13.4h6.05a2.15 2.15 0 0 0 2.1-1.65l.95-4.15a1.45 1.45 0 0 0-1.41-1.77h-2.9l.48-2.35A1.85 1.85 0 0 0 8.75 1.2a1.15 1.15 0 0 0-1.05.66L5.3 7.3M5.3 7.3H3.6a1.3 1.3 0 0 0-1.3 1.3v3.5a1.3 1.3 0 0 0 1.3 1.3h1.7", vectorEffect: "non-scaling-stroke" })
-});
-/** ic_ds_like_fill_16 */
-const IconLikeFill16 = ({ size = 16, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: [jsx("path", {
-		d: "M14.0593 12.922L15.0976 10.1247C15.3087 9.5559 15.4143 9.27138 15.4566 9.04658C15.7349 7.56751 14.7472 6.14737 13.2637 5.89357C13.0382 5.85499 12.7348 5.85499 12.1281 5.85499H11.1099C10.6615 5.85499 10.4372 5.85499 10.3034 5.73376C10.2607 5.69508 10.2255 5.64885 10.1995 5.5974C10.1182 5.43613 10.1778 5.21997 10.297 4.78765L10.8081 2.93419L10.819 2.89456C11.0336 2.09024 10.8051 1.23244 10.2189 0.64139L10.1898 0.612405L10.1692 0.592068C9.77357 0.210076 9.13559 0.249344 8.78983 0.676966L8.77186 0.699678L4.71076 5.86083C4.52965 6.09101 4.38573 6.35138 4.38573 6.64427V12.7431C4.38573 14.3601 5.69654 15.6709 7.31351 15.6709L10.1068 15.6709C11.3628 15.6709 11.9908 15.6709 12.5043 15.3995C12.6723 15.3107 12.8289 15.2018 12.9706 15.0752C13.4037 14.6882 13.6222 14.0995 14.0593 12.922Z",
-		fill: "currentColor"
-	}), jsx("path", {
-		d: "M2.91388 13.2113C2.91388 14.6907 4.08499 15.5536 4.08499 15.5536H2.65606C1.46328 15.5536 0.496338 14.5866 0.496338 13.3938V8.34439C0.496338 7.15161 1.46328 6.18467 2.65606 6.18467H2.91388V13.2113Z",
-		fill: "currentColor"
-	})]
-});
-/** Dislike — stroke glyph on the shared 1.5px language. */
-const IconDislikeOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	transform: "rotate(180 8 8)",
-	children: jsx("path", { d: "M5.3 7.3V13.4M5.3 13.4h6.05a2.15 2.15 0 0 0 2.1-1.65l.95-4.15a1.45 1.45 0 0 0-1.41-1.77h-2.9l.48-2.35A1.85 1.85 0 0 0 8.75 1.2a1.15 1.15 0 0 0-1.05.66L5.3 7.3M5.3 7.3H3.6a1.3 1.3 0 0 0-1.3 1.3v3.5a1.3 1.3 0 0 0 1.3 1.3h1.7", vectorEffect: "non-scaling-stroke" })
-});
-/** ic_ds_dislike_fill_16 */
-const IconDislikeFill16 = ({ size = 16, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: [jsx("path", {
-		d: "M1.92838 3.06811L0.88799 5.87104C0.676449 6.44097 0.570628 6.72606 0.52825 6.95131C0.249414 8.43336 1.2391 9.85637 2.72555 10.1107C2.95149 10.1493 3.25549 10.1493 3.86348 10.1493H4.88371C5.33306 10.1493 5.55774 10.1493 5.69187 10.2708C5.73467 10.3096 5.76994 10.3559 5.79593 10.4074C5.87738 10.569 5.81766 10.7856 5.69821 11.2188L5.18609 13.076L5.17522 13.1157C4.9602 13.9217 5.1891 14.7812 5.7765 15.3735L5.80568 15.4025L5.82635 15.4229C6.22273 15.8056 6.862 15.7663 7.20846 15.3378L7.22647 15.315L11.2958 10.1435C11.4772 9.91284 11.6214 9.65195 11.6214 9.35847V3.24734C11.6214 1.62711 10.308 0.313655 8.68776 0.313655L5.88886 0.313654C4.63032 0.313654 4.00105 0.313654 3.48649 0.585577C3.31815 0.674536 3.16127 0.783647 3.01929 0.910507C2.58531 1.29828 2.36633 1.88824 1.92838 3.06811Z",
-		fill: "currentColor"
-	}), jsx("path", {
-		d: "M13.0963 2.77815C13.0963 1.29585 11.9228 0.431205 11.9228 0.431205H13.3546C14.5498 0.431205 15.5187 1.4001 15.5187 2.59529V7.65491C15.5187 8.8501 14.5498 9.81899 13.3546 9.81899H13.0963V2.77815Z",
-		fill: "currentColor"
-	})]
-});
-/** ic_ds_share_outline_16 */
-const IconShareOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: jsx("path", {
-		d: "M7.95889 1.52285C7.95888 0.826234 8.76055 0.467983 9.27669 0.875208L9.37524 0.967191L15.1317 7.18358C15.5582 7.64419 15.5582 8.35614 15.1317 8.81676L9.37524 15.0331C8.87034 15.578 7.95888 15.2205 7.95889 14.4775V10.8207C7.10614 10.8432 6.31361 10.9316 5.45468 11.2515C4.39484 11.6463 3.18248 12.413 1.64676 13.9425C1.4533 14.135 1.18329 14.1696 0.969086 14.0908C0.74748 14.0091 0.547307 13.7879 0.54859 13.4844L0.55516 13.1315C0.618924 11.3494 1.11153 9.29838 2.27656 7.63787C3.45289 5.96147 5.29554 4.71635 7.95889 4.54797V1.52285ZM9.20911 5.13366C9.20899 5.50567 8.9031 5.77687 8.56523 5.77755C5.99383 5.78282 4.33736 6.8762 3.29964 8.35496C2.54519 9.43014 2.10739 10.7283 1.9152 11.9939C3.04749 11.0323 4.0569 10.4385 5.01917 10.0801C6.29638 9.60449 7.4406 9.56343 8.56429 9.56295C8.9178 9.5628 9.20894 9.84909 9.20911 10.2068L9.20817 13.3737L14.1837 8.00017L9.20817 2.62571L9.20911 5.13366Z",
-		fill: "currentColor"
-	})
-});
-/** Edit — stroke glyph on the shared 1.5px language. */
-const IconEditOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M10.5 2.9 13.1 5.5 3.4 12.6Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M7.3 7.3 8.7 8.7", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Think — stroke glyph on the shared 1.5px language. */
-const IconThinkOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 7, cy: 5.4, r: 2.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M5.7 8v1.3a1.3 1.3 0 0 0 2.6 0V8", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.1 10.9h1.8", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Think — stroke glyph on the shared 1.5px language. */
-const IconThinkOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 6.2, r: 3.3, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.5 9.1v1.5a1.5 1.5 0 0 0 3 0V9.1", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M7 12.5h2", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** AgentPreset — stroke glyph on the shared 1.5px language. */
-const IconAgentPresetOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 2.2, y: 2.2, width: 11.6, height: 11.6, rx: 3.2, vectorEffect: "non-scaling-stroke" }),
-		jsx("rect", { x: 5.6, y: 5.6, width: 4.8, height: 4.8, rx: 1.5, vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Browse — stroke glyph on the shared 1.5px language. */
-const IconBrowseOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M9.6 1.9H5.4A2.4 2.4 0 0 0 3 4.3v7.4a2.4 2.4 0 0 0 2.4 2.4h5.2a2.4 2.4 0 0 0 2.4-2.4V5.3Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M9.3 1.9v3.4h3.7", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M5.9 9h4.2M5.9 11.3h2.6", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** ContextInjection — stroke glyph on the shared 1.5px language. */
-const IconContextInjectionOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M13.1 8.6v3.1a2.3 2.3 0 0 1-2.3 2.3H5.2A2.3 2.3 0 0 1 2.9 11.7V5.2A2.3 2.3 0 0 1 5.2 2.9h1.3", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 1.7v5.6M5.9 5.4 8 7.5l2.1-2.1", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** ic_ds_link_outline_14 */
-const IconLinkOutline14 = ({ size = 14, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: [jsx("path", {
-		d: "M8.19727 5.86969C9.2092 6.90067 9.20969 8.55271 8.19727 9.58338L6.88871 10.8919C5.85801 11.9039 4.20584 11.9037 3.17502 10.8919L3.10873 10.8243C2.09622 9.7934 2.09626 8.14148 3.10873 7.11058L4.36757 5.85174C4.28261 6.33758 4.30355 6.84354 4.44077 7.33362L3.89249 7.88053C3.30043 8.48348 3.30108 9.4507 3.89318 10.0536L3.94566 10.1061C4.54861 10.698 5.51521 10.6981 6.11808 10.1061L7.41283 8.81275C8.00484 8.21002 8.00504 7.24267 7.41352 6.63964L7.35966 6.58716C7.21975 6.44976 7.05995 6.34434 6.89009 6.27089L7.70009 5.4609C7.85176 5.55768 7.99607 5.67091 8.1296 5.80202L8.19727 5.86969Z",
-		fill: "currentColor"
-	}), jsx("path", {
-		d: "M5.80913 8.12648C4.79584 7.09547 4.79591 5.44245 5.80913 4.41141C5.81733 4.40304 5.82707 4.39209 5.8409 4.37826L7.07833 3.14082C7.09224 3.12693 7.10311 3.11729 7.11148 3.10906C8.14253 2.09591 9.79557 2.09579 10.8266 3.10906L10.8908 3.17328C11.9041 4.20425 11.9039 5.85727 10.8908 6.88835L9.63193 8.14581C9.70566 7.66581 9.67564 7.16895 9.53456 6.68948L10.1063 6.11772C10.6989 5.51458 10.6992 4.54691 10.1063 3.94391L10.0552 3.8942C9.45215 3.30157 8.48446 3.30151 7.88142 3.8942L6.59358 5.18204C6.00081 5.78507 6.00092 6.75274 6.59358 7.35584L6.6433 7.40694C6.77998 7.54132 6.93555 7.64528 7.10112 7.71837L6.29251 8.52699C6.14446 8.43127 6.00395 8.31906 5.87335 8.1907L5.80913 8.12648Z",
-		fill: "currentColor"
-	})]
-});
-/** ic_ds_link_outline_16 */
-const IconLinkOutline16 = ({ size = 16, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: [jsx("path", {
-		d: "M9.94133 6.50173C11.3218 7.99603 11.3218 10.3011 9.94128 11.7954C9.88691 11.8542 9.82125 11.9196 9.72099 12.0198L7.75707 13.9838C7.65709 14.0838 7.592 14.1491 7.53334 14.2034C6.03906 15.5843 3.7327 15.5854 2.23827 14.2048C2.17933 14.1503 2.11374 14.0844 2.01315 13.9838C1.91318 13.8839 1.84922 13.8188 1.79495 13.7601C0.413857 12.2657 0.413909 9.95948 1.795 8.46503C1.84923 8.4064 1.91335 8.34115 2.01321 8.24129L3.79275 6.46313C3.71814 7.08101 3.75236 7.71445 3.90115 8.33518L3.00344 9.23151C2.89398 9.34097 2.8535 9.38307 2.82251 9.41658C1.93771 10.3744 1.93704 11.8514 2.82179 12.8092C2.85279 12.8427 2.89383 12.884 3.0034 12.9936C3.11272 13.1029 3.15429 13.1442 3.18777 13.1752C4.14561 14.0603 5.62381 14.0608 6.58178 13.1758C6.61532 13.1448 6.65722 13.1032 6.76685 12.9935L8.73077 11.0296C8.83999 10.9204 8.88142 10.8787 8.91238 10.8452C9.79744 9.88728 9.7969 8.40911 8.91173 7.45124C8.88074 7.41775 8.83944 7.3762 8.73011 7.26687C8.62082 7.15757 8.58061 7.11623 8.54712 7.08526C8.37347 6.92477 8.18243 6.79361 7.98088 6.69165L9.00289 5.66964C9.17506 5.78373 9.34035 5.91265 9.49663 6.05703C9.55538 6.11135 9.62026 6.17652 9.72036 6.27662C9.82094 6.3772 9.88686 6.4428 9.94133 6.50173Z",
-		fill: "currentColor"
-	}), jsx("path", {
-		d: "M6.06816 9.49196C4.68626 7.99724 4.68667 5.68942 6.06885 4.19487C6.12268 4.13671 6.18789 4.07306 6.28706 3.9739L8.24541 2.01416C8.34478 1.91479 8.41018 1.85055 8.46845 1.79665C9.96301 0.414902 12.2689 0.414922 13.7635 1.79665C13.8217 1.85051 13.8866 1.91559 13.9858 2.01486C14.0849 2.11394 14.1502 2.17769 14.204 2.23583C15.5861 3.7304 15.5866 6.03823 14.2047 7.53291C14.1508 7.59125 14.0854 7.65638 13.9858 7.75595L12.1994 9.54098C12.2614 8.92982 12.2185 8.30587 12.0634 7.69657L12.9956 6.76573C13.1044 6.65692 13.1458 6.61529 13.1765 6.58205C14.0621 5.62404 14.0621 4.1454 13.1765 3.18738C13.1458 3.15419 13.104 3.1135 12.9956 3.00508C12.8877 2.89716 12.8471 2.85551 12.814 2.82485C11.8559 1.9389 10.376 1.93886 9.41794 2.82485C9.38479 2.85554 9.34381 2.89622 9.23564 3.00439L7.27728 4.96413C7.16875 5.07265 7.12708 5.11322 7.09636 5.14643C6.21074 6.10441 6.21153 7.58236 7.09705 8.5404C7.12775 8.57357 7.16826 8.61575 7.27659 8.72408C7.38456 8.83205 7.42647 8.87227 7.45958 8.90293C7.62849 9.0591 7.81309 9.1881 8.00856 9.28894L6.98795 10.3095C6.82111 10.1978 6.66052 10.0715 6.50872 9.93114C6.45057 9.87733 6.38547 9.81341 6.28637 9.71431C6.1871 9.61504 6.12202 9.55018 6.06816 9.49196Z",
-		fill: "currentColor"
-	})]
-});
-/** ic_ds_right_up_outline_14 */
-const IconRightUpOutline14 = ({ size = 8, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 8 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	children: jsx("path", {
-		d: "M6.54199 8.62824C6.54199 8.44193 6.54146 8.28829 6.53906 8.15851L1.11719 13.5814L0.728516 13.1927L0.339844 12.803L5.76172 7.38019C5.63201 7.3778 5.47812 7.37824 5.29199 7.37824H1.43555V6.27863H5.29199C5.65471 6.27863 5.97167 6.27814 6.22852 6.30597C6.49541 6.33493 6.76232 6.3998 7.00293 6.57452C7.13452 6.67013 7.25108 6.78571 7.34668 6.9173C7.52157 7.15808 7.5863 7.4256 7.61523 7.69269C7.64305 7.94948 7.64258 8.26562 7.64258 8.62824V12.4857H6.54199V8.62824Z",
-		fill: "currentColor"
-	})
-});
-/** RightUp — stroke glyph on the shared 1.5px language. */
-const IconRightUpOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M4.4 11.6 11.6 4.4M5.8 4.4h5.8v5.8", vectorEffect: "non-scaling-stroke" })
-});
-/** ic_ds_enhance_outline_16 */
-const IconEnhanceOutline16 = ({ size = 16, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
 		jsx("path", {
-			d: "M14.9943 1.92389V3.32428H1.00598V1.92389H14.9943Z",
-			fill: "currentColor"
+			d: "M2.37091 11.2501C1.58745 9.89288 1.32067 8.29835 1.61969 6.76006C1.91872 5.22177 2.76342 3.8433 3.99826 2.87846C5.2331 1.91362 6.77494 1.42737 8.33988 1.50925C9.90482 1.59113 11.3875 2.23562 12.5149 3.32406C13.6425 4.41269 14.3387 5.87206 14.4754 7.4334C14.612 8.99474 14.18 10.5529 13.2587 11.8209C12.3375 13.0888 10.9891 13.9813 9.46194 14.3337C8.18691 14.628 6.85895 14.5294 5.64989 14.0605C5.1712 13.8748 4.76962 13.4932 4.26534 13.3967C3.67413 13.2835 2.95257 13.5598 2.03794 14.3337",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M14.9943 5.50784V6.90823H1.00598V5.50784H14.9943Z",
-			fill: "currentColor"
+			d: "M8 5V11",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M14.9943 9.09177V10.4922H1.00598V9.09177H14.9943Z",
-			fill: "currentColor"
+			d: "M5 8H11",
+			stroke: "currentColor"
+		})
+	]
+});
+/**
+* Render shared globe geometry for product and link icons.
+* @param props - Size, optional CSS class, and inherited stroke width.
+* @returns The decorative SVG artwork.
+*/
+const GlobeOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M7.99986 14.0887C11.3626 14.0887 14.0886 11.3627 14.0886 7.99998C14.0886 4.63727 11.3626 1.91125 7.99986 1.91125C4.63715 1.91125 1.91113 4.63727 1.91113 7.99998C1.91113 11.3627 4.63715 14.0887 7.99986 14.0887Z",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M8.93274 12.6757V14.0761H1.00598V12.6757H8.93274Z",
+			d: "M2.34619 8H13.6538",
+			stroke: "currentColor",
+			strokeLinecap: "square"
+		}),
+		jsx("path", {
+			d: "M7.99976 14.0889C9.23509 14.0889 10.1743 11.3629 10.1743 8.00006C10.1743 4.63739 9.23509 1.91138 7.99976 1.91138",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.99973 14.0889C6.76445 14.0889 5.8252 11.3629 5.8252 8.00006C5.8252 4.63739 6.76445 1.91138 7.99973 1.91138",
+			stroke: "currentColor"
+		})
+	]
+});
+/**
+* Render shared code-bracket geometry for product and link icons.
+* @param props - Size, optional CSS class, and inherited stroke width.
+* @returns The decorative SVG artwork.
+*/
+const CodeBracketsArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M4.67398 4.25061L1.36094 7.86484C1.29085 7.9413 1.29085 8.05866 1.36094 8.13513L4.67398 11.7494",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M11.3262 4.25061L14.6392 7.86484C14.7093 7.9413 14.7093 8.05866 14.6392 8.13513L11.3262 11.7494",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.56222 3.62573L6.43774 12.3743",
+			stroke: "currentColor"
+		})
+	]
+});
+/**
+* Render shared document-browse geometry for product and reference icons.
+* @param props - Size, optional CSS class, and inherited stroke width.
+* @returns The decorative SVG artwork.
+*/
+const BrowseOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M4.9375 5.90295H11.0625",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.9375 9.02991H8.27841",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.5 1.32617C13.3039 1.32617 14 1.95171 14 2.77637V13.2246C13.9996 14.0489 13.3036 14.6738 12.5 14.6738H3.5C2.69637 14.6738 2.00042 14.0489 2 13.2246V2.77637C2 1.95171 2.69613 1.32617 3.5 1.32617H12.5ZM3.5 2.32617C3.1993 2.32617 3 2.55186 3 2.77637V13.2246C3.00044 13.4489 3.19963 13.6738 3.5 13.6738H12.5C12.8004 13.6738 12.9996 13.4489 13 13.2246V2.77637C13 2.55186 12.8007 2.32617 12.5 2.32617H3.5Z",
 			fill: "currentColor"
 		})
 	]
 });
-/** Trash — stroke glyph on the shared 1.5px language. */
-const IconTrashOutline16 = ({ size = 16, className }) => jsx("svg", {
+/**
+* Render shared closed-folder geometry for product, reference, and link icons.
+* @param props - Size, optional CSS class, and inherited stroke width.
+* @returns The decorative SVG artwork.
+*/
+const FolderCloseArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M3.63501 7.66614H12.3647",
+		stroke: "currentColor"
+	})]
+});
+//#endregion
+//#region lib/types/icons/index.js
+/** Shared shield contour used by composite icons outside this module. */
+const SHIELD_OUTLINE_PATH = "M6.80132 2.14853C7.70663 1.80917 8.70422 1.80919 9.60952 2.14859L14.1296 3.84317V7.11961C14.1296 11.6089 10.7615 13.5975 8.20543 14.5779C5.64931 13.5975 2.28052 11.6089 2.28052 7.11961V3.84317L6.80132 2.14853Z";
+/** Regular stroke width used by the product icon set. */
+const ICON_REGULAR_STROKE = 1;
+/** Medium stroke width used by emphasized product icons. */
+const ICON_MEDIUM_STROKE = 1.3;
+/** Regular one-pixel IconNewChatOutline artwork. */
+const IconNewChatOutlineRegular = (props) => jsx(NewChatOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconNewChatOutline artwork with a 1.3px stroke. */
+const IconNewChatOutlineMedium = (props) => jsx(NewChatOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconSearchOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M6.58727 11.8586C9.55061 11.8586 11.9529 9.45637 11.9529 6.49304C11.9529 3.5297 9.55061 1.12744 6.58727 1.12744C3.62394 1.12744 1.22168 3.5297 1.22168 6.49304C1.22168 9.45637 3.62394 11.8586 6.58727 11.8586Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M10.2991 10.3933L14.7783 14.8725",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconSearchOutline artwork. */
+const IconSearchOutlineRegular = (props) => jsx(IconSearchOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconSearchOutline artwork with a 1.3px stroke. */
+const IconSearchOutlineMedium = (props) => jsx(IconSearchOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+/** Regular one-pixel IconGlobeOutline artwork. */
+const IconGlobeOutlineRegular = (props) => jsx(GlobeOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconGlobeOutline artwork with a 1.3px stroke. */
+const IconGlobeOutlineMedium = (props) => jsx(GlobeOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconSettingsOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M8 9.75012C8.9665 9.75012 9.75 8.96662 9.75 8.00012C9.75 7.03362 8.9665 6.25012 8 6.25012C7.0335 6.25012 6.25 7.03362 6.25 8.00012C6.25 8.96662 7.0335 9.75012 8 9.75012Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M13.0107 7.79377C12.9505 7.89401 12.9205 7.94413 12.9205 7.99951C12.9205 8.0549 12.9505 8.10502 13.0106 8.20528L13.9849 9.83006C14.045 9.93029 14.0751 9.9804 14.0751 10.0358C14.0751 10.0911 14.045 10.1413 13.9849 10.2415L13.0037 11.8777C12.9468 11.9726 12.9184 12.0201 12.8725 12.0461C12.8267 12.072 12.7713 12.072 12.6607 12.072H10.6704C10.5598 12.072 10.5045 12.072 10.4586 12.098C10.4128 12.1239 10.3843 12.1714 10.3274 12.2662L9.33825 13.9142C9.28133 14.009 9.25287 14.0564 9.20703 14.0823C9.16118 14.1083 9.10588 14.1083 8.99529 14.1083H7.00486C6.89426 14.1083 6.83896 14.1083 6.79312 14.0823C6.74727 14.0564 6.71881 14.009 6.6619 13.9142L5.67273 12.2662C5.61581 12.1714 5.58735 12.1239 5.54151 12.098C5.49566 12.072 5.44036 12.072 5.32977 12.072H3.33945C3.2288 12.072 3.17347 12.072 3.12761 12.0461C3.08176 12.0201 3.0533 11.9726 2.9964 11.8777L2.0152 10.2415C1.9551 10.1413 1.92505 10.0911 1.92505 10.0358C1.92505 9.9804 1.9551 9.93029 2.0152 9.83006L2.98951 8.20528C3.04963 8.10502 3.07969 8.0549 3.07969 7.99951C3.07968 7.94413 3.04961 7.89401 2.98946 7.79377L2.01529 6.17011C1.95514 6.06987 1.92507 6.01975 1.92507 5.96437C1.92506 5.90899 1.95512 5.85886 2.01524 5.7586L2.9964 4.1224C3.0533 4.0275 3.08176 3.98005 3.12761 3.95408C3.17347 3.92811 3.2288 3.92811 3.33945 3.92811H5.32977C5.44036 3.92811 5.49566 3.92811 5.54151 3.90216C5.58735 3.87621 5.61581 3.82879 5.67273 3.73397L6.6619 2.08599C6.71881 1.99116 6.74727 1.94375 6.79312 1.9178C6.83896 1.89185 6.89426 1.89185 7.00486 1.89185H8.99529C9.10588 1.89185 9.16118 1.89185 9.20703 1.9178C9.25287 1.94375 9.28133 1.99116 9.33825 2.08599L10.3274 3.73397C10.3843 3.82879 10.4128 3.87621 10.4586 3.90216C10.5045 3.92811 10.5598 3.92811 10.6704 3.92811H12.6607C12.7713 3.92811 12.8267 3.92811 12.8725 3.95408C12.9184 3.98005 12.9468 4.0275 13.0037 4.1224L13.9849 5.7586C14.045 5.85886 14.0751 5.90899 14.0751 5.96437C14.0751 6.01975 14.045 6.06987 13.9849 6.17011L13.0107 7.79377Z",
+		stroke: "currentColor",
+		strokeMiterlimit: "10"
+	})]
+});
+/** Regular one-pixel IconSettingsOutline artwork. */
+const IconSettingsOutlineRegular = (props) => jsx(IconSettingsOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconSettingsOutline artwork with a 1.3px stroke. */
+const IconSettingsOutlineMedium = (props) => jsx(IconSettingsOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPanelLeftOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M13.5 1.5H2.5C1.94772 1.5 1.5 1.94772 1.5 2.5V13.5C1.5 14.0523 1.94772 14.5 2.5 14.5H13.5C14.0523 14.5 14.5 14.0523 14.5 13.5V2.5C14.5 1.94772 14.0523 1.5 13.5 1.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M5.5 1.5V14.5",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconPanelLeftOutline artwork. */
+const IconPanelLeftOutlineRegular = (props) => jsx(IconPanelLeftOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPanelLeftOutline artwork with a 1.3px stroke. */
+const IconPanelLeftOutlineMedium = (props) => jsx(IconPanelLeftOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconEllipsisOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M2.9 4.5h10.2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.4 4.5V3.3a1.2 1.2 0 0 1 1.2-1.2h.8a1.2 1.2 0 0 1 1.2 1.2v1.2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M4.5 4.5l.7 8a1.6 1.6 0 0 0 1.6 1.5h2.4a1.6 1.6 0 0 0 1.6-1.5l.7-8", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.8 7.2v3.9M9.2 7.2v3.9", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M3 9C3.55228 9 4 8.55228 4 8C4 7.44772 3.55228 7 3 7C2.44772 7 2 7.44772 2 8C2 8.55228 2.44772 9 3 9Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 9C8.55228 9 9 8.55228 9 8C9 7.44772 8.55228 7 8 7C7.44772 7 7 7.44772 7 8C7 8.55228 7.44772 9 8 9Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M13 9C13.5523 9 14 8.55228 14 8C14 7.44772 13.5523 7 13 7C12.4477 7 12 7.44772 12 8C12 8.55228 12.4477 9 13 9Z",
+			fill: "currentColor"
+		})
 	]
 });
-/** Warning — stroke glyph on the shared 1.5px language. */
-const IconWarningOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M8 2.8 14.2 13.4H1.8Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 6.6v3.2", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 8, cy: 11.6, r: 0.9, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" })
-	]
+/** Regular IconEllipsisOutline artwork; its fill-only geometry is weight-independent. */
+const IconEllipsisOutlineRegular = (props) => jsx(IconEllipsisOutlineArtwork, {
+	...props,
+	strokeWidth: 1
 });
-/** User — stroke glyph on the shared 1.5px language. */
-const IconUserOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 5.6, r: 3.1, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M2.9 14.2a5.1 5.1 0 0 1 10.2 0", vectorEffect: "non-scaling-stroke" })
-	]
+/** Medium IconEllipsisOutline artwork; it matches Regular because the geometry is fill-only. */
+const IconEllipsisOutlineMedium = (props) => jsx(IconEllipsisOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
 });
-/** Send — stroke glyph on the shared 1.5px language. */
-const IconSendOutline16 = ({ size = 16, className }) => jsx("svg", {
+const IconPlusOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M8 13.4V2.8M3.9 6.9 8 2.8l4.1 4.1", vectorEffect: "non-scaling-stroke" })
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M8 2V14",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M2 8H14",
+		stroke: "currentColor"
+	})]
 });
-/** ic_ds_stop_fill_16 */
-const IconStopFill16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconPlusOutline artwork. */
+const IconPlusOutlineRegular = (props) => jsx(IconPlusOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPlusOutline artwork with a 1.3px stroke. */
+const IconPlusOutlineMedium = (props) => jsx(IconPlusOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCheckOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: jsx("path", {
-		d: "M2 4.88C2 3.68009 2 3.08013 2.30557 2.65954C2.40426 2.52371 2.52371 2.40426 2.65954 2.30557C3.08013 2 3.68009 2 4.88 2H11.12C12.3199 2 12.9199 2 13.3405 2.30557C13.4763 2.40426 13.5957 2.52371 13.6944 2.65954C14 3.08013 14 3.68009 14 4.88V11.12C14 12.3199 14 12.9199 13.6944 13.3405C13.5957 13.4763 13.4763 13.5957 13.3405 13.6944C12.9199 14 12.3199 14 11.12 14H4.88C3.68009 14 3.08013 14 2.65954 13.6944C2.52371 13.5957 2.40426 13.4763 2.30557 13.3405C2 12.9199 2 12.3199 2 11.12V4.88Z",
+		d: "M2.25 8.5L5.49732 11.7473C5.90519 12.1552 6.57263 12.1344 6.95426 11.7018L13.75 4",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconCheckOutline artwork. */
+const IconCheckOutlineRegular = (props) => jsx(IconCheckOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCheckOutline artwork with a 1.3px stroke. */
+const IconCheckOutlineMedium = (props) => jsx(IconCheckOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconBranchOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M1.01503 8.0001L5.6964 8.0001C6.41913 8.0001 6.78049 8.0001 7.12115 7.91951C7.4232 7.84804 7.71233 7.73014 7.97821 7.57C8.27809 7.38939 8.5364 7.13669 9.05303 6.63129L11.3281 4.40564",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.01221 7.9999L5.6964 7.9999C6.41913 7.9999 6.78049 7.9999 7.12115 8.08049C7.4232 8.15196 7.71233 8.26986 7.97821 8.43C8.27809 8.61061 8.5364 8.86331 9.05303 9.36871L11.3281 11.5944",
+			stroke: "currentColor"
+		}),
+		jsx("circle", {
+			cx: "12.4502",
+			cy: "3.3079",
+			r: "1.56962",
+			stroke: "currentColor"
+		}),
+		jsx("circle", {
+			cx: "12.4502",
+			cy: "12.6921",
+			r: "1.56962",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconBranchOutline artwork. */
+const IconBranchOutlineRegular = (props) => jsx(IconBranchOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconBranchOutline artwork with a 1.3px stroke. */
+const IconBranchOutlineMedium = (props) => jsx(IconBranchOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconChevronDownOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M4 6L7.29289 9.29289C7.68342 9.68342 8.31658 9.68342 8.70711 9.29289L12 6",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconChevronDownOutline artwork. */
+const IconChevronDownOutlineRegular = (props) => jsx(IconChevronDownOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconChevronDownOutline artwork with a 1.3px stroke. */
+const IconChevronDownOutlineMedium = (props) => jsx(IconChevronDownOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconChevronLeftOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M10 4L6.70711 7.29289C6.31658 7.68342 6.31658 8.31658 6.70711 8.70711L10 12",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconChevronLeftOutline artwork. */
+const IconChevronLeftOutlineRegular = (props) => jsx(IconChevronLeftOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconChevronLeftOutline artwork with a 1.3px stroke. */
+const IconChevronLeftOutlineMedium = (props) => jsx(IconChevronLeftOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconChevronRightOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M6 12L9.29289 8.70711C9.68342 8.31658 9.68342 7.68342 9.29289 7.29289L6 4",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconChevronRightOutline artwork. */
+const IconChevronRightOutlineRegular = (props) => jsx(IconChevronRightOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconChevronRightOutline artwork with a 1.3px stroke. */
+const IconChevronRightOutlineMedium = (props) => jsx(IconChevronRightOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconTriangleRightFillArtwork = ({ size = 14, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M5.5 4.5C5.5 4.40714 5.52586 4.31612 5.57467 4.23713C5.62349 4.15815 5.69334 4.09431 5.77639 4.05279C5.85945 4.01126 5.95242 3.99368 6.0449 4.00202C6.13738 4.01036 6.22572 4.04429 6.3 4.1L10.967 7.6C11.0291 7.64657 11.0795 7.70697 11.1142 7.77639C11.1489 7.84582 11.167 7.92238 11.167 8C11.167 8.07762 11.1489 8.15418 11.1142 8.22361C11.0795 8.29303 11.0291 8.35343 10.967 8.4L6.3 11.9C6.22572 11.9557 6.13738 11.9896 6.0449 11.998C5.95242 12.0063 5.85945 11.9887 5.77639 11.9472C5.69334 11.9057 5.62349 11.8419 5.57467 11.7629C5.52586 11.6839 5.5 11.5929 5.5 11.5V4.5Z",
 		fill: "currentColor"
 	})
 });
-/** Paperclip — stroke glyph on the shared 1.5px language. */
-const IconPaperclipOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M12 4.4v6.2a3.6 3.6 0 0 1-7.2 0V4.2a2 2 0 0 1 4 0v6.1a.9.9 0 0 1-1.8 0V5.1", vectorEffect: "non-scaling-stroke" })
+/** Regular IconTriangleRightFill artwork; its fill-only geometry is weight-independent. */
+const IconTriangleRightFillRegular = (props) => jsx(IconTriangleRightFillArtwork, {
+	...props,
+	strokeWidth: 1
 });
-/** Loading — stroke glyph on the shared 1.5px language. */
-const IconLoadingOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M2.4 8a5.6 5.6 0 1 1 5.6 5.6", vectorEffect: "non-scaling-stroke" })
+/** Medium IconTriangleRightFill artwork; it matches Regular because the geometry is fill-only. */
+const IconTriangleRightFillMedium = (props) => jsx(IconTriangleRightFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
 });
-/** Download — stroke glyph on the shared 1.5px language. */
-const IconDownloadOutline16 = ({ size = 16, className }) => jsx("svg", {
+const IconChevronUpOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsx("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M12 10L8.70711 6.70711C8.31658 6.31658 7.68342 6.31658 7.29289 6.70711L4 10",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconChevronUpOutline artwork. */
+const IconChevronUpOutlineRegular = (props) => jsx(IconChevronUpOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconChevronUpOutline artwork with a 1.3px stroke. */
+const IconChevronUpOutlineMedium = (props) => jsx(IconChevronUpOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCloseOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M2.5 2.5L13.5 13.5",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M13.5 2.5L2.5 13.5",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconCloseOutline artwork. */
+const IconCloseOutlineRegular = (props) => jsx(IconCloseOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCloseOutline artwork with a 1.3px stroke. */
+const IconCloseOutlineMedium = (props) => jsx(IconCloseOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCloseFillArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M3.5 3.5L12.5 12.5",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M12.5 3.5L3.5 12.5",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconCloseFill artwork. */
+const IconCloseFillRegular = (props) => jsx(IconCloseFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCloseFill artwork with a 1.3px stroke. */
+const IconCloseFillMedium = (props) => jsx(IconCloseFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCloseCircleFillArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		fillRule: "evenodd",
+		clipRule: "evenodd",
+		d: "M15 8A7 7 0 1 1 1 8A7 7 0 1 1 15 8ZM6.409 10.652L5.348 9.591L6.939 8L5.348 6.409L6.409 5.348L8 6.939L9.591 5.348L10.652 6.409L9.061 8L10.652 9.591L9.591 10.652L8 9.061Z",
+		fill: "currentColor"
+	})
+});
+/** Regular IconCloseCircleFill artwork (cross knocked out of a filled disc); its fill-only geometry is weight-independent. */
+const IconCloseCircleFillRegular = (props) => jsx(IconCloseCircleFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCloseCircleFill artwork; it matches Regular because the geometry is fill-only. */
+const IconCloseCircleFillMedium = (props) => jsx(IconCloseCircleFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCopyOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("rect", {
+		x: "1.52075",
+		y: "4.07373",
+		width: "10.3932",
+		height: "10.3932",
+		rx: "2",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M11.9792 1.53296C13.36 1.53296 14.4792 2.65225 14.4792 4.03296V9.42847C14.4792 10.3756 13.9521 11.1987 13.1755 11.6228V10.3298C13.3652 10.0787 13.4792 9.7674 13.4792 9.42847V4.03296C13.4792 3.20453 12.8077 2.53296 11.9792 2.53296H6.58374C6.27966 2.53301 5.99684 2.6235 5.7605 2.77905H4.42358C4.85652 2.03463 5.66056 1.53304 6.58374 1.53296H11.9792Z",
+		fill: "currentColor"
+	})]
+});
+/** Regular one-pixel IconCopyOutline artwork. */
+const IconCopyOutlineRegular = (props) => jsx(IconCopyOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCopyOutline artwork with a 1.3px stroke. */
+const IconCopyOutlineMedium = (props) => jsx(IconCopyOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconRefreshOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M14.5001 8C14.5 9.28552 14.1188 10.5422 13.4045 11.611C12.6903 12.6799 11.6752 13.5129 10.4875 14.0049C9.29982 14.4968 7.99295 14.6255 6.73212 14.3747C5.4713 14.124 4.31314 13.505 3.4041 12.596C2.49514 11.687 1.87614 10.5288 1.62537 9.26798C1.37459 8.00716 1.50331 6.70028 1.99525 5.51261C2.48719 4.32494 3.32025 3.30981 4.3891 2.59557C5.45795 1.88134 6.71458 1.50008 8.0001 1.5C9.9001 1.5 11.7001 2.3 13.0001 3.6L14.5001 5.1",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M14.4999 1.5V5.1H10.8999",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconRefreshOutline artwork. */
+const IconRefreshOutlineRegular = (props) => jsx(IconRefreshOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconRefreshOutline artwork with a 1.3px stroke. */
+const IconRefreshOutlineMedium = (props) => jsx(IconRefreshOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconLikeOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M13.537 8.12098L12.3983 12.8455C12.1818 13.7438 11.378 14.3769 10.454 14.3769L9.35595 14.3769H7.43799H5.16577C3.50892 14.3769 2.16577 13.0337 2.16577 11.3769V7.88668C2.16577 7.33439 2.61349 6.88668 3.16577 6.88668H4.02665C5.84943 6.88668 7.38083 3.28711 7.67689 2.54578C7.71259 2.45639 7.73501 2.36373 7.77922 2.27824C7.86506 2.11221 8.08228 1.87578 8.59039 2.07775C10.3291 2.76886 9.23144 6.04071 8.96955 6.75058C8.94502 6.81707 8.99495 6.88668 9.06581 6.88668H12.5648C13.2119 6.88668 13.6886 7.49192 13.537 8.12098Z",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconLikeOutline artwork. */
+const IconLikeOutlineRegular = (props) => jsx(IconLikeOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconLikeOutline artwork with a 1.3px stroke. */
+const IconLikeOutlineMedium = (props) => jsx(IconLikeOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconLikeFillArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M13.537 8.12098L12.3983 12.8455C12.1818 13.7438 11.378 14.3769 10.454 14.3769L9.35595 14.3769H7.43799H5.16577C3.50892 14.3769 2.16577 13.0337 2.16577 11.3769V7.88668C2.16577 7.33439 2.61349 6.88668 3.16577 6.88668H4.02665C5.84943 6.88668 7.38083 3.28711 7.67689 2.54578C7.71259 2.45639 7.73501 2.36373 7.77922 2.27824C7.86506 2.11221 8.08228 1.87578 8.59039 2.07775C10.3291 2.76886 9.23144 6.04071 8.96955 6.75058C8.94502 6.81707 8.99495 6.88668 9.06581 6.88668H12.5648C13.2119 6.88668 13.6886 7.49192 13.537 8.12098Z",
+		fill: "currentColor",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconLikeFill artwork. */
+const IconLikeFillRegular = (props) => jsx(IconLikeFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconLikeFill artwork with a 1.3px stroke. */
+const IconLikeFillMedium = (props) => jsx(IconLikeFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDislikeOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M2.46302 8.06749L3.60171 3.34299C3.81822 2.44467 4.62196 1.81162 5.546 1.8116L6.64406 1.81158L8.56202 1.81158L10.8342 1.81158C12.4911 1.81158 13.8342 3.15473 13.8342 4.81158L13.8342 8.3018C13.8342 8.85408 13.3865 9.3018 12.8342 9.3018L11.9734 9.3018C10.1506 9.3018 8.61918 12.9014 8.32311 13.6427C8.28741 13.7321 8.26499 13.8247 8.22078 13.9102C8.13494 14.0763 7.91772 14.3127 7.40961 14.1107C5.67089 13.4196 6.76856 10.1478 7.03045 9.43789C7.05498 9.37141 7.00505 9.3018 6.93419 9.3018L3.43519 9.3018C2.78811 9.3018 2.31141 8.69656 2.46302 8.06749Z",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconDislikeOutline artwork. */
+const IconDislikeOutlineRegular = (props) => jsx(IconDislikeOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconDislikeOutline artwork with a 1.3px stroke. */
+const IconDislikeOutlineMedium = (props) => jsx(IconDislikeOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDislikeFillArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M2.46302 8.06749L3.60171 3.34299C3.81822 2.44467 4.62196 1.81162 5.546 1.8116L6.64406 1.81158L8.56202 1.81158L10.8342 1.81158C12.4911 1.81158 13.8342 3.15473 13.8342 4.81158L13.8342 8.3018C13.8342 8.85408 13.3865 9.3018 12.8342 9.3018L11.9734 9.3018C10.1506 9.3018 8.61918 12.9014 8.32311 13.6427C8.28741 13.7321 8.26499 13.8247 8.22078 13.9102C8.13494 14.0763 7.91772 14.3127 7.40961 14.1107C5.67089 13.4196 6.76856 10.1478 7.03045 9.43789C7.05498 9.37141 7.00505 9.3018 6.93419 9.3018L3.43519 9.3018C2.78811 9.3018 2.31141 8.69656 2.46302 8.06749Z",
+		fill: "currentColor",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconDislikeFill artwork. */
+const IconDislikeFillRegular = (props) => jsx(IconDislikeFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconDislikeFill artwork with a 1.3px stroke. */
+const IconDislikeFillMedium = (props) => jsx(IconDislikeFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconShareOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M14.1256 7.58723C14.3483 7.81942 14.3482 8.18589 14.1254 8.41799L8.6646 14.1077C8.53985 14.2377 8.32031 14.1494 8.32031 13.9692L8.32035 10.2039C8.32035 10.1943 8.31534 10.1864 8.30592 10.1849C8.08306 10.148 5.30067 9.7729 1.50993 13.2904C1.49711 13.3023 1.47561 13.2943 1.4757 13.2768C1.49273 9.87168 3.42001 5.07166 8.29999 5.05835C8.31103 5.05832 8.32035 5.04937 8.32035 5.03832L8.32031 2.03109C8.32031 1.85088 8.53993 1.76259 8.66466 1.89266L14.1256 7.58723Z",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconShareOutline artwork. */
+const IconShareOutlineRegular = (props) => jsx(IconShareOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconShareOutline artwork with a 1.3px stroke. */
+const IconShareOutlineMedium = (props) => jsx(IconShareOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDeliverDocArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M8 2.7v8.6M4.2 7.5 8 11.3l3.8-3.8", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M2.9 13.6h10.2", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M6.15479 4.91687H9.84543",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M11.8798 9.55347V2.71525C11.8798 2.37416 11.564 2.09766 11.1744 2.09766H4.82577C4.43618 2.09766 4.12036 2.37416 4.12036 2.71525V9.55347",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.28735 13.8022V8.84792C2.28735 8.77514 2.36262 8.72673 2.42884 8.75693L13.2936 13.7112C13.3914 13.7558 13.3596 13.9022 13.2521 13.9022H2.38735C2.33213 13.9022 2.28735 13.8575 2.28735 13.8022Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.46929 10.979L13.5783 8.7416C13.6435 8.7177 13.7126 8.76601 13.7126 8.83551L13.7125 13.8022C13.7125 13.8574 13.6678 13.9022 13.6125 13.9022H7.99999",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M6.15479 7.2395H9.05644",
+			stroke: "currentColor"
+		})
 	]
 });
-/** Play — stroke glyph on the shared 1.5px language. */
-const IconPlayOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M5.5 3.5 12.3 8l-6.8 4.5Z", vectorEffect: "non-scaling-stroke" })
+/** Regular one-pixel IconDeliverDoc artwork. */
+const IconDeliverDocRegular = (props) => jsx(IconDeliverDocArtwork, {
+	...props,
+	strokeWidth: 1
 });
-/** Pause — stroke glyph on the shared 1.5px language. */
-const IconPauseOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M6.4 3.6v8.8M9.6 3.6v8.8", vectorEffect: "non-scaling-stroke" })
+/** Medium IconDeliverDoc artwork with a 1.3px stroke. */
+const IconDeliverDocMedium = (props) => jsx(IconDeliverDocArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
 });
-/** Fullscreen — stroke glyph on the shared 1.5px language. */
-const IconFullscreenOutline16 = ({ size = 16, className }) => jsx("svg", {
+const IconEditOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M8.85596 2.69971H4.19971C3.37141 2.69971 2.69992 3.37146 2.69971 4.19971V11.8003C2.69992 12.6285 3.37141 13.3003 4.19971 13.3003H11.8003C12.6283 13.2999 13.3001 12.6283 13.3003 11.8003V7.89893H14.3003V11.8003C14.3001 13.1806 13.1806 14.2999 11.8003 14.3003H4.19971C2.81913 14.3003 1.69992 13.1808 1.69971 11.8003V4.19971C1.69992 2.81918 2.81913 1.69971 4.19971 1.69971H8.85596V2.69971Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M7.7849 8.23878L13.888 2.13574",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconEditOutline artwork. */
+const IconEditOutlineRegular = (props) => jsx(IconEditOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconEditOutline artwork with a 1.3px stroke. */
+const IconEditOutlineMedium = (props) => jsx(IconEditOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconThinkOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M6 2.4H4a1.6 1.6 0 0 0-1.6 1.6v2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M10 2.4h2A1.6 1.6 0 0 1 13.6 4v2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6 13.6H4A1.6 1.6 0 0 1 2.4 12v-2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M10 13.6h2a1.6 1.6 0 0 0 1.6-1.6v-2", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M10.7554 5.24466C13.9891 8.4783 15.3769 12.3333 13.8552 13.8551C12.3335 15.3768 8.4785 13.989 5.24478 10.7553C2.01111 7.52165 0.623307 3.66664 2.14504 2.14491C3.66676 0.623189 7.52178 2.01099 10.7554 5.24466Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M10.7554 10.7553C7.52178 13.989 3.66676 15.3768 2.14504 13.8551C0.623307 12.3333 2.01111 8.4783 5.24478 5.24466C8.4785 2.01099 12.3335 0.623189 13.8552 2.14491C15.3769 3.66664 13.9891 7.52165 10.7554 10.7553Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8.9587 8.00025C8.9587 8.52835 8.5306 8.95655 8.0024 8.95655C7.47429 8.95655 7.04614 8.52835 7.04614 8.00025C7.04614 7.47209 7.47429 7.04395 8.0024 7.04395C8.5306 7.04395 8.9587 7.47209 8.9587 8.00025Z",
+			fill: "currentColor"
+		})
 	]
 });
-/** Code — stroke glyph on the shared 1.5px language. */
-const IconCodeOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconThinkOutline artwork. */
+const IconThinkOutlineRegular = (props) => jsx(IconThinkOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconThinkOutline artwork with a 1.3px stroke. */
+const IconThinkOutlineMedium = (props) => jsx(IconThinkOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconAgentPresetOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M5.9 4.4 2.3 8l3.6 3.6", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M10.1 4.4 13.7 8l-3.6 3.6", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M9.3 3.4 6.7 12.6", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M6.51867 12.3282C7.29816 12.6011 8.16475 12.6514 9.02269 12.4216C9.57879 12.2726 10.0784 12.0185 10.5087 11.6888C10.7819 12.0555 11.1606 12.3304 11.5913 12.4805C10.9688 13.029 10.2149 13.4478 9.35911 13.6771C8.13946 14.0038 6.90632 13.8971 5.82126 13.4533C6.15821 13.1562 6.4021 12.7652 6.51867 12.3282ZM9.17629 2.89409C11.1101 3.34433 12.739 4.81872 13.2889 6.87043C13.4219 7.3665 13.4811 7.8649 13.4774 8.35466C13.0924 8.13213 12.6422 8.01837 12.1741 8.05276L12.1711 8.05257C12.1539 7.77199 12.109 7.48889 12.0334 7.20684C11.6363 5.72533 10.5048 4.6372 9.13549 4.22844C9.25559 3.87667 9.29214 3.49087 9.22309 3.09892C9.2108 3.02922 9.19451 2.96108 9.17629 2.89409ZM4.7311 3.89107L4.78302 4.11879C4.87648 4.4488 5.04146 4.74263 5.25579 4.98896C3.98078 6.01355 3.35848 7.72904 3.8089 9.41059C3.81828 9.44559 3.82866 9.48025 3.83885 9.51479C3.38217 9.61268 2.98548 9.84137 2.68107 10.1556C2.63414 10.022 2.5897 9.88632 2.55244 9.74726C1.93301 7.43489 2.86717 5.07173 4.71504 3.76697L4.7311 3.89107Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.99136 5.28105C8.87501 5.28105 9.59136 4.56471 9.59136 3.68105C9.59136 2.7974 8.87501 2.08105 7.99136 2.08105C7.1077 2.08105 6.39136 2.7974 6.39136 3.68105C6.39136 4.56471 7.1077 5.28105 7.99136 5.28105Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M3.94009 12.9417C4.82374 12.9417 5.54009 12.2254 5.54009 11.3417C5.54009 10.458 4.82374 9.7417 3.94009 9.7417C3.05643 9.7417 2.34009 10.458 2.34009 11.3417C2.34009 12.2254 3.05643 12.9417 3.94009 12.9417Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.0851 12.9417C12.9688 12.9417 13.6851 12.2254 13.6851 11.3417C13.6851 10.458 12.9688 9.7417 12.0851 9.7417C11.2015 9.7417 10.4851 10.458 10.4851 11.3417C10.4851 12.2254 11.2015 12.9417 12.0851 12.9417Z",
+			stroke: "currentColor"
+		})
 	]
 });
-/** CordisPlugin — stroke glyph on the shared 1.5px language. */
-const IconCordisPluginOutline14 = ({ size = 14, className }) => jsx("svg", {
+/** Regular one-pixel IconAgentPresetOutline artwork. */
+const IconAgentPresetOutlineRegular = (props) => jsx(IconAgentPresetOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconAgentPresetOutline artwork with a 1.3px stroke. */
+const IconAgentPresetOutlineMedium = (props) => jsx(IconAgentPresetOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+/** Regular one-pixel IconBrowseOutline artwork. */
+const IconBrowseOutlineRegular = (props) => jsx(BrowseOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconBrowseOutline artwork with a 1.3px stroke. */
+const IconBrowseOutlineMedium = (props) => jsx(BrowseOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconContextInjectionOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
-	viewBox: "0 0 14 14",
+	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M4.3 5.7h5.4v3.6a2.7 2.7 0 0 1-2.7 2.7A2.7 2.7 0 0 1 4.3 9.3Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M5.8 5.7V3.3M8.2 5.7V3.3", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M7 12v1.7", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M5 2.5H3.5C3.23478 2.5 2.98043 2.60536 2.79289 2.79289C2.60536 2.98043 2.5 3.23478 2.5 3.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V3.5C13.5 3.23478 13.3946 2.98043 13.2071 2.79289C13.0196 2.60536 12.7652 2.5 12.5 2.5H11",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 0.5V7.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5.5 5L8 7.5L10.5 5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5.5 11H10.5",
+			stroke: "currentColor"
+		})
 	]
 });
-/** Api — stroke glyph on the shared 1.5px language. */
-const IconApiOutline14 = ({ size = 14, className }) => jsx("svg", {
+/** Regular one-pixel IconContextInjectionOutline artwork. */
+const IconContextInjectionOutlineRegular = (props) => jsx(IconContextInjectionOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconContextInjectionOutline artwork with a 1.3px stroke. */
+const IconContextInjectionOutlineMedium = (props) => jsx(IconContextInjectionOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconLinkOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
-	viewBox: "0 0 14 14",
+	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M6.59961 9.40051C6.82779 9.6334 7.10015 9.81842 7.40074 9.94472C7.70132 10.071 8.02409 10.1361 8.35013 10.1361C8.67618 10.1361 8.99894 10.071 9.29953 9.94472C9.60011 9.81842 9.87247 9.6334 10.1007 9.40051L12.9015 6.59967C13.3658 6.13541 13.6266 5.50572 13.6266 4.84915C13.6266 4.19258 13.3658 3.56289 12.9015 3.09863C12.4372 2.63436 11.8075 2.37354 11.151 2.37354C10.4944 2.37354 9.86472 2.63436 9.40045 3.09863L9.05034 3.44873",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M9.40051 6.59959C9.17233 6.3667 8.89997 6.18169 8.59939 6.05538C8.2988 5.92907 7.97603 5.86401 7.64999 5.86401C7.32395 5.86401 7.00118 5.92907 6.70059 6.05538C6.40001 6.18169 6.12765 6.3667 5.89946 6.59959L3.09863 9.40043C2.63436 9.8647 2.37354 10.4944 2.37354 11.151C2.37354 11.8075 2.63436 12.4372 3.09863 12.9015C3.56289 13.3657 4.19258 13.6266 4.84915 13.6266C5.50572 13.6266 6.13541 13.3657 6.59967 12.9015L6.94978 12.5514",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconLinkOutline artwork. */
+const IconLinkOutlineRegular = (props) => jsx(IconLinkOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconLinkOutline artwork with a 1.3px stroke. */
+const IconLinkOutlineMedium = (props) => jsx(IconLinkOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconRightUpOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M11.7256 2.77441C12.5538 2.77469 13.2256 3.44616 13.2256 4.27441V10.1416H12.2256V4.27441C12.2256 3.99844 12.0015 3.77469 11.7256 3.77441H5.7207V2.77441H11.7256Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M2.77441 13.2255L12.3756 3.62427",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconRightUpOutline artwork. */
+const IconRightUpOutlineRegular = (props) => jsx(IconRightUpOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconRightUpOutline artwork with a 1.3px stroke. */
+const IconRightUpOutlineMedium = (props) => jsx(IconRightUpOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconEnhanceOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("rect", { x: 1.4, y: 2.6, width: 11.2, height: 8.8, rx: 2.2, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M4.5 6.1 6.2 7.8 4.5 9.5", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M7.6 9.5h2.4", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M1.98486 2.95374H14.0151",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.98486 6.31787H14.0151",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.98486 9.68213H14.0151",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.98486 13.0463H8.4627",
+			stroke: "currentColor"
+		})
 	]
 });
-/** Personalization — stroke glyph on the shared 1.5px language. */
-const IconPersonalizationOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconEnhanceOutline artwork. */
+const IconEnhanceOutlineRegular = (props) => jsx(IconEnhanceOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconEnhanceOutline artwork with a 1.3px stroke. */
+const IconEnhanceOutlineMedium = (props) => jsx(IconEnhanceOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconTrashOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M2.6 5.2h10.8M2.6 10.8h10.8", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 6.2, cy: 5.2, r: 1.8, vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 9.8, cy: 10.8, r: 1.8, vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M1.28149 3.88831H14.7187",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5.41602 3.88833V2.47962C5.41602 2.29282 5.52492 2.11366 5.71876 1.98157C5.9126 1.84948 6.17551 1.77527 6.44964 1.77527H9.55053C9.82466 1.77527 10.0876 1.84948 10.2814 1.98157C10.4753 2.11366 10.5842 2.29282 10.5842 2.47962V3.88833",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.57349 3.88831L3.19366 13.2943C3.21937 13.5502 3.33952 13.7872 3.53065 13.9593C3.72178 14.1313 3.97016 14.2259 4.22729 14.2246H11.7728C12.0299 14.2259 12.2783 14.1313 12.4694 13.9593C12.6605 13.7872 12.7807 13.5502 12.8064 13.2943L13.4266 3.88831",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M6.44946 6.98926V11.1238",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.55054 6.98926V11.1238",
+			stroke: "currentColor"
+		})
 	]
 });
-/** ProjectAdd — stroke glyph on the shared 1.5px language. */
-const IconProjectAddOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconTrashOutline artwork. */
+const IconTrashOutlineRegular = (props) => jsx(IconTrashOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconTrashOutline artwork with a 1.3px stroke. */
+const IconTrashOutlineMedium = (props) => jsx(IconTrashOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconWarningOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M2.3 5.5a2 2 0 0 1 2-2h2.3l1.6 2h5.5a2 2 0 0 1 2 2v4.6a2 2 0 0 1-2 2H4.3a2 2 0 0 1-2-2Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 8.4v3.2M6.4 10h3.2", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 4.29199V9.79199",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 10.708V11.708",
+			stroke: "currentColor"
+		})
 	]
 });
-/** FolderOpen — stroke glyph on the shared 1.5px language. */
-const IconFolderOpenOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconWarningOutline artwork. */
+const IconWarningOutlineRegular = (props) => jsx(IconWarningOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconWarningOutline artwork with a 1.3px stroke. */
+const IconWarningOutlineMedium = (props) => jsx(IconWarningOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCheckCircleFillArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 36 36",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M28.1936 14.6936L19.8066 23.0806C19.2373 23.65 18.7159 24.1742 18.24 24.5571C17.7389 24.9602 17.1365 25.3359 16.3657 25.458C15.9581 25.5225 15.5428 25.5225 15.1353 25.458C14.3645 25.3359 13.7621 24.9602 13.261 24.5571C12.7851 24.1742 12.2637 23.65 11.6943 23.0806L7.80737 19.1936L10.1936 16.8074L14.0806 20.6943C14.7033 21.317 15.0763 21.6873 15.377 21.9292C15.6523 22.1507 15.7109 22.1325 15.6626 22.1248C15.7208 22.1339 15.7802 22.1339 15.8384 22.1248C15.7901 22.1325 15.8486 22.1507 16.124 21.9292C16.4247 21.6873 16.7977 21.317 17.4204 20.6943L25.8074 12.3074L28.1936 14.6936Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M32.8496 18.0005C32.8496 9.79906 26.2019 3.15137 18.0005 3.15137C9.79906 3.15137 3.15137 9.79906 3.15137 18.0005C3.15137 26.2019 9.79906 32.8496 18.0005 32.8496C26.2019 32.8496 32.8496 26.2019 32.8496 18.0005ZM35.7764 18.0005C35.7764 27.8173 27.8173 35.7764 18.0005 35.7764C8.18363 35.7764 0.224609 27.8173 0.224609 18.0005C0.224609 8.18363 8.18363 0.224609 18.0005 0.224609C27.8173 0.224609 35.7764 8.18363 35.7764 18.0005Z",
+		fill: "currentColor"
+	})]
+});
+/** Regular IconCheckCircleFill artwork (circled check); its fill-only geometry is weight-independent. */
+const IconCheckCircleFillRegular = (props) => jsx(IconCheckCircleFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCheckCircleFill artwork; it matches Regular because the geometry is fill-only. */
+const IconCheckCircleFillMedium = (props) => jsx(IconCheckCircleFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconWarningTriangleOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
+	"aria-hidden": "true",
+	strokeWidth,
 	strokeLinecap: "round",
 	strokeLinejoin: "round",
-	children: jsx("path", { d: "M2.3 12.6V5.4a2 2 0 0 1 2-2h2.3l1.6 2h5.5a2 2 0 0 1 2 2v.7M2.3 12.6 4.1 8.8a1.7 1.7 0 0 1 1.55-1.05h7.7a1.6 1.6 0 0 1 1.55 2.02l-.95 3.35a1.7 1.7 0 0 1-1.64 1.23H4.3a2 2 0 0 1-2-2Z", vectorEffect: "non-scaling-stroke" })
+	children: [jsx("path", {
+		d: "M6.87 2.6a1.33 1.33 0 0 1 2.26 0l5.34 9.33A1.33 1.33 0 0 1 13.33 14H2.67a1.33 1.33 0 0 1-1.14-2.07Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M8 6v3m0 2.33h.01",
+		stroke: "currentColor"
+	})]
 });
-/** FolderOpen16 — stroke glyph on the shared 1.5px language. */
-const IconFolderOpen16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular rounded warning triangle with an exclamation mark. */
+const IconWarningTriangleOutlineRegular = (props) => jsx(IconWarningTriangleOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium rounded warning triangle with an exclamation mark. */
+const IconWarningTriangleOutlineMedium = (props) => jsx(IconWarningTriangleOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconUserOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M2.3 12.6V5.4a2 2 0 0 1 2-2h2.3l1.6 2h5.5a2 2 0 0 1 2 2v.7M2.3 12.6 4.1 8.8a1.7 1.7 0 0 1 1.55-1.05h7.7a1.6 1.6 0 0 1 1.55 2.02l-.95 3.35a1.7 1.7 0 0 1-1.64 1.23H4.3a2 2 0 0 1-2-2Z", vectorEffect: "non-scaling-stroke" })
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M8 8.5C9.65685 8.5 11 7.15685 11 5.5C11 3.84315 9.65685 2.5 8 2.5C6.34315 2.5 5 3.84315 5 5.5C5 7.15685 6.34315 8.5 8 8.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M1.5 14.5C1.5 11.25 4.25 10 8 10C11.75 10 14.5 11.25 14.5 14.5",
+		stroke: "currentColor"
+	})]
 });
-/** FolderClose16 — stroke glyph on the shared 1.5px language. */
-const IconFolderClose16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconUserOutline artwork. */
+const IconUserOutlineRegular = (props) => jsx(IconUserOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconUserOutline artwork with a 1.3px stroke. */
+const IconUserOutlineMedium = (props) => jsx(IconUserOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPaperPlaneOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M2.3 5.5a2 2 0 0 1 2-2h2.3l1.6 2h5.5a2 2 0 0 1 2 2v4.6a2 2 0 0 1-2 2H4.3a2 2 0 0 1-2-2Z", vectorEffect: "non-scaling-stroke" })
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M4.74024 9.11029L1.82882 7.79865C1.75022 7.76323 1.75026 7.65161 1.82889 7.61626L12.9665 2.60943C13.0354 2.57846 13.1125 2.63213 13.1073 2.70749L12.3914 13.1388C12.3864 13.2117 12.3073 13.2548 12.2433 13.2194L6.12677 9.83657",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M8.44336 11.0825L6.2832 13.2843C6.22048 13.3482 6.11182 13.3038 6.11182 13.2143V9.86772C6.11182 9.84165 6.122 9.8166 6.1402 9.79793L12.972 2.78748",
+		stroke: "currentColor"
+	})]
 });
-/** tree_corner_8x10 (figma extract; session-tree "L" connector, stroke geometry pre-expanded) */
-const IconTreeCorner8x10 = ({ size = 10, className }) => jsx("svg", {
+/** Regular one-pixel IconPaperPlaneOutline artwork. */
+const IconPaperPlaneOutlineRegular = (props) => jsx(IconPaperPlaneOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPaperPlaneOutline artwork with a 1.3px stroke. */
+const IconPaperPlaneOutlineMedium = (props) => jsx(IconPaperPlaneOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconStopFillArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M12.5 2.5H3.5C2.94772 2.5 2.5 2.94772 2.5 3.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5H12.5C13.0523 13.5 13.5 13.0523 13.5 12.5V3.5C13.5 2.94772 13.0523 2.5 12.5 2.5Z",
+		fill: "currentColor"
+	})
+});
+/** Regular IconStopFill artwork; its fill-only geometry is weight-independent. */
+const IconStopFillRegular = (props) => jsx(IconStopFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconStopFill artwork; it matches Regular because the geometry is fill-only. */
+const IconStopFillMedium = (props) => jsx(IconStopFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPaperclipOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M12.75 4.5V9.5C12.75 10.7598 12.2496 11.968 11.3588 12.8588C10.468 13.7496 9.25978 14.25 8 14.25C6.74022 14.25 5.53204 13.7496 4.64124 12.8588C3.75045 11.968 3.25 10.7598 3.25 9.5V5C3.25 4.13805 3.59241 3.3114 4.2019 2.7019C4.8114 2.09241 5.63805 1.75 6.5 1.75C7.36195 1.75 8.1886 2.09241 8.7981 2.7019C9.40759 3.3114 9.75 4.13805 9.75 5V9.5C9.75 9.96413 9.56563 10.4092 9.23744 10.7374C8.90925 11.0656 8.46413 11.25 8 11.25C7.53587 11.25 7.09075 11.0656 6.76256 10.7374C6.43437 10.4092 6.25 9.96413 6.25 9.5V5.5",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconPaperclipOutline artwork. */
+const IconPaperclipOutlineRegular = (props) => jsx(IconPaperclipOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPaperclipOutline artwork with a 1.3px stroke. */
+const IconPaperclipOutlineMedium = (props) => jsx(IconPaperclipOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconLoadingOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M12.596 12.596C11.687 13.5049 10.5288 14.1239 9.26798 14.3747C8.00716 14.6255 6.70028 14.4968 5.51261 14.0048C4.32494 13.5129 3.30981 12.6798 2.59557 11.611C1.88134 10.5421 1.50008 9.2855 1.5 7.99998C1.50008 6.71446 1.88134 5.45783 2.59557 4.38898C3.30981 3.32013 4.32494 2.48707 5.51261 1.99513C6.70028 1.50319 8.00716 1.37447 9.26798 1.62524C10.5288 1.87602 11.687 2.49502 12.596 3.40398",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconLoadingOutline artwork. */
+const IconLoadingOutlineRegular = (props) => jsx(IconLoadingOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconLoadingOutline artwork with a 1.3px stroke. */
+const IconLoadingOutlineMedium = (props) => jsx(IconLoadingOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDownloadOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M8 1.95317V10.0469",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.25 6.29688L8 10.0469L11.75 6.29688",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.5 10.0469V13.158C1.5 13.3937 1.60536 13.6198 1.79289 13.7865C1.98043 13.9532 2.23478 14.0469 2.5 14.0469H13.5C13.7652 14.0469 14.0196 13.9532 14.2071 13.7865C14.3946 13.6198 14.5 13.3937 14.5 13.158V10.0469",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconDownloadOutline artwork. */
+const IconDownloadOutlineRegular = (props) => jsx(IconDownloadOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconDownloadOutline artwork with a 1.3px stroke. */
+const IconDownloadOutlineMedium = (props) => jsx(IconDownloadOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPlayOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M10.3329 7.91346C10.3996 7.95195 10.3996 8.04818 10.3329 8.08667L6.78304 10.1362C6.71638 10.1747 6.63304 10.1266 6.63304 10.0496L6.63304 5.95055C6.63304 5.87357 6.71638 5.82546 6.78304 5.86395L10.3329 7.91346Z",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconPlayOutline artwork. */
+const IconPlayOutlineRegular = (props) => jsx(IconPlayOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPlayOutline artwork with a 1.3px stroke. */
+const IconPlayOutlineMedium = (props) => jsx(IconPlayOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPauseOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M6.5 5V11",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.5 5V11",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconPauseOutline artwork. */
+const IconPauseOutlineRegular = (props) => jsx(IconPauseOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPauseOutline artwork with a 1.3px stroke. */
+const IconPauseOutlineMedium = (props) => jsx(IconPauseOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconFullscreenOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M2.33154 9.40576V13.1685C2.3318 13.4444 2.55556 13.6685 2.83154 13.6685H6.49463V14.6685H2.83154C2.00328 14.6685 1.3318 13.9967 1.33154 13.1685V9.40576H2.33154ZM13.1685 1.33154C13.9964 1.33199 14.6683 2.00352 14.6685 2.83154V6.40576H13.6685V2.83154C13.6683 2.5558 13.4441 2.33199 13.1685 2.33154H9.49463V1.33154H13.1685Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.4292 6.57077L13.914 2.08594",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M6.57077 9.4292L2.08594 13.914",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconFullscreenOutline artwork. */
+const IconFullscreenOutlineRegular = (props) => jsx(IconFullscreenOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconFullscreenOutline artwork with a 1.3px stroke. */
+const IconFullscreenOutlineMedium = (props) => jsx(IconFullscreenOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCodeOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M6.27612 1.5L4.52612 14.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M11.4739 1.5L9.72388 14.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.39868 5.5H14.0681",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.93188 10.5H13.6013",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconCodeOutline artwork. */
+const IconCodeOutlineRegular = (props) => jsx(IconCodeOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCodeOutline artwork with a 1.3px stroke. */
+const IconCodeOutlineMedium = (props) => jsx(IconCodeOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCordisPluginOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M3.16143 6.59068L1.75205 8.00006L3.10619 9.35419L2.39908 10.0613L0.832948 8.49517C0.559581 8.2218 0.559582 7.77831 0.832948 7.50494L2.45432 5.88357L3.16143 6.59068ZM8.49511 15.1671C8.22176 15.4405 7.77826 15.4404 7.50489 15.1671L5.93461 13.5968L6.64172 12.8897L8 14.248L9.40938 12.8386L10.1165 13.5457L8.49511 15.1671ZM15.1671 7.50494C15.4403 7.7782 15.4401 8.22179 15.1671 8.49517L13.652 10.0102L12.9449 9.30309L14.248 8.00006L12.8897 6.64178L13.5968 5.93467L15.1671 7.50494ZM9.35414 3.10624L8 1.7521L6.69696 3.05514L5.98986 2.34803L7.50489 0.833003C7.77828 0.559981 8.22186 0.559752 8.49511 0.833003L10.0612 2.39913L9.35414 3.10624Z",
+		fill: "currentColor"
+	}), jsx("circle", {
+		cx: "8",
+		cy: "8",
+		r: "1.76221",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconCordisPluginOutline artwork. */
+const IconCordisPluginOutlineRegular = (props) => jsx(IconCordisPluginOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCordisPluginOutline artwork with a 1.3px stroke. */
+const IconCordisPluginOutlineMedium = (props) => jsx(IconCordisPluginOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconApiOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M3 4L7 8L3 12",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M9 12H13",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconApiOutline artwork. */
+const IconApiOutlineRegular = (props) => jsx(IconApiOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconApiOutline artwork with a 1.3px stroke. */
+const IconApiOutlineMedium = (props) => jsx(IconApiOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPersonalizationOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M3.25 7.16357C3.20417 7.32247 3.17778 7.48993 3.17773 7.66357C3.17773 7.83698 3.20336 8.00486 3.24902 8.16357H1.85742V7.16357H3.25ZM14.1426 8.16357H6.71484C6.76052 8.00485 6.78613 7.837 6.78613 7.66357C6.78609 7.48991 6.75971 7.32249 6.71387 7.16357H14.1426V8.16357Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.1377 11.9092C9.08596 12.0666 9.05668 12.2344 9.05664 12.4092C9.05664 12.5838 9.08606 12.7518 9.1377 12.9092H1.85742V11.9092H9.1377ZM14.1426 12.9092H12.1816C12.2332 12.7519 12.2617 12.5838 12.2617 12.4092C12.2617 12.2345 12.2333 12.0666 12.1816 11.9092H14.1426V12.9092Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.1123 3.09106C9.06138 3.24865 9.03324 3.41653 9.0332 3.59106C9.0332 3.76549 9.06148 3.93355 9.1123 4.09106H1.85742V3.09106H9.1123ZM14.1426 4.09106H12.207C12.2578 3.93358 12.2861 3.76545 12.2861 3.59106C12.2861 3.41657 12.2579 3.24862 12.207 3.09106H14.1426V4.09106Z",
+			fill: "currentColor"
+		}),
+		jsx("circle", {
+			cx: "4.97065",
+			cy: "7.66401",
+			r: "1.35151",
+			stroke: "currentColor"
+		}),
+		jsx("circle", {
+			cx: "10.6596",
+			cy: "12.4091",
+			r: "1.35151",
+			stroke: "currentColor"
+		}),
+		jsx("circle", {
+			cx: "10.6596",
+			cy: "3.59101",
+			r: "1.35151",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconPersonalizationOutline artwork. */
+const IconPersonalizationOutlineRegular = (props) => jsx(IconPersonalizationOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPersonalizationOutline artwork with a 1.3px stroke. */
+const IconPersonalizationOutlineMedium = (props) => jsx(IconPersonalizationOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconProjectAddOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M5.54492 2.06738C5.91034 2.06754 6.26318 2.20149 6.53711 2.44336L7.94043 3.68164V4.7998C7.71462 4.74105 7.50367 4.63139 7.32617 4.47461L5.87598 3.19238C5.78477 3.11185 5.66658 3.06754 5.54492 3.06738H2.94922C2.67322 3.06738 2.44946 3.29145 2.44922 3.56738V12.4326C2.44927 12.7087 2.67311 12.9326 2.94922 12.9326H12.9326C13.2086 12.9325 13.4326 12.7086 13.4326 12.4326V8.53613H14.4326V12.4326C14.4326 13.2609 13.7609 13.9325 12.9326 13.9326H2.94922C2.12083 13.9326 1.44927 13.261 1.44922 12.4326V3.56738C1.44946 2.73916 2.12094 2.06738 2.94922 2.06738H5.54492Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.75977 4.50208H14.5509",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.1492 6.89758L12.1492 2.10642",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconProjectAddOutline artwork. */
+const IconProjectAddOutlineRegular = (props) => jsx(IconProjectAddOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconProjectAddOutline artwork with a 1.3px stroke. */
+const IconProjectAddOutlineMedium = (props) => jsx(IconProjectAddOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconFolderOpenOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M12.3994 13.5986H2.04956C1.49728 13.5986 1.04956 13.1509 1.04956 12.5986V3.40137C1.04956 2.84908 1.49728 2.40137 2.04956 2.40137H4.76632C5.01016 2.40137 5.24561 2.49046 5.42836 2.6519L6.94088 3.98799C7.12364 4.14943 7.35908 4.23852 7.60293 4.23852H12.3994C12.9517 4.23852 13.3994 4.68624 13.3994 5.23852V7.16991",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M2.55911 7.93683C2.67584 7.49906 3.07229 7.19446 3.52536 7.19446H13.6491C14.3061 7.19446 14.7846 7.81725 14.6153 8.45209L13.4411 12.856C13.3244 13.2938 12.9279 13.5984 12.4748 13.5984H2.35113C1.69411 13.5984 1.21562 12.9756 1.38489 12.3407L2.55911 7.93683Z",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconFolderOpenOutline artwork. */
+const IconFolderOpenOutlineRegular = (props) => jsx(IconFolderOpenOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconFolderOpenOutline artwork with a 1.3px stroke. */
+const IconFolderOpenOutlineMedium = (props) => jsx(IconFolderOpenOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconFolderOpenArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M2.55912 7.93683C2.67584 7.49906 3.0723 7.19446 3.52536 7.19446H13.6491C14.3061 7.19446 14.7846 7.81725 14.6153 8.45209L13.4411 12.856C13.3244 13.2938 12.9279 13.5984 12.4748 13.5984H2.35113C1.69411 13.5984 1.21562 12.9756 1.38489 12.3407L2.55912 7.93683Z",
+			fill: "currentColor",
+			opacity: "0.16"
+		}),
+		jsx("path", {
+			d: "M13.6491 6.69446C14.6346 6.69453 15.3522 7.62895 15.0983 8.58118L13.9245 12.9845C13.7494 13.6412 13.1539 14.0988 12.4743 14.0988H2.35126C1.36574 14.0988 0.648153 13.1643 0.902044 12.212L2.07587 7.80774C2.25102 7.15128 2.84567 6.69455 3.52509 6.69446H13.6491ZM3.52509 7.69446C3.29865 7.69455 3.10004 7.84674 3.04169 8.06555L1.86786 12.4698C1.78345 12.7872 2.02285 13.0988 2.35126 13.0988H12.4743C12.7007 13.0988 12.8992 12.9463 12.9577 12.7277L14.1325 8.32336C14.2171 8.00598 13.9776 7.69453 13.6491 7.69446H3.52509Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.7666 1.90137C5.13227 1.90144 5.48571 2.03525 5.75977 2.27734L7.27246 3.61328C7.36379 3.69382 7.48174 3.73828 7.60352 3.73828H12.3994C13.2276 3.73841 13.8993 4.41005 13.8994 5.23828V6.7168C13.8183 6.70327 13.735 6.69436 13.6494 6.69434H12.8994V5.23828C12.8993 4.96233 12.6754 4.73841 12.3994 4.73828H7.60352C7.23781 4.73828 6.88446 4.60438 6.61035 4.3623L5.09766 3.02637C5.00636 2.94576 4.88838 2.90144 4.7666 2.90137H2.0498C1.77366 2.90137 1.5498 3.12523 1.5498 3.40137V9.78223L0.902344 12.2119C0.648452 13.1642 1.36604 14.0986 2.35156 14.0986H2.0498C1.2214 14.0986 0.549838 13.427 0.549805 12.5986V3.40137C0.549805 2.57294 1.22138 1.90137 2.0498 1.90137H4.7666Z",
+			fill: "currentColor"
+		})
+	]
+});
+/** Regular IconFolderOpen artwork; its fill-only geometry is weight-independent. */
+const IconFolderOpenRegular = (props) => jsx(IconFolderOpenArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconFolderOpen artwork; it matches Regular because the geometry is fill-only. */
+const IconFolderOpenMedium = (props) => jsx(IconFolderOpenArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+/** Regular one-pixel IconFolderClose artwork. */
+const IconFolderCloseRegular = (props) => jsx(FolderCloseArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconFolderClose artwork with a 1.3px stroke. */
+const IconFolderCloseMedium = (props) => jsx(FolderCloseArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconTreeCornerArtwork = ({ size = 10, className, strokeWidth }) => jsx("svg", {
 	width: size * 8 / 10,
 	height: size,
 	className,
-	viewBox: "-0.5 0 8.5 10.5",
+	viewBox: "0 0 9 11",
 	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: jsx("path", {
-		d: "M0 0L-0.5 0L-0.5 7L0 7L0.5 7L0.5 0L0 0ZM3 10L3 10.5L8 10.5L8 10L8 9.5L3 9.5L3 10ZM0 7L-0.5 7C-0.5 8.933 1.067 10.5 3 10.5L3 10L3 9.5C1.61929 9.5 0.5 8.38071 0.5 7L0 7Z",
-		fill: "currentColor"
+		d: "M0.5 0V7C0.5 7.79565 0.81607 8.55871 1.37868 9.12132C1.94129 9.68393 2.70435 10 3.5 10H8.5",
+		stroke: "currentColor"
 	})
 });
-/** Light — stroke glyph on the shared 1.5px language. */
-const IconLightOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 8, r: 3.1, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M12.7 8 14.3 8M11.323 11.323 12.455 12.455M8 12.7 8 14.3M4.677 11.323 3.545 12.455M3.3 8 1.7 8M4.677 4.677 3.545 3.545M8 3.3 8 1.7M11.323 4.677 12.455 3.545", vectorEffect: "non-scaling-stroke" })
-	]
+/** Regular one-pixel IconTreeCorner artwork. */
+const IconTreeCornerRegular = (props) => jsx(IconTreeCornerArtwork, {
+	...props,
+	strokeWidth: 1
 });
-/** Dark — stroke glyph on the shared 1.5px language. */
-const IconDarkOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M13.4 9.9A5.8 5.8 0 0 1 6.1 2.6a5.9 5.9 0 1 0 7.3 7.3Z", vectorEffect: "non-scaling-stroke" })
+/** Medium IconTreeCorner artwork with a 1.3px stroke. */
+const IconTreeCornerMedium = (props) => jsx(IconTreeCornerArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
 });
-/** Followsystem — stroke glyph on the shared 1.5px language. */
-const IconFollowsystemOutline16 = ({ size = 16, className }) => jsx("svg", {
+const IconLightOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 8, r: 5.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 2.1a5.9 5.9 0 0 1 0 11.8Z", fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Data — stroke glyph on the shared 1.5px language. */
-const IconDataOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 2.2, y: 2.8, width: 11.6, height: 10.4, rx: 2.4, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M2.2 6.4h11.6M6.9 6.4v6.8", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Database — stroke glyph on the shared 1.5px language. */
-const IconDatabaseOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("ellipse", { cx: 8, cy: 4.4, rx: 5.4, ry: 2.2, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M2.6 4.4v7.2c0 1.22 2.42 2.2 5.4 2.2s5.4-.98 5.4-2.2V4.4", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M2.6 8c0 1.22 2.42 2.2 5.4 2.2s5.4-.98 5.4-2.2", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Clock — stroke glyph on the shared 1.5px language. */
-const IconClockOutline16 = ({ size = 16, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 8, r: 5.9, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 4.6V8l2.5 1.7", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** Thin-stroke gauge: dial arc open at the bottom, filled hub, square-cut needle to the upper right.
-* The dial center sits at y=8.75, not 8: the bottom opening leaves the glyph top-heavy, and the
-* 0.75 drop optically centers the drawn extent in the 16 box. */
-const IconGaugeOutline16 = ({ size = 16, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
 		jsx("path", {
-			d: "M3.49 13.26A6.375 6.375 0 1 1 12.51 13.26",
-			stroke: "currentColor",
-			strokeWidth: "1.25"
+			d: "M8.00007 11.8117C10.1052 11.8117 11.8117 10.1052 11.8117 8.00007C11.8117 5.89499 10.1052 4.18848 8.00007 4.18848C5.89499 4.18848 4.18848 5.89499 4.18848 8.00007C4.18848 10.1052 5.89499 11.8117 8.00007 11.8117Z",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M8 8.75L11.4 5.35",
-			stroke: "currentColor",
-			strokeWidth: "1.25"
+			d: "M13.3899 8H15.1499",
+			stroke: "currentColor"
 		}),
-		jsx("circle", {
-			cx: "8",
-			cy: "8.75",
-			r: "1.55",
+		jsx("path", {
+			d: "M11.8115 11.8115L13.0556 13.0556",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 13.3901V15.1501",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.18868 11.8115L2.94458 13.0556",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.6101 8H0.850098",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.18868 4.18856L2.94458 2.94446",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 2.6101V0.850098",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M11.8115 4.18856L13.0556 2.94446",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconLightOutline artwork. */
+const IconLightOutlineRegular = (props) => jsx(IconLightOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconLightOutline artwork with a 1.3px stroke. */
+const IconLightOutlineMedium = (props) => jsx(IconLightOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDarkOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: "M14.1127 8.70663C14.2576 8.60602 14.4627 8.71355 14.4386 8.88834C14.2901 9.96567 13.8731 10.9912 13.2229 11.8692C12.479 12.8735 11.4613 13.6421 10.2917 14.0829C9.1222 14.5236 7.85038 14.6179 6.62865 14.3543C5.40692 14.0907 4.28709 13.4805 3.40332 12.5967C2.51955 11.7129 1.90931 10.5931 1.64572 9.37135C1.38212 8.14962 1.47635 6.87779 1.91711 5.70825C2.35787 4.5387 3.12647 3.52103 4.13083 2.77714C5.00878 2.12689 6.03433 1.70994 7.11166 1.5614C7.28645 1.5373 7.39397 1.74238 7.29337 1.88734C6.68703 2.76099 6.37885 3.81241 6.42313 4.88345C6.47392 6.11194 6.98471 7.27645 7.85413 8.14587C8.72355 9.01529 9.88805 9.52608 11.1166 9.57687C12.1876 9.62114 13.239 9.31296 14.1127 8.70663Z",
+		stroke: "currentColor"
+	})
+});
+/** Regular one-pixel IconDarkOutline artwork. */
+const IconDarkOutlineRegular = (props) => jsx(IconDarkOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconDarkOutline artwork with a 1.3px stroke. */
+const IconDarkOutlineMedium = (props) => jsx(IconDarkOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconFollowsystemOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V11.5C1.5 12.0523 1.94772 12.5 2.5 12.5H13.5C14.0523 12.5 14.5 12.0523 14.5 11.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M5 14.5H11",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconFollowsystemOutline artwork. */
+const IconFollowsystemOutlineRegular = (props) => jsx(IconFollowsystemOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconFollowsystemOutline artwork with a 1.3px stroke. */
+const IconFollowsystemOutlineMedium = (props) => jsx(IconFollowsystemOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDataOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M7.8667 0.349609C8.96906 0.349634 10.0601 0.481272 11.0317 0.735352C11.9973 0.987845 12.8453 1.362 13.4644 1.84766C14.0744 2.32629 14.507 2.95539 14.5161 3.69336H14.5171V8.53516C14.0843 8.32076 13.6108 8.17679 13.1108 8.11816C13.1831 7.96848 13.2162 7.82856 13.2163 7.70312V5.76758C12.6269 6.16618 11.8739 6.47995 11.0317 6.7002C10.0602 6.95423 8.96896 7.08494 7.8667 7.08496C6.76461 7.08493 5.67411 6.95415 4.70264 6.7002C3.85994 6.48006 3.10694 6.1662 2.51709 5.76758V7.70312L2.521 7.78418C2.56374 8.19554 2.93361 8.74414 3.91357 9.23145C4.9281 9.73585 6.35004 10.0371 7.8667 10.0371C8.26373 10.0371 8.6543 10.0141 9.03271 9.97461C8.75596 10.3799 8.54664 10.8349 8.42041 11.3232C8.23666 11.3313 8.0518 11.3369 7.8667 11.3369C6.20108 11.3369 4.57025 11.01 3.33447 10.3955C3.04163 10.2499 2.76658 10.0836 2.51709 9.90039V11.6738C2.51728 12.1379 2.88589 12.7556 3.92236 13.292C4.93457 13.8157 6.35342 14.1289 7.8667 14.1289C8.12318 14.1289 8.37694 14.1161 8.62646 14.0986C8.82021 14.5535 9.08999 14.9682 9.41943 15.3271C8.91285 15.3934 8.39149 15.4287 7.8667 15.4287C6.19761 15.4287 4.56379 15.0869 3.32568 14.4463C2.11244 13.8185 1.21649 12.8562 1.21631 11.6738V3.76367C1.21595 3.74853 1.21438 3.733 1.21436 3.71777C1.21436 2.96917 1.65103 2.33053 2.26807 1.84668C2.88747 1.36112 3.73675 0.987685 4.70264 0.735352C5.67413 0.481376 6.76457 0.349636 7.8667 0.349609ZM7.8667 1.65039C6.86269 1.65042 5.88326 1.77028 5.03076 1.99316C4.17183 2.2176 3.50421 2.52956 3.06982 2.87012C2.65043 3.19909 2.52622 3.48898 2.51709 3.69336V3.74414C2.52719 3.94845 2.65185 4.23772 3.06982 4.56543C3.50425 4.90601 4.17172 5.21795 5.03076 5.44238C5.88326 5.66527 6.8627 5.78513 7.8667 5.78516C8.8707 5.78513 9.85015 5.66525 10.7026 5.44238C11.5611 5.21787 12.2286 4.9049 12.6626 4.56445C13.0982 4.22252 13.2163 3.9231 13.2163 3.71777L13.2104 3.63574C13.1818 3.43623 13.044 3.16941 12.6626 2.87012C12.2286 2.52957 11.5614 2.21773 10.7026 1.99316C9.85009 1.77025 8.8708 1.65041 7.8667 1.65039Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M12.8936 10.0361L13.2061 10.5566C13.2296 10.5959 13.2651 10.6562 13.3027 10.707C13.3469 10.7666 13.4148 10.8431 13.5195 10.9023C13.6244 10.9617 13.725 10.9801 13.7988 10.9873C13.8619 10.9934 13.9318 10.9932 13.9775 10.9932H14.6162L14.8896 11.4502L14.5947 11.9443C14.5698 11.9859 14.5312 12.0483 14.5029 12.1084C14.4781 12.1611 14.4514 12.2312 14.4395 12.3164L14.4326 12.4072L14.4395 12.4971C14.4514 12.5825 14.4781 12.6532 14.5029 12.7061C14.5312 12.7661 14.5689 12.8287 14.5938 12.8701L14.8896 13.3633L14.6162 13.8213H13.9775C13.9318 13.8213 13.8619 13.821 13.7988 13.8271C13.7433 13.8326 13.6728 13.8442 13.5967 13.875L13.5195 13.9121C13.4148 13.9714 13.3469 14.0478 13.3027 14.1074C13.265 14.1583 13.2296 14.2186 13.2061 14.2578L12.8936 14.7783H12.3115L11.999 14.2578C11.9755 14.2186 11.9401 14.1583 11.9023 14.1074C11.8693 14.0628 11.823 14.0083 11.7578 13.959L11.6855 13.9121L11.6074 13.875C11.5316 13.8445 11.4615 13.8325 11.4062 13.8271C11.3432 13.821 11.2733 13.8213 11.2275 13.8213H10.5889L10.3135 13.3633L10.6104 12.8701C10.6352 12.8287 10.6739 12.7661 10.7021 12.7061C10.7352 12.6357 10.7724 12.534 10.7725 12.4072C10.7724 12.2804 10.7352 12.1788 10.7021 12.1084C10.6739 12.0483 10.6353 11.9859 10.6104 11.9443L10.3135 11.4502L10.5889 10.9932H11.2275C11.2733 10.9932 11.3432 10.9934 11.4062 10.9873C11.4801 10.9801 11.5808 10.9616 11.6855 10.9023C11.7903 10.843 11.8582 10.7666 11.9023 10.707C11.94 10.6562 11.9755 10.5959 11.999 10.5566L12.3115 10.0361H12.8936Z",
+		stroke: "currentColor",
+		strokeMiterlimit: "10"
+	})]
+});
+/** Regular one-pixel IconDataOutline artwork. */
+const IconDataOutlineRegular = (props) => jsx(IconDataOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconDataOutline artwork with a 1.3px stroke. */
+const IconDataOutlineMedium = (props) => jsx(IconDataOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconDatabaseOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M13.1967 5.1869C13.7232 4.77378 14.0003 4.30517 14.0001 3.82819C14.0003 3.3512 13.7232 2.88259 13.1967 2.46947C12.6702 2.05635 11.9128 1.71328 11.0006 1.47475C10.0885 1.23621 9.05371 1.11062 8.00039 1.1106C6.94707 1.11057 5.9123 1.23612 5.00009 1.47461C4.08742 1.71301 3.32948 2.05604 2.80249 2.46919C2.2755 2.88235 1.99805 3.35106 1.99805 3.82819C1.99805 4.30531 2.2755 4.77402 2.80249 5.18718C3.32948 5.60033 4.08742 5.94336 5.00009 6.18176C5.9123 6.42025 6.94707 6.5458 8.00039 6.54578C9.05371 6.54575 10.0885 6.42016 11.0006 6.18163C11.9128 5.94309 12.6702 5.60002 13.1967 5.1869Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2 3.80371V11.7848",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M14 3.80371V11.7848",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2 7.81396C2 8.60524 2.63214 9.36411 3.75736 9.92363C4.88258 10.4832 6.4087 10.7975 8 10.7975C9.5913 10.7975 11.1174 10.4832 12.2426 9.92363C13.3679 9.36411 14 8.60524 14 7.81396",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2 11.7847C2 12.6081 2.63214 13.3977 3.75736 13.98C4.88258 14.5622 6.4087 14.8893 8 14.8893C9.5913 14.8893 11.1174 14.5622 12.2426 13.98C13.3679 13.3977 14 12.6081 14 11.7847",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconDatabaseOutline artwork. */
+const IconDatabaseOutlineRegular = (props) => jsx(IconDatabaseOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconDatabaseOutline artwork with a 1.3px stroke. */
+const IconDatabaseOutlineMedium = (props) => jsx(IconDatabaseOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconClockOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M8 4V8.5L11.25 10.25",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconClockOutline artwork. */
+const IconClockOutlineRegular = (props) => jsx(IconClockOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconClockOutline artwork with a 1.3px stroke. */
+const IconClockOutlineMedium = (props) => jsx(IconClockOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconGaugeOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M3.4041 13.096C2.49514 12.187 1.87614 11.0288 1.62537 9.76798C1.37459 8.50716 1.50331 7.20028 1.99525 6.01261C2.48719 4.82494 3.32025 3.80981 4.3891 3.09557C5.45795 2.38134 6.71458 2.00008 8.0001 2C9.28563 2.00008 10.5423 2.38134 11.6111 3.09557C12.68 3.80981 13.513 4.82494 14.005 6.01261C14.4969 7.20028 14.6256 8.50716 14.3748 9.76798C14.1241 11.0288 13.5051 12.187 12.5961 13.096",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 8.49994L11.6114 4.88855",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 9.75C8.69036 9.75 9.25 9.19036 9.25 8.5C9.25 7.80964 8.69036 7.25 8 7.25C7.30964 7.25 6.75 7.80964 6.75 8.5C6.75 9.19036 7.30964 9.75 8 9.75Z",
 			fill: "currentColor"
 		})
 	]
 });
-/** Send — stroke glyph on the shared 1.5px language. */
-const IconSendOutline14 = ({ size = 14, className }) => jsx("svg", {
+/** Regular one-pixel IconGaugeOutline artwork. */
+const IconGaugeOutlineRegular = (props) => jsx(IconGaugeOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconGaugeOutline artwork with a 1.3px stroke. */
+const IconGaugeOutlineMedium = (props) => jsx(IconGaugeOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconSendOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M6.97211 1.94476C7.55785 1.35914 8.50767 1.35919 9.09343 1.94476L13.921 6.77228L13.2138 7.47939L8.38632 2.65187C8.19108 2.45682 7.87443 2.45677 7.67922 2.65187L2.74397 7.58711L2.03687 6.88L6.97211 1.94476Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M7.97571 14.5732L8.02421 2.34139",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconSendOutline artwork. */
+const IconSendOutlineRegular = (props) => jsx(IconSendOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconSendOutline artwork with a 1.3px stroke. */
+const IconSendOutlineMedium = (props) => jsx(IconSendOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconQueueOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M5 6.75H11",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5 9H8",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.37067 11.2497C1.5872 9.89252 1.32042 8.29798 1.61945 6.7597C1.91847 5.22141 2.76317 3.84293 3.99801 2.87809C5.23285 1.91325 6.7747 1.427 8.33964 1.50888C9.90458 1.59076 11.3873 2.23526 12.5147 3.32369C13.6422 4.41232 14.3384 5.8717 14.4751 7.43304C14.6118 8.99438 14.1797 10.5525 13.2585 11.8205C12.3372 13.0885 10.9889 13.9809 9.4617 14.3334C8.18666 14.6277 6.8587 14.529 5.64964 14.0601C5.17095 13.8745 4.76937 13.4929 4.26509 13.3963C3.67389 13.2832 2.95232 13.5595 2.0377 14.3334",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconQueueOutline artwork. */
+const IconQueueOutlineRegular = (props) => jsx(IconQueueOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconQueueOutline artwork with a 1.3px stroke. */
+const IconQueueOutlineMedium = (props) => jsx(IconQueueOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconChecklistOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M3.75 6.25C4.7165 6.25 5.5 5.4665 5.5 4.5C5.5 3.5335 4.7165 2.75 3.75 2.75C2.7835 2.75 2 3.5335 2 4.5C2 5.4665 2.7835 6.25 3.75 6.25Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.5 4.5H13.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M3.75 13.25C4.7165 13.25 5.5 12.4665 5.5 11.5C5.5 10.5335 4.7165 9.75 3.75 9.75C2.7835 9.75 2 10.5335 2 11.5C2 12.4665 2.7835 13.25 3.75 13.25Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.5 11.5H13.5",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconChecklistOutline artwork. */
+const IconChecklistOutlineRegular = (props) => jsx(IconChecklistOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconChecklistOutline artwork with a 1.3px stroke. */
+const IconChecklistOutlineMedium = (props) => jsx(IconChecklistOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconListPenOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M4.9375 5.90295H11.0625",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.9375 9.02991H8.27841",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.5 1.32617C13.3039 1.32617 14 1.95171 14 2.77637V7.61328L13 8.68164V2.77637C13 2.55186 12.8007 2.32617 12.5 2.32617H3.5C3.1993 2.32617 3 2.55186 3 2.77637V13.2246C3.00044 13.4489 3.19963 13.6738 3.5 13.6738H8.32812L7.39258 14.6738H3.5C2.69637 14.6738 2.00042 14.0489 2 13.2246V2.77637C2 1.95171 2.69613 1.32617 3.5 1.32617H12.5Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8.97212 14.3693C9.17511 14.5723 9.37811 14.7753 9.5811 14.9783C9.67012 14.8953 9.75914 14.8123 9.84815 14.7293C11.4505 13.2352 13.0528 11.7411 14.6551 10.247C14.7441 10.164 14.8331 10.081 14.9221 9.99803C14.5989 9.6748 14.2756 9.35157 13.9524 9.02834C13.8694 9.11736 13.7864 9.20637 13.7034 9.29539C12.2093 10.8977 10.7152 12.5 9.22113 14.1023C9.13813 14.1913 9.05513 14.2803 8.97212 14.3693Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M11.6323 13.7841C11.6323 14.0395 11.6323 14.295 11.6323 14.5504C11.6812 14.5523 11.7301 14.5543 11.779 14.5562C12.659 14.5913 13.539 14.6263 14.419 14.6614C14.4679 14.6633 14.5168 14.6653 14.5657 14.6672C14.5657 14.3339 14.5657 14.0006 14.5657 13.6672C14.5168 13.6692 14.4679 13.6711 14.419 13.6731C13.539 13.7081 12.659 13.7432 11.779 13.7783C11.7301 13.7802 11.6812 13.7821 11.6323 13.7841Z",
+			fill: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconListPenOutline artwork. */
+const IconListPenOutlineRegular = (props) => jsx(IconListPenOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconListPenOutline artwork with a 1.3px stroke. */
+const IconListPenOutlineMedium = (props) => jsx(IconListPenOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconGoalOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M14.5001 8C14.5 9.28552 14.1188 10.5422 13.4045 11.611C12.6903 12.6799 11.6752 13.5129 10.4875 14.0049C9.29982 14.4968 7.99295 14.6255 6.73212 14.3747C5.4713 14.124 4.31314 13.505 3.4041 12.596C2.49514 11.687 1.87614 10.5288 1.62537 9.26798C1.37459 8.00716 1.50331 6.70028 1.99525 5.51261C2.48719 4.32494 3.32025 3.30981 4.3891 2.59557C5.45795 1.88134 6.71458 1.50008 8.0001 1.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M11.5 8C11.5001 8.69227 11.2948 9.36901 10.9102 9.94463C10.5257 10.5202 9.97901 10.9689 9.33944 11.2338C8.69986 11.4987 7.99609 11.5681 7.31712 11.433C6.63816 11.2979 6.01449 10.9645 5.52501 10.475C5.03548 9.98552 4.70209 9.36185 4.56702 8.68289C4.43195 8.00392 4.50127 7.30015 4.76619 6.66057C5.03112 6.021 5.47976 5.47436 6.05538 5.08978C6.631 4.70519 7.30774 4.49995 8.00001 4.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8.00024 7.99976L11.2 4.80005",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.4719 5.62245C12.4246 5.66972 12.3569 5.69025 12.2913 5.67715L10.7814 5.37555C10.7022 5.35972 10.6402 5.29781 10.6244 5.2186L10.3228 3.70866C10.3097 3.6431 10.3302 3.57533 10.3775 3.52806L12.1826 1.723C12.2863 1.61929 12.4627 1.65879 12.5122 1.79684L12.9271 2.95225C12.9472 3.00847 12.9915 3.05272 13.0477 3.07291L14.2031 3.48774C14.3412 3.5373 14.3807 3.71368 14.277 3.81739L12.4719 5.62245Z",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconGoalOutline artwork. */
+const IconGoalOutlineRegular = (props) => jsx(IconGoalOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconGoalOutline artwork with a 1.3px stroke. */
+const IconGoalOutlineMedium = (props) => jsx(IconGoalOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconSparkleArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M5.875 3C5.875 6.33333 7.54167 8 10.875 8C7.54167 8 5.875 9.66667 5.875 13C5.875 9.66667 4.20833 8 0.875 8C4.20833 8 5.875 6.33333 5.875 3Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.375 1.55823C12.375 3.39156 13.2917 4.30823 15.125 4.30823C13.2917 4.30823 12.375 5.22489 12.375 7.05823C12.375 5.22489 11.4583 4.30823 9.625 4.30823C11.4583 4.30823 12.375 3.39156 12.375 1.55823Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.375 10.4418C12.375 11.7751 13.0417 12.4418 14.375 12.4418C13.0417 12.4418 12.375 13.1084 12.375 14.4418C12.375 13.1084 11.7083 12.4418 10.375 12.4418C11.7083 12.4418 12.375 11.7751 12.375 10.4418Z",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconSparkle artwork. */
+const IconSparkleRegular = (props) => jsx(IconSparkleArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconSparkle artwork with a 1.3px stroke. */
+const IconSparkleMedium = (props) => jsx(IconSparkleArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+/** Regular one-pixel IconInspectOutline artwork. */
+const IconInspectOutlineRegular = (props) => jsx(CodeBracketsArtwork, {
+	...props,
+	size: props.size ?? 12,
+	strokeWidth: 1
+});
+/** Medium IconInspectOutline artwork with a 1.3px stroke. */
+const IconInspectOutlineMedium = (props) => jsx(CodeBracketsArtwork, {
+	...props,
+	size: props.size ?? 12,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconSkillOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 17 17",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M4.57788 5.77124H10.7029",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.57788 8.89819H7.91879",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.1404 1.19446C12.9442 1.19446 13.6404 1.81999 13.6404 2.64465V8.89856H12.6404V2.64465C12.6404 2.42015 12.4411 2.19446 12.1404 2.19446H3.14038C2.83968 2.19446 2.64038 2.42015 2.64038 2.64465V13.0929C2.64082 13.3172 2.84001 13.5421 3.14038 13.5421H8.88159V14.5421H3.14038C2.33675 14.5421 1.6408 13.9172 1.64038 13.0929V2.64465C1.64038 1.81999 2.33651 1.19446 3.14038 1.19446H12.1404Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.0051 15.1056C12.0051 13.6395 10.8166 12.451 9.35059 12.451C10.8166 12.451 12.0051 11.2626 12.0051 9.79651C12.0051 11.2626 13.1936 12.451 14.6597 12.451C13.1936 12.451 12.0051 13.6395 12.0051 15.1056Z",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconSkillOutline artwork. */
+const IconSkillOutlineRegular = (props) => jsx(IconSkillOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconSkillOutline artwork with a 1.3px stroke. */
+const IconSkillOutlineMedium = (props) => jsx(IconSkillOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconQuestionOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5.75 6.69646C5.75 6.29865 5.88196 5.90976 6.12919 5.57899C6.37643 5.24821 6.72783 4.99041 7.13896 4.83817C7.5501 4.68593 8.0025 4.6461 8.43895 4.72371C8.87541 4.80132 9.27632 4.99289 9.59099 5.27419C9.90566 5.55549 10.12 5.91388 10.2068 6.30406C10.2936 6.69423 10.249 7.09866 10.0787 7.4662C9.90843 7.83373 9.62004 8.14787 9.25003 8.36889C9.19476 8.4019 9.13803 8.43262 9.08004 8.46099C8.52566 8.73217 8 9.20817 8 9.82532",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8 10.7416V11.7416",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconQuestionOutline artwork. */
+const IconQuestionOutlineRegular = (props) => jsx(IconQuestionOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconQuestionOutline artwork with a 1.3px stroke. */
+const IconQuestionOutlineMedium = (props) => jsx(IconQuestionOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconInfoOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 14 14",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M7 11.8V2.7M3.6 6.1 7 2.7l3.4 3.4", vectorEffect: "non-scaling-stroke" })
-});
-/** Queue — stroke glyph on the shared 1.5px language. */
-const IconQueueOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("rect", { x: 1.9, y: 2.4, width: 10.2, height: 7.2, rx: 2.2, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M5.1 9.6 4.3 12.3", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M4.6 5.3h5.8M4.6 7.2h3.6", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M12.5757 7.00012C12.5757 3.92085 10.0794 1.42463 7.00012 1.42456C3.9208 1.42456 1.42456 3.9208 1.42456 7.00012C1.42463 10.0794 3.92085 12.5757 7.00012 12.5757C10.0793 12.5756 12.5756 10.0793 12.5757 7.00012ZM13.8002 7.00012C13.8001 10.7559 10.7559 13.8001 7.00012 13.8002C3.2443 13.8002 0.199291 10.7559 0.199219 7.00012C0.199219 3.24426 3.24426 0.199219 7.00012 0.199219C10.7559 0.199291 13.8002 3.2443 13.8002 7.00012Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.6127 3.18921V4.55986H6.38735V3.18921H7.6127Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M7.6127 5.68921V10.8109H6.38735V5.68921H7.6127Z",
+			fill: "currentColor"
+		})
 	]
 });
-/** Checklist — stroke glyph on the shared 1.5px language. */
-const IconChecklistOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 2.7, cy: 4.5, r: 1.7, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.1 4.5h6.4", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 2.7, cy: 9.5, r: 1.7, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.1 9.5h6.4", vectorEffect: "non-scaling-stroke" })
-	]
+/** Regular IconInfoOutline artwork; its fill-only geometry is weight-independent. */
+const IconInfoOutlineRegular = (props) => jsx(IconInfoOutlineArtwork, {
+	...props,
+	strokeWidth: 1
 });
-/** ListPen — stroke glyph on the shared 1.5px language. */
-const IconListPenOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Medium IconInfoOutline artwork; its fill-only geometry is weight-independent. */
+const IconInfoOutlineMedium = (props) => jsx(IconInfoOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPluginPinwheelOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("path", { d: "M2.4 4.4h5.4M2.4 7.8h3.6", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M11.45 4.15 12.95 5.65 6.19 10.91Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M10.3 5.6 11.5 6.8", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M7.84457 5.06199C11.6605 4.93876 14.7962 6.14848 14.8484 7.76397C14.8875 8.97461 13.1838 10.0696 10.7215 10.5942",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5.12742 8.07731C5.00419 4.26138 6.21391 1.12568 7.8294 1.07351C9.04004 1.03441 10.135 2.73808 10.6596 5.20037",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8.02457 10.6802C4.20865 10.8034 1.07294 9.5937 1.02077 7.97821C0.981678 6.76758 2.68535 5.67262 5.14763 5.14798",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M10.7476 7.89535C10.8708 11.7113 9.66109 14.847 8.0456 14.8991C6.83496 14.9382 5.74 13.2346 5.21536 10.7723",
+			stroke: "currentColor"
+		})
 	]
 });
-/** Goal — stroke glyph on the shared 1.5px language. */
-const IconGoalOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel plugin pinwheel artwork. */
+const IconPluginPinwheelOutlineRegular = (props) => jsx(IconPluginPinwheelOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium plugin pinwheel artwork with a 1.3px stroke. */
+const IconPluginPinwheelOutlineMedium = (props) => jsx(IconPluginPinwheelOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconAlarmClockOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 17 17",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M4.09372 11.9895L3.11865 14.0387",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.1392 11.9895L13.1143 14.0387",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8.11646 4.78442V8.03442L10.6165 9.53442",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M8.11646 13.4094C11.154 13.4094 13.6165 10.947 13.6165 7.90942C13.6165 4.87186 11.154 2.40942 8.11646 2.40942C5.07889 2.40942 2.61646 4.87186 2.61646 7.90942C2.61646 10.947 5.07889 13.4094 8.11646 13.4094Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1.75952 4.74323C2.30657 3.65639 3.12646 2.73047 4.12926 2.05542",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M14.3345 4.74323C13.7874 3.65639 12.9675 2.73047 11.9647 2.05542",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconAlarmClockOutline artwork. */
+const IconAlarmClockOutlineRegular = (props) => jsx(IconAlarmClockOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconAlarmClockOutline artwork with a 1.3px stroke. */
+const IconAlarmClockOutlineMedium = (props) => jsx(IconAlarmClockOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconArchiveOutlineArtwork = ({ size = 20, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("circle", { cx: 7.1, cy: 8.9, r: 4.3, vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 7.1, cy: 8.9, r: 1.5, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M10.3 5.7 14.3 1.7M11 1.7h3.3v3.3", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V4.5C1.5 5.05228 1.94772 5.5 2.5 5.5H13.5C14.0523 5.5 14.5 5.05228 14.5 4.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.5 5.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V5.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M6.5 9.5H9.5",
+			stroke: "currentColor"
+		})
 	]
 });
-/** Sparkle16 — stroke glyph on the shared 1.5px language. */
-const IconSparkle16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconArchiveOutline artwork. */
+const IconArchiveOutlineRegular = (props) => jsx(IconArchiveOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconArchiveOutline artwork with a 1.3px stroke. */
+const IconArchiveOutlineMedium = (props) => jsx(IconArchiveOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconWrapLinesOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M8 1.7Q8.6 7.4 14.3 8 8.6 8.6 8 14.3 7.4 8.6 1.7 8 7.4 7.4 8 1.7Z", vectorEffect: "non-scaling-stroke" })
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M2.3457 3.19299H13.6541",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.3457 7.46497H9.19332",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.3457 11.7369H6.4849",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M9.1936 7.46497H11.5183C12.6981 7.46497 13.6544 8.42132 13.6544 9.60103C13.6544 10.7808 12.6981 11.7371 11.5183 11.7371H9.1936",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M10.9505 9.7677L9.12262 11.5956C9.04452 11.6737 9.04452 11.8003 9.12262 11.8784L10.9505 13.7063",
+			stroke: "currentColor"
+		})
+	]
 });
-/** Inspect — stroke glyph on the shared 1.5px language. */
-const IconInspectOutline12 = ({ size = 12, className }) => jsx("svg", {
+/** Regular one-pixel IconWrapLinesOutline artwork. */
+const IconWrapLinesOutlineRegular = (props) => jsx(IconWrapLinesOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconWrapLinesOutline artwork with a 1.3px stroke. */
+const IconWrapLinesOutlineMedium = (props) => jsx(IconWrapLinesOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconNowrapFillArtwork = ({ size = 16, className }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 2,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
 	children: [
-		jsx("rect", { x: 1.9, y: 1.9, width: 12.2, height: 12.2, rx: 3, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.3 9.7 9.7 6.3M6.6 6.3h3.1v3.1", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M2 15H1V1H2V15Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.3535 7.64645C12.5487 7.84171 12.5487 8.15829 12.3535 8.35355L9.85352 10.8535L9.14648 10.1465L10.793 8.5H3.5V7.5H10.793L9.14648 5.85352L9.85352 5.14648L12.3535 7.64645Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M15 15H14V1H15V15Z",
+			fill: "currentColor"
+		})
 	]
 });
-/** Skill — stroke glyph on the shared 1.5px language. */
-const IconSkillOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular IconNowrapFill artwork; fill-only weights render identically. */
+const IconNowrapFillRegular = (props) => jsx(IconNowrapFillArtwork, { ...props });
+/** Medium IconNowrapFill artwork; fill-only weights render identically. */
+const IconNowrapFillMedium = (props) => jsx(IconNowrapFillArtwork, { ...props });
+const IconWrapFillArtwork = ({ size = 16, className }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
+	"aria-hidden": "true",
 	children: [
-		jsx("rect", { x: 3, y: 1.9, width: 10, height: 12.2, rx: 2.3, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 5.3q.36 1.96 2.32 2.32Q8.36 7.98 8 9.94 7.64 7.98 5.68 7.62 7.64 7.26 8 5.3Z", vectorEffect: "non-scaling-stroke" })
+		jsx("path", {
+			d: "M10.9999 8C10.9999 6.89543 10.1046 6 9 6H4.5V5H9C10.6568 5 11.9999 6.34315 11.9999 8C11.9999 9.65685 10.6568 11 9 11H6.20703L6.85351 11.6465L6.14648 12.3535L4.64652 10.8536C4.45126 10.6583 4.45126 10.3417 4.64652 10.1464L6.14648 8.64648L6.85351 9.35352L6.20703 10H9C10.1046 10 10.9999 9.10457 10.9999 8Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2 15H1V1H2V15Z",
+			fill: "currentColor"
+		}),
+		jsx("path", {
+			d: "M15 15H14V1H15V15Z",
+			fill: "currentColor"
+		})
 	]
 });
-/** Question — stroke glyph on the shared 1.5px language. */
-const IconQuestionOutline14 = ({ size = 14, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 14 14",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 7, cy: 7, r: 5.4, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M5.2 5.4a1.95 1.95 0 1 1 2.6 2.05c-.6.25-.8.85-.8 1.45", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 7, cy: 11.1, r: 1, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" })
-	]
-});
-/** AlarmClock — stroke glyph on the shared 1.5px language. */
-const IconAlarmClockOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular IconWrapFill artwork; fill-only weights render identically. */
+const IconWrapFillRegular = (props) => jsx(IconWrapFillArtwork, { ...props });
+/** Medium IconWrapFill artwork; fill-only weights render identically. */
+const IconWrapFillMedium = (props) => jsx(IconWrapFillArtwork, { ...props });
+const IconCompareSplitOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("circle", { cx: 8, cy: 9, r: 5, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8 6.5V9l1.8 1.2", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M3.6 4.8 5.3 3M12.4 4.8 10.7 3", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M4.7 13.3 3.6 14.4M11.3 13.3 12.4 14.4", vectorEffect: "non-scaling-stroke" })
-	]
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M6 1.5H2.5C1.94772 1.5 1.5 1.94772 1.5 2.5V13.5C1.5 14.0523 1.94772 14.5 2.5 14.5H6C6.55228 14.5 7 14.0523 7 13.5V2.5C7 1.94772 6.55228 1.5 6 1.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M13.5 1.5H10C9.44772 1.5 9 1.94772 9 2.5V13.5C9 14.0523 9.44772 14.5 10 14.5H13.5C14.0523 14.5 14.5 14.0523 14.5 13.5V2.5C14.5 1.94772 14.0523 1.5 13.5 1.5Z",
+		stroke: "currentColor"
+	})]
 });
-/** Archive — stroke glyph on the shared 1.5px language. */
-const IconArchiveOutline20 = ({ size = 20, className }) => jsx("svg", {
+/** Regular one-pixel IconCompareSplitOutline artwork. */
+const IconCompareSplitOutlineRegular = (props) => jsx(IconCompareSplitOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCompareSplitOutline artwork with a 1.3px stroke. */
+const IconCompareSplitOutlineMedium = (props) => jsx(IconCompareSplitOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPlanOutlineArtwork = (props) => jsx(IconListPenOutlineArtwork, {
+	...props,
+	size: props.size ?? 14
+});
+/** Regular one-pixel IconPlanOutline artwork. */
+const IconPlanOutlineRegular = (props) => jsx(IconPlanOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPlanOutline artwork with a 1.3px stroke. */
+const IconPlanOutlineMedium = (props) => jsx(IconPlanOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCompactOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		opacity: "0.35",
+		d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M8 1.5C8.85359 1.5 9.69883 1.66813 10.4874 1.99478C11.2761 2.32144 11.9926 2.80022 12.5962 3.40381C13.1998 4.00739 13.6786 4.72394 14.0052 5.51256C14.3319 6.30117 14.5 7.14641 14.5 8",
+		stroke: "currentColor"
+	})]
+});
+/** Regular one-pixel IconCompactOutline artwork. */
+const IconCompactOutlineRegular = (props) => jsx(IconCompactOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCompactOutline artwork with a 1.3px stroke. */
+const IconCompactOutlineMedium = (props) => jsx(IconCompactOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconShieldOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsx("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: jsx("path", {
+		d: SHIELD_OUTLINE_PATH,
+		stroke: "currentColor",
+		strokeLinejoin: "round"
+	})
+});
+/** Regular one-pixel IconShieldOutline artwork. */
+const IconShieldOutlineRegular = (props) => jsx(IconShieldOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconShieldOutline artwork with a 1.3px stroke. */
+const IconShieldOutlineMedium = (props) => jsx(IconShieldOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconCheckCircleOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M12.5303 6.53027L8.80273 10.2578C8.54967 10.5109 8.31796 10.7439 8.10645 10.9141C7.88375 11.0932 7.616 11.2602 7.27344 11.3145C7.09229 11.3431 6.90771 11.3431 6.72656 11.3145C6.384 11.2602 6.11625 11.0932 5.89355 10.9141C5.68204 10.7439 5.45033 10.5109 5.19727 10.2578L3.46973 8.53027L4.53027 7.46973L6.25781 9.19727C6.53457 9.47402 6.70036 9.63859 6.83398 9.74609C6.95637 9.84453 6.98241 9.83644 6.96094 9.83301C6.98679 9.83709 7.01321 9.83709 7.03906 9.83301C7.01759 9.83644 7.04363 9.84453 7.16602 9.74609C7.29964 9.63859 7.46543 9.47402 7.74219 9.19727L11.4697 5.46973L12.5303 6.53027Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M14.5996 8C14.5996 4.35492 11.6451 1.40039 8 1.40039C4.35492 1.40039 1.40039 4.35492 1.40039 8C1.40039 11.6451 4.35492 14.5996 8 14.5996C11.6451 14.5996 14.5996 11.6451 14.5996 8ZM15.9004 8C15.9004 12.363 12.363 15.9004 8 15.9004C3.63695 15.9004 0.0996094 12.363 0.0996094 8C0.0996094 3.63695 3.63695 0.0996094 8 0.0996094C12.363 0.0996094 15.9004 3.63695 15.9004 8Z",
+		fill: "currentColor"
+	})]
+});
+/** Regular one-pixel IconCheckCircleOutline artwork. */
+const IconCheckCircleOutlineRegular = (props) => jsx(IconCheckCircleOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconCheckCircleOutline artwork with a 1.3px stroke. */
+const IconCheckCircleOutlineMedium = (props) => jsx(IconCheckCircleOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconUnarchiveOutlineArtwork = ({ size = 20, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 20 20",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 2.6, y: 3.4, width: 14.8, height: 3.9, rx: 1.5, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M4.3 7.3v7.2a2 2 0 0 0 2 2h7.4a2 2 0 0 0 2-2V7.3", vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M8.2 10.5h3.6", vectorEffect: "non-scaling-stroke" })
-	]
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		fillRule: "evenodd",
+		clipRule: "evenodd",
+		d: "M15.8659 2.05975C17.2603 2.05995 18.3913 3.19096 18.3914 4.58527V5.4874C18.3914 6.02747 18.2192 6.52672 17.9303 6.93735C17.9336 6.96524 17.9388 6.99318 17.9388 7.02195V12.8884C17.9388 13.6345 17.9395 14.2379 17.8996 14.7254C17.8642 15.1593 17.7936 15.5499 17.6373 15.9141L17.5654 16.0685C17.278 16.6328 16.8405 17.1046 16.3038 17.434L16.0679 17.5661C15.66 17.7739 15.2196 17.8598 14.7237 17.9003C14.2362 17.9401 13.6327 17.9405 12.8867 17.9405H7.11122C6.36511 17.9405 5.76171 17.9401 5.27418 17.9003C4.84051 17.8649 4.44949 17.7952 4.08545 17.6391L3.93104 17.5661C3.36673 17.2785 2.89392 16.8414 2.56465 16.3044L2.43245 16.0685C2.22473 15.6608 2.13878 15.2211 2.09825 14.7254C2.05841 14.2379 2.05912 13.6345 2.05912 12.8884V7.02195C2.05912 6.99284 2.06422 6.96449 2.06758 6.93629C1.77931 6.52592 1.60858 6.02687 1.60858 5.4874V4.58527C1.60876 3.19084 2.73962 2.05975 4.1341 2.05975H15.8659ZM16.4984 7.92936C16.296 7.98169 16.0847 8.01288 15.8659 8.01291H4.1341C3.91478 8.01291 3.70246 7.98194 3.49955 7.92936V12.8884C3.49955 13.6582 3.50053 14.1927 3.53445 14.608C3.56769 15.0146 3.62923 15.244 3.71635 15.415L3.7925 15.5514C3.98339 15.8627 4.25749 16.1165 4.58464 16.2833L4.72529 16.3435C4.88095 16.3993 5.08638 16.4402 5.39158 16.4651C5.80685 16.4991 6.34138 16.5001 7.11122 16.5001H12.8867C13.6564 16.5001 14.1911 16.499 14.6063 16.4651C15.0128 16.432 15.2423 16.3703 15.4133 16.2833L15.5508 16.2061C15.8618 16.0152 16.116 15.7419 16.2827 15.415L16.3429 15.2732C16.3985 15.1177 16.4396 14.9128 16.4645 14.608C16.4985 14.1927 16.4984 13.6583 16.4984 12.8884V7.92936ZM4.1341 3.50019C3.53511 3.50019 3.0492 3.98631 3.04902 4.58527V5.4874C3.04902 6.08649 3.535 6.57248 4.1341 6.57248H15.8659C16.4648 6.57228 16.951 6.08638 16.951 5.4874V4.58527C16.9509 3.98644 16.4647 3.50038 15.8659 3.50019H4.1341Z",
+		fill: "currentColor"
+	}), jsx("path", {
+		d: "M10 14.1V10.1M7.85 12.05L10 9.9L12.15 12.05",
+		stroke: "currentColor",
+		strokeLinecap: "round",
+		strokeLinejoin: "round"
+	})]
 });
-/** Cursor — stroke glyph on the shared 1.5px language. */
-const IconCursorOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconUnarchiveOutline artwork. */
+const IconUnarchiveOutlineRegular = (props) => jsx(IconUnarchiveOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconUnarchiveOutline artwork with a 1.3px stroke. */
+const IconUnarchiveOutlineMedium = (props) => jsx(IconUnarchiveOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPinOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: jsx("path", { d: "M4.6 2.8V12.4l2.7-2.5 1.7 3.7 1.9-.9-1.7-3.6 3.4-.2Z", vectorEffect: "non-scaling-stroke" })
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M9.96976 1.70572L13.1554 3.93629L10.9019 8.12317L11.5158 11.605L10.7192 12.7427L2.52767 7.00693L3.3243 5.86922L6.80612 5.25528L9.96976 1.70572Z",
+		stroke: "currentColor",
+		strokeLinejoin: "round"
+	}), jsx("path", {
+		d: "M6.05285 9.47511C6.27284 9.16094 6.70586 9.08458 7.02003 9.30457C7.3342 9.52455 7.41055 9.95757 7.19057 10.2717L3.98587 14.4708L3.21223 13.9291L6.05285 9.47511Z",
+		fill: "currentColor"
+	})]
 });
-/** Eye — stroke glyph on the shared 1.5px language. */
-const IconEyeOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconPinOutline artwork. */
+const IconPinOutlineRegular = (props) => jsx(IconPinOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPinOutline artwork with a 1.3px stroke. */
+const IconPinOutlineMedium = (props) => jsx(IconPinOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconPinFillArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	stroke: "currentColor",
-	strokeWidth: 1.5,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("path", { d: "M1.8 8c1.6-2.6 3.7-3.9 6.2-3.9s4.6 1.3 6.2 3.9c-1.6 2.6-3.7 3.9-6.2 3.9S3.4 10.6 1.8 8Z", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 8, cy: 8, r: 2.1, vectorEffect: "non-scaling-stroke" })
-	]
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M9.96976 1.70572L13.1554 3.93629L10.9019 8.12317L11.5158 11.605L10.7192 12.7427L2.52767 7.00693L3.3243 5.86922L6.80612 5.25528L9.96976 1.70572Z",
+		fill: "currentColor",
+		stroke: "currentColor",
+		strokeLinejoin: "round"
+	}), jsx("path", {
+		d: "M6.05285 9.47511C6.27284 9.16094 6.70586 9.08458 7.02003 9.30457C7.3342 9.52455 7.41055 9.95757 7.19057 10.2717L3.98587 14.4708L3.21223 13.9291L6.05285 9.47511Z",
+		fill: "currentColor"
+	})]
 });
-/** Browser — stroke glyph on the shared 1.5px language. */
-const IconBrowserOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconPinFill artwork. */
+const IconPinFillRegular = (props) => jsx(IconPinFillArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconPinFill artwork with a 1.3px stroke. */
+const IconPinFillMedium = (props) => jsx(IconPinFillArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconFlatListOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
 	stroke: "currentColor",
-	strokeWidth: 1.5,
 	strokeLinecap: "round",
-	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 1.9, y: 2.6, width: 12.2, height: 10.8, rx: 2.6, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M1.9 6h12.2", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 4.2, cy: 4.3, r: 0.62, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 6.1, cy: 4.3, r: 0.62, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" })
-	]
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", { d: "M6 3.5h7.5M6 8h7.5M6 12.5h7.5" }), jsx("path", { d: "M2.6 3.5h.01M2.6 8h.01M2.6 12.5h.01" })]
 });
-/** Device — stroke glyph on the shared 1.5px language. */
-const IconDeviceOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconFlatListOutline artwork. */
+const IconFlatListOutlineRegular = (props) => jsx(IconFlatListOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconFlatListOutline artwork with a 1.3px stroke. */
+const IconFlatListOutlineMedium = (props) => jsx(IconFlatListOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconWorkspaceTreeOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
 	stroke: "currentColor",
-	strokeWidth: 1.5,
 	strokeLinecap: "round",
 	strokeLinejoin: "round",
-	children: [
-		jsx("rect", { x: 4.4, y: 1.7, width: 7.2, height: 12.6, rx: 2.4, vectorEffect: "non-scaling-stroke" }),
-		jsx("path", { d: "M6.9 12.2h2.2", vectorEffect: "non-scaling-stroke" })
-	]
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", { d: "M14 12.05c0 .8-.65 1.45-1.46 1.45H3.46C2.65 13.5 2 12.85 2 12.05v-8.1c0-.8.65-1.45 1.46-1.45h2.4c.49 0 .94.24 1.21.65l.5.73c.27.4.73.65 1.21.65h3.76c.8 0 1.46.65 1.46 1.45v6.02Z" }), jsx("path", { d: "M8.7 8.1v3M11.2 8.1v3" })]
 });
-/** Server — stroke glyph on the shared 1.5px language. */
-const IconServerOutline16 = ({ size = 16, className }) => jsx("svg", {
+/** Regular one-pixel IconWorkspaceTreeOutline artwork. */
+const IconWorkspaceTreeOutlineRegular = (props) => jsx(IconWorkspaceTreeOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconWorkspaceTreeOutline artwork with a 1.3px stroke. */
+const IconWorkspaceTreeOutlineMedium = (props) => jsx(IconWorkspaceTreeOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconChevronsUpDownOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
 	viewBox: "0 0 16 16",
 	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
 	stroke: "currentColor",
-	strokeWidth: 1.5,
 	strokeLinecap: "round",
 	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", { d: "m5.1 6 2.9-2.9L10.9 6" }), jsx("path", { d: "m5.1 10 2.9 2.9 2.9-2.9" })]
+});
+/** Regular one-pixel IconChevronsUpDownOutline artwork. */
+const IconChevronsUpDownOutlineRegular = (props) => jsx(IconChevronsUpDownOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconChevronsUpDownOutline artwork with a 1.3px stroke. */
+const IconChevronsUpDownOutlineMedium = (props) => jsx(IconChevronsUpDownOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconArchiveCheckOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	stroke: "currentColor",
+	strokeLinecap: "round",
+	strokeLinejoin: "round",
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
-		jsx("rect", { x: 2.2, y: 2.6, width: 11.6, height: 4.9, rx: 2, vectorEffect: "non-scaling-stroke" }),
-		jsx("rect", { x: 2.2, y: 8.5, width: 11.6, height: 4.9, rx: 2, vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 4.6, cy: 5.05, r: 0.72, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" }),
-		jsx("circle", { cx: 4.6, cy: 10.95, r: 0.72, fill: "currentColor", stroke: "none", vectorEffect: "non-scaling-stroke" })
+		jsx("rect", {
+			x: "1.9",
+			y: "2.1",
+			width: "12.2",
+			height: "3.4",
+			rx: "1.1"
+		}),
+		jsx("path", { d: "M2.95 5.7v4.8a2.9 2.9 0 0 0 2.9 2.9h4.3a2.9 2.9 0 0 0 2.9-2.9V5.7" }),
+		jsx("path", { d: "m6 9.35 1.4 1.4 2.6-2.6" })
 	]
+});
+/** Regular one-pixel IconArchiveCheckOutline artwork. */
+const IconArchiveCheckOutlineRegular = (props) => jsx(IconArchiveCheckOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconArchiveCheckOutline artwork with a 1.3px stroke. */
+const IconArchiveCheckOutlineMedium = (props) => jsx(IconArchiveCheckOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconSlidersTwoOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	stroke: "currentColor",
+	strokeLinecap: "round",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", { d: "M2.3 5h5.85M12.05 5h1.65" }),
+		jsx("circle", {
+			cx: "9.95",
+			cy: "5",
+			r: "1.45"
+		}),
+		jsx("path", { d: "M2.3 11h1.65M7.85 11h5.85" }),
+		jsx("circle", {
+			cx: "5.75",
+			cy: "11",
+			r: "1.45"
+		})
+	]
+});
+/** Regular one-pixel IconSlidersTwoOutline artwork. */
+const IconSlidersTwoOutlineRegular = (props) => jsx(IconSlidersTwoOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconSlidersTwoOutline artwork with a 1.3px stroke. */
+const IconSlidersTwoOutlineMedium = (props) => jsx(IconSlidersTwoOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconMicrophoneOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	viewBox: "0 0 16 16",
+	className,
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth,
+	"aria-hidden": "true",
+	children: [jsx("rect", {
+		x: 4.5 + strokeWidth / 2,
+		y: 1 + strokeWidth / 2,
+		width: 7 - strokeWidth,
+		height: 10 - strokeWidth,
+		rx: (7 - strokeWidth) / 2
+	}), jsx("path", { d: "M2.35 8.675C3.075 11.3 5.2 13.125 8 13.125C10.8 13.125 12.925 11.3 13.65 8.675M8 13.125V15" })]
+});
+/** Microphone with uniform one-pixel strokes. */
+const IconMicrophoneOutlineRegular = (props) => jsx(IconMicrophoneOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Microphone with uniform 1.3px strokes. */
+const IconMicrophoneOutlineMedium = (props) => jsx(IconMicrophoneOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+//#endregion
+//#region lib/types/StateDot.js
+/**
+* Pin the loader's CSS animations to document time zero. A CSS animation starts
+* when its element is inserted, so loaders mounted at different moments rotate
+* out of phase; one shared start time keeps every visible loader in step.
+* @param element - the mounted loader, or null on unmount.
+*/
+function syncSpinner(element) {
+	if (element === null) return;
+	const spinner = element;
+	for (const animation of spinner.getAnimations?.({ subtree: true }) ?? []) animation.startTime = 0;
+}
+/**
+* Render a state dot.
+* @param props.state - which of `done`, `warning`, `ongoing`, `error`, or `idle` to show.
+* @param props.size - outer diameter in px; defaults to 14 for ongoing and 10 for solid states.
+* @param props.className - extra class for layout placement.
+* @param props.appearance - compact dot by default; step uses a filled check or hollow pending circle.
+* @returns the dot element (aria-hidden; pair with text for accessibility).
+*/
+function StateDot({ state, size, className, appearance = "dot" }) {
+	const edge = size ?? (state === "ongoing" ? 14 : 10);
+	if (state === "ongoing") return jsx("svg", {
+		ref: syncSpinner,
+		className: clsx(css.spinner, className),
+		"data-state": "ongoing",
+		width: edge,
+		height: edge,
+		viewBox: "0 0 24 24",
+		"aria-hidden": "true",
+		children: jsxs("g", {
+			className: css.spinnerMotion,
+			children: [jsx("circle", {
+				className: css.spinnerTrack,
+				cx: "12",
+				cy: "12",
+				r: "9.5"
+			}), jsx("circle", {
+				className: css.spinnerArc,
+				cx: "12",
+				cy: "12",
+				r: "9.5"
+			})]
+		})
+	});
+	return jsx("span", {
+		className: clsx(appearance === "step" ? css.step : css.dot, className),
+		"data-state": state,
+		style: {
+			width: edge,
+			height: edge
+		},
+		"aria-hidden": "true",
+		children: appearance === "step" && state === "done" && jsx(IconCheckOutlineRegular, { size: edge - 2 })
+	});
+}
+//#endregion
+//#region lib/types/TextShimmer.js
+/** Text-only activity animation with a stable span across lifecycle changes. */
+/**
+* Render text with an optional moving highlight; inactive text keeps the same node.
+* @param props - localized text, running state, and owner styling.
+* @returns the retained text span.
+*/
+const TextShimmer = memo(function TextShimmer({ children, active, className }) {
+	const style = useMemo(() => ({ "--dsh-text-shimmer-spread": `${children.length * 8}px` }), [children.length]);
+	return jsx("span", {
+		className: clsx(css$1.root, className),
+		style,
+		"data-text-shimmer": active || void 0,
+		children
+	});
 });
 //#endregion
 //#region lib/types/DisclosureRow.js
 /**
 * Render one disclosure header and its controlled expanded content.
+* Shallow prop comparison requires stable callbacks and React nodes to skip unchanged renders.
 * @param props - Visual content, controlled state, and interaction policy.
 * @returns the disclosure row.
 */
-function DisclosureRow({ icon, title, open, expandable, onToggle, expandOnRowClick = false, previewChevron = expandable, keepContentWhenOpen = false, collapsedContent, children, className, rowClassName, leadingClassName, chevronClassName, titleClassName }) {
+const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandable, onToggle, running = false, expandOnRowClick = false, previewChevron = expandable, keepContentWhenOpen = false, collapsedContent, children, className, rowClassName, leadingClassName, chevronClassName, titleClassName }) {
 	const rowExpands = expandable && expandOnRowClick;
 	const toggleFromLeading = (event) => {
 		event.stopPropagation();
@@ -1431,15 +3014,15 @@ function DisclosureRow({ icon, title, open, expandable, onToggle, expandOnRowCli
 		onToggle();
 	};
 	const collapsedLeading = previewChevron ? jsxs(Fragment, { children: [jsx("span", {
-		className: css$1.iconIdle,
+		className: css$2.iconIdle,
 		children: icon
-	}), jsx(IconChevronDownOutline14, { className: clsx(chevronClassName, css$1.chevronHover) })] }) : icon;
-	const leading = open ? jsx(IconChevronDownOutline14, { className: chevronClassName }) : collapsedLeading;
+	}), jsx(IconChevronDownOutlineRegular, { className: clsx(chevronClassName, css$2.chevronHover) })] }) : icon;
+	const leading = open ? jsx(IconChevronUpOutlineRegular, { className: chevronClassName }) : collapsedLeading;
 	return jsxs("div", {
-		className: clsx(css$1.root, className),
+		className: clsx(css$2.root, className),
 		"data-open": open || void 0,
 		children: [jsxs("div", {
-			className: clsx(css$1.row, rowClassName),
+			className: clsx(css$2.row, rowClassName),
 			"data-disclosure-row": true,
 			"data-expandable": rowExpands || void 0,
 			role: rowExpands ? "button" : void 0,
@@ -1450,23 +3033,24 @@ function DisclosureRow({ icon, title, open, expandable, onToggle, expandOnRowCli
 			children: [
 				expandable && !rowExpands ? jsx("button", {
 					type: "button",
-					className: clsx(css$1.leading, leadingClassName),
+					className: clsx(css$2.leading, leadingClassName),
 					"aria-expanded": open,
 					onClick: toggleFromLeading,
 					children: leading
 				}) : jsx("span", {
-					className: clsx(css$1.leading, leadingClassName),
+					className: clsx(css$2.leading, leadingClassName),
 					children: leading
 				}),
-				jsx("span", {
-					className: clsx(css$1.title, titleClassName),
+				jsx(TextShimmer, {
+					className: clsx(css$2.title, titleClassName),
+					active: running,
 					children: title
 				}),
 				(keepContentWhenOpen || !open) && collapsedContent
 			]
 		}), open && children]
 	});
-}
+});
 //#endregion
 //#region lib/types/Button.js
 /**
@@ -1479,10 +3063,10 @@ function DisclosureRow({ icon, title, open, expandable, onToggle, expandOnRowCli
 function Button({ variant = "ghost", size = "md", icon, className, children, ...rest }) {
 	return jsxs("button", {
 		type: "button",
-		className: clsx(css$2.button, css$2[variant], css$2[size], className),
+		className: clsx(css$3.button, css$3[variant], css$3[size], className),
 		...rest,
 		children: [icon != null && jsx("span", {
-			className: css$2.icon,
+			className: css$3.icon,
 			children: icon
 		}), children]
 	});
@@ -1497,15 +3081,84 @@ function Button({ variant = "ghost", size = "md", icon, className, children, ...
 */
 function Pill({ active = false, className, children, onClick, ...rest }) {
 	if (!onClick) return jsx("span", {
-		className: clsx(css$3.pill, active && css$3.active, className),
+		className: clsx(css$4.pill, active && css$4.active, className),
 		children
 	});
 	return jsx("button", {
 		type: "button",
-		className: clsx(css$3.pill, css$3.interactive, active && css$3.active, className),
+		className: clsx(css$4.pill, css$4.interactive, active && css$4.active, className),
 		onClick,
 		...rest,
 		children
+	});
+}
+//#endregion
+//#region lib/types/SegmentedTabs.js
+/**
+* Render equal-width, controlled tabs with a sliding selection indicator.
+* @param props.items - non-empty ordered tabs with unique values and DOM ids.
+* @param props.value - selected value, which must belong to items.
+* @param props.onChange - selection requested by click, Left/Right, or Home/End.
+* Keyboard selection also moves focus; only the selected tab is a tab stop.
+* @param props.label - localized accessible name for the tab list.
+* @param props.className - layout placement; panels remain caller-owned.
+* @returns the tab list, without its panels.
+*/
+function SegmentedTabs({ items, value, onChange, label, className }) {
+	const selectedIndex = items.findIndex((item) => item.value === value);
+	const onKeyDown = (event, index) => {
+		let next;
+		switch (event.key) {
+			case "ArrowLeft":
+				next = (index + items.length - 1) % items.length;
+				break;
+			case "ArrowRight":
+				next = (index + 1) % items.length;
+				break;
+			case "Home":
+				next = 0;
+				break;
+			case "End":
+				next = items.length - 1;
+				break;
+			default: return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		const tablist = event.currentTarget.parentElement;
+		const nextItem = items[next];
+		/* v8 ignore next -- the event comes from a mounted direct child and next is bounded by non-empty items. */
+		if (tablist === null || nextItem === void 0) return;
+		tablist.querySelectorAll("[role=\"tab\"]").item(next).focus();
+		onChange(nextItem.value);
+	};
+	return jsxs("div", {
+		role: "tablist",
+		"aria-label": label,
+		className: clsx(css$5.tabs, className),
+		style: { gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` },
+		children: [jsx("span", {
+			className: css$5.indicator,
+			"aria-hidden": "true",
+			style: {
+				width: `calc((100% - 8px) / ${items.length})`,
+				transform: `translateX(${selectedIndex * 100}%)`
+			}
+		}), items.map((item, index) => jsx(Pill, {
+			id: item.id,
+			role: "tab",
+			className: css$5.tab,
+			"aria-selected": value === item.value,
+			"aria-controls": item.panelId,
+			tabIndex: value === item.value ? 0 : -1,
+			onClick: () => {
+				onChange(item.value);
+			},
+			onKeyDown: (event) => {
+				onKeyDown(event, index);
+			},
+			children: item.label
+		}, item.value))]
 	});
 }
 //#endregion
@@ -1519,9 +3172,56 @@ function Pill({ active = false, className, children, onClick, ...rest }) {
 */
 function Tag({ tone = "outline", className, children }) {
 	return jsx("span", {
-		className: clsx(css$4.tag, className),
+		className: clsx(css$6.tag, className),
 		"data-tone": tone,
 		children
+	});
+}
+//#endregion
+//#region lib/types/PathLabel.js
+/** A single-line file path whose trailing characters remain visible in narrow toolbars. */
+/**
+* Render subdued directories and a primary filename, with the complete path on hover.
+* Fitting text is left-aligned; overflow clips and fades at the left edge.
+* The fade updates on path changes and, when ResizeObserver is available, size changes.
+* @param props - File path and attributes for its outer span; callers own toolbar spacing.
+* @returns the path label.
+*/
+function PathLabel({ path, className, ...attributes }) {
+	const boxRef = useRef(null);
+	const textRef = useRef(null);
+	const { directory, name } = pathPartsOf(path);
+	useLayoutEffect(() => {
+		const outer = boxRef.current;
+		const inner = textRef.current;
+		const apply = () => {
+			outer.toggleAttribute("data-path-clipped", inner.offsetWidth > outer.clientWidth);
+		};
+		apply();
+		const observer = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver(apply);
+		observer?.observe(outer);
+		observer?.observe(inner);
+		return () => {
+			observer?.disconnect();
+		};
+	}, [path]);
+	return jsx("span", {
+		...attributes,
+		ref: boxRef,
+		className: clsx(css$7.path, className),
+		title: path,
+		"data-path-label": true,
+		children: jsxs("span", {
+			ref: textRef,
+			className: css$7.text,
+			children: [directory !== "" && jsx("span", {
+				className: css$7.directory,
+				children: directory
+			}), jsx("span", {
+				className: css$7.name,
+				children: name
+			})]
+		})
 	});
 }
 //#endregion
@@ -1545,11 +3245,123 @@ function Switch({ checked, onChange, label, disabled = false, title, className }
 		"aria-label": label,
 		title,
 		disabled,
-		className: clsx(css$5.switch, className),
+		className: clsx(css$8.switch, className),
 		onClick: () => {
 			onChange(!checked);
 		},
-		children: jsx("span", { className: css$5.thumb })
+		children: jsx("span", { className: css$8.thumb })
+	});
+}
+//#endregion
+//#region lib/types/SegmentedControl.js
+function isWalkKey(key) {
+	return key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown" || key === "Home" || key === "End";
+}
+/**
+* The enabled option a walk key lands on from the selected one: arrows step
+* to the nearest enabled neighbour and wrap, Home and End jump to the first
+* and last enabled option.
+*/
+function walk(options, from, key) {
+	const enabled = options.filter((option) => option.disabled !== true);
+	if (key === "Home") return enabled[0];
+	if (key === "End") return enabled[enabled.length - 1];
+	const step = key === "ArrowRight" || key === "ArrowDown" ? 1 : -1;
+	const count = options.length;
+	for (let offset = 1; offset < count; offset += 1) {
+		const candidate = options[((from + step * offset) % count + count) % count];
+		if (candidate !== void 0 && candidate.disabled !== true) return candidate;
+	}
+}
+/**
+* Render a segmented control.
+* @param props.id - the owner's base id: each tab is `<id>-<value>` and names
+* `<id>-<value>-panel` as the panel it controls.
+* @param props.value - the selected option's value; the control is fully controlled.
+* @param props.options - the segments in display order; at least two.
+* @param props.onChange - called with the value a click or a walk key asks for,
+* never with the value already selected.
+* @param props.label - localized accessible name of the tablist.
+* @param props.disabled - lock every segment, typically while the shown panel
+* has a write or a fetch in flight that switching would orphan.
+* @param props.className - extra class for layout placement.
+* @returns the tablist element.
+*/
+function SegmentedControl({ id, value, options, onChange, label, disabled = false, className }) {
+	const list = useRef(null);
+	const selected = options.findIndex((option) => option.value === value);
+	useEffect(() => {
+		const root = list.current;
+		/* v8 ignore next -- the ref is attached to the always-rendered root before any effect runs. */
+		if (root === null) return;
+		if (!root.contains(document.activeElement)) return;
+		root.querySelector("[role=\"tab\"][aria-selected=\"true\"]")?.focus();
+	}, [value]);
+	const onKeyDown = (event) => {
+		if (!isWalkKey(event.key)) return;
+		event.preventDefault();
+		const target = walk(options, selected, event.key);
+		if (target !== void 0 && target.value !== value) onChange(target.value);
+	};
+	const indicator = {
+		"--dsh-segment-count": String(options.length),
+		"--dsh-segment-index": String(selected)
+	};
+	return jsxs("div", {
+		ref: list,
+		role: "tablist",
+		"aria-label": label,
+		className: clsx(css$9.control, className),
+		style: indicator,
+		children: [jsx("span", {
+			"aria-hidden": "true",
+			className: css$9.indicator
+		}), options.map((option) => {
+			const active = option.value === value;
+			return jsx("button", {
+				id: `${id}-${option.value}`,
+				type: "button",
+				role: "tab",
+				"aria-selected": active,
+				"aria-controls": `${id}-${option.value}-panel`,
+				tabIndex: active ? 0 : -1,
+				disabled: disabled || option.disabled === true,
+				title: option.title,
+				className: css$9.tab,
+				onClick: () => {
+					if (!active) onChange(option.value);
+				},
+				onKeyDown,
+				children: option.label
+			}, option.value);
+		})]
+	});
+}
+//#endregion
+//#region lib/types/Checkbox.js
+/** Controlled native checkbox with a caller-owned visible and accessible label. */
+/**
+* Render a labeled checkbox with native keyboard and form semantics.
+* @param props.checked - current checked state.
+* @param props.onChange - receives the requested checked state.
+* @param props.label - localized visible and accessible label.
+* @param props.disabled - whether the control refuses changes.
+* @param props.title - optional localized hover text.
+* @param props.className - extra class for the label's placement.
+* @returns the label containing its checkbox.
+*/
+function Checkbox({ checked, onChange, label, disabled = false, title, className }) {
+	return jsxs("label", {
+		className: clsx(css$10.checkbox, className),
+		title,
+		children: [jsx("input", {
+			type: "checkbox",
+			checked,
+			disabled,
+			onChange: (event) => {
+				onChange(event.target.checked);
+			}
+		}), jsx("span", { children: label })]
 	});
 }
 //#endregion
@@ -1561,15 +3373,33 @@ function Switch({ checked, onChange, label, disabled = false, title, className }
 */
 function Input({ icon, className, ...rest }) {
 	return jsxs("span", {
-		className: clsx(css$6.wrap, className),
+		className: clsx(css$11.wrap, className),
 		children: [icon != null && jsx("span", {
-			className: css$6.icon,
+			className: css$11.icon,
 			children: icon
 		}), jsx("input", {
-			className: css$6.input,
+			className: css$11.input,
 			...rest
 		})]
 	});
+}
+//#endregion
+//#region lib/types/overlay-top-margin.js
+/**
+* Overlay clearance from the window's top strip. On macOS desktop the frame
+* publishes `--dsh-frame-top-clearance` on the root element — the constant
+* step below the traffic-light strip, where clicks drag the window instead of
+* the overlay. JS-clamped overlays keep at least that much air above them.
+* Elsewhere the property is absent and the caller's own margin applies.
+*/
+/**
+* Resolve the top margin an overlay keeps from the viewport edge.
+* @param min - the overlay's own viewport margin in px, used as the floor.
+* @returns the larger of `min` and the frame's published top clearance.
+*/
+function overlayTopMargin(min) {
+	const clearance = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dsh-frame-top-clearance"));
+	return Number.isNaN(clearance) ? min : Math.max(min, clearance);
 }
 /**
 * Delay a pointer-dismissed popup's close so the pointer can cross the gap
@@ -1602,6 +3432,42 @@ function usePointerGrace(close) {
 }
 //#endregion
 //#region lib/types/Menu.js
+/**
+* Render one `role="menuitem"` row for a {@link Menu} whose rows are
+* components rather than `items` data: the same markup and styling as a data
+* row, so it joins the list's keyboard walk and post-selection focus return
+* without any shared state. Closing the menu stays the owner's decision, as
+* it is for data rows.
+* @param props.children - visible row label.
+* @param props.icon - optional leading icon.
+* @param props.disabled - whether the row cannot be activated.
+* @param props.danger - whether to use the destructive row colors.
+* @param props.separatorBefore - whether this row starts a new group (hairline above it).
+* @param props.onSelect - row activation callback.
+* @returns one menu-item row.
+*/
+function MenuItemButton({ children, icon, disabled = false, danger = false, separatorBefore = false, onSelect }) {
+	return jsxs("div", {
+		className: css$12.itemWrap,
+		children: [separatorBefore && jsx("div", {
+			className: css$12.separator,
+			role: "separator"
+		}), jsxs("button", {
+			type: "button",
+			role: "menuitem",
+			className: clsx(css$12.item, danger && css$12.danger),
+			disabled,
+			onClick: onSelect,
+			children: [icon !== void 0 && jsx("span", {
+				className: css$12.itemIcon,
+				children: icon
+			}), jsx("span", {
+				className: css$12.itemLabel,
+				children
+			})]
+		})]
+	});
+}
 function isSeparator(entry) {
 	return "type" in entry && entry.type === "separator";
 }
@@ -1615,14 +3481,19 @@ const MEASURE_STYLE = {
 	top: 0
 };
 /**
-* Render an anchored dropdown menu.
-* @param props.autoFocus - focus the first item on open and enable arrow-key navigation; Escape focuses the anchor's first button.
+* Render an anchored dropdown menu. While the list is open its keys mirror the
+* composer's: Tab settles the focused row — from the trigger, Tab enters the
+* list instead — and Escape or Shift+Tab close it and return focus to the
+* anchor's first button, and selecting a row does the same — the rows unmount
+* with the list. Only a keyboard on the trigger or inside the list is
+* intercepted; Tab presses elsewhere on the page stay the browser's.
+* @param props.autoFocus - focus the first item on open; the arrow keys walk the list either way.
 * @param props.open - whether the list is showing (owner-controlled).
 * @param props.anchor - the trigger element (rendered in place).
-* @param props.items - selectable rows and optional separators.
+* @param props.items - selectable data rows and optional separators (default none; with no `children` either, the list is empty).
 * @param props.selectedId - row shown as selected.
 * @param props.selectedIds - rows shown as selected when a menu contains independent option groups.
-* @param props.onSelect - row click callback (not called for disabled rows or submenu parents that only open children).
+* @param props.onSelect - data-row activation callback (not called for disabled rows or submenu parents that only open children).
 * @param props.onClose - invoked on outside click, Escape, or a window blur
 * that moved focus into an iframe (the only signal a pointerdown inside a
 * cross-origin iframe leaves).
@@ -1646,15 +3517,61 @@ const MEASURE_STYLE = {
 * scroll/resize; return null to skip placement for that frame.
 * @param props.footer - rows pinned below the scrolling items area, separated
 * by a hairline; they stay visible while the items above scroll.
+* @param props.children - component rows rendered after `items` in the same
+* list, each a `role="menuitem"` button such as {@link MenuItemButton}; they
+* share the keyboard walk, the submenu exclusivity, and the post-selection
+* focus return.
 * @param props.selection - how a selected row is marked: a trailing check
 * (`'check'`, default — figma .Menu_cell) or the hover fill held on the row
 * with no check (`'fill'`, for icon-labelled rows where a trailing glyph
 * crowds the cell).
+* @param props.className - extra class on the anchor wrapper span.
+* @param props.listClassName - extra class on the dropdown card itself; the
+* only style hook that reaches a portaled list, which renders under
+* document.body outside the owner's DOM subtree.
 * @returns anchor wrapper with the conditional list.
 */
-function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose, align = "start", side = "bottom", portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = "check", getAnchorRect, footer, className }) {
+function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onSelect, onClose, align = "start", side = "bottom", portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = "check", getAnchorRect, footer, className, listClassName }) {
 	const rootRef = useRef(null);
 	const listRef = useRef(null);
+	/** Index the arrow walk last focused, the resume point when focus left the rows. */
+	const walkIndex = useRef(null);
+	/**
+	* The control that had the keyboard when this menu opened — its own trigger,
+	* which an anchor that wraps several controls (a split button) would not be
+	* able to name by position.
+	*/
+	const triggerRef = useRef(null);
+	/**
+	* Hand the keyboard back to the trigger that opened the menu — or, when the
+	* anchor never held it, to the anchor's first button. Focus left on a removed
+	* row otherwise falls to the page body, where the next Tab restarts from the
+	* top of the page.
+	*/
+	const refocusAnchor = () => {
+		const trigger = triggerRef.current;
+		if (trigger !== null && document.contains(trigger) && !trigger.disabled) {
+			trigger.focus();
+			return;
+		}
+		rootRef.current?.querySelector("button:not(:disabled)")?.focus();
+	};
+	/**
+	* Post-selection focus, for the paths where the rows unmount with the list.
+	* A selection whose owner keeps the menu open is left alone, and so is an
+	* owner that moved focus itself (a presented file card hands it to its
+	* preview button): only a keyboard left on the closing list (or on the body
+	* its removal produced) comes back to the trigger.
+	*/
+	const refocusAfterSelection = () => {
+		queueMicrotask(() => {
+			if (openRef.current) return;
+			const active = document.activeElement;
+			if (active === null || active === document.body || listRef.current?.contains(active) === true) refocusAnchor();
+		});
+	};
+	const openRef = useRef(open);
+	openRef.current = open;
 	const [openSubmenuId, setOpenSubmenuId] = useState(null);
 	const [fixedPos, setFixedPos] = useState(null);
 	const { arm: armClose, cancel: cancelClose } = usePointerGrace(onClose);
@@ -1689,7 +3606,7 @@ function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose,
 				y = side === "bottom" ? r.bottom + 4 : r.top - lh - 4;
 			}
 			if (lw > 0) x = Math.min(Math.max(x, MARGIN), vw - lw - MARGIN);
-			if (lh > 0) y = Math.min(Math.max(y, MARGIN), vh - lh - MARGIN);
+			if (lh > 0) y = Math.min(Math.max(y, overlayTopMargin(MARGIN)), vh - lh - MARGIN);
 			setFixedPos({
 				left: x,
 				top: y
@@ -1710,11 +3627,23 @@ function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose,
 		getAnchorRect
 	]);
 	useEffect(() => {
-		if (open && autoFocus) listRef.current?.querySelector("button:not(:disabled)")?.focus();
+		if (!open) {
+			triggerRef.current = null;
+			return;
+		}
+		const active = document.activeElement;
+		triggerRef.current = active instanceof HTMLElement && rootRef.current?.contains(active) === true ? active : null;
+	}, [open]);
+	useEffect(() => {
+		if (!open || !autoFocus) return;
+		const first = listRef.current?.querySelector("button:not(:disabled)");
+		walkIndex.current = first === void 0 || first === null ? null : 0;
+		first?.focus();
 	}, [open, autoFocus]);
 	useEffect(() => {
 		if (!open) {
 			setOpenSubmenuId(null);
+			walkIndex.current = null;
 			return;
 		}
 		const onPointerDown = (e) => {
@@ -1724,21 +3653,52 @@ function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose,
 			onClose();
 		};
 		const onKeyDown = (e) => {
+			const focused = document.activeElement;
+			const insideList = listRef.current?.contains(focused) === true;
+			const anchored = rootRef.current?.contains(focused) === true || insideList;
 			if (e.key === "Escape") {
 				onClose();
-				if (autoFocus) rootRef.current?.querySelector("button")?.focus();
+				if (anchored || autoFocus) refocusAnchor();
 			}
-			if (!autoFocus || ![
+			if (e.key === "Tab") {
+				const list = listRef.current;
+				if (list === null || !anchored) return;
+				if (e.shiftKey) {
+					e.preventDefault();
+					onClose();
+					refocusAnchor();
+					return;
+				}
+				if (insideList) {
+					if (focused instanceof Element && focused.getAttribute("role") === "menuitem") {
+						e.preventDefault();
+						focused.click();
+					}
+					return;
+				}
+				const row = list.querySelector("button:not(:disabled)");
+				if (row === null) return;
+				e.preventDefault();
+				row.focus();
+				walkIndex.current = 0;
+				return;
+			}
+			if (![
 				"ArrowDown",
 				"ArrowUp",
 				"Home",
 				"End"
 			].includes(e.key)) return;
-			const buttons = Array.from(listRef.current?.querySelectorAll("button:not(:disabled)") ?? []);
-			const index = buttons.indexOf(document.activeElement);
-			if (index < 0) return;
+			const list = listRef.current;
+			if (list === null || !anchored) return;
+			const buttons = Array.from(list.querySelectorAll("button:not(:disabled)"));
+			if (buttons.length === 0) return;
+			const index = buttons.indexOf(focused);
+			const from = index >= 0 ? index : walkIndex.current;
+			const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : from === null ? e.key === "ArrowDown" ? 0 : buttons.length - 1 : (from + (e.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
 			e.preventDefault();
-			buttons[e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (index + (e.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length]?.focus();
+			walkIndex.current = next;
+			buttons[next]?.focus();
 		};
 		const onWindowBlur = () => {
 			if (document.activeElement instanceof HTMLIFrameElement) onClose();
@@ -1762,11 +3722,11 @@ function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose,
 	const scrollable = !items.some((entry) => !isSeparator(entry) && !isLabel(entry) && entry.submenu !== void 0 && entry.submenu.length > 0);
 	const renderEntry = (entry) => {
 		if (isSeparator(entry)) return jsx("div", {
-			className: css$7.separator,
+			className: css$12.separator,
 			role: "separator"
 		}, entry.id);
 		if (isLabel(entry)) return jsx("div", {
-			className: css$7.label,
+			className: css$12.label,
 			role: "presentation",
 			children: entry.text
 		}, entry.id);
@@ -1774,84 +3734,94 @@ function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose,
 		const subOpen = hasSub && openSubmenuId === entry.id;
 		const selected = entry.id === selectedId || selectedIds?.includes(entry.id) === true;
 		return jsxs("div", {
-			className: css$7.itemWrap,
-			onMouseEnter: () => {
-				setOpenSubmenuId(hasSub ? entry.id : null);
-			},
+			className: css$12.itemWrap,
+			onMouseEnter: hasSub ? () => {
+				setOpenSubmenuId(entry.id);
+			} : void 0,
 			onMouseLeave: () => {
 				setOpenSubmenuId(null);
 			},
 			children: [jsxs("button", {
 				type: "button",
 				role: "menuitem",
-				className: clsx(css$7.item, selected && (selection === "fill" ? css$7.selectedFill : css$7.selected), entry.danger === true && css$7.danger),
+				className: clsx(css$12.item, selected && (selection === "fill" ? css$12.selectedFill : css$12.selected), entry.danger === true && css$12.danger),
 				disabled: entry.disabled,
 				"aria-haspopup": hasSub ? "menu" : void 0,
 				"aria-expanded": hasSub ? subOpen : void 0,
-				onFocus: () => {
-					setOpenSubmenuId(hasSub ? entry.id : null);
-				},
+				onFocus: hasSub ? () => {
+					setOpenSubmenuId(entry.id);
+				} : void 0,
 				onClick: () => {
 					if (hasSub) {
 						setOpenSubmenuId(entry.id);
 						return;
 					}
-					onSelect(entry.id);
+					onSelect?.(entry.id);
 				},
 				children: [
 					entry.icon !== void 0 && jsx("span", {
-						className: css$7.itemIcon,
+						className: css$12.itemIcon,
 						children: entry.icon
 					}),
 					jsx("span", {
-						className: css$7.itemLabel,
+						className: css$12.itemLabel,
 						children: entry.label
 					}),
-					selected && selection === "check" && jsx(IconCheckOutline16, { className: css$7.check })
+					selected && selection === "check" && jsx(IconCheckOutlineRegular, { className: css$12.check })
 				]
 			}), subOpen && entry.submenu !== void 0 && jsx("div", {
-				className: clsx(css$7.submenu, compact && css$7.compactList),
+				className: clsx(css$12.submenu, compact && css$12.compactList),
 				role: "menu",
 				children: entry.submenu.map((sub) => jsxs("button", {
 					type: "button",
 					role: "menuitem",
-					className: css$7.item,
+					className: css$12.item,
 					disabled: sub.disabled,
 					onClick: () => {
-						onSelect(sub.id);
+						onSelect?.(sub.id);
 					},
 					children: [sub.icon !== void 0 && jsx("span", {
-						className: css$7.itemIcon,
+						className: css$12.itemIcon,
 						children: sub.icon
 					}), jsx("span", {
-						className: css$7.itemLabel,
+						className: css$12.itemLabel,
 						children: sub.label
 					})]
 				}, sub.id))
 			})]
 		}, entry.id);
 	};
+	const collapseSubmenuFrom = (e) => {
+		const row = e.target instanceof Element ? e.target.closest("button[role=\"menuitem\"]") : null;
+		if (row === null || row.getAttribute("aria-haspopup") === "menu") return;
+		if (row.closest("[role=\"menu\"]") !== e.currentTarget) return;
+		setOpenSubmenuId(null);
+	};
 	const list = open && jsxs("div", {
 		ref: listRef,
-		className: clsx(css$7.list, dense && css$7.denseList, compact && css$7.compactList, scrollable && css$7.scrollable, portal && css$7.portal, side === "top" && !portal && css$7.sideTop, align === "end" && !portal && css$7.alignEnd),
+		className: clsx(css$12.list, listClassName, dense && css$12.denseList, compact && css$12.compactList, scrollable && css$12.scrollable, portal && css$12.portal, side === "top" && !portal && css$12.sideTop, align === "end" && !portal && css$12.alignEnd),
 		style: portal ? fixedPos ?? MEASURE_STYLE : void 0,
 		role: "menu",
 		onClick: (e) => {
 			e.stopPropagation();
+			const row = e.target instanceof Element ? e.target.closest("button[role=\"menuitem\"]") : null;
+			if (row !== null && row.getAttribute("aria-haspopup") !== "menu") refocusAfterSelection();
 		},
-		children: [jsx("div", {
-			className: css$7.viewport,
+		onMouseOver: collapseSubmenuFrom,
+		onFocus: collapseSubmenuFrom,
+		children: [jsxs("div", {
+			className: css$12.viewport,
 			role: "presentation",
-			children: items.map(renderEntry)
+			children: [items.map(renderEntry), children]
 		}), footer !== void 0 && footer.length > 0 && jsx("div", {
-			className: css$7.footer,
+			className: css$12.footer,
 			role: "presentation",
 			children: footer.map(renderEntry)
 		})]
 	});
 	return jsxs("span", {
 		ref: rootRef,
-		className: clsx(css$7.root, className),
+		className: clsx(css$12.root, className),
 		onPointerEnter: closeOnPointerLeave ? cancelClose : void 0,
 		onPointerLeave: closeOnPointerLeave ? () => {
 			if (open) armClose();
@@ -1867,7 +3837,10 @@ function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose,
 * grows upward and only the top edge can collide with the viewport — clamp
 * the design cap to the space between that edge and the viewport top.
 */
-/** Safe distance kept between the overlay and the viewport top edge (mirrors the Menu portal margin). */
+/**
+* Safe distance kept between the overlay and the viewport top edge (mirrors
+* the Menu portal margin); the frame's published top clearance widens it.
+*/
 const MARGIN = 12;
 /**
 * Clamp a bottom-anchored overlay's max-height to the viewport.
@@ -1875,15 +3848,18 @@ const MARGIN = 12;
 * @param cap - design max-height in px (the clamp never exceeds it).
 * @param signal - re-measure trigger: pass the overlay's render state so anchor
 *   moves (composer growth) re-fit; resize/scroll re-fit while mounted.
+* @param margin - viewport top margin floor in px; the frame's published top
+*   clearance widens it. Callers under fixed chrome (the conversation header)
+*   raise it past their chrome's height.
 * @returns the max-height to apply inline, in px.
 */
-function useAnchoredMaxHeight(ref, cap, signal) {
+function useAnchoredMaxHeight(ref, cap, signal, margin = MARGIN) {
 	const [maxHeight, setMaxHeight] = useState(cap);
 	useLayoutEffect(() => {
 		const el = ref.current;
 		if (el === null) return;
 		const fit = () => {
-			setMaxHeight(Math.min(cap, Math.max(0, el.getBoundingClientRect().bottom - MARGIN)));
+			setMaxHeight(Math.min(cap, Math.max(0, el.getBoundingClientRect().bottom - overlayTopMargin(margin))));
 		};
 		fit();
 		window.addEventListener("resize", fit);
@@ -1895,7 +3871,8 @@ function useAnchoredMaxHeight(ref, cap, signal) {
 	}, [
 		ref,
 		cap,
-		signal
+		signal,
+		margin
 	]);
 	return maxHeight;
 }
@@ -1914,11 +3891,11 @@ function useAnchoredMaxHeight(ref, cap, signal) {
 */
 /**
 * Track an anchor and return the panel's fixed coordinates.
-* @param options - the open state, the two refs, the placement side, and the gap/margin distances.
+* @param options - the open state, the two refs, the placement side and alignment, and the gap/margin distances.
 * @returns `left`/`top` for the panel, or `null` before the first measurement.
 */
 function useAnchoredPosition(options) {
-	const { open, anchorRef, panelRef, side = "bottom", gap, margin } = options;
+	const { open, anchorRef, panelRef, side = "bottom", align = "start", gap, margin } = options;
 	const [position, setPosition] = useState(null);
 	useLayoutEffect(() => {
 		if (!open) {
@@ -1934,7 +3911,7 @@ function useAnchoredPosition(options) {
 			const panel = panelRef.current;
 			const width = panel?.offsetWidth ?? 0;
 			const height = panel?.offsetHeight ?? 0;
-			let left = rect.left;
+			let left = align === "end" ? rect.right - width : rect.left;
 			let top = side === "top" ? rect.top - gap - height : rect.bottom + gap;
 			if (width > 0) left = Math.min(Math.max(left, margin), window.innerWidth - width - margin);
 			if (height > 0) top = Math.min(Math.max(top, margin), window.innerHeight - height - margin);
@@ -1963,6 +3940,7 @@ function useAnchoredPosition(options) {
 		anchorRef,
 		panelRef,
 		side,
+		align,
 		gap,
 		margin
 	]);
@@ -2034,20 +4012,29 @@ async function writeClipboard(text) {
 }
 //#endregion
 //#region lib/types/HoverCard.js
+/** Preview opacity transition and retained lifetime during dismissal. */
+const PREVIEW_FADE_MS = 100;
+const PREVIEW_MAX_HEIGHT = 420;
+const PREVIEW_INSET = 24;
+const ANCHOR_GAP = 8;
+const VIEWPORT_MARGIN = 8;
 /**
 * Render an anchor with a hover-triggered preview card.
 * @param props.anchor - the hover target (rendered in place inside a wrapper span).
 * @param props.content - card content; the pointer may rest on it, so it is
 * readable and selectable, but it carries no dismissal affordance of its own.
 * @param props.openDelayMs - hover dwell before the card shows (default 500).
-* @param props.disabled - suppress opening; turning true closes an open card.
+* @param props.variant - compact card beside the anchor, or a preview above/below it
+* with 24px side insets, a 420px height cap, frame-top clearance, and 100ms opacity transitions.
+* @param props.widthAnchorRef - optional element whose width and horizontal position size the preview.
+* @param props.disabled - suppress opening; turning true dismisses an open card.
 * @param props.copyText - optional primary value copied by activation and
 * included in the card's accessible name.
 * @param props.copyLabel - localized accessible activation-label prefix.
 * @param props.copiedLabel - localized visible success label.
 * @returns anchor wrapper with the conditional portaled card.
 */
-function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyText, copyLabel, copiedLabel }) {
+function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyText, copyLabel, copiedLabel, variant = "compact", widthAnchorRef }) {
 	const rootRef = useRef(null);
 	const cardRef = useRef(null);
 	const timerRef = useRef(null);
@@ -2056,8 +4043,11 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 	const copyEpochRef = useRef(0);
 	const copyingRef = useRef(false);
 	const mountedRef = useRef(true);
-	const [open, setOpen] = useState(false);
+	const [phase, setPhase] = useState("closed");
+	const open = phase !== "closed";
+	const closing = phase === "closing";
 	const [pos, setPos] = useState(null);
+	const positioned = pos !== null;
 	const [copied, setCopied] = useState(false);
 	const clearCopied = useCallback(() => {
 		if (copyTimerRef.current !== null) {
@@ -2070,8 +4060,8 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 	const close = useCallback(() => {
 		copyEpochRef.current += 1;
 		clearCopied();
-		setOpen(false);
-	}, [clearCopied]);
+		setPhase((current) => variant === "preview" && current !== "closed" ? "closing" : "closed");
+	}, [clearCopied, variant]);
 	const { arm: armClose, cancel: cancelClose } = usePointerGrace(close);
 	const clearTimer = () => {
 		if (timerRef.current !== null) {
@@ -2079,6 +4069,15 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			timerRef.current = null;
 		}
 	};
+	useEffect(() => {
+		if (!closing) return;
+		const timer = setTimeout(() => {
+			setPhase("closed");
+		}, PREVIEW_FADE_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [closing]);
 	useEffect(() => {
 		if (!disabled) return;
 		clearTimer();
@@ -2101,6 +4100,23 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			}
 		};
 	}, []);
+	useEffect(() => {
+		if (!open || variant !== "preview") return;
+		const dismiss = (event) => {
+			if (event.key !== "Escape") return;
+			cancelClose();
+			close();
+		};
+		window.addEventListener("keydown", dismiss);
+		return () => {
+			window.removeEventListener("keydown", dismiss);
+		};
+	}, [
+		open,
+		variant,
+		cancelClose,
+		close
+	]);
 	useLayoutEffect(() => {
 		if (!open) {
 			setPos(null);
@@ -2112,29 +4128,62 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			if (wrapper === null) return;
 			const r = wrapper.getBoundingClientRect();
 			const h = cardRef.current?.offsetHeight ?? 0;
-			const top = r.top + h > window.innerHeight - 8 ? window.innerHeight - h - 8 : r.top;
+			if (variant === "preview") {
+				const bounds = widthAnchorRef?.current?.getBoundingClientRect() ?? r;
+				const width = Math.max(0, Math.min(bounds.width - PREVIEW_INSET * 2, window.innerWidth - VIEWPORT_MARGIN * 2));
+				const topMargin = overlayTopMargin(VIEWPORT_MARGIN);
+				const belowTop = Math.max(topMargin, r.bottom + ANCHOR_GAP);
+				const above = Math.max(0, r.top - ANCHOR_GAP - topMargin);
+				const below = Math.max(0, window.innerHeight - belowTop - VIEWPORT_MARGIN);
+				const onTop = above >= Math.min(PREVIEW_MAX_HEIGHT, below);
+				const maxHeight = Math.min(PREVIEW_MAX_HEIGHT, onTop ? above : below);
+				setPos({
+					left: Math.max(VIEWPORT_MARGIN, Math.min(bounds.left + PREVIEW_INSET, window.innerWidth - width - VIEWPORT_MARGIN)),
+					top: onTop ? Math.max(topMargin, r.top - Math.min(h, maxHeight) - ANCHOR_GAP) : belowTop,
+					width,
+					maxHeight
+				});
+				return;
+			}
+			const top = r.top + h > window.innerHeight - VIEWPORT_MARGIN ? window.innerHeight - h - VIEWPORT_MARGIN : r.top;
 			setPos({
-				left: r.right + 8,
+				left: r.right + ANCHOR_GAP,
 				top
 			});
 		};
 		place();
+		const observer = variant === "preview" && typeof ResizeObserver !== "undefined" ? new ResizeObserver(place) : null;
+		for (const element of [
+			cardRef.current,
+			rootRef.current,
+			widthAnchorRef?.current
+		]) if (element !== null && element !== void 0) observer?.observe(element);
 		window.addEventListener("scroll", place, true);
 		window.addEventListener("resize", place);
 		return () => {
+			observer?.disconnect();
 			window.removeEventListener("scroll", place, true);
 			window.removeEventListener("resize", place);
 		};
-	}, [open]);
+	}, [
+		open,
+		variant,
+		widthAnchorRef,
+		positioned
+	]);
 	useLayoutEffect(() => {
-		if (!open || pos === null) return;
+		if (!open || pos === null || variant === "preview") return;
 		/* v8 ignore next -- the card is mounted whenever pos is set, so the ref is attached here. */
 		const h = cardRef.current?.offsetHeight ?? 0;
-		if (pos.top + h > window.innerHeight - 8) setPos({
+		if (pos.top + h > window.innerHeight - VIEWPORT_MARGIN) setPos({
 			left: pos.left,
-			top: window.innerHeight - h - 8
+			top: window.innerHeight - h - VIEWPORT_MARGIN
 		});
-	}, [open, pos]);
+	}, [
+		open,
+		pos,
+		variant
+	]);
 	const copy = async (text) => {
 		if (copied || copyingRef.current) return;
 		copyingRef.current = true;
@@ -2149,12 +4198,20 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		copyTimerRef.current = setTimeout(clearCopied, 1e3);
 	};
 	const copyable = copyText !== void 0;
+	const dismissFromAnchor = (event) => {
+		if (cardRef.current?.contains(event.target)) return;
+		clearTimer();
+		cancelClose();
+		close();
+	};
 	const card = open && pos !== null && jsx("div", {
 		ref: cardRef,
-		className: `${css$8.card}${copyable ? ` ${css$8.copyable}` : ""}${copied ? ` ${css$8.feedback}` : ""}`,
+		className: clsx(css$13.card, variant === "preview" && css$13.preview, copyable && css$13.copyable, copied && css$13.feedback),
+		"data-closing": closing || void 0,
 		style: {
 			...pos,
-			minHeight: copied && copyHeightRef.current !== null ? copyHeightRef.current : void 0
+			minHeight: copied && copyHeightRef.current !== null ? copyHeightRef.current : void 0,
+			"--dsh-hover-preview-fade": `${PREVIEW_FADE_MS}ms`
 		},
 		role: copyable ? "button" : void 0,
 		tabIndex: copyable ? 0 : void 0,
@@ -2172,37 +4229,36 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			copy(copyText);
 		} : void 0,
 		children: copied ? jsx("span", {
-			className: css$8.copied,
+			className: css$13.copied,
 			"aria-hidden": "true",
 			children: copiedLabel
 		}) : content
 	});
 	return jsxs("span", {
 		ref: rootRef,
-		className: css$8.root,
+		className: css$13.root,
 		onPointerEnter: () => {
 			if (disabled) return;
 			cancelClose();
-			if (open) return;
+			if (open) {
+				setPhase("open");
+				return;
+			}
 			clearTimer();
 			timerRef.current = setTimeout(() => {
-				setOpen(true);
+				setPhase("open");
 			}, openDelayMs);
 		},
 		onPointerLeave: () => {
 			clearTimer();
 			if (open) armClose();
 		},
-		onPointerDownCapture: (e) => {
-			if (cardRef.current?.contains(e.target)) return;
-			clearTimer();
-			cancelClose();
-			close();
-		},
+		onPointerDownCapture: dismissFromAnchor,
+		onClickCapture: dismissFromAnchor,
 		children: [
 			anchor,
 			open && copyable && jsx("span", {
-				className: css$8.status,
+				className: css$13.status,
 				role: "status",
 				children: copied ? copiedLabel : ""
 			}),
@@ -2215,7 +4271,8 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 /**
 * Render a centered, body-portaled modal over a blurred page mask.
 * @param props.open - whether the dialog is showing.
-* @param props.onClose - Escape or mask click.
+* @param props.onClose - Escape or mask click; while a menu is open inside the
+* dialog, Escape belongs to that menu first.
 * @param props.title - dialog heading (aria-label in every mode).
 * @param props.closeLabel - localized accessible close-button label.
 * @param props.description - optional supporting sentence under the title.
@@ -2239,44 +4296,44 @@ function Modal({ open, onClose, title, closeLabel, description, children, footer
 	}, [open, onClose]);
 	if (!open) return null;
 	return createPortal(jsxs("div", {
-		className: css$9.root,
+		className: css$14.root,
 		role: "presentation",
 		children: [jsx("div", {
-			className: css$9.mask,
+			className: css$14.mask,
 			"aria-hidden": "true",
 			onClick: onClose
 		}), jsx("div", {
-			className: clsx(css$9.dialog, className),
+			className: clsx(css$14.dialog, className),
 			role: "dialog",
 			"aria-modal": "true",
 			"aria-label": title,
 			children: headless ? children : jsxs(Fragment, { children: [jsxs("div", {
-				className: clsx(css$9.content, contentClassName),
+				className: clsx(css$14.content, contentClassName),
 				children: [
 					jsxs("div", {
-						className: css$9.header,
+						className: css$14.header,
 						children: [jsx("h2", {
-							className: css$9.title,
+							className: css$14.title,
 							children: title
 						}), jsx("button", {
 							type: "button",
-							className: css$9.close,
+							className: css$14.close,
 							"aria-label": closeLabel,
 							onClick: onClose,
-							children: jsx(IconCloseOutline16, { size: 14 })
+							children: jsx(IconCloseOutlineRegular, { size: 14 })
 						})]
 					}),
 					description !== void 0 && description !== "" && jsx("p", {
-						className: css$9.description,
+						className: css$14.description,
 						children: description
 					}),
 					children !== void 0 && jsx("div", {
-						className: css$9.body,
+						className: css$14.body,
 						children
 					})
 				]
 			}), footer !== void 0 && jsx("div", {
-				className: css$9.footer,
+				className: css$14.footer,
 				children: footer
 			})] })
 		})]
@@ -2300,13 +4357,13 @@ function OnboardingSurface({ children }) {
 		};
 	}, []);
 	return createPortal(jsxs("div", {
-		className: css$10.onboardingOverlay,
+		className: css$15.onboardingOverlay,
 		role: "presentation",
 		children: [jsx("div", {
-			className: css$10.onboardingMask,
+			className: css$15.onboardingMask,
 			"aria-hidden": "true"
 		}), jsx("div", {
-			className: css$10.onboardingStage,
+			className: css$15.onboardingStage,
 			children
 		})]
 	}), document.body);
@@ -2327,28 +4384,28 @@ function RiskConfirmation({ open, title, description, acknowledgeLabel, cancelLa
 		onClose: onCancel,
 		title,
 		closeLabel,
-		className: css$11.confirmation ?? "",
-		contentClassName: css$11.confirmationContent ?? "",
+		className: css$16.confirmation ?? "",
+		contentClassName: css$16.confirmationContent ?? "",
 		footer: jsxs(Fragment, { children: [jsx(Button, {
 			variant: "outline",
-			className: css$11.modalAction,
+			className: css$16.modalAction,
 			onClick: onCancel,
 			children: cancelLabel
 		}), jsx(Button, {
 			variant: "primary",
-			className: css$11.confirmAction,
+			className: css$16.confirmAction,
 			disabled: disabled || !acknowledged,
 			onClick: onConfirm,
 			children: confirmLabel
 		})] }),
 		children: [jsxs("div", {
-			className: css$11.warning,
-			children: [jsx(IconWarningOutline16, {
+			className: css$16.warning,
+			children: [jsx(IconWarningOutlineRegular, {
 				size: 18,
-				className: css$11.warningIcon
+				className: css$16.warningIcon
 			}), jsx("p", { children: description })]
 		}), jsxs("label", {
-			className: css$11.acknowledgement,
+			className: css$16.acknowledgement,
 			children: [jsx("input", {
 				type: "checkbox",
 				checked: acknowledged,
@@ -2363,11 +4420,15 @@ function RiskConfirmation({ open, title, description, acknowledgeLabel, cancelLa
 }
 //#endregion
 //#region lib/types/ConnectionIndicator.js
+/** Exit-transition length; keep equal to the `.leaving` transition duration in the stylesheet. */
+const EXIT_MS = 150;
 /**
-* Render an inline connection-recovery control.
+* Render an inline connection-recovery control. The outage and retry-attempt
+* states are one button whose static label already names the retry action;
+* clicking it requests an immediate reconnect. The indicator animates in on
+* appearance and fades out for {@link EXIT_MS} before unmounting.
 * @param props.state - visible outage, retry-attempt, or recovered state.
-* @param props.disconnectedLabel - localized outage text.
-* @param props.reconnectLabel - localized action text shown on hover or focus.
+* @param props.disconnectedLabel - localized outage text naming the retry action.
 * @param props.connectingLabel - localized retry text followed by the attempt dots.
 * @param props.recoveredLabel - localized recovery confirmation.
 * @param props.reconnectActionLabel - accessible label for the outage action.
@@ -2375,87 +4436,65 @@ function RiskConfirmation({ open, title, description, acknowledgeLabel, cancelLa
 * @param props.onReconnect - request an immediate reconnect attempt.
 * @returns the indicator, or null when no connection feedback is active.
 */
-function ConnectionIndicator({ state, disconnectedLabel, reconnectLabel, connectingLabel, recoveredLabel, reconnectActionLabel, restartActionLabel, onReconnect }) {
-	if (state === void 0) return null;
-	const sizeLabels = jsxs(Fragment, { children: [
-		jsx("span", {
-			className: css$12.sizeLabel,
-			"aria-hidden": "true",
-			children: disconnectedLabel
-		}),
-		jsx("span", {
-			className: css$12.sizeLabel,
-			"aria-hidden": "true",
-			children: reconnectLabel
-		}),
-		jsxs("span", {
-			className: css$12.sizeLabel,
-			"aria-hidden": "true",
-			children: [connectingLabel, jsx("span", {
-				className: css$12.dots,
-				children: "..."
-			})]
-		}),
-		jsx("span", {
-			className: css$12.sizeLabel,
-			"aria-hidden": "true",
-			children: recoveredLabel
-		})
-	] });
-	if (state === "recovered") return jsxs("div", {
-		className: `${css$12.indicator} ${css$12.success}`,
+function ConnectionIndicator({ state, disconnectedLabel, connectingLabel, recoveredLabel, reconnectActionLabel, restartActionLabel, onReconnect }) {
+	const [rendered, setRendered] = useState(state);
+	const leaving = state === void 0 && rendered !== void 0;
+	useEffect(() => {
+		if (state !== void 0) {
+			setRendered(state);
+			return;
+		}
+		if (rendered === void 0) return;
+		const timeout = window.setTimeout(() => {
+			setRendered(void 0);
+		}, EXIT_MS);
+		return () => {
+			window.clearTimeout(timeout);
+		};
+	}, [state, rendered]);
+	if (rendered === void 0) return null;
+	const leavingClass = leaving ? ` ${css$17.leaving}` : "";
+	if (rendered === "recovered") return jsxs("div", {
+		className: `${css$17.indicator} ${css$17.success}${leavingClass}`,
 		role: "status",
 		"aria-label": recoveredLabel,
 		children: [jsx("span", {
-			className: css$12.icon,
+			className: css$17.icon,
 			"aria-hidden": "true",
-			children: jsx(IconCheckOutline16, { size: 14 })
-		}), jsxs("span", {
-			className: css$12.label,
-			children: [sizeLabels, jsx("span", {
-				className: css$12.stateLabel,
-				children: recoveredLabel
-			})]
+			children: jsx(IconCheckOutlineRegular, { size: 14 })
+		}), jsx("span", {
+			className: css$17.label,
+			children: recoveredLabel
 		})]
 	});
-	const connecting = state === "connecting";
+	const connecting = rendered === "connecting";
 	return jsxs("button", {
 		type: "button",
-		className: `${css$12.indicator} ${css$12.warning}`,
-		"data-phase": state,
+		className: `${css$17.indicator} ${css$17.warning}${leavingClass}`,
+		"data-phase": rendered,
 		"aria-label": connecting ? restartActionLabel : reconnectActionLabel,
 		onClick: onReconnect,
 		children: [jsx("span", {
-			className: css$12.icon,
+			className: css$17.icon,
 			"aria-hidden": "true",
-			children: jsx(IconWarningOutline16, { size: 14 })
-		}), jsxs("span", {
-			className: css$12.label,
-			children: [
-				sizeLabels,
-				jsx("span", {
-					className: css$12.stateLabel,
-					children: connecting ? jsxs(Fragment, { children: [connectingLabel, jsxs("span", {
-						className: css$12.dots,
-						"aria-hidden": "true",
-						children: [
-							jsx("span", { children: "." }),
-							jsx("span", {
-								className: css$12.secondDot,
-								children: "."
-							}),
-							jsx("span", {
-								className: css$12.thirdDot,
-								children: "."
-							})
-						]
-					})] }) : disconnectedLabel
-				}),
-				jsx("span", {
-					className: css$12.hoverLabel,
-					children: reconnectLabel
-				})
-			]
+			children: connecting ? jsx(StateDot, { state: "ongoing" }) : jsx(IconRefreshOutlineRegular, { size: 14 })
+		}), jsx("span", {
+			className: css$17.label,
+			children: connecting ? jsxs(Fragment, { children: [connectingLabel, jsxs("span", {
+				className: css$17.dots,
+				"aria-hidden": "true",
+				children: [
+					jsx("span", { children: "." }),
+					jsx("span", {
+						className: css$17.secondDot,
+						children: "."
+					}),
+					jsx("span", {
+						className: css$17.thirdDot,
+						children: "."
+					})
+				]
+			})] }) : disconnectedLabel
 		})]
 	});
 }
@@ -2611,35 +4650,201 @@ function BrandWordmark({ size = 24, className, includeMark = true }) {
 	});
 }
 //#endregion
+//#region lib/types/PermissionIcon.js
+function ReadOnlyArtwork({ size = 16, className, strokeWidth }) {
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 16 16",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		"aria-hidden": "true",
+		strokeWidth,
+		children: [jsx("path", {
+			d: "M5.08545 8.13775L7.18455 10.2368C7.26636 10.3187 7.4003 10.3142 7.47649 10.2271L11.5148 5.61194",
+			stroke: "currentColor"
+		}), jsx("path", {
+			d: "M6.59624 2.14853C7.50155 1.80917 8.49914 1.80919 9.40444 2.14859L13.9245 3.84317V7.11961C13.9245 11.6089 10.5565 13.5975 8.00035 14.5779C5.44423 13.5975 2.07544 11.6089 2.07544 7.11961V3.84317L6.59624 2.14853Z",
+			stroke: "currentColor",
+			strokeLinejoin: "round"
+		})]
+	});
+}
+function WorkspaceWriteArtwork({ size = 16, className, strokeWidth }) {
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 16 16",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		"aria-hidden": "true",
+		strokeWidth,
+		children: [
+			jsx("path", {
+				d: "M6.4209 1.68067C7.43922 1.299 8.56177 1.29898 9.58008 1.68067L14.0996 3.375C14.2946 3.44811 14.4236 3.63455 14.4238 3.84278V6.89063C14.1115 6.71853 13.7761 6.58312 13.4238 6.48926V4.18946L9.22852 2.61621C8.43657 2.31947 7.56341 2.31939 6.77148 2.61621L2.5752 4.18946V7.11914C2.5752 11.1796 5.52369 13.056 8 14.0391C8.27653 13.9293 8.55827 13.8067 8.8418 13.6729C9.07101 13.9468 9.33228 14.1929 9.62012 14.4053C9.12409 14.6579 8.63578 14.8696 8.17871 15.0449C8.0637 15.0889 7.93628 15.0889 7.82129 15.0449C5.22011 14.0472 1.5752 11.9381 1.5752 7.11914V3.84278C1.57541 3.63469 1.70463 3.44821 1.89941 3.375L6.4209 1.68067Z",
+				fill: "currentColor"
+			}),
+			jsx("path", {
+				d: "M5.26392 6.60339H10.7361",
+				stroke: "currentColor"
+			}),
+			jsx("path", {
+				d: "M5.26392 9.86902H8.32833",
+				stroke: "currentColor"
+			}),
+			jsx("path", {
+				d: "M10.0317 13.2229C10.263 13.3929 10.4943 13.563 10.7256 13.733C10.7932 13.6482 10.8608 13.5634 10.9284 13.4786C12.1455 11.9522 13.3626 10.4258 14.5798 8.89935C14.6474 8.81455 14.715 8.72975 14.7826 8.64495C14.4143 8.37419 14.046 8.10344 13.6777 7.83268C13.6169 7.92252 13.5562 8.01236 13.4954 8.10219C12.4016 9.71926 11.3078 11.3363 10.214 12.9534C10.1532 13.0432 10.0924 13.1331 10.0317 13.2229Z",
+				fill: "currentColor"
+			}),
+			jsx("path", {
+				d: "M12.6516 12.6696C12.6516 12.925 12.6516 13.1804 12.6516 13.4359C12.6952 13.4378 12.7387 13.4398 12.7823 13.4417C13.5663 13.4768 14.3504 13.5118 15.1345 13.5469C15.178 13.5488 15.2216 13.5508 15.2651 13.5527C15.2651 13.2194 15.2651 12.8861 15.2651 12.5527C15.2216 12.5547 15.178 12.5566 15.1345 12.5586C14.3504 12.5936 13.5663 12.6287 12.7823 12.6637C12.7387 12.6657 12.6952 12.6676 12.6516 12.6696Z",
+				fill: "currentColor"
+			})
+		]
+	});
+}
+function FullAccessArtwork({ size = 16, className, strokeWidth }) {
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 16 16",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		"aria-hidden": "true",
+		strokeWidth,
+		children: [
+			jsx("path", {
+				d: "M6.59624 2.14853C7.50155 1.80917 8.49914 1.80919 9.40444 2.14859L13.9245 3.84317V7.11961C13.9245 11.6089 10.5565 13.5975 8.00035 14.5779C5.44423 13.5975 2.07544 11.6089 2.07544 7.11961V3.84317L6.59624 2.14853Z",
+				stroke: "currentColor",
+				strokeLinejoin: "round"
+			}),
+			jsx("path", {
+				d: "M8 4.39209V9.89209",
+				stroke: "currentColor"
+			}),
+			jsx("path", {
+				d: "M8 10.8081V11.8081",
+				stroke: "currentColor"
+			})
+		]
+	});
+}
+/**
+* Render the read-only permission icon with a one-pixel stroke.
+* @param props - Size and optional class.
+* @returns The regular decorative permission glyph.
+*/
+function PermissionIconReadOnlyRegular(props) {
+	return jsx(ReadOnlyArtwork, {
+		...props,
+		strokeWidth: 1
+	});
+}
+/**
+* Render the read-only permission icon with a 1.3px stroke.
+* @param props - Size and optional class.
+* @returns The medium decorative permission glyph.
+*/
+function PermissionIconReadOnlyMedium(props) {
+	return jsx(ReadOnlyArtwork, {
+		...props,
+		strokeWidth: ICON_MEDIUM_STROKE
+	});
+}
+/**
+* Render the workspace-write permission icon with a one-pixel stroke.
+* @param props - Size and optional class.
+* @returns The regular decorative permission glyph.
+*/
+function PermissionIconWorkspaceWriteRegular(props) {
+	return jsx(WorkspaceWriteArtwork, {
+		...props,
+		strokeWidth: 1
+	});
+}
+/**
+* Render the workspace-write permission icon with a 1.3px stroke.
+* @param props - Size and optional class.
+* @returns The medium decorative permission glyph.
+*/
+function PermissionIconWorkspaceWriteMedium(props) {
+	return jsx(WorkspaceWriteArtwork, {
+		...props,
+		strokeWidth: ICON_MEDIUM_STROKE
+	});
+}
+/**
+* Render the full-access permission icon with a one-pixel stroke.
+* @param props - Size and optional class.
+* @returns The regular decorative permission glyph.
+*/
+function PermissionIconFullAccessRegular(props) {
+	return jsx(FullAccessArtwork, {
+		...props,
+		strokeWidth: 1
+	});
+}
+/**
+* Render the full-access permission icon with a 1.3px stroke.
+* @param props - Size and optional class.
+* @returns The medium decorative permission glyph.
+*/
+function PermissionIconFullAccessMedium(props) {
+	return jsx(FullAccessArtwork, {
+		...props,
+		strokeWidth: ICON_MEDIUM_STROKE
+	});
+}
+//#endregion
 //#region lib/types/ReferenceIcon.js
 /**
 * Render the icon that identifies one inline reference domain.
 * @param props - Reference kind, optional size, and optional CSS class.
-* @returns The corresponding current-color SVG glyph.
+* @returns The corresponding decorative current-color SVG glyph.
 */
-function ReferenceIcon({ kind, size = 16, className }) {
+function ReferenceIconArtwork({ kind, size = 16, className, strokeWidth }) {
 	switch (kind) {
-		case "session": return jsx("svg", {
-			width: size,
-			height: size,
+		case "session": return jsx(NewChatOutlineArtwork, {
+			size,
 			className,
-			viewBox: "0 0 16 16",
-			fill: "none",
-			"aria-hidden": true,
-			children: jsx("path", {
-				d: "M8 0.597656C3.91296 0.597656 0.599716 3.91103 0.599609 7.99805C0.599609 9.13171 0.854567 10.2079 1.31152 11.1699L1.59277 11.7607L2.77441 11.1992L2.49414 10.6084L2.36035 10.3076C2.06865 9.59612 1.90723 8.81645 1.90723 7.99805C1.90733 4.63362 4.63554 1.90625 8 1.90625C11.3644 1.90635 14.0917 4.63368 14.0918 7.99805C14.0918 11.3625 11.3644 14.0907 8 14.0908C7.311 14.0908 6.80642 14.0414 6.35938 13.918C5.919 13.7963 5.50105 13.5929 5.00098 13.2441C4.26805 12.7329 3.21756 12.5526 2.35156 13.0996L2.33789 13.1084L2.32422 13.1182L1.74805 13.5234L2.18164 14.8184L3.05957 14.2002C3.37505 14.0068 3.84248 14.0319 4.25195 14.3174C4.84447 14.7307 5.39718 15.009 6.01172 15.1787C6.61963 15.3465 7.25579 15.3984 8 15.3984C12.087 15.3983 15.4004 12.0851 15.4004 7.99805C15.4003 3.9111 12.087 0.59776 8 0.597656ZM4.56836 8.50977V9.80371H8.12402V8.50977H4.56836ZM4.56836 7.30078H11.4619V6.00684H4.56836V7.30078Z",
-				fill: "currentColor"
-			})
+			strokeWidth
 		});
-		case "file": return jsx(IconBrowseOutline16, {
+		case "file": return jsx(BrowseOutlineArtwork, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
-		case "folder": return jsx(IconFolderClose16, {
+		case "folder": return jsx(FolderCloseArtwork, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
 	}
+}
+/**
+* Render a regular one-pixel reference icon.
+* @param props - Reference kind, size, and optional class.
+* @returns The regular decorative reference glyph.
+*/
+function ReferenceIconRegular(props) {
+	return jsx(ReferenceIconArtwork, {
+		...props,
+		strokeWidth: 1
+	});
+}
+/**
+* Render a medium 1.3px reference icon.
+* @param props - Reference kind, size, and optional class.
+* @returns The medium decorative reference glyph.
+*/
+function ReferenceIconMedium(props) {
+	return jsx(ReferenceIconArtwork, {
+		...props,
+		strokeWidth: ICON_MEDIUM_STROKE
+	});
 }
 //#endregion
 //#region lib/types/code-file-icon-artwork.js
@@ -2969,8 +5174,6 @@ const LINK_CODE_EXTENSIONS = new Set([
 	"php",
 	"swift",
 	"sql",
-	"csv",
-	"tsv",
 	"proto",
 	"graphql",
 	"gql",
@@ -2998,7 +5201,7 @@ function isCodeFileType(type) {
 	return CODE_FILE_TYPE_SET.has(type);
 }
 /**
-* Test whether an extension belonged to the established coarse LinkIcon code category.
+* Test whether an extension belongs to the established coarse link-icon code category.
 * @param extension - Extension without a leading dot.
 * @returns Whether clickable links keep the code glyph for this extension.
 */
@@ -3033,8 +5236,8 @@ const EXTENSION_TYPES = {
 	astro: "code",
 	bat: "code",
 	cmd: "code",
-	csv: "code",
-	tsv: "code",
+	csv: "excel",
+	tsv: "excel",
 	html: "html",
 	htm: "html",
 	png: "image",
@@ -3073,6 +5276,13 @@ const EXTENSION_TYPES = {
 	xls: "excel",
 	xlsx: "excel",
 	xlsm: "excel",
+	xlsb: "excel",
+	xlt: "excel",
+	xltx: "excel",
+	xltm: "excel",
+	ods: "excel",
+	ots: "excel",
+	fods: "excel",
 	numbers: "excel"
 };
 const NAME_TYPES = {
@@ -3112,7 +5322,7 @@ const FILE_FOLD = "M26.3909 7.37445L19.0525 0V3.77445C19.0525 4.89271 19.0525 5.
 const FILE_MARK_TRANSFORM = "translate(14 16) scale(1.12) translate(-14 -16)";
 const LARGE_FILE_MARK_TRANSFORM = "translate(14 16) scale(1.22) translate(-14 -16)";
 const FOLDER_MARK_TRANSFORM = "translate(14 13.0693) scale(1.12) translate(-14 -13.0693)";
-function FileGlyph({ size, className, children, markTransform = FILE_MARK_TRANSFORM, muted = false }) {
+function FileGlyph({ size, className, children, markTransform, muted = false }) {
 	return jsxs("svg", {
 		width: size,
 		height: size,
@@ -3143,7 +5353,7 @@ function FileGlyph({ size, className, children, markTransform = FILE_MARK_TRANSF
 		]
 	});
 }
-function FolderGlyph$1({ size, className }) {
+function FolderGlyph({ size, className }) {
 	return jsxs("svg", {
 		width: size,
 		height: size,
@@ -3167,11 +5377,23 @@ function FolderGlyph$1({ size, className }) {
 		})]
 	});
 }
+function SpreadsheetGlyph({ size, className }) {
+	return jsx(FileGlyph, {
+		size,
+		className,
+		children: jsx("path", {
+			d: "M14 11.5H11.4C10.5599 11.5 10.1399 11.5 9.81901 11.6635C9.53677 11.8073 9.3073 12.0368 9.16349 12.319C9 12.6399 9 13.0599 9 13.9V16.5M14 11.5H16.6C17.4401 11.5 17.8601 11.5 18.181 11.6635C18.4632 11.8073 18.6927 12.0368 18.8365 12.319C19 12.6399 19 13.0599 19 13.9V16.5M14 11.5V21.5M14 21.5H16.6C17.4401 21.5 17.8601 21.5 18.181 21.3365C18.4632 21.1927 18.6927 20.9632 18.8365 20.681C19 20.3601 19 19.9401 19 19.1V16.5M14 21.5H11.4C10.5599 21.5 10.1399 21.5 9.81901 21.3365C9.53677 21.1927 9.3073 20.9632 9.16349 20.681C9 20.3601 9 19.9401 9 19.1V16.5M19 16.5H9",
+			stroke: "currentColor",
+			strokeWidth: "1.2"
+		})
+	});
+}
 function glyph(type, size, className) {
 	switch (type) {
 		case "code": return jsxs(FileGlyph, {
 			size,
 			className,
+			markTransform: FILE_MARK_TRANSFORM,
 			children: [jsx("path", {
 				d: "M8.61 16.3601L11.76 18.3901V20.1401L7 17.0601V15.6601L11.76 12.5801V14.3301L8.61 16.3601Z",
 				fill: "currentColor"
@@ -3180,22 +5402,18 @@ function glyph(type, size, className) {
 				fill: "currentColor"
 			})]
 		});
-		case "excel": return jsx(FileGlyph, {
+		case "excel": return jsx(SpreadsheetGlyph, {
 			size,
-			className,
-			markTransform: LARGE_FILE_MARK_TRANSFORM,
-			children: jsx("path", {
-				d: "M10.2932 20.5L13.3532 16.25L13.3432 17.66L10.4032 13.5H12.6332L14.5132 16.21L13.5632 16.22L15.4132 13.5H17.5532L14.6132 17.58V16.18L17.7132 20.5H15.4332L13.5232 17.65H14.4332L12.5532 20.5H10.2932Z",
-				fill: "currentColor"
-			})
+			className
 		});
-		case "folder": return jsx(FolderGlyph$1, {
+		case "folder": return jsx(FolderGlyph, {
 			size,
 			className
 		});
 		case "html": return jsx(FileGlyph, {
 			size,
 			className,
+			markTransform: FILE_MARK_TRANSFORM,
 			children: jsx("path", {
 				fillRule: "evenodd",
 				clipRule: "evenodd",
@@ -3206,6 +5424,7 @@ function glyph(type, size, className) {
 		case "image": return jsxs(FileGlyph, {
 			size,
 			className,
+			markTransform: FILE_MARK_TRANSFORM,
 			children: [
 				jsx("path", {
 					d: "M10.4212 15.9204C10.5756 15.6558 10.9579 15.6558 11.1123 15.9204L13.6493 20.2696C13.8048 20.5362 13.6125 20.8711 13.3037 20.8711H8.22974C7.92102 20.8711 7.72868 20.5362 7.88423 20.2696L10.4212 15.9204Z",
@@ -3256,6 +5475,7 @@ function glyph(type, size, className) {
 		case "video": return jsx(FileGlyph, {
 			size,
 			className,
+			markTransform: FILE_MARK_TRANSFORM,
 			children: jsx("path", {
 				d: "M17.5 14.634C18.1667 15.0189 18.1667 15.9811 17.5 16.366L11.5 19.8301C10.8333 20.215 10 19.7339 10 18.9641L10 12.0359C10 11.2661 10.8333 10.785 11.5 11.1699L17.5 14.634Z",
 				fill: "currentColor"
@@ -3292,7 +5512,103 @@ function FileTypeIcon(props) {
 		type: resolvedType,
 		size,
 		className
-	}) : glyph(resolvedType, size, clsx(css$13.icon, css$13[resolvedType], className));
+	}) : glyph(resolvedType, size, clsx(css$18.icon, css$18[resolvedType], className));
+}
+//#endregion
+//#region lib/types/SiteGlyph.js
+/**
+* Host suffix to site mark, covering the developer sites the transcript
+* usually cites plus the mainstream search, video, social, shopping, and
+* reference sites a general audience links. A host matches a suffix when it
+* equals it or is a subdomain of it, and the longest matching suffix wins, so
+* `weixin.qq.com` keeps WeChat while `qq.com` keeps QQ and `gist.github.com`
+* needs no entry of its own.
+*/
+const SITE_HOSTS = {
+	"github.com": siGithub,
+	"github.io": siGithub,
+	"raw.githubusercontent.com": siGithub,
+	"gitlab.com": siGitlab,
+	"npmjs.com": siNpm,
+	"pypi.org": siPypi,
+	"stackoverflow.com": siStackoverflow,
+	"developer.mozilla.org": siMdnwebdocs,
+	"wikipedia.org": siWikipedia,
+	"news.ycombinator.com": siYcombinator,
+	"youtube.com": siYoutube,
+	"youtu.be": siYoutube,
+	"x.com": siX,
+	"twitter.com": siX,
+	"bilibili.com": siBilibili,
+	"zhihu.com": siZhihu,
+	"juejin.cn": siJuejin,
+	"csdn.net": siCsdn,
+	"google.com": siGoogle,
+	"baidu.com": siBaidu,
+	"duckduckgo.com": siDuckduckgo,
+	"tiktok.com": siTiktok,
+	"netflix.com": siNetflix,
+	"spotify.com": siSpotify,
+	"facebook.com": siFacebook,
+	"instagram.com": siInstagram,
+	"reddit.com": siReddit,
+	"telegram.org": siTelegram,
+	"t.me": siTelegram,
+	"weixin.qq.com": siWechat,
+	"qq.com": siQq,
+	"whatsapp.com": siWhatsapp,
+	"wa.me": siWhatsapp,
+	"weibo.com": siSinaweibo,
+	"taobao.com": siTaobao,
+	"aliexpress.com": siAliexpress,
+	"ebay.com": siEbay,
+	"quora.com": siQuora,
+	"v2ex.com": siV2ex,
+	"apple.com": siApple
+};
+/**
+* Resolve the mark named by an external destination.
+* @param href - The link destination; only an absolute http(s) URL can name a host.
+* @returns The matched site mark, or undefined when the host is unknown or not http(s).
+*/
+function siteIcon(href) {
+	let host;
+	try {
+		const url = new URL(href);
+		if (url.protocol !== "http:" && url.protocol !== "https:") return void 0;
+		host = url.hostname.toLowerCase();
+	} catch {
+		return;
+	}
+	let match;
+	let matched = 0;
+	for (const [suffix, icon] of Object.entries(SITE_HOSTS)) if ((host === suffix || host.endsWith(`.${suffix}`)) && suffix.length > matched) {
+		match = icon;
+		matched = suffix.length;
+	}
+	return match;
+}
+/**
+* Render the site mark for a known external destination.
+* @param props - The destination and the icon sizing seat.
+* @returns The site's mark riding currentColor, or undefined for an unknown site.
+*/
+function siteGlyph({ href, size, className }) {
+	const icon = href === void 0 ? void 0 : siteIcon(href);
+	if (icon === void 0) return void 0;
+	return jsx("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "-2 -2 28 28",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		"aria-hidden": true,
+		children: jsx("path", {
+			d: icon.path,
+			fill: "currentColor"
+		})
+	});
 }
 //#endregion
 //#region lib/types/LinkIcon.js
@@ -3322,115 +5638,74 @@ function classifyLinkPath(path) {
 		default: return assertNever$1(type);
 	}
 }
-const GlobeGlyph = ({ size, className }) => jsx("svg", {
+const PhotoGlyph = ({ size, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
-	viewBox: "0 0 20 20",
+	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": true,
-	children: jsx("path", {
-		fillRule: "evenodd",
-		clipRule: "evenodd",
-		d: "M9.99951 1.68994C14.5889 1.68994 18.3098 5.41022 18.3101 9.99951C18.3101 14.589 14.589 18.3101 9.99951 18.3101C5.41022 18.3098 1.68994 14.5889 1.68994 9.99951C1.69017 5.41037 5.41037 1.69017 9.99951 1.68994ZM3.23193 10.7495C3.52924 13.463 5.41981 15.6965 7.94873 16.4946C7.74323 16.1395 7.56487 15.736 7.41162 15.3022C6.97892 14.0773 6.70459 12.4906 6.63232 10.7495H3.23193ZM13.3667 10.7495C13.2944 12.4906 13.0211 14.0773 12.5884 15.3022C12.4352 15.7359 12.2557 16.1386 12.0503 16.4937C14.5794 15.6956 16.4707 13.4631 16.7681 10.7495H13.3667ZM8.13428 10.7495C8.20587 12.3512 8.45916 13.7619 8.82666 14.8022C9.046 15.4231 9.29031 15.8714 9.52686 16.1499C9.76321 16.428 9.92505 16.4651 9.99951 16.4653C10.0737 16.4653 10.2362 16.4288 10.4731 16.1499C10.7097 15.8714 10.954 15.4231 11.1733 14.8022C11.5408 13.7619 11.7941 12.3512 11.8657 10.7495H8.13428ZM9.99951 3.18994C9.92505 3.19013 9.76321 3.22823 9.52686 3.50635C9.29035 3.78486 9.04595 4.23325 8.82666 4.854C8.43314 5.96808 8.16996 7.50638 8.12158 9.24951H11.8784C11.83 7.50638 11.5669 5.96808 11.1733 4.854C10.954 4.23324 10.7097 3.78486 10.4731 3.50635C10.2362 3.22748 10.0737 3.18994 9.99951 3.18994ZM12.27 3.57861C12.3862 3.82232 12.4924 4.0822 12.5884 4.354C13.0494 5.65902 13.33 7.37415 13.3784 9.24951H16.7681C16.4792 6.61525 14.6885 4.43369 12.27 3.57861ZM7.729 3.57861C5.3109 4.4338 3.52072 6.61541 3.23193 9.24951H6.62158C6.67001 7.37415 6.95063 5.65902 7.41162 4.354C7.50759 4.08233 7.61287 3.82221 7.729 3.57861Z",
-		fill: "currentColor"
-	})
-});
-const CodeGlyph = ({ size, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 20 20",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": true,
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
 		jsx("path", {
-			d: "M5 15.2021L1.67188 11.874C1.42017 11.6223 1.1823 11.3858 1.00781 11.1689C0.823288 10.9396 0.645016 10.6559 0.586914 10.2891C0.556619 10.0975 0.556619 9.90245 0.586914 9.71094C0.645016 9.3441 0.823288 9.06042 1.00781 8.83105C1.1823 8.61419 1.42017 8.37768 1.67188 8.12598L5 4.79785L6.20215 6L2.87402 9.32813C2.59555 9.6066 2.43539 9.76802 2.33203 9.89648C2.29246 9.94567 2.27406 9.97638 2.26563 9.99121C2.26528 9.99711 2.26528 10.0029 2.26563 10.0088C2.27406 10.0236 2.29246 10.0543 2.33203 10.1035C2.43539 10.232 2.59555 10.3934 2.87402 10.6719L6.20215 14L5 15.2021Z",
-			fill: "currentColor"
+			d: "M12.4326 2.38086H3.56763C2.46306 2.38086 1.56763 3.27629 1.56763 4.38086V11.6192C1.56763 12.7237 2.46306 13.6192 3.56763 13.6192H12.4326C13.5372 13.6192 14.4326 12.7237 14.4326 11.6192V4.38086C14.4326 3.27629 13.5372 2.38086 12.4326 2.38086Z",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M15 15.2021L18.3281 11.874C18.5798 11.6223 18.8177 11.3858 18.9922 11.1689C19.1767 10.9396 19.355 10.6559 19.4131 10.2891C19.4434 10.0975 19.4434 9.90245 19.4131 9.71094C19.355 9.3441 19.1767 9.06042 18.9922 8.83105C18.8177 8.61419 18.5798 8.37768 18.3281 8.12598L15 4.79785L13.7979 6L17.126 9.32813C17.4045 9.6066 17.5646 9.76802 17.668 9.89648C17.7075 9.94567 17.7259 9.97638 17.7344 9.99121C17.7347 9.99711 17.7347 10.0029 17.7344 10.0088C17.7259 10.0236 17.7075 10.0543 17.668 10.1035C17.5646 10.232 17.4045 10.3934 17.126 10.6719L13.7979 14L15 15.2021Z",
-			fill: "currentColor"
+			d: "M10.536 7.03286C11.1948 7.03286 11.7288 6.49884 11.7288 5.8401C11.7288 5.18136 11.1948 4.64734 10.536 4.64734C9.87728 4.64734 9.34326 5.18136 9.34326 5.8401C9.34326 6.49884 9.87728 7.03286 10.536 7.03286Z",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M9.41181 15.0993L7.76955 14.6593L10.3577 5.00002L12 5.44006L9.41181 15.0993Z",
-			fill: "currentColor"
+			d: "M1.5979 9.28409L4.17738 7.37514C4.57462 7.08117 5.12701 7.12145 5.47741 7.46992L8.3322 10.309C8.6572 10.6323 9.1605 10.6931 9.5532 10.4566L10.8859 9.65399C11.2531 9.43289 11.7205 9.47039 12.0477 9.74729L14.2823 11.6379",
+			stroke: "currentColor"
 		})
 	]
 });
-const FolderGlyph = ({ size, className }) => jsxs("svg", {
+const PaperDocGlyph = ({ size, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
 	className,
-	viewBox: "0 0 20 20",
+	viewBox: "0 0 16 16",
 	fill: "none",
 	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": true,
-	children: [jsx("path", {
-		d: "M1.2002 11.4178V6.7244C1.2002 6.47036 1.19957 6.2962 1.21387 6.12773C1.29746 5.14425 1.76052 4.23195 2.50489 3.58378C2.63247 3.47269 2.77337 3.37059 2.97852 3.2205C3.11259 3.12241 3.20444 3.05471 3.29981 2.99296C3.85318 2.6347 4.49029 2.42604 5.14844 2.38847C5.26177 2.38201 5.37601 2.38261 5.542 2.38261H7.91211C8.63453 2.38261 9.13199 2.37701 9.61329 2.49882C9.7656 2.53739 9.91613 2.58526 10.0625 2.64237C10.525 2.8229 10.9267 3.11712 11.5147 3.5369L12.0859 3.94413C12.1927 4.02032 12.2509 4.06163 12.2959 4.09062C12.3336 4.11488 12.3394 4.11605 12.332 4.11308C12.3403 4.11633 12.3488 4.11875 12.3574 4.12089C12.3627 4.12161 12.3757 4.12265 12.4004 4.12382C12.4538 4.12635 12.5252 4.12675 12.6563 4.12675C13.7369 4.12675 14.6105 4.12608 15.3086 4.19999C16.0209 4.27545 16.643 4.43585 17.1885 4.82011C17.5449 5.07115 17.8554 5.38173 18.1064 5.73808C18.4908 6.28368 18.6521 6.90645 18.7275 7.61894C18.8014 8.31701 18.7998 9.19066 18.7998 10.2713V11.4178C18.7998 12.5248 18.801 13.4195 18.7236 14.1336C18.6446 14.8626 18.4763 15.4982 18.0742 16.0516C17.8399 16.374 17.5559 16.6571 17.2334 16.8914C16.68 17.2935 16.0445 17.4628 15.3154 17.5418C14.6014 17.6191 13.7065 17.618 12.5996 17.618H7.40039C6.29352 17.618 5.39863 17.6191 4.68457 17.5418C3.95547 17.4628 3.32001 17.2935 2.76661 16.8914C2.44414 16.6571 2.16011 16.374 1.92579 16.0516C1.52375 15.4982 1.35537 14.8626 1.27637 14.1336C1.199 13.4195 1.2002 12.5248 1.2002 11.4178ZM2.79981 11.4178C2.79981 12.5602 2.80136 13.3529 2.86719 13.9607C2.93144 14.5537 3.04885 14.8759 3.21973 15.1111C3.35542 15.2979 3.52029 15.4618 3.70704 15.5975C3.94221 15.7683 4.26361 15.8867 4.85645 15.951C5.46439 16.0168 6.25766 16.0174 7.40039 16.0174H12.5996C13.7424 16.0174 14.5356 16.0168 15.1436 15.951C15.7364 15.8867 16.0578 15.7683 16.293 15.5975C16.4797 15.4618 16.6446 15.2979 16.7803 15.1111C16.9512 14.8759 17.0686 14.5537 17.1328 13.9607C17.1986 13.3529 17.2002 12.5602 17.2002 11.4178V10.2713C17.2002 9.15571 17.1987 8.38124 17.1357 7.7869C17.0743 7.20716 16.9618 6.8914 16.7988 6.65995C16.6534 6.45353 16.473 6.2741 16.2666 6.1287C16.0351 5.96565 15.7196 5.85222 15.1397 5.79081C14.5454 5.7279 13.7716 5.72733 12.6563 5.72733C12.4465 5.72733 12.2081 5.73253 11.9736 5.6746C11.8947 5.65509 11.8168 5.63037 11.7412 5.60038C11.517 5.51135 11.3268 5.36863 11.1563 5.24687L10.585 4.83866C9.93302 4.37321 9.71454 4.22394 9.48047 4.13261C9.39579 4.09958 9.30882 4.07191 9.22071 4.0496C8.97721 3.98798 8.71286 3.98222 7.91211 3.98222H5.542C5.35809 3.98222 5.29665 3.98285 5.23926 3.98612C4.85821 4.00788 4.48933 4.12829 4.16895 4.33573C4.12071 4.36697 4.07125 4.40295 3.92286 4.51151C3.69569 4.67771 3.61995 4.73389 3.55567 4.78983C3.1248 5.16501 2.8561 5.69324 2.80762 6.26249C2.80039 6.34752 2.79981 6.44244 2.79981 6.7244V11.4178Z",
-		fill: "currentColor"
-	}), jsx("path", {
-		d: "M15.4913 8.11793V9.71754H4.50892V8.11793H15.4913Z",
-		fill: "currentColor"
-	})]
-});
-const PhotoGlyph = ({ size, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 20 20",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": true,
-	children: [jsx("path", {
-		fillRule: "evenodd",
-		clipRule: "evenodd",
-		d: "M13 5.15039C14.574 5.15039 15.8496 6.42599 15.8496 8C15.8496 9.57401 14.574 10.8496 13 10.8496C11.426 10.8496 10.1504 9.57401 10.1504 8C10.1504 6.42599 11.426 5.1504 13 5.15039ZM13 6.84961C12.3649 6.84961 11.8496 7.36488 11.8496 8C11.8496 8.63513 12.3649 9.15039 13 9.15039C13.6351 9.15039 14.1504 8.63513 14.1504 8C14.1504 7.36488 13.6351 6.84961 13 6.84961Z",
-		fill: "currentColor"
-	}), jsx("path", {
-		fillRule: "evenodd",
-		clipRule: "evenodd",
-		d: "M12.5996 2.15039C13.7056 2.15039 14.6038 2.14883 15.3213 2.22656C16.0546 2.30602 16.6994 2.47647 17.2627 2.88574C17.5895 3.1232 17.8768 3.41049 18.1143 3.73731C18.5235 4.30063 18.694 4.9454 18.7734 5.67871C18.8512 6.39616 18.8496 7.29441 18.8496 8.40039V11.5996C18.8496 12.7056 18.8512 13.6038 18.7734 14.3213C18.694 15.0546 18.5235 15.6994 18.1143 16.2627C17.8768 16.5895 17.5895 16.8768 17.2627 17.1143C16.6994 17.5235 16.0546 17.694 15.3213 17.7734C14.6038 17.8512 13.7056 17.8496 12.5996 17.8496H7.40039C6.29441 17.8496 5.39616 17.8512 4.67871 17.7734C3.9454 17.694 3.30063 17.5235 2.73731 17.1143C2.41049 16.8768 2.1232 16.5895 1.88574 16.2627C1.47647 15.6994 1.30602 15.0546 1.22656 14.3213C1.14883 13.6038 1.15039 12.7056 1.15039 11.5996V8.40039C1.15039 7.29441 1.14883 6.39616 1.22656 5.67871C1.30602 4.9454 1.47647 4.30063 1.88574 3.73731C2.1232 3.41049 2.41049 3.1232 2.73731 2.88574C3.30063 2.47647 3.9454 2.30602 4.67871 2.22656C5.39616 2.14883 6.29441 2.15039 7.40039 2.15039H12.5996ZM5.56348 10.8164C5.30962 10.8348 5.02517 10.9291 4.58008 11.1973C4.13813 11.4635 3.60989 11.8565 2.85449 12.4229C2.85831 13.1414 2.86855 13.6903 2.91699 14.1377C2.98078 14.7264 3.09709 15.0384 3.26074 15.2637C3.39335 15.4462 3.55382 15.6067 3.73633 15.7393C3.96158 15.9029 4.2736 16.0192 4.86231 16.083C5.46688 16.1485 6.25677 16.1504 7.40039 16.1504H11.9492L8.71094 12.9131C8.00039 12.2025 7.51129 11.7149 7.09571 11.376C6.69274 11.0474 6.42364 10.9144 6.17481 10.8604C5.97432 10.8168 5.7681 10.8017 5.56348 10.8164ZM7.40039 3.84961C6.25677 3.84961 5.46688 3.85153 4.86231 3.91699C4.2736 3.98078 3.96158 4.09709 3.73633 4.26074C3.55382 4.39335 3.39335 4.55382 3.26074 4.73633C3.09709 4.96158 2.98078 5.2736 2.91699 5.86231C2.85153 6.46688 2.84961 7.25677 2.84961 8.40039V10.3105C3.15698 10.0902 3.43896 9.8988 3.70215 9.74024C4.26649 9.40025 4.81639 9.16621 5.44141 9.1211C5.80775 9.0947 6.17623 9.1213 6.53516 9.19922C7.14769 9.33224 7.65922 9.64212 8.16992 10.0586C8.66793 10.4648 9.22718 11.025 9.91309 11.7109L14.333 16.1318C14.6363 16.122 14.9012 16.1086 15.1377 16.083C15.7264 16.0192 16.0384 15.9029 16.2637 15.7393C16.4462 15.6067 16.6067 15.4462 16.7393 15.2637C16.9029 15.0384 17.0192 14.7264 17.083 14.1377C17.1485 13.5331 17.1504 12.7432 17.1504 11.5996V8.40039C17.1504 7.25677 17.1485 6.46688 17.083 5.86231C17.0192 5.2736 16.9029 4.96158 16.7393 4.73633C16.6067 4.55382 16.4462 4.39335 16.2637 4.26074C16.0384 4.09709 15.7264 3.98078 15.1377 3.91699C14.5331 3.85153 13.7432 3.84961 12.5996 3.84961H7.40039Z",
-		fill: "currentColor"
-	})]
-});
-const PaperGlyph = ({ size, className }) => jsx("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 20 20",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": true,
-	children: jsx("path", {
-		d: "M11.3467 4.59607C11.3469 5.40284 11.3499 5.9609 11.3965 6.39099C11.444 6.82964 11.5288 7.03981 11.6328 7.18298C11.7253 7.3102 11.8376 7.42158 11.9648 7.51404C12.108 7.61807 12.3181 7.70283 12.7568 7.75037C13.1851 7.79675 13.7399 7.79992 14.541 7.80017L11.3467 4.59607ZM17.2695 12.7455C17.2695 13.5901 17.2706 14.2881 17.21 14.848C17.1477 15.4228 17.0119 15.9463 16.6768 16.4076C16.4856 16.6707 16.2543 16.902 15.9912 17.0931C15.5298 17.4284 15.0065 17.5641 14.4316 17.6263C13.8718 17.687 13.1737 17.6859 12.3291 17.6859H8.23926C7.39498 17.6859 6.69745 17.687 6.1377 17.6263C5.56284 17.5641 5.03855 17.4284 4.57715 17.0931C4.31413 16.902 4.08272 16.6706 3.8916 16.4076C3.55647 15.9463 3.42167 15.4227 3.35938 14.848C3.29872 14.2881 3.29981 13.5901 3.29981 12.7455V6.80017C3.29981 5.95586 3.29876 5.25837 3.35938 4.69861C3.42166 4.12375 3.55638 3.59946 3.8916 3.13806C4.08274 2.87503 4.31412 2.64365 4.57715 2.45252C5.03855 2.11729 5.56284 1.98257 6.1377 1.92029C6.69746 1.85967 7.39495 1.86072 8.23926 1.86072H9.38468C10.039 1.86072 10.3661 1.86072 10.6679 1.95896C10.7677 1.99146 10.8648 2.03176 10.9583 2.0795C11.241 2.22382 11.472 2.45549 11.934 2.91883L16.2188 7.21612C16.679 7.67761 16.909 7.90836 17.0523 8.1902C17.0997 8.28342 17.1397 8.38022 17.172 8.4797C17.2695 8.78045 17.2695 9.10631 17.2695 9.75801V12.7455ZM4.89942 12.7455C4.89942 13.6256 4.90106 14.2215 4.9502 14.6752C4.99773 15.1139 5.08249 15.324 5.18652 15.4672C5.27898 15.5944 5.39037 15.7067 5.51758 15.7992C5.66076 15.9032 5.87093 15.988 6.30957 16.0355C6.76321 16.0847 7.35919 16.0853 8.23926 16.0853H12.3291C13.2091 16.0853 13.8051 16.0846 14.2588 16.0355C14.6973 15.988 14.9076 15.9032 15.0508 15.7992C15.1781 15.7067 15.2903 15.5945 15.3828 15.4672C15.4868 15.324 15.5716 15.1139 15.6191 14.6752C15.6683 14.2215 15.6689 13.6256 15.6689 12.7455V9.40076H14.6865C13.8419 9.40076 13.1439 9.40185 12.584 9.34119C12.0093 9.27889 11.4857 9.14411 11.0244 8.80896C10.7614 8.61784 10.53 8.38645 10.3389 8.12341C10.0036 7.66202 9.86795 7.13773 9.80567 6.56287C9.74505 6.00312 9.74609 5.30558 9.7461 4.4613V3.46033H8.23926C7.35919 3.46033 6.76321 3.46196 6.30957 3.51111C5.87097 3.55865 5.66075 3.64342 5.51758 3.74744C5.39057 3.83979 5.27888 3.95148 5.18652 4.07849C5.0825 4.22166 4.99773 4.43188 4.9502 4.87048C4.90105 5.32412 4.89942 5.92011 4.89942 6.80017V12.7455Z",
-		fill: "currentColor"
-	})
-});
-const PaperDocGlyph = ({ size, className }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 20 20",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": true,
+	"aria-hidden": "true",
+	strokeWidth,
 	children: [
 		jsx("path", {
-			d: "M11.3457 4.5957C11.3459 5.40247 11.3489 5.96054 11.3955 6.39063C11.443 6.82927 11.5278 7.03944 11.6318 7.18262C11.7243 7.30983 11.8367 7.42122 11.9639 7.51367C12.1071 7.61771 12.3171 7.70247 12.7559 7.75C13.1841 7.79639 13.739 7.79955 14.54 7.79981L11.3457 4.5957ZM17.2686 12.7451C17.2686 13.5897 17.2696 14.2878 17.209 14.8477C17.1467 15.4224 17.011 15.9459 16.6758 16.4072C16.4846 16.6703 16.2533 16.9016 15.9902 17.0928C15.5289 17.428 15.0055 17.5637 14.4307 17.626C13.8708 17.6866 13.1727 17.6855 12.3281 17.6855H8.23828C7.394 17.6855 6.69647 17.6866 6.13672 17.626C5.56186 17.5637 5.03757 17.428 4.57617 17.0928C4.31315 16.9016 4.08175 16.6703 3.89063 16.4072C3.55549 15.9459 3.42069 15.4224 3.3584 14.8477C3.29774 14.2878 3.29883 13.5897 3.29883 12.7451V6.79981C3.29883 5.95549 3.29778 5.258 3.3584 4.69824C3.42068 4.12338 3.5554 3.5991 3.89063 3.1377C4.08176 2.87466 4.31314 2.64328 4.57617 2.45215C5.03757 2.11692 5.56186 1.98221 6.13672 1.91992C6.69648 1.8593 7.39397 1.86035 8.23828 1.86035H9.3837C10.038 1.86035 10.3652 1.86035 10.6669 1.9586C10.7668 1.99109 10.8639 2.03139 10.9573 2.07913C11.24 2.22346 11.471 2.45512 11.933 2.91846L16.2178 7.21575C16.678 7.67725 16.9081 7.90799 17.0514 8.18983C17.0988 8.28305 17.1388 8.37985 17.171 8.47933C17.2686 8.78009 17.2686 9.10594 17.2686 9.75765V12.7451ZM4.89844 12.7451C4.89844 13.6253 4.90008 14.2211 4.94922 14.6748C4.99675 15.1135 5.08151 15.3236 5.18555 15.4668C5.278 15.594 5.38939 15.7064 5.5166 15.7988C5.65978 15.9029 5.86995 15.9876 6.30859 16.0352C6.76223 16.0843 7.35822 16.085 8.23828 16.085H12.3281C13.2081 16.085 13.8042 16.0843 14.2578 16.0352C14.6963 15.9876 14.9066 15.9028 15.0498 15.7988C15.1771 15.7063 15.2893 15.5941 15.3818 15.4668C15.4859 15.3236 15.5706 15.1135 15.6182 14.6748C15.6673 14.2211 15.668 13.6252 15.668 12.7451V9.40039H14.6855C13.841 9.40039 13.1429 9.40148 12.583 9.34082C12.0083 9.27852 11.4847 9.14374 11.0234 8.8086C10.7604 8.61747 10.5291 8.38608 10.3379 8.12305C10.0027 7.66165 9.86697 7.13736 9.80469 6.5625C9.74408 6.00275 9.74512 5.30522 9.74512 4.46094V3.45996H8.23828C7.35822 3.45996 6.76223 3.46159 6.30859 3.51074C5.86999 3.55828 5.65977 3.64305 5.5166 3.74707C5.38959 3.83942 5.2779 3.95111 5.18555 4.07813C5.08153 4.2213 4.99676 4.43152 4.94922 4.87012C4.90007 5.32376 4.89844 5.91974 4.89844 6.79981V12.7451Z",
-			fill: "currentColor"
+			d: "M3.51919 14.5069H12.4807C13.0679 14.5069 13.5438 14.031 13.5438 13.4438V5.97499C13.5438 5.68818 13.428 5.41352 13.2226 5.21341L9.71251 1.79459C9.51402 1.60124 9.24781 1.49304 8.97075 1.49304H3.51919C2.93204 1.49304 2.45605 1.96902 2.45605 2.55618V13.4438C2.45605 14.031 2.93203 14.5069 3.51919 14.5069Z",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M11.1523 13.0995V14.4999H6.30273V13.0995H11.1523Z",
-			fill: "currentColor"
+			d: "M8.90454 1.6095V4.87091C8.90454 5.45806 9.38051 5.93405 9.96768 5.93405H13.4953",
+			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M10.2148 10V11.4004H6.30273V10H10.2148Z",
-			fill: "currentColor"
+			d: "M4.31152 8.7561H7.83046",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M4.31152 11.3651H9.36598",
+			stroke: "currentColor"
 		})
 	]
+});
+const PaperGlyph = ({ size, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [jsx("path", {
+		d: "M3.75275 14.271H12.2473C12.7749 14.271 13.2027 13.8433 13.2027 13.3156V5.91732C13.2027 5.65958 13.0985 5.41276 12.9139 5.23293L9.59477 2.00011C9.4164 1.82636 9.17717 1.72913 8.9282 1.72913H3.75275C3.22511 1.72913 2.79736 2.15686 2.79736 2.68451V13.3156C2.79736 13.8433 3.22511 14.271 3.75275 14.271Z",
+		stroke: "currentColor"
+	}), jsx("path", {
+		d: "M8.84888 1.83838V4.94133C8.84888 5.46896 9.2766 5.89671 9.80426 5.89671H13.157",
+		stroke: "currentColor"
+	})]
 });
 /** Local exhaustiveness helper — this package does not depend on `dsh-llm`. */
 /* v8 ignore next 3 -- closed-union backstop; only reached if a kind is forged */
@@ -3438,40 +5713,71 @@ function assertNever$1(value) {
 	throw new Error(`unreachable link icon kind: ${String(value)}`);
 }
 /**
-* Render the leading glyph for one clickable artifact link.
-* @param props - The link category, optional size (default 14px — the inline
-* link text size these glyphs sit beside), and optional CSS class.
-* @returns The category's SVG glyph, riding currentColor.
+* Render the leading glyph for one clickable artifact link at one stroke weight.
+* @param props - The link category, optional size (default 14px), and optional CSS class.
+* @returns The category's decorative current-color SVG glyph.
 */
-function LinkIcon({ kind, size = 14, className }) {
+function LinkIconArtwork({ kind, href, size = 14, className, strokeWidth }) {
 	switch (kind) {
-		case "url": return jsx(GlobeGlyph, {
+		case "url": return siteGlyph({
+			href,
 			size,
 			className
+		}) ?? jsx(GlobeOutlineArtwork, {
+			size,
+			className,
+			strokeWidth
 		});
-		case "folder": return jsx(FolderGlyph, {
+		case "folder": return jsx(FolderCloseArtwork, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
-		case "code": return jsx(CodeGlyph, {
+		case "code": return jsx(CodeBracketsArtwork, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
 		case "image": return jsx(PhotoGlyph, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
 		case "document": return jsx(PaperDocGlyph, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
 		case "other": return jsx(PaperGlyph, {
 			size,
-			className
+			className,
+			strokeWidth
 		});
 		/* v8 ignore next -- closed-union backstop; only reached if a kind is forged */
 		default: return assertNever$1(kind);
 	}
+}
+/**
+* Render a regular one-pixel link icon.
+* @param props - Link category, size, and optional class.
+* @returns The regular decorative link glyph.
+*/
+function LinkIconRegular(props) {
+	return jsx(LinkIconArtwork, {
+		...props,
+		strokeWidth: 1
+	});
+}
+/**
+* Render a medium 1.3px link icon.
+* @param props - Link category, size, and optional class.
+* @returns The medium decorative link glyph.
+*/
+function LinkIconMedium(props) {
+	return jsx(LinkIconArtwork, {
+		...props,
+		strokeWidth: ICON_MEDIUM_STROKE
+	});
 }
 //#endregion
 //#region lib/types/user-text.js
@@ -3487,9 +5793,10 @@ const TRAILING_PUNCTUATION_RE = /[.,;:!?，。；：！？]+$/u;
 * host loaded for this message, or the command a command bubble echoes
 * (unsent queue rows pass none).
 * @param slashKind - the chip kind those tokens render as.
+* @param references - optional file and skill preview actions; session and command tokens stay labels.
 * @returns inline nodes covering the whole text.
 */
-function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skill") {
+function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skill", references) {
 	const ranges = [];
 	SESSION_WIRE_RE.lastIndex = 0;
 	let wire;
@@ -3534,7 +5841,7 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 	let cursor = 0;
 	const pushPlain = (from, to) => {
 		parts.push(jsx("span", {
-			className: css$14.plainRun,
+			className: css$19.plainRun,
 			children: text.slice(from, to)
 		}, `t${from}`));
 	};
@@ -3542,22 +5849,39 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 		if (range.start < cursor) continue;
 		const { start: tokenStart, end, label, kind } = range;
 		if (tokenStart > cursor) pushPlain(cursor, tokenStart);
-		const referenceKind = kind === "session" ? "session" : label.startsWith("@") ? label.endsWith("/") ? "folder" : "file" : void 0;
+		const referenceKind = kind === "session" ? "session" : label.startsWith("@") ? label.replace(/^@"|"$/gu, "").endsWith("/") ? "folder" : "file" : void 0;
 		const displayLabel = range.display ?? (referenceKind === void 0 ? label : referenceKind === "session" ? label.slice(1) : label.slice(1).replace(/^"|"$/gu, "").split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1));
-		parts.push(jsxs("span", {
-			className: clsx(css$14.refChip, referenceKind === void 0 && css$14.slashChip),
+		const contents = jsxs(Fragment, { children: [referenceKind !== void 0 && jsx(ReferenceIconRegular, {
+			kind: referenceKind,
+			size: 16,
+			className: css$19.refIcon
+		}), displayLabel] });
+		const open = references === void 0 ? void 0 : referenceKind === "file" ? () => {
+			references.openFile(label.slice(1).replace(/^"|"$/gu, ""));
+		} : referenceKind === void 0 && slashKind === "skill" ? () => {
+			references.openSkill(label.slice(1));
+		} : void 0;
+		const className = clsx(css$19.refChip, referenceKind === void 0 && css$19.slashChip);
+		parts.push(open === void 0 ? jsx("span", {
+			className,
 			"data-ref-chip": referenceKind ?? slashKind,
 			title: label,
-			children: [referenceKind !== void 0 && jsx(ReferenceIcon, {
-				kind: referenceKind,
-				size: 16,
-				className: css$14.refIcon
-			}), displayLabel]
+			children: contents
+		}, tokenStart) : jsx("button", {
+			type: "button",
+			className: clsx(className, markdownCss.fileMention),
+			"data-ref-chip": referenceKind ?? slashKind,
+			title: label,
+			onClick: (event) => {
+				if (event.detail > 1 || event.detail !== 0 && event.currentTarget.ownerDocument.getSelection()?.isCollapsed === false) return;
+				open();
+			},
+			children: contents
 		}, tokenStart));
 		cursor = end;
 	}
 	if (parts.length === 0) return jsx("span", {
-		className: css$14.plainRun,
+		className: css$19.plainRun,
 		children: text
 	});
 	if (cursor < text.length) pushPlain(cursor, text.length);
@@ -3565,19 +5889,41 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 }
 //#endregion
 //#region lib/types/Tooltip.js
+/** Anchor-preserving tooltips with optional body portals for clipping containers. */
+/**
+* Suppression channel from a tooltip to the tooltips above it: a tooltip hands
+* this setter to its own descendants, and a visible descendant bubble calls it
+* so the ancestor withdraws its bubble for as long as the descendant shows one.
+*/
+const TooltipSuppression = createContext(null);
+let pointerModality = false;
+if (typeof window !== "undefined") {
+	window.addEventListener("pointerdown", () => {
+		pointerModality = true;
+	}, true);
+	window.addEventListener("keydown", () => {
+		pointerModality = false;
+	}, true);
+}
 /**
 * Attach a hover/focus tooltip to an anchor element.
 * @param props.label - bubble text, or a resolver evaluated only while the bubble is visible.
 * @param props.side - placement relative to the anchor (default 'right').
+* @param props.align - horizontal anchor-edge alignment for 'bottom'/'top' bubbles: 'end' pins
+* the bubble's right edge to the anchor's (for anchors beside other hover surfaces the centered
+* bubble would overlap); default 'center'. Ignored for side 'right'.
+* @param props.portal - render the bubble under document.body to escape containing blocks and clipping ancestors.
 * @param props.delayMs - hover delay in milliseconds; keyboard focus remains immediate.
 * @param props.disabled - suppress the bubble while true; the anchor renders identically so
 * toggling never remounts it (which would cut its CSS transitions).
 * @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
 * half-viewport cap would render a slab wider than the surface the anchor sits on.
 * @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
-* @returns the cloned anchor plus a fixed-position bubble while hovered/focused.
+* @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body; clicking the
+* anchor dismisses the bubble until the next trigger, and focus arriving after a pointer
+* interaction (a closing menu refocusing its trigger) never raises it.
 */
-function Tooltip({ label, side = "right", delayMs = 0, disabled = false, maxWidth, children }) {
+function Tooltip({ label, side = "right", align = "center", delayMs = 0, disabled = false, portal = false, maxWidth, children }) {
 	const anchor = useRef(null);
 	const childRef = children.ref;
 	const mergedRef = useCallback((el) => {
@@ -3625,6 +5971,18 @@ function Tooltip({ label, side = "right", delayMs = 0, disabled = false, maxWidt
 		hover: false,
 		focus: false
 	});
+	const suppressAncestors = useContext(TooltipSuppression);
+	const [suppressed, setSuppressed] = useState(false);
+	const announce = useCallback((active) => {
+		suppressAncestors?.(active);
+	}, [suppressAncestors]);
+	const visible = pos !== null && !disabled;
+	useEffect(() => {
+		announce(visible);
+		return () => {
+			announce(false);
+		};
+	}, [announce, visible]);
 	const cancelShow = useCallback(() => {
 		if (showTimer.current === null) return;
 		clearTimeout(showTimer.current);
@@ -3649,10 +6007,11 @@ function Tooltip({ label, side = "right", delayMs = 0, disabled = false, maxWidt
 		const r = el.getBoundingClientRect();
 		setPlacement(side);
 		setPos({
-			x: side === "right" ? r.right + 10 : r.left + r.width / 2,
+			x: side === "right" ? r.right + 10 : align === "end" ? r.right : r.left + r.width / 2,
 			top: r.top,
 			bottom: r.bottom
 		});
+		announce(true);
 	};
 	const showAfterHoverDelay = () => {
 		cancelShow();
@@ -3665,38 +6024,20 @@ function Tooltip({ label, side = "right", delayMs = 0, disabled = false, maxWidt
 			show();
 		}, delayMs);
 	};
+	const withdraw = () => {
+		setPos(null);
+		announce(false);
+	};
 	const hide = () => {
 		cancelShow();
-		if (!triggers.current.hover && !triggers.current.focus) setPos(null);
+		if (!triggers.current.hover && !triggers.current.focus) withdraw();
 	};
-	return jsxs(Fragment, { children: [cloneElement(children, {
-		ref: mergedRef,
-		onMouseEnter: (e) => {
-			children.props.onMouseEnter?.(e);
-			triggers.current.hover = true;
-			showAfterHoverDelay();
-		},
-		onMouseLeave: (e) => {
-			children.props.onMouseLeave?.(e);
-			triggers.current.hover = false;
-			cancelShow();
-			setPos(null);
-		},
-		onFocus: (e) => {
-			children.props.onFocus?.(e);
-			triggers.current.focus = true;
-			cancelShow();
-			show();
-		},
-		onBlur: (e) => {
-			children.props.onBlur?.(e);
-			triggers.current.focus = false;
-			hide();
-		}
-	}), pos !== null && jsx("span", {
+	const content = visible && !suppressed && jsx("span", {
 		ref: bubble,
-		className: css$15.bubble,
+		className: css$20.bubble,
 		"data-side": placement,
+		"data-portal": portal || void 0,
+		"data-align": align,
 		style: {
 			left: pos.x,
 			top: y,
@@ -3704,7 +6045,42 @@ function Tooltip({ label, side = "right", delayMs = 0, disabled = false, maxWidt
 		},
 		role: "tooltip",
 		children: resolvedLabel
-	})] });
+	});
+	return jsxs(TooltipSuppression.Provider, {
+		value: setSuppressed,
+		children: [cloneElement(children, {
+			ref: mergedRef,
+			onMouseEnter: (e) => {
+				children.props.onMouseEnter?.(e);
+				triggers.current.hover = true;
+				showAfterHoverDelay();
+			},
+			onMouseLeave: (e) => {
+				children.props.onMouseLeave?.(e);
+				triggers.current.hover = false;
+				cancelShow();
+				withdraw();
+			},
+			onClick: (e) => {
+				children.props.onClick?.(e);
+				triggers.current.focus = false;
+				cancelShow();
+				withdraw();
+			},
+			onFocus: (e) => {
+				children.props.onFocus?.(e);
+				if (pointerModality) return;
+				triggers.current.focus = true;
+				cancelShow();
+				show();
+			},
+			onBlur: (e) => {
+				children.props.onBlur?.(e);
+				triggers.current.focus = false;
+				hide();
+			}
+		}), portal ? content !== false && createPortal(content, document.body) : content]
+	});
 }
 //#endregion
 //#region lib/types/Toast.js
@@ -3719,6 +6095,8 @@ const FADE_MS = 1e3;
 * per-show sequence). Rendered through a body portal so an owner inside a
 * transformed or filtered ancestor cannot trap the fixed banner in that
 * ancestor's box.
+* With unchanged holdMs, parent rerenders do not extend the lifetime.
+* Completion calls the latest onDone handler; fully faded actions receive no input.
 *
 * The hold is the owner's to set, because how long a banner has to stay
 * depends on how much there is to read: a one-line limit lands in the default
@@ -3727,7 +6105,16 @@ const FADE_MS = 1e3;
 * reads it as a custom property — so the two can no longer disagree and leave
 * the banner unmounting mid-fade.
 * @param props.text - resolved banner copy; the owner passes localized text.
-* @param props.icon - optional leading glyph (e.g. a warning icon).
+* @param props.icon - optional leading glyph (e.g. a warning icon); ignored
+* under `tone="success"`, which brings its own glyph.
+* @param props.tone - 'success' renders the design's circled green check as
+* the leading glyph; omitted, the icon seat keeps its warning tint.
+* @param props.actions - optional inline actions continuing the sentence:
+* each renders its plain-text `prefix` (a connective like 或) followed by its
+* localized `label` as blue clickable text, flowing after `text` as one
+* sentence. Each press is the owner's to handle (e.g. undo the reported
+* change, then unmount the toast). The banner surface stays click-through —
+* only the action text takes the pointer.
 * @param props.holdMs - full-opacity hold before the fade; defaults to 3000.
 * @param props.anchor - optional element whose horizontal center the banner
 * follows (e.g. the composer card, so the banner centers over the chat column
@@ -3735,13 +6122,19 @@ const FADE_MS = 1e3;
 * @param props.onDone - called once the fade completes; unmount the toast here.
 * @returns the floating banner.
 */
-function Toast({ text, icon, anchor, holdMs = HOLD_MS, onDone }) {
+function Toast({ text, icon, tone, anchor, holdMs = HOLD_MS, actions, onDone }) {
+	const latestOnDone = useRef(onDone);
+	useLayoutEffect(() => {
+		latestOnDone.current = onDone;
+	}, [onDone]);
 	useEffect(() => {
-		const timer = setTimeout(onDone, holdMs + FADE_MS);
+		const timer = setTimeout(() => {
+			latestOnDone.current();
+		}, holdMs + FADE_MS);
 		return () => {
 			clearTimeout(timer);
 		};
-	}, [holdMs, onDone]);
+	}, [holdMs]);
 	const [left, setLeft] = useState(null);
 	useLayoutEffect(() => {
 		if (anchor == null) return;
@@ -3756,19 +6149,28 @@ function Toast({ text, icon, anchor, holdMs = HOLD_MS, onDone }) {
 		};
 	}, [anchor]);
 	return createPortal(jsxs("div", {
-		className: css$16.toast,
+		className: css$21.toast,
 		role: "alert",
 		style: {
 			...left === null ? {} : { left },
 			"--dsh-toast-hold": `${String(holdMs)}ms`
 		},
-		children: [icon !== void 0 && jsx("span", {
-			className: css$16.icon,
+		children: [tone === "success" ? jsx("span", {
+			className: `${css$21.icon} ${css$21.success}`,
+			"aria-hidden": true,
+			children: jsx(IconCheckCircleOutlineRegular, {})
+		}) : icon !== void 0 && jsx("span", {
+			className: css$21.icon,
 			"aria-hidden": true,
 			children: icon
-		}), jsx("span", {
-			className: css$16.text,
-			children: text
+		}), jsxs("span", {
+			className: css$21.text,
+			children: [text, actions?.map((action) => jsxs(Fragment$1, { children: [action.prefix, jsx("button", {
+				type: "button",
+				className: css$21.action,
+				onClick: action.onClick,
+				children: action.label
+			})] }, action.label))]
 		})]
 	}), document.body);
 }
@@ -3788,6 +6190,1013 @@ function fileSizeText(bytes) {
 	if (mb < 1024) return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)}MB`;
 	const gb = mb / 1024;
 	return `${gb < 10 ? gb.toFixed(1) : Math.round(gb)}GB`;
+}
+//#endregion
+//#region lib/types/settings-form/SettingsForm.js
+/**
+* One plugin's settings form as its page on the Plugins page shows it: the
+* read-only notice when the deployment stores settings read-only, the
+* plugin's controls, and the save that writes every staged edit. The page
+* draws the plugin's title and one-liner itself.
+*
+* Only a save writes. Leaving the page drops every staged edit, so the form
+* discards on unmount and offers no discard control. A form whose namespace
+* the Host stopped serving says so in place of its controls rather than
+* showing fields nothing would accept.
+*/
+/**
+* Render one plugin's settings form.
+* @param props - the form's copy and state, its controls, and the save and discard actions.
+* @returns the form, or the unavailable line while the namespace is not served.
+*/
+function SettingsForm(props) {
+	const { state, labels } = props;
+	const discard = useRef(props.onDiscard);
+	discard.current = props.onDiscard;
+	useEffect(() => () => {
+		discard.current();
+	}, []);
+	if (!state.available) return jsx("p", {
+		className: css$22.unavailable,
+		role: "status",
+		children: labels.unavailable
+	});
+	const blocked = !state.dirty || state.invalid || state.saving;
+	return jsxs("div", {
+		className: css$22.form,
+		children: [
+			!state.writable ? jsx("p", {
+				className: css$22.readOnly,
+				role: "status",
+				children: labels.readOnly
+			}) : null,
+			props.children,
+			jsxs("div", {
+				className: css$22.footer,
+				children: [state.failed ? jsx("p", {
+					className: css$22.failed,
+					role: "status",
+					children: labels.saveFailed
+				}) : null, jsx("button", {
+					type: "button",
+					className: css$22.save,
+					disabled: blocked,
+					onClick: props.onSave,
+					children: state.saving ? labels.saving : labels.save
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region lib/types/settings-form/fields.js
+/**
+* The controls of a settings form. Each renders one field's label, its staged
+* text, whether saving would leave an override, and — when one stands — the
+* reset that stages a clear back to the composition layer. Nothing here
+* writes: a control reports what the user typed, and the form's save is the
+* single point where a draft becomes a document mutation.
+*/
+/**
+* A staged value field. `numeric` only hints the keypad: which drafts a field
+* accepts is decided by its spec, so the control never silently rewrites what
+* the user typed.
+* @param props - the field's copy, its staged text, and the edit actions.
+* @returns the labelled control.
+*/
+function SettingsValueField(props) {
+	const [helpOpen, setHelpOpen] = useState(false);
+	const helpId = `${props.id}-help`;
+	const messageId = `${props.id}-message`;
+	const hasMessage = props.invalid || Boolean(props.hint);
+	const description = [hasMessage ? messageId : "", helpOpen ? helpId : ""].filter(Boolean).join(" ");
+	return jsxs("div", {
+		className: css$23.field,
+		children: [
+			jsxs("div", {
+				className: css$23.head,
+				children: [jsxs("div", {
+					className: css$23.labelGroup,
+					children: [jsx("label", {
+						className: css$23.label,
+						htmlFor: props.id,
+						children: props.label
+					}), props.help !== void 0 ? jsx("button", {
+						type: "button",
+						className: css$23.helpButton,
+						"aria-label": props.help.label,
+						"aria-expanded": helpOpen,
+						"aria-controls": helpId,
+						onClick: () => {
+							setHelpOpen(!helpOpen);
+						},
+						children: jsx(IconInfoOutlineRegular, { size: 12 })
+					}) : null]
+				}), props.overridden ? jsxs("span", {
+					className: css$23.badges,
+					children: [jsx(Tag, {
+						tone: "neutral",
+						children: props.overriddenLabel
+					}), jsx("button", {
+						type: "button",
+						className: css$23.reset,
+						disabled: props.disabled,
+						onClick: props.onReset,
+						children: props.resetLabel
+					})]
+				}) : null]
+			}),
+			jsx("input", {
+				id: props.id,
+				className: css$23.input,
+				type: "text",
+				...props.numeric === true ? { inputMode: "numeric" } : {},
+				...props.invalid ? { "aria-invalid": true } : {},
+				"aria-describedby": description || void 0,
+				value: props.text,
+				placeholder: props.placeholder ?? "",
+				disabled: props.disabled,
+				onChange: (event) => {
+					props.onEdit(event.target.value);
+				}
+			}),
+			hasMessage ? jsx("p", {
+				id: messageId,
+				className: props.invalid ? css$23.invalid : css$23.hint,
+				children: props.invalid ? props.invalidLabel : props.hint
+			}) : null,
+			props.help !== void 0 && helpOpen ? jsx("div", {
+				id: helpId,
+				className: css$23.help,
+				role: "region",
+				"aria-label": props.help.label,
+				children: props.help.content
+			}) : null
+		]
+	});
+}
+/**
+* A write-only credential control. The value never rides a response, so the
+* control reports only whether one is configured and starts blank; a blank
+* draft writes nothing, which keeps the stored key rather than clearing it.
+* @param props - the field's copy, its staged text, and the configured state.
+* @returns the labelled control.
+*/
+function SettingsSecretField(props) {
+	return jsxs("div", {
+		className: css$23.field,
+		children: [
+			jsxs("div", {
+				className: css$23.head,
+				children: [jsx("label", {
+					className: css$23.label,
+					htmlFor: props.id,
+					children: props.label
+				}), jsx("span", {
+					className: css$23.badges,
+					children: jsx(Tag, {
+						tone: props.configured ? "neutral" : "quiet",
+						children: props.stateLabel
+					})
+				})]
+			}),
+			jsx("input", {
+				id: props.id,
+				className: css$23.input,
+				type: "password",
+				autoComplete: "off",
+				value: props.text,
+				disabled: props.disabled,
+				onChange: (event) => {
+					props.onEdit(event.target.value);
+				}
+			}),
+			jsx("p", {
+				className: css$23.hint,
+				children: props.hint
+			})
+		]
+	});
+}
+//#endregion
+//#region lib/types/settings-form/form-model.js
+/**
+* The staged form model behind a plugin's settings page.
+*
+* A card stages what the user types and writes it only when they save. Each
+* settings write is a durable, revision-fenced document mutation, so a control
+* that committed as it settled turned one edit into a write the user never
+* asked for and could not preview; staged text makes what is on screen exactly
+* what a save would store.
+*
+* A field shows its effective value — the user layer over the composition
+* layer over the schema default — and whether the user layer carries it. That
+* presence, not a value comparison, is what marks a field overridden: an
+* override equal to the composition default is still an override.
+*/
+/**
+* A whole-number field. An empty draft clears the field; any other draft that
+* is not a finite number blocks the save.
+* @param field - field name inside the namespace section.
+* @returns the field's conversion spec.
+*/
+function settingsNumberField(field) {
+	return {
+		field,
+		format: (value) => typeof value === "number" ? String(value) : "",
+		parse: (text) => {
+			const trimmed = text.trim();
+			if (trimmed === "") return { kind: "clear" };
+			const parsed = Number(trimmed);
+			return Number.isFinite(parsed) ? {
+				kind: "set",
+				value: parsed
+			} : void 0;
+		}
+	};
+}
+/**
+* A free-text field. An empty draft clears the field, so emptying the control
+* and saving is the same gesture as resetting it.
+* @param field - field name inside the namespace section.
+* @returns the field's conversion spec.
+*/
+function settingsTextField(field) {
+	return {
+		field,
+		format: (value) => typeof value === "string" ? value : "",
+		parse: (text) => {
+			const trimmed = text.trim();
+			return trimmed === "" ? { kind: "clear" } : {
+				kind: "set",
+				value: trimmed
+			};
+		}
+	};
+}
+/**
+* Stages one card's edits over one settings namespace and writes them on save.
+*
+* The form publishes through a snapshot store because slot components read
+* through a snapshot selector, while both the scope and the local drafts
+* change underneath; every projection is rebuilt from the two together.
+*/
+var SettingsFormModel = class {
+	scope;
+	specs;
+	secretSpecs;
+	staged = /* @__PURE__ */ new Map();
+	listeners = /* @__PURE__ */ new Set();
+	baseline;
+	unsubscribe;
+	saving = false;
+	failed = false;
+	/**
+	* @param scope - the shared configuration form for this card's namespace.
+	* @param specs - the section fields this card edits.
+	* @param secrets - the card's write-only controls, written outside the section.
+	*/
+	constructor(scope, specs, secrets = []) {
+		this.scope = scope;
+		this.specs = new Map(specs.map((spec) => [spec.field, spec]));
+		this.secretSpecs = new Map(secrets.map((spec) => [spec.field, spec]));
+		this.unsubscribe = scope.subscribe(() => {
+			this.publish();
+		});
+	}
+	/**
+	* Publish a projection of this form, rebuilt whenever the scope or a draft changes.
+	* @param project - build the card's state from the form's current reads.
+	* @returns the store the card's component reads through its bound selector.
+	*/
+	bind(project) {
+		const store = createSnapshotStore(project());
+		this.listeners.add(() => {
+			store.set(project());
+		});
+		return store;
+	}
+	/**
+	* Read the card-level state: what the Host serves, and what a save would do.
+	* @returns the form state every card shares.
+	*/
+	shell() {
+		const snapshot = this.scope.getSnapshot();
+		const plan = this.plan();
+		return {
+			available: snapshot.status === "ready",
+			writable: snapshot.writable,
+			dirty: plan.length > 0,
+			invalid: plan.some((item) => item.run === void 0 && item.op === void 0),
+			saving: this.saving,
+			failed: this.failed
+		};
+	}
+	/**
+	* Read one control's state.
+	* @param field - field name of a section field or of a write-only control.
+	* @returns the draft text, whether a save would leave an override, and whether it is invalid.
+	*/
+	field(field) {
+		const staged = this.staged.get(field);
+		if (this.secretSpecs.has(field)) return {
+			text: staged?.text ?? "",
+			overridden: false,
+			invalid: false
+		};
+		const spec = this.spec(field);
+		if (staged === void 0) return {
+			text: spec.format(this.sectionValue(field)),
+			overridden: this.stored(field),
+			invalid: false
+		};
+		const write = staged.clear ? { kind: "clear" } : spec.parse(staged.text);
+		return {
+			text: staged.text,
+			overridden: write?.kind === "set",
+			invalid: write === void 0
+		};
+	}
+	/**
+	* Build the edit, reset, save, and discard actions bound to this form.
+	* @returns the actions a card's slot entry injects.
+	*/
+	actions() {
+		return {
+			edit: (field, text) => {
+				this.stage(field, {
+					text,
+					clear: false
+				});
+			},
+			resetField: (field) => {
+				this.stage(field, {
+					text: this.spec(field).format(this.baseValue(field)),
+					clear: true
+				});
+			},
+			save: () => {
+				this.save();
+			},
+			discard: () => {
+				if (this.staged.size === 0 && !this.failed) return;
+				this.staged.clear();
+				this.baseline = void 0;
+				this.failed = false;
+				this.publish();
+			}
+		};
+	}
+	/**
+	* Write every staged edit, then re-seed from what the Host accepted.
+	*
+	* The Host is the only authority on whether a value was accepted — its
+	* validators own the constraints no schema can express — so the outcome is
+	* read back from the section rather than predicted here. A save that did not
+	* land keeps its drafts, so the user can correct them instead of retyping.
+	* @returns settlement after every write and the read-back.
+	*/
+	async save() {
+		const plan = this.plan();
+		if (!plan.length || this.saving || !this.scope.getSnapshot().writable || plan.some((item) => item.run === void 0 && item.op === void 0)) return;
+		this.saving = true;
+		this.failed = false;
+		this.publish();
+		try {
+			const ops = plan.flatMap((item) => item.op === void 0 ? [] : [item.op]);
+			let landed = !ops.length || await this.scope.mutate(ops, this.baseline?.revision);
+			if (!landed) {
+				this.failed = true;
+				return;
+			}
+			for (const item of plan) if (item.run) landed = await item.run() && landed;
+			if (landed) {
+				this.staged.clear();
+				this.baseline = void 0;
+			}
+			this.failed = !landed;
+		} catch (_error) {
+			this.failed = true;
+		} finally {
+			this.saving = false;
+			this.publish();
+		}
+	}
+	/** Release the form's accepted-value subscription. */
+	dispose() {
+		this.unsubscribe();
+		this.listeners.clear();
+	}
+	/**
+	* Every staged edit a save would write. An entry whose draft is not a value
+	* its field accepts carries no write: the form is still dirty, and the save
+	* refuses rather than dropping the edit.
+	* @returns the planned writes, in the order the fields were staged.
+	*/
+	plan() {
+		const plan = [];
+		for (const [field, staged] of this.staged) {
+			const secret = this.secretSpecs.get(field);
+			if (secret !== void 0) {
+				const value = staged.text.trim();
+				if (value !== "") plan.push({
+					field,
+					run: () => secret.write(value)
+				});
+				continue;
+			}
+			const spec = this.spec(field);
+			if (staged.clear) {
+				if (this.stored(field)) plan.push({
+					field,
+					op: {
+						op: "unset",
+						path: [field]
+					}
+				});
+				continue;
+			}
+			if (staged.text === spec.format(this.sectionValue(field))) continue;
+			const write = spec.parse(staged.text);
+			if (write === void 0) plan.push({ field });
+			else if (write.kind === "clear") plan.push({
+				field,
+				op: {
+					op: "unset",
+					path: [field]
+				}
+			});
+			else plan.push({
+				field,
+				op: {
+					op: "set",
+					path: [field],
+					value: write.value
+				}
+			});
+		}
+		return plan;
+	}
+	stage(field, edit) {
+		this.baseline ??= this.scope.getSnapshot();
+		this.staged.set(field, edit);
+		this.failed = false;
+		this.publish();
+	}
+	spec(field) {
+		const spec = this.specs.get(field);
+		if (spec === void 0) throw new Error(`plugin card has no field ${field}`);
+		return spec;
+	}
+	snapshotOf() {
+		return this.scope.getSnapshot();
+	}
+	sectionValue(field) {
+		return this.snapshotOf().value?.[field];
+	}
+	baseValue(field) {
+		return this.snapshotOf().base?.[field];
+	}
+	userLayer() {
+		return this.snapshotOf().user;
+	}
+	stored(field) {
+		const user = this.userLayer();
+		return user !== void 0 && Object.hasOwn(user, field);
+	}
+	publish() {
+		for (const listener of this.listeners) listener();
+	}
+};
+//#endregion
+//#region lib/types/markdown/highlight.js
+/**
+* The client's ONE syntax highlighter: a synchronous fine-grained shiki core
+* (JavaScript regex engine — no oniguruma WASM, bundle-friendly) with an
+* explicit grammar allowlist and a CSS-variables theme. Colors live in the
+* theme package's token sheets as `--shiki-*` custom properties (light and
+* dark blocks), never here — the repo's tokens-only styling rule.
+*
+* Only the three markdown-fence and `run_code` grammars (TypeScript, shell,
+* JSON) load into the singleton at boot — the set every session renders. The
+* read card's wider extension set (the file-extension language hints the read
+* tool's `langFromPath` emits — `packages/fs/tool-fs`: python, rust, yaml,
+* markup, …) is imported lazily and registered the first time such a language
+* is requested, so a session that never opens a read card in one of those
+* languages pays neither the ~1.6 MB of grammar modules nor their synchronous
+* init. The first render of a lazy language falls back to plain text while its
+* grammar loads, then {@link onGrammarLoaded} notifies subscribers to re-render
+* with highlighting. An unknown or absent language falls back to plain text (no
+* highlighting, still monospace) — never an error.
+*/
+/**
+* Grammars the singleton loads at boot; each entry's own `name` is the id
+* `codeToTokens`/`codeToHtml` resolve. The JS-family aliases (js/jsx/ts/tsx)
+* resolve to the TypeScript grammar rather than a separate one: it tokenizes
+* plain TS/JS exactly, and JSX/TSX approximately (shiki's TS grammar is not the
+* dedicated TSX grammar, so JSX elements tokenize imperfectly) — an accepted
+* trade to keep the boot set to one JS-family grammar. The read card's wider
+* set loads lazily through {@link LAZY_GRAMMARS}.
+*/
+const LANGS = [
+	langTs,
+	langBash,
+	langJson
+];
+/**
+* The read card's extension grammars, each behind a dynamic import so its
+* module stays out of the boot chunk until a read of that language renders.
+* Keyed by the grammar id (`LanguageRegistration.name`) the aliases resolve to.
+* `@shikijs/langs`' default export is a `LanguageRegistration[]`; the loader
+* hands the whole array to `loadLanguageSync`, which registers each entry
+* (including embedded sub-grammars). The three boot grammars are absent —
+* already loaded, so no alias value ever points at a missing entry here.
+*/
+const LAZY_GRAMMARS = new Map([
+	["python", () => import("@shikijs/langs/python")],
+	["ruby", () => import("@shikijs/langs/ruby")],
+	["go", () => import("@shikijs/langs/go")],
+	["rust", () => import("@shikijs/langs/rust")],
+	["java", () => import("@shikijs/langs/java")],
+	["c", () => import("@shikijs/langs/c")],
+	["cpp", () => import("@shikijs/langs/cpp")],
+	["csharp", () => import("@shikijs/langs/csharp")],
+	["kotlin", () => import("@shikijs/langs/kotlin")],
+	["swift", () => import("@shikijs/langs/swift")],
+	["php", () => import("@shikijs/langs/php")],
+	["yaml", () => import("@shikijs/langs/yaml")],
+	["toml", () => import("@shikijs/langs/toml")],
+	["ini", () => import("@shikijs/langs/ini")],
+	["markdown", () => import("@shikijs/langs/markdown")],
+	["mdx", () => import("@shikijs/langs/mdx")],
+	["html", () => import("@shikijs/langs/html")],
+	["css", () => import("@shikijs/langs/css")],
+	["scss", () => import("@shikijs/langs/scss")],
+	["less", () => import("@shikijs/langs/less")],
+	["sql", () => import("@shikijs/langs/sql")],
+	["xml", () => import("@shikijs/langs/xml")],
+	["lua", () => import("@shikijs/langs/lua")]
+]);
+/**
+* Language ids (and aliases) the highlighter accepts; everything else renders
+* plain. A Map, not an object: fence info strings are assistant-authored, so
+* a label like `constructor` or `__proto__` must miss instead of resolving an
+* inherited property and crashing the renderer inside shiki. Keys cover both
+* the markdown-fence aliases `CodeBlock` uses and the file-extension hint ids
+* the read tool's `langFromPath` emits, so both callers resolve the same
+* grammars. The JS family maps to the TypeScript grammar (see {@link LANGS} for
+* the JSX/TSX approximation). A value not in {@link LANGS} names a
+* {@link LAZY_GRAMMARS} entry loaded on first use.
+*/
+const LANG_ALIASES = new Map([
+	["typescript", "typescript"],
+	["ts", "typescript"],
+	["tsx", "typescript"],
+	["javascript", "typescript"],
+	["js", "typescript"],
+	["jsx", "typescript"],
+	["shellscript", "shellscript"],
+	["bash", "shellscript"],
+	["sh", "shellscript"],
+	["shell", "shellscript"],
+	["zsh", "shellscript"],
+	["json", "json"],
+	["jsonc", "json"],
+	["py", "python"],
+	["python", "python"],
+	["rb", "ruby"],
+	["ruby", "ruby"],
+	["go", "go"],
+	["rs", "rust"],
+	["rust", "rust"],
+	["java", "java"],
+	["c", "c"],
+	["cpp", "cpp"],
+	["cs", "csharp"],
+	["csharp", "csharp"],
+	["kotlin", "kotlin"],
+	["swift", "swift"],
+	["php", "php"],
+	["yaml", "yaml"],
+	["yml", "yaml"],
+	["toml", "toml"],
+	["ini", "ini"],
+	["md", "markdown"],
+	["markdown", "markdown"],
+	["mdx", "mdx"],
+	["html", "html"],
+	["css", "css"],
+	["scss", "scss"],
+	["less", "less"],
+	["sql", "sql"],
+	["xml", "xml"],
+	["lua", "lua"]
+]);
+/**
+* Whether a language hint can use the shared syntax highlighter.
+* @param lang - Language hint from a code surface.
+* @returns Whether the hint resolves to a supported grammar.
+*/
+function supportsHighlighting(lang) {
+	return lang !== void 0 && LANG_ALIASES.has(lang.toLowerCase());
+}
+/** All token colors resolve through `--shiki-*` custom properties (theme package sheets). */
+const cssVariablesTheme = createCssVariablesTheme({
+	name: "css-variables",
+	variablePrefix: "--shiki-",
+	fontStyle: true
+});
+/**
+* The client regex engine compiles each TextMate pattern when its scanner is
+* created. Shiki otherwise defers patterns longer than 3,000 characters until
+* their first match; that compilation counts against Shiki's 500 ms per-line
+* budget and can return a partial token stream under host contention. Eager
+* compilation leaves the same budget in place for scanning user content.
+*/
+const regexEngine = createJavaScriptRegexEngine({
+	forgiving: true,
+	regexConstructor: (pattern) => defaultJavaScriptRegexConstructor(pattern, { lazyCompileLength: Number.POSITIVE_INFINITY })
+});
+let singleton;
+/** Representative paths through every boot grammar, compiled before user content is timed. */
+const BOOT_GRAMMAR_WARMUPS = [
+	{
+		lang: "typescript",
+		code: "const answer: number = 42"
+	},
+	{
+		lang: "shellscript",
+		code: "printf '%s\\n' \"$HOME\""
+	},
+	{
+		lang: "json",
+		code: "{\"ready\":true}"
+	}
+];
+/** Construct and pre-tokenize the boot grammars outside the user-content scan budget. */
+function createHighlighter() {
+	const instance = createHighlighterCoreSync({
+		themes: [cssVariablesTheme],
+		langs: LANGS,
+		engine: regexEngine
+	});
+	for (const sample of BOOT_GRAMMAR_WARMUPS) instance.codeToTokens(sample.code, {
+		lang: sample.lang,
+		theme: "css-variables",
+		tokenizeTimeLimit: 0
+	});
+	return instance;
+}
+/** The synchronous highlighter (one instance per document); pre-warmed below, lazy as the fallback. */
+function highlighter() {
+	singleton ??= createHighlighter();
+	return singleton;
+}
+/** Grammar ids whose lazy import is in flight or done, so it is requested once. */
+const requested = /* @__PURE__ */ new Set();
+/** Subscribers re-rendered after a lazy grammar registers (React callers). */
+const listeners = /* @__PURE__ */ new Set();
+/** Bumped on each lazy-grammar load; the `useSyncExternalStore` snapshot. */
+let loadCount = 0;
+/**
+* Subscribe to lazy-grammar load completions; `listener` fires after a
+* {@link LAZY_GRAMMARS} grammar finishes registering on the singleton, so a
+* caller that rendered its plain fallback while the grammar loaded can
+* re-highlight. Uses the `useSyncExternalStore` subscribe signature; pair it with
+* {@link grammarLoadCount} as the snapshot. Returns an unsubscribe function.
+* @param listener - invoked (no args) on each grammar-load completion.
+* @returns a disposer that removes the listener.
+*/
+function subscribeGrammarLoaded(listener) {
+	listeners.add(listener);
+	return () => {
+		listeners.delete(listener);
+	};
+}
+/**
+* The lazy-grammar load counter — a value that changes on every load, so a
+* `useSyncExternalStore` snapshot re-renders the subscriber when a grammar
+* registers. Opaque: only its identity across renders matters.
+* @returns the current load count.
+*/
+function grammarLoadCount() {
+	return loadCount;
+}
+/**
+* Ensure the grammar `resolved` names is registered. A boot grammar (not in
+* {@link LAZY_GRAMMARS}) and an already-loaded lazy grammar report ready
+* synchronously; a lazy grammar not yet loaded starts its import (once) and
+* reports not-ready, so the caller renders plain until a
+* {@link subscribeGrammarLoaded} listener fires.
+* @param resolved - the grammar id an alias resolved to.
+* @returns whether the grammar is registered and ready to tokenize now.
+*/
+function ensureGrammar(resolved) {
+	const load = LAZY_GRAMMARS.get(resolved);
+	if (load === void 0) return true;
+	if (highlighter().getLoadedLanguages().includes(resolved)) return true;
+	if (!requested.has(resolved)) {
+		requested.add(resolved);
+		load().then((mod) => {
+			highlighter().loadLanguageSync(mod.default);
+			loadCount += 1;
+			for (const listener of listeners) listener();
+		});
+	}
+	return false;
+}
+setTimeout(() => {
+	highlighter();
+}, 0).unref?.();
+/**
+* Highlight `code` into shiki's HTML (a single `<pre class="shiki">` tree)
+* when `lang` maps to a registered grammar; `undefined` means the caller
+* renders its plain fallback. A lazy grammar not yet loaded returns `undefined`
+* for this call and loads in the background; subscribe with
+* {@link onGrammarLoaded} to re-highlight once it registers.
+* @param code - the source text.
+* @param lang - the language hint (a markdown fence info string or a fixed caller id).
+* @returns the highlighted HTML, or `undefined` for unknown or not-yet-loaded languages.
+*/
+function highlightToHtml(code, lang) {
+	const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+	if (resolved === void 0) return void 0;
+	if (!ensureGrammar(resolved)) return void 0;
+	return highlighter().codeToHtml(code, {
+		lang: resolved,
+		theme: "css-variables"
+	});
+}
+/** vscode-textmate FontStyle bits shiki folds into `text-decoration` values. */
+const DECORATION_BITS = [[4, "underline"], [8, "line-through"]];
+/**
+* The inline style shiki's HTML arm assigns one token (`getTokenStyleObject`
+* mirrored onto React style keys): the css-variables color plus the
+* vscode-textmate font-style bits the theme lets through — italic (1), bold
+* (2), and the {@link DECORATION_BITS} decorations (the theme injects bold,
+* italic, and underline rules for markup scopes, so markdown fences carry
+* them). The theme has no per-scope backgrounds, so `background-color` never
+* occurs; the arm-parity tests fail loud if a shiki upgrade changes that.
+*/
+function spanStyle(token) {
+	const style = { color: token.color };
+	/* v8 ignore next -- fontStyle is optional in ThemedToken's type; tokenizeWithTheme always stamps it. */
+	const bits = token.fontStyle ?? 0;
+	if ((bits & 1) !== 0) style.fontStyle = "italic";
+	if ((bits & 2) !== 0) style.fontWeight = "bold";
+	const decorations = DECORATION_BITS.filter(([bit]) => (bits & bit) !== 0);
+	if (decorations.length > 0) style.textDecoration = decorations.map(([, value]) => value).join(" ");
+	return style;
+}
+/**
+* Narrow one tokenized line to the runs a `<span style>` renders, folding a
+* whitespace-only run into the token that follows it — shiki's default
+* `mergeWhitespaces` HTML behavior — with each run styled through
+* {@link spanStyle}, so the streaming spans and the settled `codeToHtml`
+* swap render one identical span tree. shiki exempts underlined/struck
+* whitespace from the fold; under the css-variables theme that case cannot
+* occur — its only underline rule styles inline-link scopes, whose spaced
+* text tokenizes as one run, and it injects no strikethrough rule — so the
+* unconditional fold here stays equivalent (the markdown arm-parity test
+* pins it). A line-trailing whitespace-only run has no follower and keeps
+* its own span, as in shiki.
+*/
+function lineSpans(line) {
+	const spans = [];
+	let pendingWhitespace = "";
+	for (const [index, token] of line.entries()) {
+		if (/^\s+$/.test(token.content) && index + 1 < line.length) {
+			pendingWhitespace += token.content;
+			continue;
+		}
+		spans.push({
+			text: pendingWhitespace + token.content,
+			style: spanStyle(token)
+		});
+		pendingWhitespace = "";
+	}
+	return spans;
+}
+/**
+* Incremental highlighter for one growing streaming fence. TextMate
+* tokenization is line-based and forward-only — a line's tokens depend only on
+* its own text and the grammar state entering it — so appended text never
+* changes a completed line's tokens. The session caches the spans of every
+* completed line together with the grammar state after them;
+* {@link updateFrame} reports only newly completed lines plus the still-growing
+* last line, while {@link update} materializes the complete compatibility
+* result. Per-call tokenization cost therefore excludes the completed prefix,
+* and the result equals a from-scratch tokenization of the same code.
+* Non-append input and a change of resolved grammar reset the cache and
+* re-tokenize fully, so any input stays correct.
+*/
+var StreamingHighlightSession = class {
+	/** Grammar id the cache was built with; a different resolution resets it. */
+	resolved;
+	/** Newline-terminated source prefix covered by {@link spans}. */
+	prefix = "";
+	/** Cached spans, one entry per completed line of {@link prefix}. */
+	spans = [];
+	/** Grammar state after {@link prefix}; undefined = the grammar's initial state. */
+	state;
+	lastCode;
+	lastLang;
+	lastResult;
+	generation = 0;
+	lastFrame;
+	reset(resolved) {
+		this.resolved = resolved;
+		this.prefix = "";
+		this.spans = [];
+		this.state = void 0;
+		this.generation += 1;
+		this.lastFrame = void 0;
+	}
+	/** Tokenize `text` with `resolved`, resuming from the cached grammar state when one exists. */
+	tokenize(resolved, text) {
+		return highlighter().codeToTokensBase(text, {
+			lang: resolved,
+			theme: "css-variables",
+			...this.state === void 0 ? {} : { grammarState: this.state }
+		});
+	}
+	/**
+	* Tokenize one update as a delta for a retained renderer.
+	* @param code - the fence text accumulated so far.
+	* @param lang - the language hint.
+	* @returns Newly completed lines plus the current tail, or `undefined` for the plain arm.
+	*/
+	updateFrame(code, lang) {
+		if (code === this.lastCode && lang === this.lastLang && this.lastFrame !== void 0) return this.lastFrame;
+		this.lastCode = code;
+		this.lastLang = lang;
+		this.lastResult = void 0;
+		const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+		if (resolved === void 0 || !ensureGrammar(resolved)) {
+			this.reset(void 0);
+			return;
+		}
+		if (resolved !== this.resolved || !code.startsWith(this.prefix)) this.reset(resolved);
+		const firstNewLine = this.spans.length;
+		const rest = code.slice(this.prefix.length);
+		const lastNewline = rest.lastIndexOf("\n");
+		if (lastNewline >= 0) {
+			const grownEnd = rest[lastNewline - 1] === "\r" ? lastNewline - 1 : lastNewline;
+			const tokens = this.tokenize(resolved, rest.slice(0, grownEnd));
+			for (const line of tokens) this.spans.push(lineSpans(line));
+			this.state = highlighter().getLastGrammarState(tokens);
+			this.prefix = code.slice(0, this.prefix.length + lastNewline + 1);
+		}
+		this.lastFrame = {
+			generation: this.generation,
+			appended: this.spans.slice(firstNewLine),
+			tail: this.tokenize(resolved, rest.slice(lastNewline + 1)).map(lineSpans)
+		};
+		return this.lastFrame;
+	}
+	/**
+	* Tokenize the fence's current text into per-line highlighted runs;
+	* `undefined` means the caller renders its plain fallback. Idempotent per
+	* (`code`, `lang`) input — repeated calls return the identical result array —
+	* and a retained line keeps its span-array identity across growing calls, so
+	* a React caller can reuse cached line elements. A lazy grammar not yet
+	* loaded returns `undefined` and loads in the background exactly as
+	* {@link highlightToHtml} does; the next call after it registers highlights.
+	* @param code - the fence text accumulated so far (display-trimmed, no synthetic trailing newline).
+	* @param lang - the language hint (a markdown fence info string).
+	* @returns one entry per line of `code` (each an array of runs), or `undefined` for unknown or not-yet-loaded languages.
+	*/
+	update(code, lang) {
+		if (code === this.lastCode && lang === this.lastLang && this.lastResult !== void 0) return this.lastResult;
+		const frame = this.updateFrame(code, lang);
+		if (frame === void 0) return void 0;
+		this.lastResult = [...this.spans, ...frame.tail];
+		return this.lastResult;
+	}
+};
+/**
+* Tokenize `code` into per-line highlighted runs when `lang` maps to a
+* registered grammar; `undefined` means the caller renders its plain fallback.
+* A line-numbered view needs the token runs split per line (one gutter number
+* per line), which the single-`<pre>` {@link highlightToHtml} does not expose,
+* so this returns shiki's own 2D line/token structure narrowed to what a run
+* renders. Each run's color is a `--shiki-*` custom property, keeping token
+* colors on the theme package's sheets exactly as the HTML path does; the
+* markup font-style bits the theme lets through (bold/italic/underline in
+* markdown scopes) are dropped — the line-numbered file view renders
+* color-only runs. The trailing newline shiki appends as a final empty line
+* is dropped so the run count matches the caller's own line array.
+* @param code - the source text.
+* @param lang - the language hint (a file-extension-derived language id).
+* @returns one entry per source line (each an array of runs), or `undefined` for unknown or not-yet-loaded languages.
+*/
+function highlightLines(code, lang) {
+	const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+	if (resolved === void 0) return void 0;
+	if (!ensureGrammar(resolved)) return void 0;
+	const { tokens } = highlighter().codeToTokens(code, {
+		lang: resolved,
+		theme: "css-variables"
+	});
+	const last = tokens[tokens.length - 1];
+	return (tokens.length > 1 && last !== void 0 && last.length === 0 ? tokens.slice(0, -1) : tokens).map((line) => line.map((token) => ({
+		text: token.content,
+		style: { color: token.color }
+	})));
+}
+//#endregion
+//#region lib/types/code-highlighting.js
+/** Shared filename-to-grammar selection and lazy line highlighter for source views. */
+const LANGUAGES = new Map(Object.entries({
+	typescript: [
+		"ts",
+		"tsx",
+		"mts",
+		"cts"
+	],
+	javascript: [
+		"js",
+		"jsx",
+		"mjs",
+		"cjs"
+	],
+	shellscript: [
+		"sh",
+		"bash",
+		"zsh"
+	],
+	json: [
+		"json",
+		"jsonc",
+		"jsonl",
+		"ndjson"
+	],
+	python: [
+		"py",
+		"pyw",
+		"pyi"
+	],
+	ruby: [
+		"rb",
+		"rake",
+		"gemspec"
+	],
+	go: ["go"],
+	rust: ["rs"],
+	java: ["java"],
+	c: ["c", "h"],
+	cpp: [
+		"cc",
+		"cpp",
+		"cxx",
+		"hh",
+		"hpp",
+		"hxx"
+	],
+	csharp: ["cs"],
+	kotlin: ["kt", "kts"],
+	swift: ["swift"],
+	php: ["php"],
+	yaml: ["yaml", "yml"],
+	toml: ["toml"],
+	ini: ["ini"],
+	markdown: ["md", "markdown"],
+	mdx: ["mdx"],
+	html: [
+		"html",
+		"htm",
+		"xhtml"
+	],
+	css: ["css"],
+	scss: ["scss"],
+	less: ["less"],
+	sql: ["sql"],
+	xml: [
+		"xml",
+		"xsd",
+		"xsl",
+		"xslt"
+	],
+	lua: ["lua"]
+}).flatMap(([language, extensions]) => extensions.map((extension) => [extension, language])));
+/** Recognized filename suffixes whose source can use the shared syntax highlighter. */
+const CODE_HIGHLIGHT_EXTENSIONS = [...LANGUAGES.keys()];
+/**
+* Select the shared syntax highlighter's grammar from a filename.
+* @param path - decoded source filename or path.
+* @returns a supported grammar hint, or `undefined` for other suffixes.
+*/
+function languageForPath(path) {
+	const extension = /\.([^./]+)$/u.exec(path.replaceAll("\\", "/"))?.[1]?.toLowerCase();
+	return extension === void 0 ? void 0 : LANGUAGES.get(extension);
+}
+/**
+* Bind the shared lazy highlighter to one language and refresh after its grammar loads.
+* @param language - grammar hint selected from the source filename.
+* @returns a stable fragment highlighter; unknown and loading grammars return `undefined` for plain-text fallback.
+*/
+function useCodeHighlighter(language) {
+	return useCallback((code) => highlightLines(code, language), [language, useSyncExternalStore(subscribeGrammarLoaded, grammarLoadCount, grammarLoadCount)]);
 }
 //#endregion
 //#region lib/types/relative-time.js
@@ -3839,9 +7248,10 @@ function relativeTime(at, now) {
 //#region lib/types/rank-by-name.js
 /**
 * Shared ranking for `/` menu candidates: the query must be a
-* case-insensitive ordered subsequence of the candidate name. Prefix hits
-* rank first, then the strongest alignment score, then the source order of
-* the input. Decision record:
+* case-insensitive ordered subsequence of the candidate name or, when the
+* candidate carries one, of its display label (a localized title). Prefix
+* hits rank first, then the strongest alignment score over either key, then
+* the source order of the input. Decision record:
 * .agents/notes/archived/feature/2026-08-04-web-slash-command-fuzzy-discovery.md
 */
 /** Extra weight for name starts and separator boundaries. */
@@ -3883,7 +7293,9 @@ function alignmentScore(name, query) {
 }
 /**
 * Rank named items by a menu query.
-* @param items - candidates in source order (a host catalog, then client contributions).
+* @param items - candidates in source order (a host catalog, then client
+* contributions); an item's optional `label` is a second search key beside
+* its name.
 * @param rawQuery - the text typed after the trigger, matched case-insensitively.
 * @returns the matching items: prefix hits first, then by alignment score,
 * then in source order. The input list itself for an empty query.
@@ -3893,17 +7305,37 @@ function rankByName(items, rawQuery) {
 	if (query === "") return items;
 	const ranked = [];
 	items.forEach((item, index) => {
-		const name = item.name.toLowerCase();
-		const score = alignmentScore(name, query);
+		const keys = item.label === void 0 ? [item.name] : [item.name, item.label];
+		let prefix = false;
+		let score;
+		for (const key of keys) {
+			const lower = key.toLowerCase();
+			const keyScore = alignmentScore(lower, query);
+			if (keyScore === void 0) continue;
+			prefix ||= lower.startsWith(query);
+			score = score === void 0 ? keyScore : Math.max(score, keyScore);
+		}
 		if (score !== void 0) ranked.push({
 			item,
 			index,
-			prefix: name.startsWith(query),
+			prefix,
 			score
 		});
 	});
 	ranked.sort((left, right) => Number(right.prefix) - Number(left.prefix) || right.score - left.score || left.index - right.index);
 	return ranked.map((match) => match.item);
+}
+//#endregion
+//#region lib/types/darwin-desktop.js
+/** macOS desktop detection for hiddenInset-titlebar layout variants. */
+/**
+* Whether the client runs in the macOS desktop shell: the Electron preload
+* marks `<html>` with `data-platform="darwin"`; plain web never sets it.
+* Read at render time — the mark may arrive as late as DOMContentLoaded.
+* @returns true only inside the macOS Electron shell.
+*/
+function isDarwinDesktop() {
+	return document.documentElement.dataset.platform === "darwin";
 }
 //#endregion
 //#region lib/types/JsonTree.js
@@ -3942,6 +7374,80 @@ function objectCopyMenuItems(labels) {
 		}
 	];
 }
+/** Notify only the old and new row actions; JSON values do not subscribe to hover state. */
+function createCopyStore() {
+	let current;
+	const listeners = /* @__PURE__ */ new Map();
+	return {
+		get: () => current,
+		set(next) {
+			const previous = current?.id;
+			current = next;
+			for (const id of new Set([previous, next?.id])) {
+				if (id === void 0) continue;
+				for (const listener of listeners.get(id) ?? []) listener();
+			}
+		},
+		subscribe(id, listener) {
+			let row = listeners.get(id);
+			if (row === void 0) listeners.set(id, row = /* @__PURE__ */ new Set());
+			row.add(listener);
+			return () => {
+				row.delete(listener);
+				if (row.size === 0) listeners.delete(id);
+			};
+		}
+	};
+}
+function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) {
+	const id = pathId(target.path);
+	const subscribe = useCallback((listener) => store.subscribe(id, listener), [id, store]);
+	const getSnapshot = () => {
+		const current = store.get();
+		return current?.id === id ? current : void 0;
+	};
+	const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+	const buttonRef = useRef(null);
+	const state = snapshot?.state ?? "idle";
+	const object = typeof target.value === "object" && target.value !== null;
+	const copyTitle = state === "copied" ? labels.copied : state === "failed" ? labels.copyFailed : object ? labels.copyPrettyJson : labels.copyValue;
+	return jsx("span", {
+		className: css$24.copySlot,
+		children: (persistent || snapshot !== void 0) && jsx(Menu, {
+			open: snapshot?.menuOpen === true,
+			compact: true,
+			portal: true,
+			align: "end",
+			anchor: jsx("button", {
+				ref: buttonRef,
+				type: "button",
+				className: css$24.actionButton,
+				"data-json-copy-button": true,
+				"data-state": state,
+				"aria-label": copyTitle,
+				title: labels.copyButtonTitle(copyTitle),
+				onClick: () => void onCopy(target, object ? "prettyJson" : "value"),
+				onContextMenu: (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					store.set({
+						id,
+						target,
+						state,
+						menuOpen: true
+					});
+				},
+				children: state === "copied" ? jsx(IconCheckOutlineRegular, { size: 12 }) : jsx(IconCopyOutlineRegular, { size: 12 })
+			}),
+			items: object ? objectCopyMenuItems(labels) : valueCopyMenuItems(labels),
+			onSelect: (mode) => {
+				onCopy(target, mode);
+			},
+			onClose,
+			getAnchorRect: () => buttonRef.current.getBoundingClientRect()
+		})
+	});
+}
 function isExpandableValue(value) {
 	return typeof value === "object" && value !== null && !(value instanceof Date);
 }
@@ -3954,35 +7460,35 @@ function bracketOf(value) {
 }
 function previewPrimitive(value) {
 	if (value === null) return jsx("span", {
-		className: css$17.keywordValue,
+		className: css$24.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$17.stringValue,
+		className: css$24.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$17.numberValue,
+		className: css$24.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$17.keywordValue,
+		className: css$24.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: value.toString()
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: "undefined"
 	});
 	if (typeof value === "symbol") return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: value.description ?? "Symbol"
 	});
 	if (typeof value === "function") return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: value.name || "Function"
 	});
 	return null;
@@ -3996,71 +7502,71 @@ function previewValue(value, depth) {
 	const [open, close] = bracketOf(value);
 	return jsxs(Fragment, { children: [
 		jsx("span", {
-			className: css$17.punctuation,
+			className: css$24.punctuation,
 			children: open
 		}),
 		depth >= PREVIEW_DEPTH_LIMIT ? jsx("span", {
-			className: css$17.previewEllipsis,
+			className: css$24.previewEllipsis,
 			children: "…"
 		}) : visible.map(([key, item], index) => jsxs("span", { children: [
 			index > 0 && jsx("span", {
-				className: css$17.punctuation,
+				className: css$24.punctuation,
 				children: ", "
 			}),
 			!array && jsxs(Fragment, { children: [jsx("span", {
-				className: css$17.previewProperty,
+				className: css$24.previewProperty,
 				children: key
 			}), jsx("span", {
-				className: css$17.punctuation,
+				className: css$24.punctuation,
 				children: ": "
 			})] }),
 			previewValue(item, depth + 1)
 		] }, key)),
 		depth < PREVIEW_DEPTH_LIMIT && entries.length > limit && jsx("span", {
-			className: css$17.previewEllipsis,
+			className: css$24.previewEllipsis,
 			children: ", …"
 		}),
 		jsx("span", {
-			className: css$17.punctuation,
+			className: css$24.punctuation,
 			children: close
 		})
 	] });
 }
 function primitiveValue(value) {
 	if (value === null) return jsx("span", {
-		className: css$17.keywordValue,
+		className: css$24.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$17.stringValue,
+		className: css$24.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$17.keywordValue,
+		className: css$24.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$17.numberValue,
+		className: css$24.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$17.numberValue,
+		className: css$24.numberValue,
 		children: `${value.toString()}n`
 	});
 	if (value instanceof Date) return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: value.toISOString()
 	});
 	if (typeof value === "function") return jsxs("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: ["function() ", "{ }"]
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: "undefined"
 	});
 	return jsx("span", {
-		className: css$17.otherValue,
+		className: css$24.otherValue,
 		children: value.toString()
 	});
 }
@@ -4088,12 +7594,176 @@ function moveFocus(button, direction) {
 function NodeField({ field, expandable, onToggle }) {
 	if (field === void 0) return null;
 	return jsxs("span", {
-		className: clsx(css$17.label, expandable && css$17.clickableLabel),
+		className: clsx(css$24.label, expandable && css$24.clickableLabel),
 		onClick: expandable ? onToggle : void 0,
 		children: [fieldText(field), ":"]
 	});
 }
-function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabStop, onRowHover, path, tabStopId, value }) {
+function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastElement, renderCopy, value }) {
+	const contentsId = useId();
+	const contentRef = useRef(null);
+	const rawRef = useRef(null);
+	const [expanded, setExpanded] = useState(false);
+	const [wrapped, setWrapped] = useState(false);
+	const [truncated, setTruncated] = useState(false);
+	useLayoutEffect(() => {
+		if (expanded) return;
+		const content = contentRef.current;
+		const measure = () => {
+			const lineHeight = Number.parseFloat(getComputedStyle(content).lineHeight);
+			setTruncated(content.scrollHeight > lineHeight * collapsedStringLines);
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(content);
+		return () => {
+			observer.disconnect();
+		};
+	}, [
+		collapsedStringLines,
+		expanded,
+		field,
+		lastElement,
+		value
+	]);
+	useLayoutEffect(() => {
+		if (!expanded) return;
+		const raw = rawRef.current;
+		const clips = [];
+		const tree = raw.closest(`.${css$24.root}`);
+		for (let parent = tree.parentElement; parent !== null; parent = parent.parentElement) if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowY)) clips.push(parent);
+		const measure = () => {
+			let top = 0;
+			let bottom = window.innerHeight;
+			for (const clip of clips) {
+				const rect = clip.getBoundingClientRect();
+				const style = getComputedStyle(clip);
+				top = Math.max(top, rect.top + clip.clientTop);
+				bottom = Math.min(bottom, rect.top + clip.clientTop + clip.clientHeight - Number.parseFloat(style.paddingBottom));
+			}
+			const available = bottom - Math.max(top, raw.getBoundingClientRect().top);
+			raw.style.maxHeight = `${Math.max(16, available - 4)}px`;
+		};
+		measure();
+		const observer = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver(measure);
+		observer?.observe(raw);
+		for (const clip of clips) observer?.observe(clip);
+		window.addEventListener("resize", measure);
+		window.addEventListener("scroll", measure, true);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener("resize", measure);
+			window.removeEventListener("scroll", measure, true);
+		};
+	}, [expanded, value]);
+	if (expanded) {
+		const fieldId = `${contentsId}-field`;
+		return jsxs("div", {
+			className: css$24.stringField,
+			"data-expanded": true,
+			children: [
+				field !== void 0 && jsxs("span", {
+					id: fieldId,
+					className: css$24.label,
+					children: [fieldText(field), ":"]
+				}),
+				jsx("pre", {
+					ref: rawRef,
+					id: contentsId,
+					className: css$24.stringRaw,
+					"data-wrap": wrapped,
+					tabIndex: 0,
+					"aria-labelledby": field === void 0 ? void 0 : fieldId,
+					children: value
+				}),
+				!lastElement && jsx("span", {
+					className: css$24.punctuation,
+					children: ","
+				}),
+				jsxs("div", {
+					className: css$24.stringActions,
+					children: [
+						stringWrapping !== void 0 && jsx("button", {
+							type: "button",
+							className: css$24.actionButton,
+							"aria-label": stringWrapping.label,
+							title: stringWrapping.label,
+							"aria-pressed": wrapped,
+							"aria-controls": contentsId,
+							onClick: () => {
+								const next = !wrapped;
+								setWrapped(next);
+								stringWrapping.setDefault(next);
+							},
+							children: jsx(IconWrapLinesOutlineRegular, { size: 12 })
+						}),
+						jsx("button", {
+							type: "button",
+							className: css$24.actionButton,
+							"aria-label": labels.collapseNode,
+							title: labels.collapseNode,
+							"aria-expanded": true,
+							"aria-controls": contentsId,
+							onClick: () => {
+								setExpanded(false);
+							},
+							children: jsx("svg", {
+								width: "12",
+								height: "12",
+								viewBox: "0 0 16 16",
+								fill: "none",
+								stroke: "currentColor",
+								"aria-hidden": "true",
+								children: jsx("path", { d: "M9.5 1.5V6.5H14.5M1.5 9.5H6.5V14.5" })
+							})
+						}),
+						renderCopy?.(true)
+					]
+				})
+			]
+		});
+	}
+	return jsxs(Fragment, { children: [renderCopy?.(), jsx("span", {
+		className: css$24.stringField,
+		"data-expanded": expanded,
+		children: jsxs("span", {
+			ref: contentRef,
+			id: contentsId,
+			className: css$24.stringText,
+			children: [
+				truncated && jsx("span", {
+					className: css$24.stringToggleSlot,
+					children: jsxs("button", {
+						type: "button",
+						className: css$24.stringToggle,
+						"aria-label": labels.expandNode,
+						"aria-expanded": false,
+						"aria-controls": contentsId,
+						onClick: () => {
+							setWrapped(stringWrapping?.getDefault() ?? false);
+							setExpanded(true);
+						},
+						children: [jsx("span", {
+							"aria-hidden": "true",
+							children: "…"
+						}), labels.expandNode]
+					})
+				}),
+				field !== void 0 && jsxs("span", {
+					className: css$24.label,
+					children: [fieldText(field), ":"]
+				}),
+				primitiveValue(value),
+				!lastElement && jsx("span", {
+					className: css$24.punctuation,
+					children: ","
+				})
+			]
+		})
+	})] });
+}
+function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpanded, labels, lastElement, onClaimTabStop, onRowHover, path, renderCopy, tabStopId, value }) {
 	const contentsId = useId();
 	const expanderRef = useRef(null);
 	const [expanded, setExpanded] = useState(initialExpanded);
@@ -4116,8 +7786,8 @@ function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabS
 			moveFocus(event.currentTarget, event.key === "ArrowUp" ? -1 : 1);
 		}
 	};
-	const row = (children, ariaExpanded) => jsx("div", {
-		className: css$17.row,
+	const row = (children, ariaExpanded) => jsxs("div", {
+		className: css$24.row,
 		role: "treeitem",
 		"aria-expanded": ariaExpanded,
 		onMouseOver: (event) => {
@@ -4127,8 +7797,23 @@ function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabS
 				value
 			});
 		},
-		children
+		children: [typeof value !== "string" && renderCopy?.({
+			path,
+			value
+		}), children]
 	});
+	if (typeof value === "string") return row(jsx(JsonString, {
+		collapsedStringLines,
+		stringWrapping,
+		field,
+		value,
+		labels,
+		lastElement,
+		renderCopy: renderCopy === void 0 ? void 0 : (persistent) => renderCopy({
+			path,
+			value
+		}, persistent)
+	}));
 	if (!container) return row(jsxs(Fragment, { children: [
 		jsx(NodeField, {
 			field,
@@ -4137,7 +7822,7 @@ function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabS
 		}),
 		primitiveValue(value),
 		!lastElement && jsx("span", {
-			className: css$17.punctuation,
+			className: css$24.punctuation,
 			children: ","
 		})
 	] }));
@@ -4149,22 +7834,22 @@ function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabS
 			onToggle: toggle
 		}),
 		jsx("span", {
-			className: css$17.punctuation,
+			className: css$24.punctuation,
 			children: open
 		}),
 		jsx("span", {
-			className: css$17.punctuation,
+			className: css$24.punctuation,
 			children: close
 		}),
 		!lastElement && jsx("span", {
-			className: css$17.punctuation,
+			className: css$24.punctuation,
 			children: ","
 		})
 	] }));
 	return row(jsxs(Fragment, { children: [
 		jsx("span", {
 			ref: expanderRef,
-			className: clsx(css$17.expander, expanded ? css$17.collapseIcon : css$17.expandIcon),
+			className: clsx(css$24.expander, expanded ? css$24.collapseIcon : css$24.expandIcon),
 			"data-json-expander": true,
 			role: "button",
 			"aria-label": expanded ? labels.collapseNode : labels.expandNode,
@@ -4177,24 +7862,31 @@ function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabS
 			onClick: toggle,
 			onKeyDown: onExpanderKeyDown
 		}),
-		jsx(NodeField, {
-			field,
-			expandable: true,
-			onToggle: toggle
-		}),
-		jsx("span", {
-			className: css$17.preview,
-			children: previewValue(value, 0)
-		}),
-		!lastElement && jsx("span", {
-			className: css$17.punctuation,
-			children: ","
+		jsxs("span", {
+			className: css$24.summary,
+			children: [
+				jsx(NodeField, {
+					field,
+					expandable: true,
+					onToggle: toggle
+				}),
+				jsx("span", {
+					className: css$24.preview,
+					children: previewValue(value, 0)
+				}),
+				!lastElement && jsx("span", {
+					className: css$24.punctuation,
+					children: ","
+				})
+			]
 		}),
 		expanded && jsx("ul", {
 			id: contentsId,
 			role: "group",
-			className: css$17.children,
+			className: css$24.children,
 			children: entries.map(([key, item], index) => jsx(JsonTreeNode, {
+				collapsedStringLines,
+				stringWrapping,
 				field: key,
 				value: item,
 				path: [...path, Array.isArray(value) ? index : key],
@@ -4203,7 +7895,8 @@ function JsonTreeNode({ field, initialExpanded, labels, lastElement, onClaimTabS
 				initialExpanded: false,
 				tabStopId,
 				onClaimTabStop,
-				onRowHover
+				onRowHover,
+				renderCopy
 			}, key))
 		})
 	] }), expanded);
@@ -4230,19 +7923,15 @@ function copyText$2(target, mode) {
 * @param props - Parsed data, accessible label, and display options.
 * @returns A read-only JSON tree with an optionally fixed-open top level.
 */
-function JsonTree({ data, label, className, copyable = true, expandTopLevel = true, labels }) {
+function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrapping, copyable = true, expandTopLevel = true, labels }) {
 	const rootEntries = entriesOf(data);
 	const firstExpandableIndex = rootEntries.findIndex(([, value]) => isExpandableValue(value) && entriesOf(value).length > 0);
 	const firstExpandableEntry = rootEntries[firstExpandableIndex];
 	const initialTabStopId = expandTopLevel ? firstExpandableEntry === void 0 ? null : pathId([Array.isArray(data) ? firstExpandableIndex : firstExpandableEntry[0]]) : isExpandableValue(data) && rootEntries.length > 0 ? pathId([]) : null;
-	const rootRef = useRef(null);
 	const activeRowRef = useRef();
-	const copyButtonRef = useRef(null);
-	const copyMenuOpenRef = useRef(false);
 	const resetTimer = useRef();
-	const [copyTarget, setCopyTarget] = useState();
-	const [copyState, setCopyState] = useState("idle");
-	const [copyMenuOpen, setCopyMenuOpen] = useState(false);
+	const copySequence = useRef(0);
+	const [copyStore] = useState(createCopyStore);
 	const [tabStopId, setTabStopId] = useState(initialTabStopId);
 	const setActiveRow = (row) => {
 		activeRowRef.current?.removeAttribute("data-json-copy-active");
@@ -4250,121 +7939,93 @@ function JsonTree({ data, label, className, copyable = true, expandTopLevel = tr
 		row?.setAttribute("data-json-copy-active", "");
 	};
 	const clearCopyTarget = () => {
+		copySequence.current += 1;
+		if (resetTimer.current !== void 0) clearTimeout(resetTimer.current);
 		setActiveRow(void 0);
-		setCopyTarget(void 0);
-		setCopyState("idle");
-		copyMenuOpenRef.current = false;
-		setCopyMenuOpen(false);
-	};
-	const copyPosition = (row) => {
-		const root = rootRef.current;
-		/* v8 ignore next -- row events and viewport listeners run only after the root ref mounts. */
-		if (root === null) throw new Error("JsonTree root is not mounted");
-		const rootRect = root.getBoundingClientRect();
-		const rowRect = row.getBoundingClientRect();
-		return {
-			left: rootRect.left + root.clientWidth - 26,
-			side: rowRect.top - rootRect.top > root.clientHeight / 2 ? "top" : "bottom",
-			top: rowRect.top
-		};
-	};
-	const positionCopyButton = (row, target) => {
-		const position = copyPosition(row);
-		setCopyTarget({
-			...target,
-			...position
-		});
-	};
-	const repositionCopyButton = (row) => {
-		const position = copyPosition(row);
-		setCopyTarget((current) => {
-			/* v8 ignore next -- an active row and its copy target are installed together. */
-			if (current === void 0) return current;
-			return {
-				...current,
-				...position
-			};
-		});
+		copyStore.set(void 0);
 	};
 	useEffect(() => () => {
+		copySequence.current += 1;
 		if (resetTimer.current !== void 0) clearTimeout(resetTimer.current);
 		activeRowRef.current?.removeAttribute("data-json-copy-active");
 	}, []);
 	useEffect(() => {
-		activeRowRef.current?.removeAttribute("data-json-copy-active");
-		activeRowRef.current = void 0;
-		copyMenuOpenRef.current = false;
-		setCopyTarget(void 0);
-		setCopyState("idle");
-		setCopyMenuOpen(false);
+		clearCopyTarget();
 		setTabStopId(initialTabStopId);
 	}, [
 		data,
 		expandTopLevel,
 		initialTabStopId
 	]);
-	useEffect(() => {
-		const reposition = () => {
-			const row = activeRowRef.current;
-			if (row !== void 0) repositionCopyButton(row);
-		};
-		window.addEventListener("scroll", reposition, true);
-		window.addEventListener("resize", reposition);
-		return () => {
-			window.removeEventListener("scroll", reposition, true);
-			window.removeEventListener("resize", reposition);
-		};
-	}, []);
 	const handleRowHover = (row, target) => {
-		if (!copyable || copyMenuOpenRef.current) return;
+		if (!copyable || copyStore.get()?.menuOpen) return;
 		if (activeRowRef.current === row) return;
 		setActiveRow(row);
-		setCopyState("idle");
-		copyMenuOpenRef.current = false;
-		setCopyMenuOpen(false);
-		positionCopyButton(row, target);
+		copyStore.set({
+			id: pathId(target.path),
+			target,
+			state: "idle",
+			menuOpen: false
+		});
 	};
 	const handleRootMouseOver = (event) => {
-		if (!copyable || copyMenuOpenRef.current) return;
+		if (!copyable || copyStore.get()?.menuOpen) return;
 		/* v8 ignore next -- browser mouse events delivered through React target an Element. */
 		if (!(event.target instanceof Element)) return;
 		if (event.target.closest("[data-json-copy-button]") === null) clearCopyTarget();
 	};
-	const handleScroll = (_event) => {
-		const row = activeRowRef.current;
-		if (row !== void 0) repositionCopyButton(row);
-	};
-	const copy = async (mode) => {
-		/* v8 ignore next -- copy controls only render while their target exists. */
-		if (copyTarget === void 0) return;
+	const copy = async (target, mode) => {
+		const sequence = ++copySequence.current;
+		const snapshot = {
+			id: pathId(target.path),
+			target,
+			state: "idle",
+			menuOpen: false
+		};
+		copyStore.set(snapshot);
+		let state;
 		try {
-			await navigator.clipboard.writeText(copyText$2(copyTarget, mode));
-			setCopyState("copied");
+			await navigator.clipboard.writeText(copyText$2(target, mode));
+			state = "copied";
 		} catch {
-			setCopyState("failed");
+			state = "failed";
 		}
+		const current = copyStore.get();
+		if (sequence !== copySequence.current || current?.target !== target) return;
+		copyStore.set({
+			...current,
+			state
+		});
 		if (resetTimer.current !== void 0) clearTimeout(resetTimer.current);
 		resetTimer.current = setTimeout(() => {
-			setCopyState("idle");
+			const current = copyStore.get();
+			if (current?.target === target) copyStore.set({
+				...current,
+				state: "idle"
+			});
 		}, 1500);
 	};
 	const [rootOpen, rootClose] = bracketOf(data);
-	const copyTargetIsObject = typeof copyTarget?.value === "object" && copyTarget.value !== null;
-	const defaultCopyMode = copyTargetIsObject ? "prettyJson" : "value";
-	const copyTitle = copyState === "copied" ? labels.copied : copyState === "failed" ? labels.copyFailed : copyTargetIsObject ? labels.copyPrettyJson : labels.copyValue;
-	return jsxs("div", {
-		ref: rootRef,
-		className: clsx(css$17.root, className),
+	const renderCopy = copyable ? (target, persistent = false) => jsx(JsonCopyAction, {
+		store: copyStore,
+		target,
+		persistent,
+		labels,
+		onCopy: copy,
+		onClose: clearCopyTarget
+	}) : void 0;
+	return jsx("div", {
+		className: clsx(css$24.root, className),
+		style: { "--json-tree-collapsed-lines": collapsedStringLines },
 		onMouseOver: handleRootMouseOver,
 		onMouseLeave: () => {
-			if (!copyMenuOpenRef.current) clearCopyTarget();
+			if (!copyStore.get()?.menuOpen) clearCopyTarget();
 		},
-		onScroll: handleScroll,
-		children: [expandTopLevel ? jsxs("div", {
-			className: css$17.expandedTopLevel,
+		children: expandTopLevel ? jsxs("div", {
+			className: css$24.expandedTopLevel,
 			children: [
-				jsx("div", {
-					className: clsx(css$17.row, css$17.topLevelBracket),
+				jsxs("div", {
+					className: clsx(css$24.row, css$24.topLevelBracket),
 					"data-json-root-row": true,
 					onMouseOver: (event) => {
 						event.stopPropagation();
@@ -4373,16 +8034,21 @@ function JsonTree({ data, label, className, copyable = true, expandTopLevel = tr
 							value: data
 						});
 					},
-					children: jsx("span", {
-						className: css$17.punctuation,
+					children: [renderCopy?.({
+						path: [],
+						value: data
+					}), jsx("span", {
+						className: css$24.punctuation,
 						children: rootOpen
-					})
+					})]
 				}),
 				jsx("div", {
 					"aria-label": label,
-					className: clsx(css$17.container, css$17.expandedTopLevelContainer),
+					className: clsx(css$24.container, css$24.expandedTopLevelContainer),
 					role: "tree",
 					children: rootEntries.map(([key, value], index) => jsx(JsonTreeNode, {
+						collapsedStringLines,
+						stringWrapping,
 						field: key,
 						value,
 						path: [Array.isArray(data) ? index : key],
@@ -4391,22 +8057,25 @@ function JsonTree({ data, label, className, copyable = true, expandTopLevel = tr
 						initialExpanded: false,
 						tabStopId,
 						onClaimTabStop: setTabStopId,
-						onRowHover: handleRowHover
+						onRowHover: handleRowHover,
+						renderCopy
 					}, key))
 				}),
 				jsx("div", {
-					className: clsx(css$17.row, css$17.topLevelBracket),
+					className: clsx(css$24.row, css$24.topLevelBracket),
 					children: jsx("span", {
-						className: css$17.punctuation,
+						className: css$24.punctuation,
 						children: rootClose
 					})
 				})
 			]
 		}) : jsx("div", {
 			"aria-label": label,
-			className: css$17.container,
+			className: css$24.container,
 			role: "tree",
 			children: jsx(JsonTreeNode, {
+				collapsedStringLines,
+				stringWrapping,
 				value: data,
 				path: [],
 				labels,
@@ -4414,47 +8083,10 @@ function JsonTree({ data, label, className, copyable = true, expandTopLevel = tr
 				initialExpanded: true,
 				tabStopId,
 				onClaimTabStop: setTabStopId,
-				onRowHover: handleRowHover
+				onRowHover: handleRowHover,
+				renderCopy
 			})
-		}), copyTarget !== void 0 && jsx("span", {
-			className: css$17.copyAnchor,
-			style: {
-				left: copyTarget.left,
-				top: copyTarget.top
-			},
-			children: jsx(Menu, {
-				open: copyMenuOpen,
-				compact: true,
-				portal: true,
-				align: "end",
-				side: copyTarget.side,
-				anchor: jsx("button", {
-					ref: copyButtonRef,
-					type: "button",
-					className: css$17.copyButton,
-					"data-json-copy-button": true,
-					"data-state": copyState,
-					"aria-label": copyTitle,
-					title: labels.copyButtonTitle(copyTitle),
-					onClick: () => void copy(defaultCopyMode),
-					onContextMenu: (event) => {
-						event.preventDefault();
-						event.stopPropagation();
-						copyMenuOpenRef.current = true;
-						setCopyMenuOpen(true);
-					},
-					children: copyState === "copied" ? jsx(IconCheckOutline16, { size: 12 }) : jsx(IconCopyOutline16, { size: 12 })
-				}),
-				items: copyTargetIsObject ? objectCopyMenuItems(labels) : valueCopyMenuItems(labels),
-				onSelect: (id) => {
-					copy(id);
-					copyMenuOpenRef.current = false;
-					setCopyMenuOpen(false);
-				},
-				onClose: clearCopyTarget,
-				getAnchorRect: () => copyButtonRef.current.getBoundingClientRect()
-			})
-		})]
+		})
 	});
 }
 //#endregion
@@ -4465,8 +8097,10 @@ function JsonTree({ data, label, className, copyable = true, expandTopLevel = tr
 * semantic. Black and white both resolve to the primary label color so text
 * stays legible under either theme instead of matching the surface it sits
 * on; bright black takes the tertiary label color (the muted-gray role).
-* Magenta and cyan have no token equivalent in this design system and fall
-* through to anser's literal rgb, as do all 256-palette and truecolor values.
+* Cyan and bright cyan take two static blues: the design system has no cyan,
+* and anser's literal bright cyan is unreadable on the light theme's code
+* surface. Magenta has no token equivalent and falls through to anser's
+* literal rgb, as do all 256-palette and truecolor values.
 */
 const TOKEN_BY_BASIC_RGB = {
 	"0,0,0": "var(--dsw-alias-label-primary)",
@@ -4479,7 +8113,9 @@ const TOKEN_BY_BASIC_RGB = {
 	"187,187,0": "var(--dsw-alias-state-warn-primary)",
 	"255,255,85": "var(--dsw-alias-state-warn-secondary)",
 	"0,0,187": "var(--dsw-alias-state-business-primary)",
-	"85,85,255": "var(--dsw-static-blue-400)"
+	"85,85,255": "var(--dsw-static-blue-400)",
+	"0,187,187": "var(--dsw-static-blue-600)",
+	"85,255,255": "var(--dsw-static-blue-500)"
 };
 /**
 * CSS for each SGR attribute anser reports. `blink` is deliberately absent —
@@ -4919,13 +8555,14 @@ function promptLabel(cwd, home) {
 * Status pill text for a settled command, or undefined when the command
 * settled cleanly (exit 0, no signal) and needs no pill — the same
 * distinction the bash tool's own exit-status markers draw.
-* @param exitCode - settled exit code, when known.
+* @param exitCode - settled exit code, when known; null when the command settled without one.
 * @param signal - settled terminating signal name, when known.
 * @param labels - display copy for the pill text.
 * @returns the pill text, or undefined for a clean exit.
 */
 function statusText(exitCode, signal, labels) {
 	if (signal !== void 0) return labels.signal(signal);
+	if (exitCode === null) return labels.noExitCode;
 	if (exitCode !== void 0 && exitCode !== 0) return labels.exitCode(exitCode);
 }
 /**
@@ -4939,7 +8576,7 @@ function statusText(exitCode, signal, labels) {
 * settled command whose exit status never reached the view counts as a clean
 * settle: the view says it finished and says nothing went wrong.
 * @param running - the command has not settled.
-* @param exitCode - settled exit code, when known.
+* @param exitCode - settled exit code, when known; null when the command settled without one.
 * @param signal - settled terminating signal name, when known.
 * @param labels - display copy for the text label.
 * @returns the dot's state and its text label, since the dot is aria-hidden.
@@ -4975,7 +8612,7 @@ function renderLine$1(line) {
 * @param props - see {@link TerminalBlockProps}.
 * @returns the terminal block element.
 */
-function TerminalBlock({ command, cwd, home, output, exitCode, signal, running = false, maxLines = 16, className, labels }) {
+function TerminalBlock({ command, cwd, home, output, exitCode, signal, running = false, maxLines = 16, copyText, runStateDot = true, className, labels }) {
 	const copy = labels;
 	const text = output ?? "";
 	const lines = useMemo(() => {
@@ -4984,7 +8621,7 @@ function TerminalBlock({ command, cwd, home, output, exitCode, signal, running =
 		return parsed.length > 1 && last !== void 0 && last.every((span) => span.text === "") ? parsed.slice(0, -1) : parsed;
 	}, [text]);
 	const [expanded, setExpanded] = useState(false);
-	const { copied, onCopy } = useCopyFeedback(text);
+	const { copied, onCopy } = useCopyFeedback(copyText ?? text);
 	const onToggle = useCallback(() => {
 		setExpanded((value) => !value);
 	}, []);
@@ -4995,67 +8632,69 @@ function TerminalBlock({ command, cwd, home, output, exitCode, signal, running =
 	}, [command]);
 	const empty = lines.every((line) => line.every((span) => span.text.trim() === ""));
 	const { hidden, capped, headLines, tailLines } = headTailCap(lines.length, maxLines, expanded);
+	const body = !running || !empty;
 	return jsxs("div", {
-		className: clsx(css$18.block, className),
+		className: clsx(css$25.block, className),
 		"data-terminal": "",
 		"data-running": running ? "" : void 0,
+		"data-body": body ? "" : void 0,
 		children: [jsxs("div", {
-			className: css$18.header,
+			className: css$25.header,
 			children: [
 				jsxs("div", {
-					className: css$18.prompt,
-					children: [jsx("span", {
-						className: css$18.runStateLabel,
+					className: css$25.prompt,
+					children: [runStateDot && jsx("span", {
+						className: css$25.runStateLabel,
 						children: state.label
 					}), commandLines.map((line, index) => jsxs("div", {
-						className: css$18.promptLine,
+						className: css$25.promptLine,
 						children: [
-							index === 0 && jsx(StateDot, {
+							index === 0 && runStateDot && jsx(StateDot, {
 								state: state.state,
-								className: css$18.runState
+								className: css$25.runState
 							}),
 							jsx("span", {
-								className: css$18.cwd,
+								className: css$25.cwd,
 								children: index > 0 || cwd === void 0 ? "$" : promptLabel(cwd, home)
 							}),
 							jsx("span", {
-								className: css$18.command,
+								className: css$25.command,
 								children: line
 							})
 						]
 					}, index))]
 				}),
 				status !== void 0 && jsx(Pill, {
-					className: css$18.status,
+					className: css$25.status,
 					children: status
 				}),
-				!running && !empty && jsx("button", {
+				(copyText !== void 0 || !running && !empty) && jsx("button", {
 					type: "button",
-					className: css$18.copyButton,
+					className: css$25.copyButton,
 					onClick: onCopy,
 					children: copied ? copy.copied : copy.copy
 				})
 			]
-		}), !running && (empty ? jsx("div", {
-			className: css$18.empty,
+		}), body && (empty ? jsx("div", {
+			className: css$25.empty,
 			children: copy.noOutput
 		}) : jsxs("div", {
-			className: css$18.output,
+			className: css$25.output,
 			children: [
 				(capped ? lines.slice(0, headLines) : lines).map((line, index) => jsx("div", {
-					className: css$18.line,
+					className: css$25.line,
 					children: renderLine$1(line)
 				}, index)),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$18.expand,
+					className: css$25.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? copy.collapseAria : copy.expandAria(hidden),
 					onClick: onToggle,
 					children: expanded ? copy.collapse : copy.expand(hidden)
 				}),
 				capped && lines.slice(lines.length - tailLines).map((line, index) => jsx("div", {
-					className: css$18.line,
+					className: css$25.line,
 					children: renderLine$1(line)
 				}, index))
 			]
@@ -5078,442 +8717,6 @@ function FoldToggle({ className, expanded, hidden, labels, onToggle }) {
 		onClick: onToggle,
 		children: expanded ? labels.collapse : labels.expand(hidden)
 	});
-}
-//#endregion
-//#region lib/types/markdown/highlight.js
-/**
-* The client's ONE syntax highlighter: a synchronous fine-grained shiki core
-* (JavaScript regex engine — no oniguruma WASM, bundle-friendly) with an
-* explicit grammar allowlist and a CSS-variables theme. Colors live in the
-* theme package's token sheets as `--shiki-*` custom properties (light and
-* dark blocks), never here — the repo's tokens-only styling rule.
-*
-* Only the three markdown-fence and `run_code` grammars (TypeScript, shell,
-* JSON) load into the singleton at boot — the set every session renders. The
-* read card's wider extension set (the file-extension language hints the read
-* tool's `langFromPath` emits — `packages/fs/tool-fs`: python, rust, yaml,
-* markup, …) is imported lazily and registered the first time such a language
-* is requested, so a session that never opens a read card in one of those
-* languages pays neither the ~1.6 MB of grammar modules nor their synchronous
-* init. The first render of a lazy language falls back to plain text while its
-* grammar loads, then {@link onGrammarLoaded} notifies subscribers to re-render
-* with highlighting. An unknown or absent language falls back to plain text (no
-* highlighting, still monospace) — never an error.
-*/
-/**
-* Grammars the singleton loads at boot; each entry's own `name` is the id
-* `codeToTokens`/`codeToHtml` resolve. The JS-family aliases (js/jsx/ts/tsx)
-* resolve to the TypeScript grammar rather than a separate one: it tokenizes
-* plain TS/JS exactly, and JSX/TSX approximately (shiki's TS grammar is not the
-* dedicated TSX grammar, so JSX elements tokenize imperfectly) — an accepted
-* trade to keep the boot set to one JS-family grammar. The read card's wider
-* set loads lazily through {@link LAZY_GRAMMARS}.
-*/
-const LANGS = [
-	langTs,
-	langBash,
-	langJson
-];
-/**
-* The read card's extension grammars, each behind a dynamic import so its
-* module stays out of the boot chunk until a read of that language renders.
-* Keyed by the grammar id (`LanguageRegistration.name`) the aliases resolve to.
-* `@shikijs/langs`' default export is a `LanguageRegistration[]`; the loader
-* hands the whole array to `loadLanguageSync`, which registers each entry
-* (including embedded sub-grammars). The three boot grammars are absent —
-* already loaded, so no alias value ever points at a missing entry here.
-*/
-const LAZY_GRAMMARS = new Map([
-	["python", () => import("@shikijs/langs/python")],
-	["ruby", () => import("@shikijs/langs/ruby")],
-	["go", () => import("@shikijs/langs/go")],
-	["rust", () => import("@shikijs/langs/rust")],
-	["java", () => import("@shikijs/langs/java")],
-	["c", () => import("@shikijs/langs/c")],
-	["cpp", () => import("@shikijs/langs/cpp")],
-	["csharp", () => import("@shikijs/langs/csharp")],
-	["kotlin", () => import("@shikijs/langs/kotlin")],
-	["swift", () => import("@shikijs/langs/swift")],
-	["php", () => import("@shikijs/langs/php")],
-	["yaml", () => import("@shikijs/langs/yaml")],
-	["toml", () => import("@shikijs/langs/toml")],
-	["ini", () => import("@shikijs/langs/ini")],
-	["markdown", () => import("@shikijs/langs/markdown")],
-	["mdx", () => import("@shikijs/langs/mdx")],
-	["html", () => import("@shikijs/langs/html")],
-	["css", () => import("@shikijs/langs/css")],
-	["scss", () => import("@shikijs/langs/scss")],
-	["less", () => import("@shikijs/langs/less")],
-	["sql", () => import("@shikijs/langs/sql")],
-	["xml", () => import("@shikijs/langs/xml")],
-	["lua", () => import("@shikijs/langs/lua")]
-]);
-/**
-* Language ids (and aliases) the highlighter accepts; everything else renders
-* plain. A Map, not an object: fence info strings are assistant-authored, so
-* a label like `constructor` or `__proto__` must miss instead of resolving an
-* inherited property and crashing the renderer inside shiki. Keys cover both
-* the markdown-fence aliases `CodeBlock` uses and the file-extension hint ids
-* the read tool's `langFromPath` emits, so both callers resolve the same
-* grammars. The JS family maps to the TypeScript grammar (see {@link LANGS} for
-* the JSX/TSX approximation). A value not in {@link LANGS} names a
-* {@link LAZY_GRAMMARS} entry loaded on first use.
-*/
-const LANG_ALIASES = new Map([
-	["typescript", "typescript"],
-	["ts", "typescript"],
-	["tsx", "typescript"],
-	["javascript", "typescript"],
-	["js", "typescript"],
-	["jsx", "typescript"],
-	["shellscript", "shellscript"],
-	["bash", "shellscript"],
-	["sh", "shellscript"],
-	["shell", "shellscript"],
-	["zsh", "shellscript"],
-	["json", "json"],
-	["jsonc", "json"],
-	["py", "python"],
-	["python", "python"],
-	["rb", "ruby"],
-	["ruby", "ruby"],
-	["go", "go"],
-	["rs", "rust"],
-	["rust", "rust"],
-	["java", "java"],
-	["c", "c"],
-	["cpp", "cpp"],
-	["cs", "csharp"],
-	["csharp", "csharp"],
-	["kotlin", "kotlin"],
-	["swift", "swift"],
-	["php", "php"],
-	["yaml", "yaml"],
-	["yml", "yaml"],
-	["toml", "toml"],
-	["ini", "ini"],
-	["md", "markdown"],
-	["markdown", "markdown"],
-	["mdx", "mdx"],
-	["html", "html"],
-	["css", "css"],
-	["scss", "scss"],
-	["less", "less"],
-	["sql", "sql"],
-	["xml", "xml"],
-	["lua", "lua"]
-]);
-/**
-* Whether a language hint can use the shared syntax highlighter.
-* @param lang - Language hint from a code surface.
-* @returns Whether the hint resolves to a supported grammar.
-*/
-function supportsHighlighting(lang) {
-	return lang !== void 0 && LANG_ALIASES.has(lang.toLowerCase());
-}
-/** All token colors resolve through `--shiki-*` custom properties (theme package sheets). */
-const cssVariablesTheme = createCssVariablesTheme({
-	name: "css-variables",
-	variablePrefix: "--shiki-",
-	fontStyle: true
-});
-/**
-* The client regex engine compiles each TextMate pattern when its scanner is
-* created. Shiki otherwise defers patterns longer than 3,000 characters until
-* their first match; that compilation counts against Shiki's 500 ms per-line
-* budget and can return a partial token stream under host contention. Eager
-* compilation leaves the same budget in place for scanning user content.
-*/
-const regexEngine = createJavaScriptRegexEngine({
-	forgiving: true,
-	regexConstructor: (pattern) => defaultJavaScriptRegexConstructor(pattern, { lazyCompileLength: Number.POSITIVE_INFINITY })
-});
-let singleton;
-/** Representative paths through every boot grammar, compiled before user content is timed. */
-const BOOT_GRAMMAR_WARMUPS = [
-	{
-		lang: "typescript",
-		code: "const answer: number = 42"
-	},
-	{
-		lang: "shellscript",
-		code: "printf '%s\\n' \"$HOME\""
-	},
-	{
-		lang: "json",
-		code: "{\"ready\":true}"
-	}
-];
-/** Construct and pre-tokenize the boot grammars outside the user-content scan budget. */
-function createHighlighter() {
-	const instance = createHighlighterCoreSync({
-		themes: [cssVariablesTheme],
-		langs: LANGS,
-		engine: regexEngine
-	});
-	for (const sample of BOOT_GRAMMAR_WARMUPS) instance.codeToTokens(sample.code, {
-		lang: sample.lang,
-		theme: "css-variables",
-		tokenizeTimeLimit: 0
-	});
-	return instance;
-}
-/** The synchronous highlighter (one instance per document); pre-warmed below, lazy as the fallback. */
-function highlighter() {
-	singleton ??= createHighlighter();
-	return singleton;
-}
-/** Grammar ids whose lazy import is in flight or done, so it is requested once. */
-const requested = /* @__PURE__ */ new Set();
-/** Subscribers re-rendered after a lazy grammar registers (React callers). */
-const listeners = /* @__PURE__ */ new Set();
-/** Bumped on each lazy-grammar load; the `useSyncExternalStore` snapshot. */
-let loadCount = 0;
-/**
-* Subscribe to lazy-grammar load completions; `listener` fires after a
-* {@link LAZY_GRAMMARS} grammar finishes registering on the singleton, so a
-* caller that rendered its plain fallback while the grammar loaded can
-* re-highlight. Uses the `useSyncExternalStore` subscribe signature; pair it with
-* {@link grammarLoadCount} as the snapshot. Returns an unsubscribe function.
-* @param listener - invoked (no args) on each grammar-load completion.
-* @returns a disposer that removes the listener.
-*/
-function subscribeGrammarLoaded(listener) {
-	listeners.add(listener);
-	return () => {
-		listeners.delete(listener);
-	};
-}
-/**
-* The lazy-grammar load counter — a value that changes on every load, so a
-* `useSyncExternalStore` snapshot re-renders the subscriber when a grammar
-* registers. Opaque: only its identity across renders matters.
-* @returns the current load count.
-*/
-function grammarLoadCount() {
-	return loadCount;
-}
-/**
-* Ensure the grammar `resolved` names is registered. A boot grammar (not in
-* {@link LAZY_GRAMMARS}) and an already-loaded lazy grammar report ready
-* synchronously; a lazy grammar not yet loaded starts its import (once) and
-* reports not-ready, so the caller renders plain until a
-* {@link subscribeGrammarLoaded} listener fires.
-* @param resolved - the grammar id an alias resolved to.
-* @returns whether the grammar is registered and ready to tokenize now.
-*/
-function ensureGrammar(resolved) {
-	const load = LAZY_GRAMMARS.get(resolved);
-	if (load === void 0) return true;
-	if (highlighter().getLoadedLanguages().includes(resolved)) return true;
-	if (!requested.has(resolved)) {
-		requested.add(resolved);
-		load().then((mod) => {
-			highlighter().loadLanguageSync(mod.default);
-			loadCount += 1;
-			for (const listener of listeners) listener();
-		});
-	}
-	return false;
-}
-setTimeout(() => {
-	highlighter();
-}, 0).unref?.();
-/**
-* Highlight `code` into shiki's HTML (a single `<pre class="shiki">` tree)
-* when `lang` maps to a registered grammar; `undefined` means the caller
-* renders its plain fallback. A lazy grammar not yet loaded returns `undefined`
-* for this call and loads in the background; subscribe with
-* {@link onGrammarLoaded} to re-highlight once it registers.
-* @param code - the source text.
-* @param lang - the language hint (a markdown fence info string or a fixed caller id).
-* @returns the highlighted HTML, or `undefined` for unknown or not-yet-loaded languages.
-*/
-function highlightToHtml(code, lang) {
-	const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
-	if (resolved === void 0) return void 0;
-	if (!ensureGrammar(resolved)) return void 0;
-	return highlighter().codeToHtml(code, {
-		lang: resolved,
-		theme: "css-variables"
-	});
-}
-/** vscode-textmate FontStyle bits shiki folds into `text-decoration` values. */
-const DECORATION_BITS = [[4, "underline"], [8, "line-through"]];
-/**
-* The inline style shiki's HTML arm assigns one token (`getTokenStyleObject`
-* mirrored onto React style keys): the css-variables color plus the
-* vscode-textmate font-style bits the theme lets through — italic (1), bold
-* (2), and the {@link DECORATION_BITS} decorations (the theme injects bold,
-* italic, and underline rules for markup scopes, so markdown fences carry
-* them). The theme has no per-scope backgrounds, so `background-color` never
-* occurs; the arm-parity tests fail loud if a shiki upgrade changes that.
-*/
-function spanStyle(token) {
-	const style = { color: token.color };
-	/* v8 ignore next -- fontStyle is optional in ThemedToken's type; tokenizeWithTheme always stamps it. */
-	const bits = token.fontStyle ?? 0;
-	if ((bits & 1) !== 0) style.fontStyle = "italic";
-	if ((bits & 2) !== 0) style.fontWeight = "bold";
-	const decorations = DECORATION_BITS.filter(([bit]) => (bits & bit) !== 0);
-	if (decorations.length > 0) style.textDecoration = decorations.map(([, value]) => value).join(" ");
-	return style;
-}
-/**
-* Narrow one tokenized line to the runs a `<span style>` renders, folding a
-* whitespace-only run into the token that follows it — shiki's default
-* `mergeWhitespaces` HTML behavior — with each run styled through
-* {@link spanStyle}, so the streaming spans and the settled `codeToHtml`
-* swap render one identical span tree. shiki exempts underlined/struck
-* whitespace from the fold; under the css-variables theme that case cannot
-* occur — its only underline rule styles inline-link scopes, whose spaced
-* text tokenizes as one run, and it injects no strikethrough rule — so the
-* unconditional fold here stays equivalent (the markdown arm-parity test
-* pins it). A line-trailing whitespace-only run has no follower and keeps
-* its own span, as in shiki.
-*/
-function lineSpans(line) {
-	const spans = [];
-	let pendingWhitespace = "";
-	for (const [index, token] of line.entries()) {
-		if (/^\s+$/.test(token.content) && index + 1 < line.length) {
-			pendingWhitespace += token.content;
-			continue;
-		}
-		spans.push({
-			text: pendingWhitespace + token.content,
-			style: spanStyle(token)
-		});
-		pendingWhitespace = "";
-	}
-	return spans;
-}
-/**
-* Incremental highlighter for one growing streaming fence. TextMate
-* tokenization is line-based and forward-only — a line's tokens depend only on
-* its own text and the grammar state entering it — so appended text never
-* changes a completed line's tokens. The session caches the spans of every
-* completed line together with the grammar state after them;
-* {@link updateFrame} reports only newly completed lines plus the still-growing
-* last line, while {@link update} materializes the complete compatibility
-* result. Per-call tokenization cost therefore excludes the completed prefix,
-* and the result equals a from-scratch tokenization of the same code.
-* Non-append input and a change of resolved grammar reset the cache and
-* re-tokenize fully, so any input stays correct.
-*/
-var StreamingHighlightSession = class {
-	/** Grammar id the cache was built with; a different resolution resets it. */
-	resolved;
-	/** Newline-terminated source prefix covered by {@link spans}. */
-	prefix = "";
-	/** Cached spans, one entry per completed line of {@link prefix}. */
-	spans = [];
-	/** Grammar state after {@link prefix}; undefined = the grammar's initial state. */
-	state;
-	lastCode;
-	lastLang;
-	lastResult;
-	generation = 0;
-	lastFrame;
-	reset(resolved) {
-		this.resolved = resolved;
-		this.prefix = "";
-		this.spans = [];
-		this.state = void 0;
-		this.generation += 1;
-		this.lastFrame = void 0;
-	}
-	/** Tokenize `text` with `resolved`, resuming from the cached grammar state when one exists. */
-	tokenize(resolved, text) {
-		return highlighter().codeToTokensBase(text, {
-			lang: resolved,
-			theme: "css-variables",
-			...this.state === void 0 ? {} : { grammarState: this.state }
-		});
-	}
-	/**
-	* Tokenize one update as a delta for a retained renderer.
-	* @param code - the fence text accumulated so far.
-	* @param lang - the language hint.
-	* @returns Newly completed lines plus the current tail, or `undefined` for the plain arm.
-	*/
-	updateFrame(code, lang) {
-		if (code === this.lastCode && lang === this.lastLang && this.lastFrame !== void 0) return this.lastFrame;
-		this.lastCode = code;
-		this.lastLang = lang;
-		this.lastResult = void 0;
-		const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
-		if (resolved === void 0 || !ensureGrammar(resolved)) {
-			this.reset(void 0);
-			return;
-		}
-		if (resolved !== this.resolved || !code.startsWith(this.prefix)) this.reset(resolved);
-		const firstNewLine = this.spans.length;
-		const rest = code.slice(this.prefix.length);
-		const lastNewline = rest.lastIndexOf("\n");
-		if (lastNewline >= 0) {
-			const grownEnd = rest[lastNewline - 1] === "\r" ? lastNewline - 1 : lastNewline;
-			const tokens = this.tokenize(resolved, rest.slice(0, grownEnd));
-			for (const line of tokens) this.spans.push(lineSpans(line));
-			this.state = highlighter().getLastGrammarState(tokens);
-			this.prefix = code.slice(0, this.prefix.length + lastNewline + 1);
-		}
-		this.lastFrame = {
-			generation: this.generation,
-			appended: this.spans.slice(firstNewLine),
-			tail: this.tokenize(resolved, rest.slice(lastNewline + 1)).map(lineSpans)
-		};
-		return this.lastFrame;
-	}
-	/**
-	* Tokenize the fence's current text into per-line highlighted runs;
-	* `undefined` means the caller renders its plain fallback. Idempotent per
-	* (`code`, `lang`) input — repeated calls return the identical result array —
-	* and a retained line keeps its span-array identity across growing calls, so
-	* a React caller can reuse cached line elements. A lazy grammar not yet
-	* loaded returns `undefined` and loads in the background exactly as
-	* {@link highlightToHtml} does; the next call after it registers highlights.
-	* @param code - the fence text accumulated so far (display-trimmed, no synthetic trailing newline).
-	* @param lang - the language hint (a markdown fence info string).
-	* @returns one entry per line of `code` (each an array of runs), or `undefined` for unknown or not-yet-loaded languages.
-	*/
-	update(code, lang) {
-		if (code === this.lastCode && lang === this.lastLang && this.lastResult !== void 0) return this.lastResult;
-		const frame = this.updateFrame(code, lang);
-		if (frame === void 0) return void 0;
-		this.lastResult = [...this.spans, ...frame.tail];
-		return this.lastResult;
-	}
-};
-/**
-* Tokenize `code` into per-line highlighted runs when `lang` maps to a
-* registered grammar; `undefined` means the caller renders its plain fallback.
-* A line-numbered view needs the token runs split per line (one gutter number
-* per line), which the single-`<pre>` {@link highlightToHtml} does not expose,
-* so this returns shiki's own 2D line/token structure narrowed to what a run
-* renders. Each run's color is a `--shiki-*` custom property, keeping token
-* colors on the theme package's sheets exactly as the HTML path does; the
-* markup font-style bits the theme lets through (bold/italic/underline in
-* markdown scopes) are dropped — the line-numbered file view renders
-* color-only runs. The trailing newline shiki appends as a final empty line
-* is dropped so the run count matches the caller's own line array.
-* @param code - the source text.
-* @param lang - the language hint (a file-extension-derived language id).
-* @returns one entry per source line (each an array of runs), or `undefined` for unknown or not-yet-loaded languages.
-*/
-function highlightLines(code, lang) {
-	const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
-	if (resolved === void 0) return void 0;
-	if (!ensureGrammar(resolved)) return void 0;
-	const { tokens } = highlighter().codeToTokens(code, {
-		lang: resolved,
-		theme: "css-variables"
-	});
-	const last = tokens[tokens.length - 1];
-	return (tokens.length > 1 && last !== void 0 && last.length === 0 ? tokens.slice(0, -1) : tokens).map((line) => line.map((token) => ({
-		text: token.content,
-		style: { color: token.color }
-	})));
 }
 //#endregion
 //#region lib/types/markdown/useViewportHighlighting.js
@@ -5633,51 +8836,51 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	const tailLines = maxLines - headLines;
 	const windowed = lines.length < totalLines;
 	const rows = (slice) => slice.map(([line, spans]) => jsxs("div", {
-		className: css$19.line,
+		className: css$26.line,
 		children: [jsx("span", {
-			className: css$19.gutter,
+			className: css$26.gutter,
 			"aria-hidden": true,
 			children: line.number
 		}), jsx("span", {
-			className: css$19.content,
+			className: css$26.content,
 			children: spans === void 0 ? line.text : renderSpans(spans)
 		})]
 	}, line.number));
 	const paired = lines.map((line, index) => [line, highlighted?.[index]]);
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(css$19.block, className),
+		className: clsx(css$26.block, className),
 		"data-read": "",
 		children: [jsxs("div", {
-			className: css$19.banner,
+			className: css$26.banner,
 			children: [jsx("div", {
-				className: css$19.label,
+				className: css$26.label,
 				children: label ?? ""
 			}), jsxs("div", {
-				className: css$19.action,
+				className: css$26.action,
 				children: [
 					windowed && jsx("span", {
-						className: css$19.count,
+						className: css$26.count,
 						children: labels.window(lines.length, totalLines)
 					}),
 					jsx("span", {
-						className: css$19.lang,
+						className: css$26.lang,
 						children: lang ?? ""
 					}),
 					lines.length > 0 && jsx("button", {
 						type: "button",
-						className: css$19.copyButton,
+						className: css$26.copyButton,
 						onClick: onCopy,
 						children: copied ? labels.copied : labels.copy
 					})
 				]
 			})]
 		}), jsxs("div", {
-			className: css$19.body,
+			className: css$26.body,
 			children: [
 				rows(capped ? paired.slice(0, headLines) : paired),
 				hidden > 0 && jsx(FoldToggle, {
-					className: css$19.expand,
+					className: css$26.expand,
 					expanded,
 					hidden,
 					labels,
@@ -5699,25 +8902,37 @@ function assertNever(value) {
 }
 /** The dim class per row kind (path/gap chrome vs the diff's own +/- colors). */
 const ROW_CLASS = {
-	path: css$20.path,
-	del: css$20.del,
-	add: css$20.add,
-	gap: css$20.gap
+	path: css$27.path,
+	del: css$27.del,
+	add: css$27.add,
+	context: css$27.context,
+	gap: css$27.gap
 };
+/** Bound synchronous edit-graph search; one replacement consumes two edits. */
+const MAX_DIFF_EDIT_LENGTH = 256;
+/** Derive exact local patches or a whole-fragment replacement when search exceeds the limit. */
+function localHunks(diff) {
+	const oldLines = contentLines(diff.oldText ?? "");
+	const newLines = contentLines(diff.newText);
+	const normalize = (lines) => lines.map((line) => `${line}\n`).join("");
+	return structuredPatch("", "", normalize(oldLines), normalize(newLines), void 0, void 0, {
+		context: 3,
+		maxEditLength: MAX_DIFF_EDIT_LENGTH
+	})?.hunks ?? [{ lines: [...oldLines.map((line) => `-${line}`), ...newLines.map((line) => `+${line}`)] }];
+}
 /**
-* Total added/removed line counts across hunks — the same numbers the footer
-* prints, exported so a summary row can show them without rebuilding the body.
-* Every old-side line counts toward `removed` and every new-side line toward
-* `added`, under {@link contentLines}'s terminator rule.
+* Count displayed additions and deletions. Exact patches exclude shared context;
+* comparisons exceeding the edit limit count both complete fragments as replaced.
+* Text follows {@link contentLines}'s terminator rule.
 * @param diffs - the hunks to count.
-* @returns the +/- totals.
+* @returns the +/- totals for summaries and the card footer.
 */
 function diffTotals(diffs) {
 	let added = 0;
 	let removed = 0;
-	for (const diff of diffs) {
-		if (diff.oldText !== null) removed += contentLines(diff.oldText).length;
-		added += contentLines(diff.newText).length;
+	for (const diff of diffs) for (const hunk of localHunks(diff)) for (const line of hunk.lines) {
+		if (line.startsWith("+")) added++;
+		if (line.startsWith("-")) removed++;
 	}
 	return {
 		added,
@@ -5725,12 +8940,9 @@ function diffTotals(diffs) {
 	};
 }
 /**
-* Flatten the hunks into the body's rows plus the footer counts. A path header
-* opens each new file; a same-file second hunk (a scattered edit) opens with a
-* `⋯` gap instead of repeating the path. The +/- totals are
-* {@link diffTotals}'s. The file count is of DISTINCT paths, matching the TUI
-* diff card's footer, so two hunks in one file read as `1 file` on both front
-* ends.
+* Flatten local patches into rows and count only added and removed lines.
+* A path header opens each new file. A `⋯` gap separates consecutive same-file
+* fragments and distant patches within a fragment. File counts use distinct paths.
 * @param diffs - the hunks to render.
 * @returns the body rows, the +/- totals, and the distinct-file count.
 */
@@ -5749,18 +8961,24 @@ function buildRows(diffs) {
 			text: "⋯"
 		});
 		prevPath = diff.path;
-		if (diff.oldText !== null) for (const line of contentLines(diff.oldText)) rows.push({
-			kind: "del",
-			text: line
-		});
-		for (const line of contentLines(diff.newText)) rows.push({
-			kind: "add",
-			text: line
-		});
+		for (const [index, hunk] of localHunks(diff).entries()) {
+			if (index > 0) rows.push({
+				kind: "gap",
+				text: "⋯"
+			});
+			for (const line of hunk.lines) {
+				const kind = line.startsWith("-") ? "del" : line.startsWith("+") ? "add" : "context";
+				rows.push({
+					kind,
+					text: line.slice(1)
+				});
+			}
+		}
 	}
 	return {
 		rows,
-		...diffTotals(diffs),
+		added: rows.filter((row) => row.kind === "add").length,
+		removed: rows.filter((row) => row.kind === "del").length,
 		files: paths.size
 	};
 }
@@ -5778,9 +8996,8 @@ function contentLines(text) {
 	return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n");
 }
 /**
-* The diff text a reader copies: each row's `-`/`+`/path/gap prefix and its
-* content, exactly what the card shows. The removed and added blocks are the
-* change; the path headers keep a multi-file copy attributable.
+* Copy the full local diff, including folded rows: removed/added lines have
+* `- `/`+ ` prefixes, context has two spaces, and paths and gaps stay verbatim.
 * @param rows - the flattened body rows.
 * @returns the diff as plain text.
 */
@@ -5789,6 +9006,7 @@ function copyText$1(rows) {
 		switch (row.kind) {
 			case "del": return `- ${row.text}`;
 			case "add": return `+ ${row.text}`;
+			case "context": return `  ${row.text}`;
 			case "path": return row.text;
 			case "gap": return row.text;
 			/* v8 ignore next -- closed-union backstop; only reached if a row kind is forged */
@@ -5826,37 +9044,37 @@ function DiffBlock({ diffs, labels, maxLines = 16, className }) {
 	const head = capped ? rows.slice(0, headLines) : rows;
 	const tail = capped ? rows.slice(rows.length - tailLines) : [];
 	return jsxs("div", {
-		className: clsx(css$20.block, className),
+		className: clsx(css$27.block, className),
 		"data-diff": "",
 		children: [
 			jsx("button", {
 				type: "button",
-				className: css$20.copyButton,
+				className: css$27.copyButton,
 				onClick: onCopy,
 				children: copied ? labels.copied : labels.copy
 			}),
 			jsxs("div", {
-				className: css$20.body,
+				className: css$27.body,
 				children: [
 					head.map((row, index) => jsx("div", {
-						className: clsx(css$20.line, ROW_CLASS[row.kind]),
+						className: clsx(css$27.line, ROW_CLASS[row.kind]),
 						children: row.text
 					}, index)),
 					hidden > 0 && jsx(FoldToggle, {
-						className: css$20.expand,
+						className: css$27.expand,
 						expanded,
 						hidden,
 						labels,
 						onToggle
 					}),
 					tail.map((row, index) => jsx("div", {
-						className: clsx(css$20.line, ROW_CLASS[row.kind]),
+						className: clsx(css$27.line, ROW_CLASS[row.kind]),
 						children: row.text
 					}, index))
 				]
 			}),
 			jsxs("div", {
-				className: css$20.footer,
+				className: css$27.footer,
 				children: [
 					"└ +",
 					added,
@@ -5992,56 +9210,56 @@ function SearchBlock(props) {
 	const tail = tailHeader === void 0 ? naturalTail : naturalTail.slice(1);
 	const renderRow = (row) => {
 		if (row.type === "path") return jsx("div", {
-			className: css$21.line,
+			className: css$28.line,
 			children: row.path
 		});
 		if (row.type === "match") return jsxs("div", {
-			className: css$21.line,
+			className: css$28.line,
 			children: [jsxs("span", {
-				className: css$21.lineNumber,
+				className: css$28.lineNumber,
 				children: [row.lineNumber, ": "]
 			}), row.line]
 		});
 		return jsxs("button", {
 			type: "button",
-			className: css$21.fileHeader,
+			className: css$28.fileHeader,
 			"aria-expanded": !row.collapsed,
 			onClick: () => {
 				toggleFile(row.index);
 			},
 			children: [jsx("span", {
-				className: css$21.filePath,
+				className: css$28.filePath,
 				children: row.path
 			}), jsx("span", {
-				className: css$21.fileCount,
+				className: css$28.fileCount,
 				children: row.count
 			})]
 		});
 	};
 	return jsxs("div", {
-		className: clsx(css$21.block, className),
+		className: clsx(css$28.block, className),
 		"data-search": props.kind,
 		children: [jsxs("div", {
-			className: css$21.header,
+			className: css$28.header,
 			children: [jsx("span", {
-				className: css$21.summary,
+				className: css$28.summary,
 				children: summaryText(props, shown, truncated, total)
 			}), !empty && jsx("button", {
 				type: "button",
-				className: css$21.copyButton,
+				className: css$28.copyButton,
 				onClick: onCopy,
 				children: copied ? props.labels.copied : props.labels.copy
 			})]
 		}), empty ? jsx("div", {
-			className: css$21.empty,
+			className: css$28.empty,
 			children: props.labels.noResults
 		}) : jsxs("div", {
-			className: css$21.body,
+			className: css$28.body,
 			children: [
 				head.map((row) => jsx("div", { children: renderRow(row) }, rowKey(row))),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$21.expand,
+					className: css$28.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? props.labels.collapseAria : props.labels.expandAria(hidden),
 					onClick: onToggle,
@@ -6747,7 +9965,7 @@ function renderLine(line, index) {
 		}, spanIndex))
 	})] }, index);
 }
-function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers = false, copyLabel, copiedLabel }) {
+function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers = false, showHeader = true, copyLabel, copiedLabel }) {
 	const trimmed = code.endsWith("\n") ? code.slice(0, -1) : code;
 	const sourceLines = lineNumbers ? trimmed.split("\n") : void 0;
 	const rootRef = useRef(null);
@@ -6843,7 +10061,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 		});
 	}, [copied, trimmed]);
 	const body = streamedBody !== void 0 ? streamedBody : html === void 0 ? jsx("pre", {
-		className: css$22.plain,
+		className: css$29.plain,
 		children: jsx("code", { children: sourceLines === void 0 ? trimmed : sourceLines.map((line, index) => jsxs(Fragment$1, { children: [index > 0 && "\n", jsx("span", {
 			className: "line",
 			children: line
@@ -6851,22 +10069,22 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 	}) : jsx("div", { dangerouslySetInnerHTML: { __html: html } });
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(css$22.block, "md-code-block", lineNumbers && css$22.numbered, className),
+		className: clsx(css$29.block, "md-code-block", lineNumbers && css$29.numbered, className),
 		"data-line-numbers": lineNumbers || void 0,
 		style: sourceLines === void 0 ? void 0 : { "--dsl-code-block-line-number-width": `${Math.max(2, String(sourceLines.length).length)}ch` },
-		children: [jsx("div", {
-			className: css$22.bannerWrap,
+		children: [showHeader && jsx("div", {
+			className: css$29.bannerWrap,
 			children: jsxs("div", {
-				className: css$22.banner,
+				className: css$29.banner,
 				"data-code-block-banner": true,
 				children: [jsx("div", {
-					className: css$22.infostring,
+					className: css$29.infostring,
 					children: lang ?? ""
 				}), jsx("div", {
-					className: css$22.action,
+					className: css$29.action,
 					children: jsx("button", {
 						type: "button",
-						className: css$22.copyButton,
+						className: css$29.copyButton,
 						onClick: onCopy,
 						children: copied ? copiedLabel : copyLabel
 					})
@@ -6874,11 +10092,44 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 			})
 		}), jsx("div", {
 			ref: contentRef,
-			className: css$22.content,
+			className: css$29.content,
 			"data-code-block-content": true,
 			children: body
 		})]
 	});
+}
+//#endregion
+//#region lib/types/markdown/file-link.js
+/** Local Markdown destinations accepted by the file-preview callback. */
+/**
+* Decode a file destination and its optional GitHub-style line fragment.
+* Literal `?` and `#` in filenames must be percent-encoded.
+* @param value - Parsed Markdown link destination.
+* @returns A local path and optional first line, or undefined for URLs,
+* fragment-only links, queries, malformed escapes, or invalid line ranges.
+*/
+function parseFileLink(value) {
+	const hash = value.indexOf("#");
+	const destination = hash < 0 ? value : value.slice(0, hash);
+	if (destination.includes("?")) return void 0;
+	let path;
+	try {
+		path = decodeURIComponent(destination);
+	} catch (_error) {
+		return;
+	}
+	if (path.length === 0 || /[\u0000-\u001f\u007f]/.test(path) || /^[\\/]{2}/.test(path) || /^[a-z][a-z\d+.-]*:/i.test(path) && !/^[a-z]:[\\/]/i.test(path)) return void 0;
+	if (hash < 0) return { path };
+	const fragment = value.slice(hash + 1);
+	const match = /^L([1-9]\d*)(?:-L([1-9]\d*))?$/.exec(fragment);
+	if (match === null) return void 0;
+	const line = Number(match[1]);
+	const end = match[2] === void 0 ? line : Number(match[2]);
+	if (!Number.isSafeInteger(line) || !Number.isSafeInteger(end) || end < line) return void 0;
+	return {
+		path,
+		line
+	};
 }
 //#endregion
 //#region lib/types/markdown/katex.js
@@ -6962,6 +10213,33 @@ function renderTexToReact(value, displayMode) {
 	return [...new DOMParser().parseFromString(html, "text/html").body.childNodes].map(domToReact);
 }
 //#endregion
+//#region lib/types/markdown/MarkdownDelegate.js
+/** Consumer-owned navigation for Markdown links. */
+const MarkdownDelegateContext = createContext({});
+/**
+* Scope Markdown navigation without threading callbacks through renderers.
+* Nested providers replace the enclosing capabilities. Handler changes reach cached links.
+* @param props - Child tree and its file and HTTP(S) link handlers.
+* @returns the scoped child tree.
+*/
+function MarkdownDelegateProvider({ children, openExternalLink, openFile }) {
+	const delegate = useMemo(() => ({
+		openExternalLink,
+		openFile
+	}), [openExternalLink, openFile]);
+	return jsx(MarkdownDelegateContext.Provider, {
+		value: delegate,
+		children
+	});
+}
+/**
+* Read the nearest Markdown navigation capabilities.
+* @returns Owner callbacks, or an empty delegate outside a provider.
+*/
+function useMarkdownDelegate() {
+	return useContext(MarkdownDelegateContext);
+}
+//#endregion
 //#region lib/types/markdown/render.js
 /**
 * Direct mdast→React markdown renderer. Replaces the react-markdown /
@@ -6969,8 +10247,8 @@ function renderTexToReact(value, displayMode) {
 * cache frozen blocks as React elements; the rendered DOM is pinned
 * byte-for-byte by `tests/fixtures/markdown-dom` and must not drift.
 *
-* Untrusted-output policy (unchanged from the replaced pipeline): link and
-* image destinations pass a protocol allowlist, images additionally require
+* External link and image destinations pass a protocol allowlist; settled
+* local file links use an explicit owner callback. Images additionally require
 * absolute HTTP(S), raw HTML renders as literal text (no HTML enters the
 * DOM), and KaTeX runs without trusted commands. Fragment-anchor URLs fail
 * the allowlist, so footnote references and back-references render as plain
@@ -7115,13 +10393,13 @@ function renderNode(node, key, context) {
 			const mention = context.inLink === true ? void 0 : context.fileMentions?.resolve(value);
 			if (mention !== void 0) return jsx("code", { children: jsxs("button", {
 				type: "button",
-				className: css$23.fileMention,
+				className: markdownCss.fileMention,
 				title: mention.title,
 				"aria-label": mention.label,
 				onClick: mention.open,
-				children: [jsx(LinkIcon, {
+				children: [jsx(LinkIconMedium, {
 					kind: classifyLinkPath(value),
-					className: css$23.linkIcon
+					className: markdownCss.linkIcon
 				}), value]
 			}) }, key);
 			return jsx("code", { children: value }, key);
@@ -7136,7 +10414,7 @@ function renderNode(node, key, context) {
 		case "link": return renderAnchor(node.url, renderChildren(node.children, {
 			...context,
 			inLink: true
-		}), key, !anchorWrapsOnlyImages(node.children));
+		}), key, !anchorWrapsOnlyImages(node.children), context.streaming);
 		case "linkReference": return renderLinkReference(node, key, context);
 		case "image": return renderImage(node.url, node.alt ?? "", key, context);
 		case "imageReference": return renderImageReference(node, key, context);
@@ -7213,7 +10491,7 @@ function renderTable(node, key, context) {
 	const [headRow, ...bodyRows] = node.children;
 	const wide = (align === null ? headRow?.children.length ?? 0 : align.length) >= 4 && context.inBlockquote !== true;
 	return jsx("div", {
-		className: clsx(css$23.tableScroll, wide ? "md-table-wide" : css$23.tableFill),
+		className: clsx(markdownCss.tableScroll, wide ? "md-table-wide" : markdownCss.tableFill),
 		tabIndex: wide ? 0 : void 0,
 		children: jsxs("table", { children: [headRow !== void 0 && jsx("thead", { children: renderTableRow(headRow, "th", align, 0, context) }), bodyRows.length > 0 && jsx("tbody", { children: bodyRows.map((row, index) => renderTableRow(row, "td", align, index + 1, context)) })] })
 	}, key);
@@ -7239,25 +10517,63 @@ function renderTableRow(row, cellTag, align, key, context) {
 function anchorWrapsOnlyImages(children) {
 	return children.length > 0 && children.every((child) => child.type === "image" || child.type === "imageReference");
 }
-/** Anchor over an already-authored href: allowlisted or unwrapped, external links get the safe attributes. */
+/** Anchor over an already-authored href: allowlisted or unwrapped, with optional owner navigation for HTTP(S). */
 function renderSafeLink(href, children, key, glyph = true) {
 	const safeHref = sanitizeUrl(href);
 	if (safeHref === "") return jsx(Fragment$1, { children }, key);
-	return jsxs("a", {
+	return jsx(MarkdownAnchor, {
 		href: safeHref,
-		...["http:", "https:"].includes(new URL(safeHref).protocol) ? {
+		glyph,
+		children
+	}, key);
+}
+function MarkdownAnchor({ href, glyph, children }) {
+	const { openExternalLink } = useMarkdownDelegate();
+	const external = ["http:", "https:"].includes(new URL(href).protocol);
+	const open = external ? openExternalLink : void 0;
+	return jsxs("a", {
+		href,
+		...external ? {
 			target: "_blank",
 			rel: "noopener noreferrer"
 		} : {},
-		children: [glyph && jsx(LinkIcon, {
+		onClick: open === void 0 ? void 0 : (event) => {
+			if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+			event.preventDefault();
+			open(href);
+		},
+		children: [glyph && jsx(LinkIconMedium, {
 			kind: "url",
-			className: css$23.linkIcon
+			href,
+			className: markdownCss.linkIcon
 		}), children]
-	}, key);
+	});
 }
-/** Anchor over a parsed markdown destination, which hast normalized before the allowlist saw it. */
-function renderAnchor(url, children, key, glyph = true) {
+/** Local destinations use the scoped file delegate after settlement. */
+function renderAnchor(url, children, key, glyph = true, streaming = false) {
+	const file = streaming ? void 0 : parseFileLink(url);
+	if (file !== void 0) return jsx(MarkdownFileLink, {
+		file,
+		glyph,
+		children
+	}, key);
 	return renderSafeLink(normalizeUri(url), children, key, glyph);
+}
+function MarkdownFileLink({ file, glyph, children }) {
+	const { openFile } = useMarkdownDelegate();
+	if (openFile === void 0) return jsx(Fragment, { children });
+	return jsxs("button", {
+		type: "button",
+		className: clsx(markdownCss.fileMention, markdownCss.fileLink),
+		title: file.path,
+		onClick: () => {
+			openFile(file.path, file.line === void 0 ? void 0 : { line: file.line });
+		},
+		children: [glyph && jsx(LinkIconMedium, {
+			kind: classifyLinkPath(file.path),
+			className: markdownCss.linkIcon
+		}), children]
+	});
 }
 /**
 * The complete inline-code value when it is exactly an absolute HTTP(S) URL
@@ -7275,7 +10591,7 @@ function inlineCodeHttpUrl(value) {
 function renderImage(url, alt, key, context) {
 	const imageSrc = imageSource(url, context.pathImages);
 	if (imageSrc === void 0) return jsx("span", {
-		className: css$23.imageAlt,
+		className: markdownCss.imageAlt,
 		children: alt
 	}, key);
 	return jsx(MarkdownImage, {
@@ -7288,11 +10604,11 @@ function renderImage(url, alt, key, context) {
 function MarkdownImage({ src, alt, destination }) {
 	const [failed, setFailed] = useState(false);
 	if (failed) return jsx("span", {
-		className: css$23.imageAlt,
+		className: markdownCss.imageAlt,
 		children: alt || destination
 	});
 	return jsx("img", {
-		className: css$23.image,
+		className: markdownCss.image,
 		src,
 		alt,
 		onError: () => {
@@ -7320,7 +10636,7 @@ function renderLinkReference(node, key, context) {
 		...context,
 		inLink: true
 	});
-	return renderAnchor(definition.url, rendered, key, !anchorWrapsOnlyImages(node.children));
+	return renderAnchor(definition.url, rendered, key, !anchorWrapsOnlyImages(node.children), context.streaming);
 }
 function renderImageReference(node, key, context) {
 	const definition = context.targets.definitions.get(node.identifier.toUpperCase());
@@ -7508,15 +10824,21 @@ var StreamingRenderer = class {
 * identity discards the streaming render cache mid-message. `fileMentions`
 * links inline-code tokens its resolver recognizes as real files, and
 * `pathImages` rewrites image destinations that are local file paths into
-* displayable URLs its resolver vouches for; both vocabularies are the
+* displayable URLs its resolver vouches for. Those two vocabularies are the
 * single streaming gate — they apply to settled renders only, because a
 * streaming message's vocabulary is not final and frozen cached elements
-* must not bake in handlers that could go stale.
-* @returns A GFM document with TeX math rendered through KaTeX; raw HTML,
-* relative links, and unsafe protocols are disabled, while absolute HTTP(S)
-* images render directly.
+* must not bake in handlers that could go stale. A surrounding
+* `MarkdownDelegateProvider` can delegate ordinary HTTP(S) activation while
+* modified clicks retain native behavior. `variant="compact"` uses secondary
+* text sizing, uniform bold headings, and tight block spacing; the default
+* `body` variant uses the full document typography.
+* The provider's `openFile` enables local Markdown links in settled messages,
+* including `#L24` and `#L24-L30` destinations (ranges open at their first line).
+* @returns A GFM document with TeX math rendered through KaTeX; raw HTML and
+* unsafe protocols are disabled. Local links without an opener remain text;
+* absolute HTTP(S) images render directly.
 */
-const MarkdownText = memo(function MarkdownText({ text, streaming = false, labels, fileMentions, pathImages }) {
+const MarkdownText = memo(function MarkdownText({ text, streaming = false, labels, fileMentions, pathImages, variant = "body" }) {
 	const streamRef = useRef(null);
 	const streamLabelsRef = useRef(labels);
 	const children = useMemo(() => {
@@ -7537,7 +10859,8 @@ const MarkdownText = memo(function MarkdownText({ text, streaming = false, label
 		pathImages
 	]);
 	return jsx("div", {
-		className: css$23.markdown,
+		className: clsx(markdownCss.markdown, variant === "compact" && markdownCss.compact),
+		"data-markdown-variant": variant === "compact" ? variant : void 0,
 		children
 	});
 });
@@ -7598,9 +10921,10 @@ function SafeLink({ url, label, className }) {
 		href,
 		target: "_blank",
 		rel: "noopener noreferrer",
-		children: [jsx(LinkIcon, {
+		children: [jsx(LinkIconMedium, {
 			kind: "url",
-			className: css$24.linkIcon
+			href,
+			className: css$30.linkIcon
 		}), label]
 	});
 }
@@ -7615,20 +10939,20 @@ function SafeLink({ url, label, className }) {
 */
 function SourceItem({ source, ordinal }) {
 	return jsxs("li", {
-		className: css$24.source,
+		className: css$30.source,
 		value: ordinal,
 		children: [
 			jsx(SafeLink, {
 				url: source.url,
 				label: linkLabel(source.url, source.title),
-				className: css$24.sourceLink
+				className: css$30.sourceLink
 			}),
 			source.snippet !== void 0 && source.snippet !== "" && jsx("div", {
-				className: css$24.snippet,
+				className: css$30.snippet,
 				children: source.snippet
 			}),
 			source.publishedAt !== void 0 && source.publishedAt !== "" && jsx("div", {
-				className: css$24.published,
+				className: css$30.published,
 				children: source.publishedAt
 			})
 		]
@@ -7643,28 +10967,28 @@ function SourceItem({ source, ordinal }) {
 function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 	const empty = (answer === void 0 || answer === "") && sources.length === 0;
 	return jsxs("div", {
-		className: clsx(css$24.block, className),
+		className: clsx(css$30.block, className),
 		"data-web": "search",
 		children: [
 			answer !== void 0 && answer !== "" && jsx("div", {
-				className: css$24.answer,
+				className: css$30.answer,
 				children: jsx(MarkdownText, {
 					text: answer,
 					labels: labels.markdown
 				})
 			}),
 			empty ? jsx("div", {
-				className: css$24.empty,
+				className: css$30.empty,
 				children: labels.noResults
 			}) : jsx("ol", {
-				className: css$24.sources,
+				className: css$30.sources,
 				children: sources.map((source, index) => jsx(SourceItem, {
 					source,
 					ordinal: index + 1
 				}, index))
 			}),
 			truncated && jsx("div", {
-				className: css$24.truncated,
+				className: css$30.truncated,
 				children: labels.sourcesTruncated
 			})
 		]
@@ -7677,23 +11001,23 @@ function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 */
 function WebFetchBlock({ url, statusCode, truncated, labels, className }) {
 	return jsxs("div", {
-		className: clsx(css$24.block, css$24.fetch, className),
+		className: clsx(css$30.block, css$30.fetch, className),
 		"data-web": "fetch",
 		children: [jsx(SafeLink, {
 			url,
 			label: url,
-			className: css$24.fetchUrl
+			className: css$30.fetchUrl
 		}), jsxs("div", {
-			className: css$24.fetchMeta,
+			className: css$30.fetchMeta,
 			children: [jsxs("span", {
-				className: css$24.status,
+				className: css$30.status,
 				children: [
 					labels.http,
 					" ",
 					statusCode
 				]
 			}), truncated && jsx("span", {
-				className: css$24.truncated,
+				className: css$30.truncated,
 				children: labels.contentTruncated
 			})]
 		})]
@@ -7727,10 +11051,10 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 		truncatedLabel
 	]);
 	return jsxs("div", {
-		className: css$25.root,
+		className: css$31.root,
 		children: [jsxs("button", {
 			type: "button",
-			className: css$25.toggle,
+			className: css$31.toggle,
 			onClick: () => {
 				setOpen((v) => !v);
 			},
@@ -7740,7 +11064,7 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 				label
 			]
 		}), open && jsx("pre", {
-			className: css$25.body,
+			className: css$31.body,
 			children: body
 		})]
 	});
@@ -7817,6 +11141,205 @@ function extractMarkdownPlainText(markdown, options = {}) {
 	}
 }
 //#endregion
-export { BrandWordmark, Button, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, HoverCard, IconAgentPresetOutline16, IconAlarmClockOutline16, IconApiOutline14, IconArchiveOutline20, IconBranchOutline16, IconBrowseOutline16, IconBrowserOutline16, IconCheckOutline14, IconCheckOutline16, IconChecklistOutline14, IconChevronDownOutline14, IconChevronLeftOutline14, IconChevronRightOutline14, IconChevronUpOutline14, IconClockOutline16, IconCloseFill14, IconCloseOutline16, IconCodeOutline16, IconContextInjectionOutline16, IconCopyOutline16, IconCordisPluginOutline14, IconCursorOutline16, IconDarkOutline16, IconDataOutline16, IconDatabaseOutline16, IconDeviceOutline16, IconDislikeFill16, IconDislikeOutline16, IconDownloadOutline16, IconEditOutline16, IconEllipsisOutline16, IconEnhanceOutline16, IconEyeOutline16, IconFolderClose16, IconFolderOpen16, IconFolderOpenOutline16, IconFollowsystemOutline16, IconFullscreenOutline16, IconGaugeOutline16, IconGlobeOutline14, IconGoalOutline16, IconInspectOutline12, IconLightOutline16, IconLikeFill16, IconLikeOutline16, IconLinkOutline14, IconLinkOutline16, IconListPenOutline16, IconLoadingOutline16, IconNewChatOutline16, IconPanelLeftOutline16, IconPaperclipOutline16, IconPauseOutline16, IconPersonalizationOutline16, IconPlayOutline16, IconPlusOutline16, IconProjectAddOutline16, IconQuestionOutline14, IconQueueOutline14, IconRefreshOutline14, IconRefreshOutline16, IconRightUpOutline14, IconRightUpOutline16, IconSearchOutline16, IconSendOutline14, IconSendOutline16, IconServerOutline16, IconSettingsOutline14, IconSettingsOutline16, IconShareOutline16, IconSkillOutline16, IconSparkle16, IconStopFill16, IconThinkOutline14, IconThinkOutline16, IconTrashOutline16, IconTreeCorner8x10, IconTriangleRightFill14, IconUserOutline16, IconWarningOutline16, Input, JsonBlock, JsonTree, LinkIcon, MarkdownText, Menu, Modal, OnboardingSurface, Pill, ReadBlock, ReferenceIcon, RiskConfirmation, SearchBlock, StateDot, Switch, Tag, TerminalBlock, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, projectUserText, rankByName, relativeTime, useAnchoredMaxHeight, useAnchoredPosition, useDismissOnOutsidePointer, writeClipboard };
+//#region lib/types/plugin-artwork.js
+/**
+* Fixed-palette plugin artwork for the plugin management surfaces. Unlike the
+* ic_ds_* set these glyphs carry their own brand colors and gradients instead
+* of riding currentColor; all draw on a 36×36 viewBox and take {size, className}.
+*/
+/**
+* A per-instance SVG def id prefix: the artwork repeats across cards and rows,
+* and duplicate document ids would make every `url(#…)` resolve to the first instance.
+*/
+const useArtworkId = () => `dsh_plugin_art_${useId().replaceAll(":", "")}`;
+/** Terminal plugin artwork (prompt chevron and cursor bar). */
+const PluginArtworkTerminal = ({ size = 36, className }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 36 36",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	children: [jsx("path", {
+		d: "M10 11L16.606 17.606C16.6841 17.6841 16.6841 17.8107 16.606 17.8888L10 24.4948",
+		stroke: "#145AF3",
+		strokeWidth: "3.5"
+	}), jsx("path", {
+		d: "M20.1211 24.4946H26.8685",
+		stroke: "#145AF3",
+		strokeWidth: "3.5"
+	})]
+});
+/** Agent-loop plugin artwork (four leaves circling a center). */
+const PluginArtworkLoop = ({ size = 36, className }) => {
+	const uid = useArtworkId();
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 36 36",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		children: [
+			jsx("path", {
+				d: "M18.0486 28.4901C12.0858 28.4901 7.25195 23.6562 7.25195 17.6934C13.2148 17.6934 18.0486 22.5272 18.0486 28.4901Z",
+				fill: "#A797FC"
+			}),
+			jsx("path", {
+				d: "M18.0486 6.89667C12.0858 6.89667 7.25195 11.7305 7.25195 17.6934C13.2148 17.6934 18.0486 12.8595 18.0486 6.89667Z",
+				fill: `url(#${uid}a)`
+			}),
+			jsx("path", {
+				d: "M18.0485 28.4901C24.0114 28.4901 28.8452 23.6562 28.8452 17.6934C22.8824 17.6934 18.0485 22.5272 18.0485 28.4901Z",
+				fill: "#4561EE"
+			}),
+			jsx("path", {
+				d: "M18.0485 6.89667C24.0114 6.89667 28.8452 11.7305 28.8452 17.6934C22.8824 17.6934 18.0485 12.8595 18.0485 6.89667Z",
+				fill: "#658EFF"
+			}),
+			jsx("defs", { children: jsxs("linearGradient", {
+				id: `${uid}a`,
+				x1: "16.7911",
+				y1: "16.1655",
+				x2: "8.98192",
+				y2: "8.74289",
+				gradientUnits: "userSpaceOnUse",
+				children: [jsx("stop", { stopColor: "#A23AE7" }), jsx("stop", {
+					offset: "1",
+					stopColor: "#E2E2E2"
+				})]
+			}) })
+		]
+	});
+};
+/** Subagent plugin artwork (two stacked rounded squares); also marks every row inside a bundle. */
+const PluginArtworkSubagent = ({ size = 36, className }) => {
+	const uid = useArtworkId();
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 36 36",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		children: [
+			jsx("rect", {
+				x: "14.9893",
+				y: "15.1877",
+				width: "12.2365",
+				height: "12.2365",
+				rx: "2",
+				fill: `url(#${uid}a)`,
+				fillOpacity: "0.8"
+			}),
+			jsx("rect", {
+				x: "8.87109",
+				y: "9.0697",
+				width: "12.2365",
+				height: "12.2365",
+				rx: "2",
+				fill: `url(#${uid}b)`,
+				fillOpacity: "0.8"
+			}),
+			jsxs("defs", { children: [jsxs("linearGradient", {
+				id: `${uid}a`,
+				x1: "21.1075",
+				y1: "15.1877",
+				x2: "21.1075",
+				y2: "27.4243",
+				gradientUnits: "userSpaceOnUse",
+				children: [jsx("stop", { stopColor: "#45E7A4" }), jsx("stop", {
+					offset: "1",
+					stopColor: "#05909D"
+				})]
+			}), jsxs("linearGradient", {
+				id: `${uid}b`,
+				x1: "14.9894",
+				y1: "9.0697",
+				x2: "14.9894",
+				y2: "21.3063",
+				gradientUnits: "userSpaceOnUse",
+				children: [jsx("stop", { stopColor: "#69B9FF" }), jsx("stop", {
+					offset: "1",
+					stopColor: "#324DE2"
+				})]
+			})] })
+		]
+	});
+};
+/**
+* Web-search plugin artwork (conic-gradient ring and handle). SVG has no
+* native conic gradient, so the ring clips an HTML div painted with CSS
+* `conic-gradient` — the same emulation Figma exports; it renders inline in
+* the browser UI but would stay empty in an `<img>` or mask context.
+*/
+const PluginArtworkSearch = ({ size = 36, className }) => {
+	const uid = useArtworkId();
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 36 36",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		children: [
+			jsx("path", {
+				d: "M26.5362 26.9865L22.3813 22.8317",
+				stroke: "#2F2295",
+				strokeWidth: "3"
+			}),
+			jsx("g", {
+				clipPath: `url(#${uid}ring)`,
+				children: jsx("g", {
+					transform: "matrix(0.0119394 -0.00173904 0.00173904 0.0119394 15.7661 16.2159)",
+					children: jsx("foreignObject", {
+						x: "-958.94",
+						y: "-958.94",
+						width: "1917.88",
+						height: "1917.88",
+						children: jsx("div", { style: {
+							background: "conic-gradient(from 90deg, rgb(65, 225, 172) 0deg, rgb(85, 71, 210) 62.0619deg, rgb(65, 225, 172) 360deg)",
+							height: "100%",
+							width: "100%"
+						} })
+					})
+				})
+			}),
+			jsx("defs", { children: jsx("clipPath", {
+				id: `${uid}ring`,
+				children: jsx("path", { d: "M21.9717 16.2159H19.9717C19.9717 18.5386 18.0888 20.4215 15.7661 20.4215V22.4215V24.4215C20.2979 24.4215 23.9717 20.7478 23.9717 16.2159H21.9717ZM15.7661 22.4215V20.4215C13.4434 20.4215 11.5605 18.5386 11.5605 16.2159H9.56055H7.56055C7.56055 20.7478 11.2343 24.4215 15.7661 24.4215V22.4215ZM9.56055 16.2159H11.5605C11.5605 13.8933 13.4434 12.0104 15.7661 12.0104V10.0104V8.01038C11.2343 8.01038 7.56055 11.6841 7.56055 16.2159H9.56055ZM15.7661 10.0104V12.0104C18.0888 12.0104 19.9717 13.8933 19.9717 16.2159H21.9717H23.9717C23.9717 11.6841 20.2979 8.01038 15.7661 8.01038V10.0104Z" })
+			}) })
+		]
+	});
+};
+/** Default plugin artwork for plugins without one of their own (connector blocks and a node). */
+const PluginArtworkDefault = ({ size = 36, className }) => {
+	const uid = useArtworkId();
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 36 36",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		children: [jsx("path", {
+			d: "M24.6294 8.63696C26.2862 8.63705 27.6294 9.98016 27.6294 11.637V12.7825C27.6292 14.4391 26.2861 15.7824 24.6294 15.7825H23.4839C22.6519 15.7825 21.5454 16.3459 21.5454 17.1778V18.1573C21.5454 18.7757 22.216 19.1966 22.8345 19.1965H24.6294C26.2861 19.1965 27.6292 20.5398 27.6294 22.1965V23.9924C27.6292 25.6491 26.2861 26.9924 24.6294 26.9924H22.8345C21.1778 26.9924 19.8347 25.649 19.8345 23.9924V22.1965C19.8345 21.7148 19.4957 21.2327 19.014 21.2327H16.4792C15.7975 21.2327 15.3374 22.0061 15.3374 22.6877V23.8333C15.3373 25.49 13.9942 26.8333 12.3374 26.8333H11.1919C9.53509 26.8333 8.19198 25.49 8.19189 23.8333V22.6877C8.19189 21.0309 9.53504 19.6877 11.1919 19.6877H12.3374C13.1964 19.6877 14.3999 19.0959 14.3999 18.2369V16.0185C14.3999 14.9518 15.2646 14.0872 16.3312 14.0872H19.435C20.0596 14.0872 20.484 13.4071 20.4839 12.7825V11.637C20.4839 9.98011 21.827 8.63696 23.4839 8.63696H24.6294ZM13.4116 11.2468C13.4116 12.6882 12.2431 13.8567 10.8018 13.8567C9.36037 13.8567 8.19189 12.6882 8.19189 11.2468C8.19189 9.80544 9.36037 8.63696 10.8018 8.63696C12.2431 8.63696 13.4116 9.80544 13.4116 11.2468Z",
+			fill: `url(#${uid}a)`
+		}), jsx("defs", { children: jsxs("linearGradient", {
+			id: `${uid}a`,
+			x1: "15.1481",
+			y1: "9.94188",
+			x2: "15.1481",
+			y2: "13.6375",
+			gradientUnits: "userSpaceOnUse",
+			children: [jsx("stop", { stopColor: "#54ECE7" }), jsx("stop", {
+				offset: "1",
+				stopColor: "#658EFF"
+			})]
+		}) })]
+	});
+};
+//#endregion
+export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, HoverCard, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuItemButton, Modal, OnboardingSurface, PathLabel, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, isDarwinDesktop, languageForPath, projectUserText, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, writeClipboard };
 
 //# sourceMappingURL=index.js.map

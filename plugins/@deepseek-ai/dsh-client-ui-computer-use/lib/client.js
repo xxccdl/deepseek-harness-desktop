@@ -239,9 +239,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region plugin
 		const NS = "settings.computer-use";
-		const inject = ["slots", "locale", "settingsScope"];
+		const inject = ["slots", "locale", "configForms"];
 		function apply(ctx) {
-			scopeRef = ctx.settingsScope.bind({ namespace: "computer-use" });
+			// The Host entry that owns these settings is the `tool-computer-use` row.
+			scopeRef = ctx.configForms.get("tool-computer-use");
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh: {
 					"nav": "电脑控制",

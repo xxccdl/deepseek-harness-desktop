@@ -9,6 +9,8 @@ export interface TerminalBlockLabels {
     signal: (signal: string) => string;
     /** Status pill text for a non-zero exit code. */
     exitCode: (exitCode: number) => string;
+    /** Status pill text for a command that ended without an exit code: killed by a signal the view does not know, or never started. */
+    noExitCode: string;
     /** Run-state text while the command is still running. */
     running: string;
     /** Run-state text for a signal or non-zero-exit settle. */
@@ -39,14 +41,29 @@ export interface TerminalBlockProps {
     home?: string | undefined;
     /** The command's output text; may contain ANSI escape sequences. */
     output?: string | undefined;
-    /** Settled exit code; a non-zero value renders the status pill. */
-    exitCode?: number | undefined;
+    /** Settled exit code; a non-zero value renders the status pill, and null (settled without one) the no-exit-code pill. */
+    exitCode?: number | null | undefined;
     /** Settled terminating signal name; any value renders the status pill, taking precedence over the exit code. */
     signal?: string | undefined;
-    /** The command is still running: the block shows the prompt line alone. */
+    /**
+     * The command is still running: with no `output` the block shows the prompt
+     * line alone; with output it renders the live text under the running state.
+     */
     running?: boolean | undefined;
     /** Height cap in output lines before the middle collapses (default {@link DEFAULT_TERMINAL_MAX_LINES}); Infinity disables the cap. */
     maxLines?: number | undefined;
+    /**
+     * Copy-control payload override; the control copies the raw output when
+     * absent. Supplying it also keeps the control rendered before any output
+     * exists — a command is copyable before it prints.
+     */
+    copyText?: string | undefined;
+    /**
+     * Draw the run-state dot and its assistive label in the card gutter
+     * (default true). Hosts whose surrounding row already carries the same
+     * state omit both and reclaim the gutter via `--dsl-terminal-gutter`.
+     */
+    runStateDot?: boolean | undefined;
     /** Extra class merged onto the wrapper (callers position; this component draws). */
     className?: string | undefined;
     /** Localized display copy supplied by the owning render site. */
@@ -57,5 +74,5 @@ export interface TerminalBlockProps {
  * @param props - see {@link TerminalBlockProps}.
  * @returns the terminal block element.
  */
-export declare function TerminalBlock({ command, cwd, home, output, exitCode, signal, running, maxLines, className, labels, }: TerminalBlockProps): import("react").JSX.Element;
+export declare function TerminalBlock({ command, cwd, home, output, exitCode, signal, running, maxLines, copyText, runStateDot, className, labels, }: TerminalBlockProps): import("react").JSX.Element;
 //# sourceMappingURL=TerminalBlock.d.ts.map

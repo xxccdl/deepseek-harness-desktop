@@ -199,6 +199,10 @@ declare class JsonlSessionPersistence extends SessionPersistence {
     acquireWriteLease(header: SessionHeader): Promise<SessionWriteLease>;
     /** Decode complete frames and retain complete JSONL records from a torn final frame. */
     private readZstdPrefix;
+    /** Enumerate selected physical generations without interpreting their headers or bodies. */
+    private listGenerations;
+    /** Historical logical events depend on the corpus, including members with unreadable headers. */
+    private historicalCorpusRevision;
     private listArtifacts;
     /** Read and translate one selected generation header without inspecting its body. */
     private readGenerationHeader;
@@ -231,7 +235,7 @@ declare class JsonlSessionPersistence extends SessionPersistence {
      * Reads in bounded chunks so a huge log costs only the header read.
      */
     private readFirstLine;
-    /** Read and validate only the independently compressed header frame. */
+    /** Read only the header frame; compression failures reject as corruption, while I/O and cancellation propagate. */
     private readFirstZstdLine;
     /** Select the numerically highest canonical generation in one Session directory. */
     private resolveGenerationInDirectory;

@@ -7,7 +7,7 @@ type RunnerHost = Pick<NodeJS.Process, 'env' | 'exitCode' | 'connected' | 'cwd' 
 };
 /** Injectable operations used by the protocol-owner tests. */
 export interface SpawnRunnerInternals {
-    execve(file: string, argv: string[], env: Record<string, string>): never;
+    execve(file: string, argv: string[], env: Record<string, string>, control?: 'pipe'): never;
     loadWin32ProcessBindings(): CurrentTokenProcessBindings;
     spawnCurrentTokenJobProcess: typeof spawnCurrentTokenJobProcess;
     closeFileDescriptor(fileDescriptor: number): void;

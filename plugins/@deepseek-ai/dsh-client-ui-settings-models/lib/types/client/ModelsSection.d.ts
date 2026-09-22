@@ -5,11 +5,19 @@
  * solid configured or missing dots. A whole-section provider without a
  * configured key renders as its open setup card instead of a row, but only in
  * the first-run posture — no provider on the page can serve requests yet — and
- * only until the user closes that card; the add flow is a card carrying the
- * dormant-provider select. Each card kind owns its own open state, so closing
- * one never discards a draft in another. Every mutation writes through the
- * wire, while a provider removal first requires confirmation; the page
- * re-renders from pushed invalidations or the post-apply reload.
+ * only until the user closes that card. The add flow is one card behind one
+ * button: a mode switch chooses between adopting a dormant directory provider
+ * (the catalog select over the provider editor) and declaring a custom model
+ * API (the create form). A panel mounts the first time its mode is shown and
+ * stays mounted, hidden, while the card is open and its mode stays offered,
+ * so switching modes discards neither draft and an unvisited mode costs
+ * nothing; the switch holds still while either panel has a write or an
+ * endpoint interrogation in flight, since a switch underneath one would
+ * orphan the answer. Each card kind owns its own open state, so closing one
+ * never discards a draft in another. Every
+ * mutation writes through the wire, while a provider removal first requires
+ * confirmation; the page re-renders from pushed invalidations or the
+ * post-apply reload.
  */
 import type { ReactNode } from 'react';
 import type { InjectFace, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';

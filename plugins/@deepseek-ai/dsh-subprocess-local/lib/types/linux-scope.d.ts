@@ -49,8 +49,18 @@ export declare function probeLinuxManager(internals?: LinuxScopeInternals): bool
 export declare function probeLinuxNative(internals?: LinuxScopeInternals): boolean;
 interface DirectRange {
     running(): boolean;
-    signal(signal: 'SIGTERM' | 'SIGKILL'): void;
+    /** True for group TERM delivery, direct signal submission, or proven direct-PID absence. */
+    signal(signal: 'SIGTERM' | 'SIGKILL'): boolean;
+    /** Direct exit/error settlement, independent of output drain and managed-range completion. */
+    settled: Promise<unknown>;
 }
+/**
+ * Send a direct-process signal, distinguishing an absent PID from failed delivery.
+ * @param pid - owned direct-process identity whose exit notification can still be pending.
+ * @param send - platform signal operation; true means the signal was submitted.
+ * @returns whether the signal was submitted or the owned PID is already absent.
+ */
+export declare function signalLinuxDirectProcess(pid: number, send: () => boolean): boolean;
 /** Linux PTY invocation and owner for the exact one-shot scope/bootstrap. */
 export interface LinuxTerminalScopeLaunch {
     command: string;
@@ -66,7 +76,7 @@ export interface LinuxTerminalScopeLaunch {
  * @param spec - terminal target request.
  * @param targetEnv - validated complete target environment.
  * @param internals - optional runner and systemd seams used by tests.
- * @returns invocation facts and ownership callbacks for node-pty.
+ * @returns invocation and ownership callbacks; requested termination preserves the observed signal even before bootstrap consumption.
  */
 export declare function prepareLinuxTerminalScope(spec: SubprocessTerminalSpawnSpec, targetEnv: Record<string, string>, internals?: LinuxScopeInternals): LinuxTerminalScopeLaunch;
 /**
@@ -74,7 +84,7 @@ export declare function prepareLinuxTerminalScope(spec: SubprocessTerminalSpawnS
  * @param spec - ordinary target request.
  * @param targetEnv - validated complete target environment.
  * @param internals - optional runner and systemd seams used by tests.
- * @returns direct streams, result, and managed-scope owner.
+ * @returns streams, result, and scope owner; requested termination preserves the observed signal even before bootstrap consumption.
  */
 export declare function launchLinuxScope(spec: SubprocessSpawnSpec, targetEnv: Record<string, string>, internals?: LinuxScopeInternals): ManagedProcessLaunch;
 export {};

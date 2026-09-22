@@ -28,20 +28,18 @@ const inject = ["tools", "skills", "systemPrompt"];
 /** Default remote-debugging port for the controlled browser. */
 const DEFAULT_PORT = 9222;
 
-/** Settings namespace owned by the browser-control plugin. */
-const BROWSER_SETTINGS_NS = "browser-control";
-/** Durable browser-control settings; the harness Settings document edits it. */
-const BrowserSettingsSchema = z.object({
+/** The plugin's editable settings; the profile entry's config form edits it. */
+const Config = z.object({
   /** Master switch: when false, no browser runtime, tool, or reminder is mounted. */
-  enabled: z.boolean().default(true),
+  enabled: z.boolean().default(true).volatile(),
   /** Browser to drive: auto-detect, Edge, or Chrome. */
-  browser: z.string().default("auto"),
+  browser: z.string().default("auto").volatile(),
   /** Remote-debugging port. */
-  port: z.number().default(DEFAULT_PORT),
+  port: z.number().default(DEFAULT_PORT).volatile(),
   /** Launch headless (no visible window). */
-  headless: z.boolean().default(false),
+  headless: z.boolean().default(false).volatile(),
   /** Mount the persistent `browser-control:capability` system-prompt reminder. */
-  autoRemind: z.boolean().default(true)
+  autoRemind: z.boolean().default(true).volatile()
 });
 
 // ── browser discovery ─────────────────────────────────────────────────────────
@@ -719,7 +717,7 @@ const BROWSER_HTTP_PATH = "/api/browser";
 let currentConfig = {};
 let currentCtx = undefined;
 
-function apply(ctx) {
+function apply(ctx, config) {
   currentCtx = ctx;
   const disposers = [];
   const sync = (config) => {
@@ -739,6 +737,9 @@ function apply(ctx) {
   // HTTP surface: GET status, POST control actions.
   const httpDisposers = [];
   const syncHttp = () => {
+    // The same event fires while the tree unloads, when this fiber is already
+    // beyond state 2 and `ctx.effect` would throw INACTIVE_EFFECT.
+    if (ctx.fiber.state !== 2) return;
     for (const dispose of httpDisposers) dispose();
     httpDisposers.length = 0;
     const webServer = ctx.get("webServer", false);
@@ -817,15 +818,19 @@ function apply(ctx) {
     for (const dispose of httpDisposers) dispose();
   }, "tool-browser: teardown");
 
-  ctx.inject(["settings"], (settingsCtx) => {
-    const scope = settingsCtx.settings.register(BROWSER_SETTINGS_NS, BrowserSettingsSchema);
-    scope.watch((next) => {
-      currentConfig = next;
-      sync(next);
-    });
-    currentConfig = scope.get();
-    sync(currentConfig);
-  });
+  const refreshConfig = () => {
+    const values = {
+      enabled: config.enabled.get(),
+      browser: config.browser.get(),
+      port: config.port.get(),
+      headless: config.headless.get(),
+      autoRemind: config.autoRemind.get()
+    };
+    currentConfig = values;
+    sync(values);
+  };
+  refreshConfig();
+  ctx.on("loader/volatile-update", () => { refreshConfig(); });
 }
 
 /** Read a request body as UTF-8 text. */
@@ -838,4 +843,4 @@ function readBody(req) {
   });
 }
 
-export { apply, inject, name };
+export { Config, apply, inject, name };

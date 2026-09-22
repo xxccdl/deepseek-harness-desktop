@@ -3,9 +3,9 @@ import { randomUUID } from '@deepseek-ai/dsh-util-crypto';
 import { brandString } from '@deepseek-ai/dsh-brand';
 import { deepFreeze } from '@deepseek-ai/dsh-util-values';
 /**
- * Bound for a `notice` summary. The account rides a collapsed transcript row
- * and is committed to the durable log, while its inputs — task labels, goal
- * objectives, tool arguments — are caller text with no length of their own.
+ * Bound for a `notice` summary. Producers commit the one-line account to the
+ * durable log; its inputs — task labels, goal objectives, tool arguments —
+ * are caller text with no length of their own.
  */
 export const CONTEXT_SUMMARY_MAX_CHARS = 120;
 /**
@@ -32,10 +32,18 @@ export function freezeMessage(message) {
  * @returns an immutable message with a fresh stable identity.
  */
 export function createMessage(input) {
-    return freezeMessage({
+    return deepFreeze(structuredClone({
         ...input,
         id: brandString(randomUUID()),
-    });
+    }));
+}
+/**
+ * Create an identified, immutable developer message.
+ * @param input - content and producer source for the new message.
+ * @returns a detached developer message with a fresh identity.
+ */
+export function createDeveloperMessage(input) {
+    return createMessage({ ...input, role: 'developer' });
 }
 /**
  * Create one identified user-role message and freeze it before publication.
@@ -67,30 +75,27 @@ export function createAssistantMessage(input) {
  * Create and freeze one identified system-role message holding a rendered
  * system prompt.
  * @param text - the complete rendered prompt; `''` records "no system prompt".
- * @param plugin - the plugin that assembled the prompt.
  * @returns an immutable system message with a fresh stable identity.
  */
-export function createSystemMessage(text, plugin) {
+export function createSystemMessage(text) {
     return createMessage({
         role: 'system',
         content: text.length === 0 ? [] : [{ type: 'text', text }],
-        source: { kind: 'plugin', plugin },
+        source: { kind: 'system-prompt' },
     });
 }
 /**
  * Create and freeze one identified tool-result message.
  * @param input - call identity, raw result blocks, and outcome.
- * @returns an immutable user-role tool-result message.
+ * @returns an immutable tool-role message that answers the tool call.
  */
 export function createToolResultMessage(input) {
-    return createUserMessage({
+    return createMessage({
+        role: 'tool',
         source: { kind: 'tool', callId: input.callId },
-        content: [{
-                type: 'tool-result',
-                toolCallId: input.callId,
-                content: input.content,
-                isError: input.isError,
-            }],
+        toolCallId: input.callId,
+        content: input.content,
+        isError: input.isError,
     });
 }
 //# sourceMappingURL=message.js.map

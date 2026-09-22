@@ -5,7 +5,7 @@
  * stays process-local here.
  */
 import { type SnapshotStore } from '@deepseek-ai/dsh-client-store';
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client';
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 /** State rendered by the welcome step. */
 export interface WelcomeNoticeState {
     status: 'idle' | 'loading' | 'ready' | 'saving' | 'error';
@@ -34,7 +34,7 @@ export declare class WelcomeNoticeStore {
      * @param scope - the welcome settings namespace scope; its memory mode is
      * what keeps a remote browser process-local.
      */
-    constructor(scope: SettingsScope<WelcomeSection>);
+    constructor(scope: ConfigForm<WelcomeSection>);
     /**
      * Begin following the bound scope (idempotent) and publish its current answer.
      * @returns settlement after the current answer is published.

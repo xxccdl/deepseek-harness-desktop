@@ -5,7 +5,7 @@ type FileMutationRowProps = ToolCallViewProps & PropsLocale<'conversation'>;
 /**
  * Lets users expand an applied file diff and open the reported path.
  */
-export declare function FileMutationRow({ toolName, block, cwd, home, openFile, inspect, t }: FileMutationRowProps): import("react").JSX.Element;
+export declare function FileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }: FileMutationRowProps): import("react").JSX.Element;
 /** Registers the edit and write conversation rows. */
 export declare const fileMutationToolview: {
     name: string;

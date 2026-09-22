@@ -1,6 +1,6 @@
 /** Chat-owned conversion from durable Session events to Chat view data. */
 import type { ContentBlock, StreamChunk } from '@deepseek-ai/dsh-llm/types';
-import type { AssistantBlock, ContextProvenanceView, KnownContextForm } from '@deepseek-ai/dsh-client-ui-conversation/client';
+import type { AssistantBlock, ContextProducerView, KnownContextForm } from '@deepseek-ai/dsh-client-ui-conversation/client';
 /**
  * Read the target-supported presentation form from a durable message source.
  * @param source - Logged `user/message` source.
@@ -12,7 +12,7 @@ export declare function contextForm(source: unknown): KnownContextForm | null;
  * @param source - Logged `user/message` source.
  * @returns Role and label rendered by Chat.
  */
-export declare function contextProvenance(source: unknown): ContextProvenanceView;
+export declare function contextProducer(source: unknown): ContextProducerView;
 /**
  * Read distinct labels cited by a durable cross-session recall source.
  * @param source - Logged `user/message` source.

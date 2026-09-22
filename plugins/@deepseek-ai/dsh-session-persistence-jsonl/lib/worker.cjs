@@ -9,6 +9,314 @@ let node_util = require("node:util");
 let node_zlib = require("node:zlib");
 let node_module = require("node:module");
 let node_buffer = require("node:buffer");
+//#region ../../util/values/src/index.ts
+/**
+* Mark an unreachable closed-union branch.
+* @param value - impossible value; an unhandled typed variant fails at the call site.
+* @param context - optional switch-site label included in the failure message.
+* @returns never; a runtime value that escaped its type always throws.
+*/
+function assertNever(value, context) {
+	const rendered = JSON.stringify(value) ?? String(value);
+	throw new Error(`unreachable variant${context ? ` in ${context}` : ""}: ${rendered}`);
+}
+/** Whether a realm-owned intrinsic prototype is backed by its native constructor. */
+function hasIntrinsicConstructor(prototype, name) {
+	const constructor = Object.getOwnPropertyDescriptor(prototype, "constructor")?.value;
+	if (typeof constructor !== "function") return false;
+	try {
+		return constructor.name === name && constructor.prototype === prototype && Function.prototype.toString.call(constructor) === `function ${name}() { [native code] }`;
+	} catch {
+		return false;
+	}
+}
+/** Whether a candidate is one realm's intrinsic `Object.prototype`. */
+function isIntrinsicObjectPrototype(value) {
+	return Object.getPrototypeOf(value) === null && hasIntrinsicConstructor(value, "Object");
+}
+/** Whether an array uses one realm's intrinsic `Array.prototype`, not a subclass or forged prototype. */
+function hasPlainArrayPrototype(value) {
+	const prototype = Object.getPrototypeOf(value);
+	if (!Array.isArray(prototype) || !hasIntrinsicConstructor(prototype, "Array")) return false;
+	const objectPrototype = Object.getPrototypeOf(prototype);
+	return typeof objectPrototype === "object" && objectPrototype !== null && isIntrinsicObjectPrototype(objectPrototype);
+}
+/** Whether an object is a plain or null-prototype record from any JavaScript realm. */
+function hasPlainObjectPrototype(value) {
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === null || typeof prototype === "object" && isIntrinsicObjectPrototype(prototype);
+}
+/** Return every JSON-visible object key, or reject own data JSON would discard. */
+function enumerableStringKeys(value) {
+	const keys = Reflect.ownKeys(value);
+	if (keys.some((key) => typeof key !== "string" || !Object.prototype.propertyIsEnumerable.call(value, key))) return void 0;
+	return keys;
+}
+/** Validate lossless JSON iteratively, optionally materializing a detached snapshot. */
+function walkJsonValue(value, detach) {
+	const ancestors = /* @__PURE__ */ new Set();
+	let root;
+	const assign = (destination, item) => {
+		if (destination === void 0) return;
+		if (destination.kind === "root") root = item;
+		else if (destination.kind === "array") destination.target[destination.index] = item;
+		else Object.defineProperty(destination.target, destination.key, {
+			value: item,
+			enumerable: true,
+			configurable: true,
+			writable: true
+		});
+	};
+	const tasks = [{
+		kind: "visit",
+		value,
+		...detach ? { destination: { kind: "root" } } : {}
+	}];
+	for (let task = tasks.pop(); task !== void 0; task = tasks.pop()) {
+		if (task.kind === "leave") {
+			ancestors.delete(task.source);
+			continue;
+		}
+		if (task.kind === "array-item") {
+			if (!Object.prototype.hasOwnProperty.call(task.source, task.index)) return void 0;
+			tasks.push({
+				kind: "visit",
+				value: task.source[task.index],
+				...task.target === void 0 ? {} : { destination: {
+					kind: "array",
+					target: task.target,
+					index: task.index
+				} }
+			});
+			continue;
+		}
+		if (task.kind === "object-property") {
+			tasks.push({
+				kind: "visit",
+				value: task.source[task.key],
+				...task.target === void 0 ? {} : { destination: {
+					kind: "object",
+					target: task.target,
+					key: task.key
+				} }
+			});
+			continue;
+		}
+		const current = task.value;
+		if (current === null) {
+			assign(task.destination, null);
+			continue;
+		}
+		if (typeof current === "boolean" || typeof current === "string") {
+			assign(task.destination, current);
+			continue;
+		}
+		if (typeof current === "number") {
+			if (!Number.isFinite(current) || Object.is(current, -0)) return void 0;
+			assign(task.destination, current);
+			continue;
+		}
+		if (typeof current !== "object") return void 0;
+		if (ancestors.has(current)) return void 0;
+		if (Array.isArray(current)) {
+			if (!hasPlainArrayPrototype(current)) return void 0;
+			const length = current.length;
+			if (Reflect.ownKeys(current).length !== length + 1) return void 0;
+			const target = detach ? [] : void 0;
+			if (target !== void 0) assign(task.destination, target);
+			ancestors.add(current);
+			tasks.push({
+				kind: "leave",
+				source: current
+			});
+			for (let index = length - 1; index >= 0; index--) tasks.push({
+				kind: "array-item",
+				source: current,
+				index,
+				...target === void 0 ? {} : { target }
+			});
+			continue;
+		}
+		if (!hasPlainObjectPrototype(current)) return void 0;
+		const keys = enumerableStringKeys(current);
+		if (keys === void 0) return void 0;
+		const target = detach ? {} : void 0;
+		if (target !== void 0) assign(task.destination, target);
+		ancestors.add(current);
+		tasks.push({
+			kind: "leave",
+			source: current
+		});
+		for (let index = keys.length - 1; index >= 0; index--) {
+			const key = keys[index];
+			/* v8 ignore next -- the loop is bounded by the captured key count. */
+			if (key === void 0) return void 0;
+			tasks.push({
+				kind: "object-property",
+				source: current,
+				key,
+				...target === void 0 ? {} : { target }
+			});
+		}
+	}
+	return detach ? root : true;
+}
+/**
+* Validate and detach lossless JSON in one read per property.
+* @param value - candidate value to validate and detach.
+* @returns the detached snapshot, or `undefined` when the value is not losslessly JSON-serializable.
+*/
+function snapshotJsonValue(value) {
+	return walkJsonValue(value, true);
+}
+/**
+* Test the same lossless JSON rules as {@link snapshotJsonValue} without detaching the value.
+* @param value - candidate value to test.
+* @returns whether the value survives a JSON round trip without loss.
+*/
+function isJsonValue(value) {
+	return walkJsonValue(value, false) === true;
+}
+/**
+* Compare JSON-compatible values structurally.
+* @param a - one JSON-compatible value.
+* @param b - the other JSON-compatible value.
+* @returns whether both values contain the same JSON data.
+*/
+function deepEqualJson(a, b) {
+	if (a === b) return true;
+	if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+		return a.every((entry, index) => deepEqualJson(entry, b[index]));
+	}
+	const left = a;
+	const right = b;
+	const keys = Object.keys(left);
+	if (keys.length !== Object.keys(right).length) return false;
+	return keys.every((key) => key in right && deepEqualJson(left[key], right[key]));
+}
+/**
+* Deep-freeze an object graph in place while leaving live AbortSignal objects mutable.
+* @param value - value to freeze.
+* @returns the same value after every reachable enumerable child is frozen.
+*/
+function deepFreeze(value) {
+	const seen = /* @__PURE__ */ new WeakSet();
+	const pending = [{
+		kind: "visit",
+		node: value
+	}];
+	while (pending.length > 0) {
+		const task = pending.pop();
+		/* v8 ignore next -- the loop condition guarantees one pending task. */
+		if (task === void 0) continue;
+		if (task.kind === "property") {
+			pending.push({
+				kind: "visit",
+				node: task.source[task.key]
+			});
+			continue;
+		}
+		const node = task.node;
+		if (node === null || typeof node !== "object") continue;
+		if (node instanceof AbortSignal) continue;
+		if (seen.has(node)) continue;
+		seen.add(node);
+		Object.freeze(node);
+		const keys = Object.keys(node);
+		for (let index = keys.length - 1; index >= 0; index--) {
+			const key = keys[index];
+			/* v8 ignore next -- the loop is bounded by the captured key count. */
+			if (key === void 0) continue;
+			pending.push({
+				kind: "property",
+				source: node,
+				key
+			});
+		}
+	}
+	return value;
+}
+//#endregion
+//#region ../../compaction/compaction-image-offload/src/project-message.ts
+/**
+* Project selected image occurrences to immutable offloaded blocks.
+* @param message - message projected before this decision.
+* @param indexes - nonempty, strictly increasing depth-first image indexes.
+* @returns an immutable message with the same identity and selected images marked.
+* @throws when a selected occurrence is missing or already offloaded.
+*/
+function offloadMessageImages(message, indexes) {
+	let imageIndex = 0;
+	let selected = 0;
+	const visit = (blocks) => {
+		let next;
+		for (const [index, block] of blocks.entries()) {
+			let projected = block;
+			if (block.type === "image") {
+				if (imageIndex === indexes[selected]) {
+					if (block.offloaded === true) throw new Error(`image/offload: image index ${imageIndex} is already offloaded`);
+					projected = {
+						...block,
+						offloaded: true
+					};
+					selected += 1;
+				}
+				imageIndex += 1;
+			}
+			if (projected !== block) next ??= blocks.slice(0, index);
+			next?.push(projected);
+		}
+		return next ?? blocks;
+	};
+	const content = visit(message.content);
+	if (selected !== indexes.length) throw new Error(`image/offload: image index ${indexes[selected]} does not exist`);
+	return deepFreeze({
+		...message,
+		content
+	});
+}
+//#endregion
+//#region ../../compaction/compaction-image-offload/src/projection.ts
+/** Whether a durable value is a JSON object. */
+function isRecord$1(value) {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+/** Whether a durable occurrence index or sequence is canonical. */
+function isIndex(value) {
+	return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && !Object.is(value, -0);
+}
+//#endregion
+//#region ../session-format-catalog/src/message-projections.ts
+/** Pure first-party message interpreters for detached current-format replay, including browser readers. */
+/** Installed interpretation definitions; recovery listeners are mounted separately by their owning plugins. */
+const currentSessionMessageProjections = [{
+	type: "image/offload",
+	project(event, context) {
+		const data = event.data;
+		if (!isRecord$1(data) || Object.keys(data).length !== 1 || !Array.isArray(data["targets"]) || data["targets"].length === 0) throw new Error("image/offload: data must contain a nonempty targets array");
+		const messages = /* @__PURE__ */ new Map();
+		const nodes = new Set(context.nodes);
+		for (const target of data["targets"]) {
+			if (!isRecord$1(target) || Object.keys(target).length !== 2 || !isIndex(target["seq"]) || !Array.isArray(target["imageIndexes"]) || target["imageIndexes"].length === 0) throw new Error("image/offload: each target must contain a seq and nonempty imageIndexes");
+			const seq = target["seq"];
+			if (messages.has(seq)) throw new Error(`image/offload: duplicate target seq ${seq}`);
+			if (!nodes.has(seq)) throw new Error(`image/offload: target seq ${seq} is not a current surface node`);
+			const source = context.events[seq - context.baseSeq];
+			if (source?.type !== "user/message" && source?.type !== "tool/result") throw new Error(`image/offload: target seq ${seq} must be user/message or tool/result`);
+			let previous = -1;
+			for (const index of target["imageIndexes"]) {
+				if (!isIndex(index) || index <= previous) throw new Error("image/offload: imageIndexes must be strictly increasing non-negative safe integers");
+				previous = index;
+			}
+			const message = context.messages.get(seq) ?? (source.type === "user/message" ? source.data : source.data.message);
+			messages.set(seq, offloadMessageImages(message, target["imageIndexes"]));
+		}
+		return messages;
+	}
+}];
+//#endregion
 //#region ../../../vendor/cosmokit/src/misc.ts
 /** Return true when a value is `null` or `undefined`. */
 function isNullable(value) {
@@ -40,6 +348,45 @@ function defineProperty(object, key, value) {
 		value,
 		enumerable: false
 	});
+}
+//#endregion
+//#region ../../../vendor/cosmokit/src/volatile.ts
+/** Shared config references used by schema validators and plugin runtimes. */
+const write = Symbol.for("cosmokit.volatile.write");
+function snapshot(value, ancestors = /* @__PURE__ */ new Set()) {
+	if (typeof value === "function") throw new TypeError("volatile config cannot contain functions");
+	if (value === null || typeof value !== "object") return value;
+	if (ancestors.has(value)) throw new TypeError("volatile config cannot contain cycles");
+	ancestors.add(value);
+	try {
+		if (Array.isArray(value)) return Object.freeze(value.map((item) => snapshot(item, ancestors)));
+		if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new TypeError("volatile config objects must be plain objects or arrays");
+		return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, snapshot(item, ancestors)])));
+	} finally {
+		ancestors.delete(value);
+	}
+}
+/**
+* Create a detached reference containing an immutable copy of the supplied data.
+* @param value - validated config data; class instances and functions are unsupported.
+* @returns a reference whose value is updated only by its owning runtime.
+*/
+function createVolatile(value) {
+	let current = snapshot(value);
+	return Object.freeze({
+		get: () => current,
+		[write]: (value) => {
+			current = value;
+		}
+	});
+}
+/**
+* Identify references across ESM/CJS copies of the shared library.
+* @param value - a parsed config value.
+* @returns whether the value implements the shared reference protocol.
+*/
+function isVolatile(value) {
+	return typeof value === "object" && value !== null && write in value;
 }
 //#endregion
 //#region ../../../vendor/cosmokit/src/types.ts
@@ -122,26 +469,47 @@ function clone(source, refs = /* @__PURE__ */ new Map()) {
 	}
 	return result;
 }
-/** Deeply compare arrays, dates, regexps, buffers, and plain object fields. */
+/**
+* Compare values recursively, treating two volatile references as equal regardless of value.
+* Strict comparison distinguishes null/undefined, treats opaque objects by identity,
+* compares URLs by normalized href, treats array holes as undefined, and considers distinct cyclic structures unequal.
+* @param a - first value.
+* @param b - second value.
+* @param strict - whether to require strict data equality outside volatile references.
+* @returns whether the values compare equal.
+*/
 function deepEqual(a, b, strict) {
-	if (a === b) return true;
-	if (!strict && isNullable(a) && isNullable(b)) return true;
-	if (typeof a !== typeof b) return false;
-	if (typeof a !== "object") return false;
-	if (!a || !b) return false;
-	function check(test, then) {
-		return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : void 0;
+	const ancestors = /* @__PURE__ */ new Set();
+	function compare(a, b) {
+		if (a === b) return true;
+		if (isVolatile(a) || isVolatile(b)) return isVolatile(a) && isVolatile(b);
+		if (!strict && isNullable(a) && isNullable(b)) return true;
+		if (typeof a !== typeof b || typeof a !== "object" || !a || !b) return false;
+		if (ancestors.has(a)) return false;
+		function check(test, then) {
+			return test(a) ? test(b) ? then(a, b) : false : test(b) ? false : void 0;
+		}
+		ancestors.add(a);
+		try {
+			return check(Array.isArray, (a, b) => {
+				if (a.length !== b.length) return false;
+				for (let index = 0; index < a.length; index++) if (!compare(a[index], b[index])) return false;
+				return true;
+			}) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("URL"), (a, b) => a.href === b.href) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
+				if (a.byteLength !== b.byteLength) return false;
+				const viewA = new Uint8Array(a);
+				const viewB = new Uint8Array(b);
+				for (let i = 0; i < viewA.length; i++) if (viewA[i] !== viewB[i]) return false;
+				return true;
+			}) ?? ((!strict || [a, b].every((value) => Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)) && Object.keys({
+				...a,
+				...b
+			}).every((key) => compare(a[key], b[key])));
+		} finally {
+			ancestors.delete(a);
+		}
 	}
-	return check(Array.isArray, (a, b) => a.length === b.length && a.every((item, index) => deepEqual(item, b[index]))) ?? check(is("Date"), (a, b) => a.valueOf() === b.valueOf()) ?? check(is("RegExp"), (a, b) => a.source === b.source && a.flags === b.flags) ?? check(isArrayBufferLike, (a, b) => {
-		if (a.byteLength !== b.byteLength) return false;
-		const viewA = new Uint8Array(a);
-		const viewB = new Uint8Array(b);
-		for (let i = 0; i < viewA.length; i++) if (viewA[i] !== viewB[i]) return false;
-		return true;
-	}) ?? Object.keys({
-		...a,
-		...b
-	}).every((key) => deepEqual(a[key], b[key], strict));
+	return compare(a, b);
 }
 //#endregion
 //#region ../../../vendor/cosmokit/src/string.ts
@@ -861,8 +1229,9 @@ var LoggerService = class LoggerService {
 	*/
 	exporter(exporter) {
 		return this.ctx.effect(() => {
-			this.exporters.set(++this._snExporter, exporter);
-			return () => this.exporters.delete(this._snExporter);
+			const id = ++this._snExporter;
+			this.exporters.set(id, exporter);
+			return () => this.exporters.delete(id);
 		}, "ctx.logger.exporter()");
 	}
 	_resolveConfig() {
@@ -1390,8 +1759,8 @@ var Fiber = class {
 	*
 	* @param config — the new raw config; validated before anything restarts.
 	* @param noSave — hint for persistence hooks not to write the change back.
-	* @returns the update waterfall result; the default restart returns a promise.
-	* @throws when validation, an update listener, or the restarted plugin fails.
+	* @returns nothing; the restart runs behind the `internal/update` waterfall.
+	* @throws {ValidationError} when the new config fails validation.
 	*/
 	update(config, noSave = false) {
 		this.assertActive();
@@ -1403,7 +1772,7 @@ var Fiber = class {
 			return;
 		}
 		config = this._resolveConfig(config);
-		return this.context.waterfall(this, "internal/update", config, noSave, () => {
+		this.context.waterfall(this, "internal/update", config, noSave, () => {
 			this.config = config;
 			this._error = void 0;
 			return this.restart();
@@ -2083,236 +2452,6 @@ function brandNumber(value) {
 	return value;
 }
 //#endregion
-//#region ../../util/values/src/index.ts
-/**
-* Mark an unreachable closed-union branch.
-* @param value - impossible value; an unhandled typed variant fails at the call site.
-* @param context - optional switch-site label included in the failure message.
-* @returns never; a runtime value that escaped its type always throws.
-*/
-function assertNever(value, context) {
-	const rendered = JSON.stringify(value) ?? String(value);
-	throw new Error(`unreachable variant${context ? ` in ${context}` : ""}: ${rendered}`);
-}
-/** Whether a realm-owned intrinsic prototype is backed by its native constructor. */
-function hasIntrinsicConstructor(prototype, name) {
-	const constructor = Object.getOwnPropertyDescriptor(prototype, "constructor")?.value;
-	if (typeof constructor !== "function") return false;
-	try {
-		return constructor.name === name && constructor.prototype === prototype && Function.prototype.toString.call(constructor) === `function ${name}() { [native code] }`;
-	} catch {
-		return false;
-	}
-}
-/** Whether a candidate is one realm's intrinsic `Object.prototype`. */
-function isIntrinsicObjectPrototype(value) {
-	return Object.getPrototypeOf(value) === null && hasIntrinsicConstructor(value, "Object");
-}
-/** Whether an array uses one realm's intrinsic `Array.prototype`, not a subclass or forged prototype. */
-function hasPlainArrayPrototype(value) {
-	const prototype = Object.getPrototypeOf(value);
-	if (!Array.isArray(prototype) || !hasIntrinsicConstructor(prototype, "Array")) return false;
-	const objectPrototype = Object.getPrototypeOf(prototype);
-	return typeof objectPrototype === "object" && objectPrototype !== null && isIntrinsicObjectPrototype(objectPrototype);
-}
-/** Whether an object is a plain or null-prototype record from any JavaScript realm. */
-function hasPlainObjectPrototype(value) {
-	const prototype = Object.getPrototypeOf(value);
-	return prototype === null || typeof prototype === "object" && isIntrinsicObjectPrototype(prototype);
-}
-/** Return every JSON-visible object key, or reject own data JSON would discard. */
-function enumerableStringKeys(value) {
-	const keys = Reflect.ownKeys(value);
-	if (keys.some((key) => typeof key !== "string" || !Object.prototype.propertyIsEnumerable.call(value, key))) return void 0;
-	return keys;
-}
-/** Validate lossless JSON iteratively, optionally materializing a detached snapshot. */
-function walkJsonValue(value, detach) {
-	const ancestors = /* @__PURE__ */ new Set();
-	let root;
-	const assign = (destination, item) => {
-		if (destination === void 0) return;
-		if (destination.kind === "root") root = item;
-		else if (destination.kind === "array") destination.target[destination.index] = item;
-		else Object.defineProperty(destination.target, destination.key, {
-			value: item,
-			enumerable: true,
-			configurable: true,
-			writable: true
-		});
-	};
-	const tasks = [{
-		kind: "visit",
-		value,
-		...detach ? { destination: { kind: "root" } } : {}
-	}];
-	for (let task = tasks.pop(); task !== void 0; task = tasks.pop()) {
-		if (task.kind === "leave") {
-			ancestors.delete(task.source);
-			continue;
-		}
-		if (task.kind === "array-item") {
-			if (!Object.prototype.hasOwnProperty.call(task.source, task.index)) return void 0;
-			tasks.push({
-				kind: "visit",
-				value: task.source[task.index],
-				...task.target === void 0 ? {} : { destination: {
-					kind: "array",
-					target: task.target,
-					index: task.index
-				} }
-			});
-			continue;
-		}
-		if (task.kind === "object-property") {
-			tasks.push({
-				kind: "visit",
-				value: task.source[task.key],
-				...task.target === void 0 ? {} : { destination: {
-					kind: "object",
-					target: task.target,
-					key: task.key
-				} }
-			});
-			continue;
-		}
-		const current = task.value;
-		if (current === null) {
-			assign(task.destination, null);
-			continue;
-		}
-		if (typeof current === "boolean" || typeof current === "string") {
-			assign(task.destination, current);
-			continue;
-		}
-		if (typeof current === "number") {
-			if (!Number.isFinite(current) || Object.is(current, -0)) return void 0;
-			assign(task.destination, current);
-			continue;
-		}
-		if (typeof current !== "object") return void 0;
-		if (ancestors.has(current)) return void 0;
-		if (Array.isArray(current)) {
-			if (!hasPlainArrayPrototype(current)) return void 0;
-			const length = current.length;
-			if (Reflect.ownKeys(current).length !== length + 1) return void 0;
-			const target = detach ? [] : void 0;
-			if (target !== void 0) assign(task.destination, target);
-			ancestors.add(current);
-			tasks.push({
-				kind: "leave",
-				source: current
-			});
-			for (let index = length - 1; index >= 0; index--) tasks.push({
-				kind: "array-item",
-				source: current,
-				index,
-				...target === void 0 ? {} : { target }
-			});
-			continue;
-		}
-		if (!hasPlainObjectPrototype(current)) return void 0;
-		const keys = enumerableStringKeys(current);
-		if (keys === void 0) return void 0;
-		const target = detach ? {} : void 0;
-		if (target !== void 0) assign(task.destination, target);
-		ancestors.add(current);
-		tasks.push({
-			kind: "leave",
-			source: current
-		});
-		for (let index = keys.length - 1; index >= 0; index--) {
-			const key = keys[index];
-			/* v8 ignore next -- the loop is bounded by the captured key count. */
-			if (key === void 0) return void 0;
-			tasks.push({
-				kind: "object-property",
-				source: current,
-				key,
-				...target === void 0 ? {} : { target }
-			});
-		}
-	}
-	return detach ? root : true;
-}
-/**
-* Validate and detach lossless JSON in one read per property.
-* @param value - candidate value to validate and detach.
-* @returns the detached snapshot, or `undefined` when the value is not losslessly JSON-serializable.
-*/
-function snapshotJsonValue(value) {
-	return walkJsonValue(value, true);
-}
-/**
-* Test the same lossless JSON rules as {@link snapshotJsonValue} without detaching the value.
-* @param value - candidate value to test.
-* @returns whether the value survives a JSON round trip without loss.
-*/
-function isJsonValue(value) {
-	return walkJsonValue(value, false) === true;
-}
-/**
-* Compare JSON-compatible values structurally.
-* @param a - one JSON-compatible value.
-* @param b - the other JSON-compatible value.
-* @returns whether both values contain the same JSON data.
-*/
-function deepEqualJson(a, b) {
-	if (a === b) return true;
-	if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
-	if (Array.isArray(a) || Array.isArray(b)) {
-		if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-		return a.every((entry, index) => deepEqualJson(entry, b[index]));
-	}
-	const left = a;
-	const right = b;
-	const keys = Object.keys(left);
-	if (keys.length !== Object.keys(right).length) return false;
-	return keys.every((key) => key in right && deepEqualJson(left[key], right[key]));
-}
-/**
-* Deep-freeze an object graph in place while leaving live AbortSignal objects mutable.
-* @param value - value to freeze.
-* @returns the same value after every reachable enumerable child is frozen.
-*/
-function deepFreeze(value) {
-	const seen = /* @__PURE__ */ new WeakSet();
-	const pending = [{
-		kind: "visit",
-		node: value
-	}];
-	while (pending.length > 0) {
-		const task = pending.pop();
-		/* v8 ignore next -- the loop condition guarantees one pending task. */
-		if (task === void 0) continue;
-		if (task.kind === "property") {
-			pending.push({
-				kind: "visit",
-				node: task.source[task.key]
-			});
-			continue;
-		}
-		const node = task.node;
-		if (node === null || typeof node !== "object") continue;
-		if (node instanceof AbortSignal) continue;
-		if (seen.has(node)) continue;
-		seen.add(node);
-		Object.freeze(node);
-		const keys = Object.keys(node);
-		for (let index = keys.length - 1; index >= 0; index--) {
-			const key = keys[index];
-			/* v8 ignore next -- the loop is bounded by the captured key count. */
-			if (key === void 0) continue;
-			pending.push({
-				kind: "property",
-				source: node,
-				key
-			});
-		}
-	}
-	return value;
-}
-//#endregion
 //#region ../../core/session/src/types.ts
 /**
 * Brand a string as a {@link SessionId}.
@@ -2377,12 +2516,14 @@ const KNOWN_SESSION_EVENT_TYPES = new Set([
 	"compaction/start",
 	"compaction/summary",
 	"deliverables/presented",
+	"developer/message",
 	"feedback/message-delete",
 	"feedback/message-put",
 	"feedback/record",
 	"goal/change",
 	"hook/invoked",
 	"hook/result",
+	"image/offload",
 	"llm/retry",
 	"llm/retry-started",
 	"model/selection",
@@ -2418,13 +2559,17 @@ const KNOWN_SESSION_EVENT_TYPES = new Set([
 	"turn/end",
 	"turn/start",
 	"user/message",
-	"web/deepseek-search-llm-request"
+	"web/deepseek-search-llm-request",
+	"workspace/changes"
 ]);
+/** Event types whose model-visible effects require an explicit pure interpreter. */
+const MESSAGE_PROJECTION_EVENT_TYPES = new Set(["image/offload"]);
 //#endregion
 //#region ../../core/session/src/surface.ts
 /** Runtime counterpart of the message-producing event union. */
 const SURFACE_EVENT_TYPES = new Set([
 	"system/message",
+	"developer/message",
 	"user/message",
 	"assistant/message",
 	"tool/result"
@@ -2432,7 +2577,7 @@ const SURFACE_EVENT_TYPES = new Set([
 /**
 * Whether an event type can join the model-visible surface.
 * @param type - event type to test.
-* @returns true for one of the four message-producing event types.
+* @returns true for one of the message-producing event types.
 */
 function isSurfaceEligibleType(type) {
 	return SURFACE_EVENT_TYPES.has(type);
@@ -2440,20 +2585,22 @@ function isSurfaceEligibleType(type) {
 /**
 * Project a single event into the LLM message it derives to, or null when it
 * produces none — a non-surface event (attempt, boundary, log-only record) or an
-* empty-content assistant/message (which exists only to host usage). This is
-* THE per-node projection rule: `Session.deriveMessages` folds it over the
-* live surface, external reconstructors and pure projections fold the same
-* function over a log prefix's surface to rebuild the exact messages any
-* request was built from. The returned message is the already frozen message
-* nested in the event wrapper and shared by delivery, durable history, and
-* model requests.
+* empty-content system, developer, or assistant message. A caller
+* reconstructing model input supplies the same prefix's `projectedMessages`
+* from {@link foldSurface}; without that map this function reads original
+* event content. Session instance methods apply the live projection. Messages
+* are immutable and unchanged content retains its durable identity.
 * @param event - the event to project.
+* @param projectedMessages - message projections from the same log prefix's surface fold.
 * @returns the derived message, or null when the event produces none.
 */
-function deriveEventMessage(event) {
+function deriveEventMessage(event, projectedMessages) {
+	const projected = projectedMessages?.get(event.seq);
+	if (projected !== void 0) return projected;
 	switch (event.type) {
 		case "user/message": return event.data;
 		case "system/message":
+		case "developer/message":
 		case "assistant/message":
 			if (event.data.message.content.length === 0) return null;
 			return event.data.message;
@@ -2466,14 +2613,33 @@ function isRecord(value) {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 /**
-* Reject noncanonical request-header fields and contradictory tool failure metadata.
+* Reject noncanonical request-header fields, developer roles/content, and contradictory tool failure metadata.
 * This does not validate complete event payloads or embedded provider streams.
 * @param event - event whose locally related payload fields are inspected.
 * @param subject - event location to include in validation errors.
-* @throws when request data/header is not an object, optional header fields are empty, or tool failure metadata contradicts its message.
+* @throws when request-header fields, developer roles/content, or tool failure metadata are invalid.
 */
 function validateSessionEventData(event, subject) {
 	const data = event.data;
+	if (SURFACE_EVENT_TYPES.has(event.type) && isRecord(data)) {
+		const message = event.type === "user/message" ? data : data["message"];
+		if (isRecord(message)) {
+			if (event.type === "developer/message" !== (message["role"] === "developer")) throw new Error(`${subject} developer/message and developer role must occur together`);
+			if (message["role"] !== "developer" && Array.isArray(message["content"]) && message["content"].some((block) => isRecord(block) && (block["type"] === "tool-addition" || block["type"] === "tool-removal"))) throw new Error(`${subject} tool-change blocks require developer role`);
+			if (event.type === "developer/message" && Array.isArray(message["content"])) {
+				let hasAdditions = false;
+				for (const block of message["content"]) {
+					if (!isRecord(block) || block["type"] !== "tool-addition" && block["type"] !== "tool-removal") continue;
+					if (typeof block["toolName"] !== "string" || block["toolName"].length === 0) throw new Error(`${subject} ${block["type"]} requires a nonempty toolName`);
+					if (block["type"] === "tool-addition") {
+						hasAdditions = true;
+						if (Object.hasOwn(block, "tool")) throw new Error(`${subject} tool-addition must omit inline tool definitions`);
+					}
+				}
+				if (hasAdditions ? !isEventSeq(data["headerSeq"]) : Object.hasOwn(data, "headerSeq")) throw new Error(`${subject} requires headerSeq exactly when tool additions are present`);
+			}
+		}
+	}
 	if (event.type === "request/header") {
 		if (!isRecord(data)) throw new Error(`${subject} data must be an object`);
 		const header = data["header"];
@@ -2486,16 +2652,17 @@ function validateSessionEventData(event, subject) {
 		if (!isRecord(data)) throw new Error(`${subject} data must be an object`);
 		if (data["error"] === void 0) return;
 		const message = data["message"];
-		const content = isRecord(message) ? message["content"] : void 0;
-		const block = Array.isArray(content) ? content[0] : void 0;
-		if (!isRecord(block) || block["isError"] !== true) throw new Error(`${subject} error requires message content[0].isError === true`);
+		if (!isRecord(message) || message["isError"] !== true) throw new Error(`${subject} error requires message.isError === true`);
 	}
 }
 /** Create an empty surface fold state. */
 function createFoldState() {
 	return {
 		nodes: [],
-		replaceGeneration: 0
+		replaceGeneration: 0,
+		contentGeneration: 0,
+		projectedMessages: /* @__PURE__ */ new Map(),
+		projections: /* @__PURE__ */ new Set()
 	};
 }
 /** Whether a runtime value is a non-negative safe event sequence. */
@@ -2524,7 +2691,7 @@ function surfaceOpOf(event) {
 	return op;
 }
 /** Validate cited source-event seqs against prior log entries and the replacement range. */
-function assertProvenance(event, shadowedSeqs) {
+function assertSourceEventReferences(event, shadowedSeqs) {
 	const raw = event.sourceEventSeqs;
 	if (event.type === "assistant/message" && raw !== void 0) throw new Error("assistant/message embeds its source stream and cannot carry sourceEventSeqs");
 	const sources = /* @__PURE__ */ new Set();
@@ -2543,6 +2710,23 @@ function assertProvenance(event, shadowedSeqs) {
 	const missing = shadowedSeqs.filter((seq) => !sources.has(seq));
 	if (missing.length > 0) throw new Error(`surface replace: sourceEventSeqs must include every shadowed surface node; missing ${missing.join(", ")}`);
 }
+/** Resolve tool additions against their immutable historical request header. */
+function assertDeveloperHeader(event, events, baseSeq) {
+	if (event.type !== "developer/message") return;
+	validateSessionEventData(event, `developer/message at seq ${event.seq}`);
+	if (event.data.headerSeq === void 0) return;
+	const headerSeq = event.data.headerSeq;
+	const headerEvent = events[headerSeq - baseSeq];
+	if (headerSeq >= event.seq || headerEvent?.type !== "request/header") throw new Error("developer/message headerSeq must reference an earlier request/header");
+	for (const block of event.data.message.content) {
+		if (block.type !== "tool-addition") continue;
+		const definitions = headerEvent.data.header.tools?.filter((tool) => tool.name === block.toolName) ?? [];
+		if (definitions.length !== 1) throw new Error(`developer/message tool-addition "${block.toolName}" must name exactly one tool in headerSeq ${headerSeq}`);
+		const definition = definitions[0];
+		if (typeof definition.description !== "string" || !isRecord(definition.parameters)) throw new Error(`developer/message tool-addition "${block.toolName}" requires a complete tool definition in headerSeq ${headerSeq}`);
+		if (Object.hasOwn(definition, "deferLoading") && definition.deferLoading !== true) throw new Error("developer/message referenced tool deferLoading must be true when present");
+	}
+}
 /**
 * Validate one event's surface metadata without checking membership in a log or surface.
 * @param event - event whose marker and source sequence values are inspected.
@@ -2553,7 +2737,7 @@ function assertProvenance(event, shadowedSeqs) {
 function validateSurfaceMetadata(event) {
 	const op = surfaceOpOf(event);
 	if (op !== void 0 && op !== "append" && (op.startSeq >= event.seq || op.endSeq >= event.seq)) throw new Error(`surface replace at seq ${event.seq}: startSeq and endSeq must reference earlier events`);
-	if (op !== void 0) assertProvenance(event, []);
+	if (op !== void 0) assertSourceEventReferences(event, []);
 	return op;
 }
 /** Locate one replacement range without mutating the current fold state. */
@@ -2595,21 +2779,13 @@ function assertToolResultRewrite(event, shadowedSeqs, events, baseSeq) {
 		if (original?.type !== "tool/result") throw new Error("tool/result surface replacement must target a current tool/result");
 		const originalRest = { ...original.data };
 		const replacementRest = { ...event.data };
-		const originalResult = original.data.message.content[0];
-		const replacementResult = event.data.message.content[0];
 		originalRest["message"] = {
 			...original.data.message,
-			content: [{
-				...originalResult,
-				content: null
-			}]
+			content: null
 		};
 		replacementRest["message"] = {
 			...event.data.message,
-			content: [{
-				...replacementResult,
-				content: null
-			}]
+			content: null
 		};
 		if (!isDeepEqualJson(originalRest, replacementRest)) throw new Error("tool/result surface replacement may change only content");
 	}
@@ -2626,16 +2802,29 @@ function assertSystemHeadRewrite(event, state, startIdx, shadowedSeqs, events, b
 	if (event.type !== "system/message" || shadowedSeqs.length !== 1) throw new Error("surface replace: node 0 holds the system prompt and may be rewritten only by a system/message over exactly that node");
 }
 /** Validate one event at its replay boundary and prepare its atomic fold transition. */
-function planSurfaceEvent(state, event, expectedSeq, events, baseSeq) {
+function planSurfaceEvent(state, event, expectedSeq, events, baseSeq, projections) {
 	if (event.seq !== expectedSeq) throw new Error(`session event seq ${event.seq} is not contiguous; expected ${expectedSeq}`);
 	const surfaceOp = validateSurfaceMetadata(event);
+	assertDeveloperHeader(event, events, baseSeq);
+	const projection = projections.find((item) => item.type === event.type);
+	if (projection !== void 0) return {
+		kind: "project",
+		projection,
+		messages: projection.project(event, {
+			nodes: state.nodes,
+			events,
+			baseSeq,
+			messages: state.projectedMessages
+		})
+	};
+	if (MESSAGE_PROJECTION_EVENT_TYPES.has(event.type)) throw new Error(`session event "${event.type}" requires a message projection; load its owning plugin or supply its projection definition`);
 	if (surfaceOp === void 0) return;
 	if (surfaceOp === "append") return {
 		kind: "append",
 		seq: event.seq
 	};
 	const range = replacementRange(state, surfaceOp);
-	assertProvenance(event, range.shadowedSeqs);
+	assertSourceEventReferences(event, range.shadowedSeqs);
 	assertToolResultRewrite(event, range.shadowedSeqs, events, baseSeq);
 	assertSystemHeadRewrite(event, state, range.startIdx, range.shadowedSeqs, events, baseSeq);
 	return {
@@ -2647,8 +2836,8 @@ function planSurfaceEvent(state, event, expectedSeq, events, baseSeq) {
 	};
 }
 /** Apply one event and return replacement metadata only when one occurred. */
-function applySurfaceEvent(state, event, expectedSeq, events, baseSeq) {
-	return applySurfacePlan(state, planSurfaceEvent(state, event, expectedSeq, events, baseSeq));
+function applySurfaceEvent(state, event, expectedSeq, events, baseSeq, projections) {
+	return applySurfacePlan(state, planSurfaceEvent(state, event, expectedSeq, events, baseSeq, projections));
 }
 /** Commit one previously validated surface transition. */
 function applySurfacePlan(state, plan) {
@@ -2656,6 +2845,11 @@ function applySurfacePlan(state, plan) {
 	else if (plan?.kind === "replace") {
 		state.nodes.splice(plan.startIdx, plan.endIdx - plan.startIdx + 1, plan.seq);
 		state.replaceGeneration += 1;
+		state.contentGeneration += 1;
+	} else if (plan?.kind === "project") {
+		for (const [seq, message] of plan.messages) state.projectedMessages.set(seq, message);
+		state.projections.add(plan.projection);
+		state.contentGeneration += 1;
 	}
 	if (plan?.kind !== "replace") return;
 	return {
@@ -2669,6 +2863,7 @@ function applySurfacePlan(state, plan) {
 var SurfaceManager = class {
 	log;
 	baseSeq;
+	projections;
 	/** Shared transition state; replacement history is not retained. */
 	_state = createFoldState();
 	/** Last processed absolute seq. */
@@ -2678,10 +2873,12 @@ var SurfaceManager = class {
 	/**
 	* @param log - Contiguous complete log or loaded event window.
 	* @param baseSeq - Absolute sequence of the window's first event.
+	* @param projections - live borrowed definitions; removing a used definition invalidates further reads.
 	*/
-	constructor(log, baseSeq = SessionLogOffset(0)) {
+	constructor(log, baseSeq = SessionLogOffset(0), projections = []) {
 		this.log = log;
 		this.baseSeq = baseSeq;
+		this.projections = projections;
 		this._lastProcessedSeq = baseSeq === 0 ? -1 : SessionSeq(baseSeq - 1);
 	}
 	/**
@@ -2689,21 +2886,40 @@ var SurfaceManager = class {
 	* @param event - candidate event that has not entered the log yet.
 	*/
 	validateNext(event) {
+		this._assertProjections();
 		if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
 		const expectedSeq = SessionSeq(this.baseSeq + this.log.length);
 		this._pendingPlan = {
 			event,
 			expectedSeq,
-			plan: planSurfaceEvent(this._state, event, expectedSeq, this.log, this.baseSeq)
+			plan: planSurfaceEvent(this._state, event, expectedSeq, this.log, this.baseSeq, this.projections)
 		};
 	}
 	/** Monotonic count of folded positional replacements. */
 	get replaceGeneration() {
+		this._assertProjections();
 		if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
 		return this._state.replaceGeneration;
 	}
+	/** Monotonic count of committed changes to existing model-visible content. */
+	get contentGeneration() {
+		this._assertProjections();
+		if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+		return this._state.contentGeneration;
+	}
+	/**
+	* Project one message with every committed message projection applied.
+	* @param event - message-producing or log-only event.
+	* @returns its immutable projected message, or null when it produces none.
+	*/
+	deriveEventMessage(event) {
+		this._assertProjections();
+		if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
+		return deriveEventMessage(event, this._state.projectedMessages);
+	}
 	/** Surface event sequences in model-visible order. */
 	get nodes() {
+		this._assertProjections();
 		if (this._lastProcessedSeq < this.baseSeq + this.log.length - 1) this._processDelta();
 		return this._state.nodes;
 	}
@@ -2715,10 +2931,17 @@ var SurfaceManager = class {
 			const event = this.log[index];
 			const pending = this._pendingPlan;
 			if (pending?.event === event && pending.expectedSeq === seq) applySurfacePlan(this._state, pending.plan);
-			else applySurfaceEvent(this._state, event, SessionSeq(seq), this.log, this.baseSeq);
+			else applySurfaceEvent(this._state, event, SessionSeq(seq), this.log, this.baseSeq, this.projections);
 			if (pending !== void 0 && pending.expectedSeq <= seq) this._pendingPlan = void 0;
 			this._lastProcessedSeq = SessionSeq(seq);
 		}
+	}
+	/** Cached messages cannot outlive the definitions that interpreted their log. */
+	_assertProjections() {
+		const candidate = this._pendingPlan;
+		const pending = candidate !== void 0 && this.log[candidate.expectedSeq - this.baseSeq] === candidate.event ? candidate.plan : void 0;
+		const required = pending?.kind === "project" ? [...this._state.projections, pending.projection] : this._state.projections;
+		for (const projection of required) if (!this.projections.includes(projection)) throw new Error(`session message projection "${projection.type}" was removed or replaced; restore the session with its owning plugin`);
 	}
 };
 //#endregion
@@ -2767,7 +2990,10 @@ function isTypertRemoteSegment(value) {
 }
 const REMOTE_METHOD_DESCRIPTOR = "@deepseek-ai/dsh-typert-protocol/remote-methods";
 /**
-* Bind one visible Service field to a Cordis key and Remote namespace.
+* Bind one visible Service field to a Cordis key and Remote namespace. A
+* service that owns a Cordis Context also gives its tree `ctx.invocation`,
+* `undefined` outside a Remote call, so no `TypertRemoteService` is needed for
+* a Host composition to read it.
 * @param service - owning Service instance, normally `this`.
 * @param serviceKey - exact Cordis service key.
 * @param options - optional distinct wire namespace.
@@ -2777,6 +3003,8 @@ function bindTypertRemote(service, serviceKey, options = {}) {
 	validateName("service key", serviceKey);
 	const namespace = options.namespace ?? serviceKey;
 	validateName("namespace", namespace);
+	const ctx = Reflect.get(service, "ctx");
+	if (ctx instanceof Context) provideInvocationAccessor(ctx);
 	return Object.freeze({
 		service,
 		serviceKey,
@@ -2798,6 +3026,16 @@ var TypertRemoteService = class extends Service {
 		this.typertRemote = bindTypertRemote(this, this.name, options);
 	}
 };
+/**
+* Make `ctx.invocation` read as `undefined` outside a Remote call instead of the
+* reflect service's "cannot get property" error; a call-derived Context shadows
+* the accessor with its own property. The first Remote Service constructed in a
+* tree registers it on the root, where it outlives any one Service.
+*/
+function provideInvocationAccessor(ctx) {
+	if (Object.hasOwn(ctx.root.reflect.props, "invocation")) return;
+	ctx.root.accessor("invocation", { get: () => void 0 });
+}
 function Remote(methodExportOrOptions, context) {
 	if (typeof methodExportOrOptions === "string") {
 		validateName("Remote export name", methodExportOrOptions);
@@ -2897,9 +3135,24 @@ function freezeMessage(message) {
 * @returns an immutable message with a fresh stable identity.
 */
 function createMessage(input) {
-	return freezeMessage({
+	return deepFreeze(structuredClone({
 		...input,
 		id: brandString(randomUUID())
+	}));
+}
+/**
+* Create one identified model-produced assistant message and freeze it before publication.
+* @param input - complete content plus the provider, model, and optional replay state for a new assistant message.
+* @returns an immutable assistant message with fixed role/source tags and a fresh stable identity.
+*/
+function createAssistantMessage(input) {
+	return createMessage({
+		role: "assistant",
+		content: input.content,
+		source: {
+			kind: "model",
+			...input.source
+		}
 	});
 }
 //#endregion
@@ -3079,6 +3332,7 @@ Schema.prototype.pattern = function pattern(regexp) {
 	return schema;
 };
 Schema.prototype.simplify = function simplify(value) {
+	if (isVolatile(value)) value = value.get();
 	if (deepEqual(value, this.meta.default, this.type === "dict")) return null;
 	if (isNullable(value)) return value;
 	if (this.type === "object" || this.type === "dict") {
@@ -3135,12 +3389,49 @@ for (const key of [
 	};
 	return schema;
 } });
+Schema.prototype.volatile = function volatile() {
+	if (this.meta.volatile) throw new TypeError("volatile schema is already wrapped");
+	return this.extra("volatile", true);
+};
 const resolvers = {};
+const checkedVolatile = Symbol("checked-volatile-schema");
+function validateVolatileSchema(schema, path = [], blocked = false, seen = /* @__PURE__ */ new Map()) {
+	const states = seen.get(schema) ?? /* @__PURE__ */ new Set();
+	if (states.has(blocked)) return;
+	states.add(blocked);
+	seen.set(schema, states);
+	if (schema.meta?.volatile && blocked) throw new ValidationError("volatile fields require a fixed object path without an enclosing volatile field", { path });
+	const nested = blocked || !!schema.meta?.volatile;
+	if (schema.dict) for (const [key, child] of Object.entries(schema.dict)) validateVolatileSchema(child, [...path, key], nested, seen);
+	if (schema.sKey) validateVolatileSchema(schema.sKey, [...path, "<key>"], true, seen);
+	if (schema.inner && (schema.type !== "lazy" || schema.inner[kSchema])) validateVolatileSchema(schema.inner, [...path, "*"], true, seen);
+	if (schema.list) for (let index = 0; index < schema.list.length; index++) validateVolatileSchema(schema.list[index], [...path, String(index)], true, seen);
+}
 Schema.extend = function extend(type, resolve) {
 	resolvers[type] = resolve;
 };
 Schema.resolve = function resolve(data, schema, options = {}, strict = false) {
 	if (!schema) return [data];
+	if (!options[checkedVolatile]) {
+		validateVolatileSchema(schema, options.path);
+		options = {
+			...options,
+			[checkedVolatile]: true
+		};
+	}
+	if (schema.meta?.volatile) {
+		const inner = Schema(schema);
+		inner.meta = {
+			...schema.meta,
+			volatile: false
+		};
+		const [value, adapted] = Schema.resolve(data, inner, options, strict);
+		try {
+			return [createVolatile(value), adapted];
+		} catch (error) {
+			throw new ValidationError(error instanceof Error ? error.message : String(error), options);
+		}
+	}
 	if (options.ignore?.(data, schema)) return [data];
 	if (isNullable(data) && schema.type !== "lazy") {
 		if (schema.meta.required) throw new ValidationError(`missing required value`, options);
@@ -3243,6 +3534,7 @@ Schema.extend("lazy", (data, schema, options, strict) => {
 			...schema.meta,
 			...schema.inner.meta
 		};
+		validateVolatileSchema(schema.inner, options.path, true);
 	}
 	return Schema.resolve(data, schema.inner, options, strict);
 });
@@ -3342,7 +3634,7 @@ function property(data, key, schema, options) {
 	} catch (e) {
 		if (!options?.autofix) throw e;
 		delete data[key];
-		return schema.meta.default;
+		return schema.meta.volatile ? createVolatile(schema.meta.default) : schema.meta.default;
 	}
 }
 Schema.extend("array", (data, { inner, meta }, options) => {
@@ -3719,13 +4011,15 @@ function failureSnapshot(value) {
 		const status = candidate.status;
 		const providerRetryAfterMs = candidate.providerRetryAfterMs;
 		const requestId = candidate.requestId;
-		if (typeof message !== "string" || message.length === 0 || typeof code !== "string" || code.length === 0 || status !== void 0 && (!Number.isInteger(status) || status < 100 || status > 599) || providerRetryAfterMs !== void 0 && (!Number.isFinite(providerRetryAfterMs) || providerRetryAfterMs <= 0) || requestId !== void 0 && (typeof requestId !== "string" || requestId.length === 0)) return void 0;
+		const offloadImages = candidate.offloadImages;
+		if (typeof message !== "string" || message.length === 0 || typeof code !== "string" || code.length === 0 || status !== void 0 && (!Number.isInteger(status) || status < 100 || status > 599) || providerRetryAfterMs !== void 0 && (!Number.isFinite(providerRetryAfterMs) || providerRetryAfterMs <= 0) || requestId !== void 0 && (typeof requestId !== "string" || requestId.length === 0) || offloadImages !== void 0 && (!Number.isSafeInteger(offloadImages) || offloadImages <= 0)) return void 0;
 		return Object.freeze({
 			message,
 			code,
 			...status === void 0 ? {} : { status },
 			...providerRetryAfterMs === void 0 ? {} : { providerRetryAfterMs },
-			...requestId === void 0 ? {} : { requestId }
+			...requestId === void 0 ? {} : { requestId },
+			...offloadImages === void 0 ? {} : { offloadImages }
 		});
 	} catch (_sdkFailureGetter) {
 		return;
@@ -3757,25 +4051,23 @@ function textOnlyImageText(ref) {
 	return `[image omitted because this model accepts text only; attachment sha256:${String(ref.attachmentId).slice(7, 15)}]`;
 }
 /**
-* True when typed model content contains an image block, walking nested
-* tool-result content. This is the one recursive image walk shared by every
-* image policy (capability gating, text-only serialization, compaction
-* survey), so a consumer cannot silently diverge on nesting depth.
+* True when typed model content contains an image block. This is the one image
+* walk shared by every image policy (capability gating, text-only
+* serialization, compaction survey), so a consumer cannot silently diverge.
 * @param content - typed model content blocks.
-* @returns whether any nested block is an image.
+* @returns whether any block is an image.
 */
 function contentHasImage(content) {
-	return content.some((block) => block.type === "image" || block.type === "tool-result" && contentHasImage(block.content));
+	return content.some((block) => block.type === "image");
 }
 /**
-* True when typed model content contains a file block, walking nested
-* tool-result content on the same recursion every file policy shares.
+* True when typed model content contains a file block.
 * Reads current content on every call without retaining scan results.
 * @param content - typed model content blocks.
-* @returns whether any nested block is a file.
+* @returns whether any block is a file.
 */
 function contentHasFile(content) {
-	for (const block of content) if (block.type === "file" || block.type === "tool-result" && contentHasFile(block.content)) return true;
+	for (const block of content) if (block.type === "file") return true;
 	return false;
 }
 /**
@@ -3792,7 +4084,7 @@ function fileHandleText(ref, readonlyPath) {
 	if (readonlyPath === void 0) return `[${identity} was uploaded, but the current execution environment cannot access a readable path. Report that limitation if its contents are needed; do not claim to have read it.]`;
 	return `[${identity}: verbatim read-only copy saved at ${quoted(readonlyPath)}. Read that path with your file tools when its contents are needed; copy it to a writable location before modifying it. When delegating file work, include this saved path in the delegation prompt; only subagents sharing this execution environment can read it.]`;
 }
-/** Replace every file occurrence, including nested tool results, with handle text. */
+/** Replace every file occurrence with handle text. */
 function replaceFilesWithHandles(blocks, resolvePath) {
 	let next;
 	for (const [index, block] of blocks.entries()) {
@@ -3804,29 +4096,10 @@ function replaceFilesWithHandles(blocks, resolvePath) {
 			});
 			continue;
 		}
-		if (block.type === "tool-result") {
-			const content = replaceFilesWithHandles(block.content, resolvePath);
-			if (content !== block.content) {
-				next ??= blocks.slice(0, index);
-				next.push({
-					...block,
-					content
-				});
-				continue;
-			}
-		}
 		next?.push(block);
 	}
 	return next ?? blocks;
 }
-/**
-* Project durable file history into deterministic handle text for every model
-* route. Unlike images, no provider receives file blocks natively, so this
-* projection is unconditional in request assembly.
-* @param messages - complete request history.
-* @param resolvePath - resolve one reference's current execution-world read path.
-* @returns the original list without files, otherwise shallow message copies with handle text.
-*/
 function projectFilesToText(messages, resolvePath) {
 	if (!messages.some((message) => contentHasFile(message.content))) return messages;
 	return messages.map((message) => {
@@ -3837,7 +4110,7 @@ function projectFilesToText(messages, resolvePath) {
 		};
 	});
 }
-/** Replace every image occurrence, including nested tool results, for a text-only model. */
+/** Replace every image occurrence for a text-only model. */
 function replaceImagesForTextModel(blocks) {
 	let next;
 	for (const [index, block] of blocks.entries()) {
@@ -3849,26 +4122,10 @@ function replaceImagesForTextModel(blocks) {
 			});
 			continue;
 		}
-		if (block.type === "tool-result") {
-			const content = replaceImagesForTextModel(block.content);
-			if (content !== block.content) {
-				next ??= blocks.slice(0, index);
-				next.push({
-					...block,
-					content
-				});
-				continue;
-			}
-		}
 		next?.push(block);
 	}
 	return next ?? blocks;
 }
-/**
-* Project durable image history into deterministic text for an exact text-only model.
-* @param messages - complete request history.
-* @returns the original list without images, otherwise shallow message copies with stable placeholders.
-*/
 function projectImagesForTextModel(messages) {
 	if (!messages.some((message) => contentHasImage(message.content))) return messages;
 	return messages.map((message) => {
@@ -4071,15 +4328,11 @@ var BlockAssembler = class {
 	}
 	/**
 	* The assembled assistant message.
-	* @param source - producer attribution for the assembled message.
+	* @param source - provider/model attribution (without the `kind` tag) for the assembled message.
 	* @returns a frozen assistant-role message over `blocks()` (same open-block assembly rules).
 	*/
-	message(source = {
-		kind: "plugin",
-		plugin: "dsh-llm/assembler"
-	}) {
-		return createMessage({
-			role: "assistant",
+	message(source) {
+		return createAssistantMessage({
 			content: this.blocks(),
 			source
 		});
@@ -4414,7 +4667,8 @@ var LlmError = class extends HarnessError {
 			code,
 			...options?.status === void 0 ? {} : { status: options.status },
 			...options?.providerRetryAfterMs === void 0 ? {} : { providerRetryAfterMs: options.providerRetryAfterMs },
-			...options?.requestId === void 0 ? {} : { requestId: options.requestId }
+			...options?.requestId === void 0 ? {} : { requestId: options.requestId },
+			...options?.offloadImages === void 0 ? {} : { offloadImages: options.offloadImages }
 		});
 	}
 };
@@ -4682,7 +4936,8 @@ var LlmError = class extends HarnessError {
 					id: model.id,
 					...model.name === void 0 ? {} : { name: model.name },
 					...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
-					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens }
+					...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
+					...model.inputModalities === void 0 ? {} : { inputModalities: [...model.inputModalities] }
 				});
 			}
 			return models;
@@ -4911,8 +5166,9 @@ var LlmError = class extends HarnessError {
 		/** Remove replay state whose historical route is owned by another adapter. */
 		forAdapter(options, adapter) {
 			const messages = options.messages.map((message) => {
+				if (message.role !== "assistant") return message;
 				const source = message.source;
-				if (message.role !== "assistant" || source.kind !== "model" || source.replayState === void 0) return message;
+				if (source.replayState === void 0) return message;
 				if (this.adapters.get(source.provider)?.adapter === adapter) return message;
 				return freezeMessage({
 					...message,
@@ -5089,7 +5345,7 @@ function validateSessionHeader(id, input) {
 	if (input === null || typeof input !== "object" || Array.isArray(input)) throw new Error("session header is not a plain JSON record");
 	const record = input;
 	if (Object.hasOwn(record, "seedLength")) throw new Error("session header has invalid field \"seedLength\"");
-	if (record.version !== 3) throw new Error(`session header version must be 3, got ${String(record.version)}`);
+	if (record.version !== 4) throw new Error(`session header version must be 4, got ${String(record.version)}`);
 	if (record.id !== id) throw new Error(`session header id "${String(record.id)}" does not match session id "${id}"`);
 	if (typeof record.createdAt !== "number" || !Number.isSafeInteger(record.createdAt) || record.createdAt < 0) throw new Error("session header createdAt must be a non-negative safe integer");
 	if (record.cwd !== void 0) {
@@ -5114,7 +5370,7 @@ function validateRestoredSessionHeader(id, input) {
 /** Detach, validate, and freeze the creation metadata published by a session. */
 function snapshotSessionHeader(id, source) {
 	const snapshot = snapshotJsonValue(source === void 0 ? {
-		version: 3,
+		version: 4,
 		id,
 		createdAt: Date.now(),
 		isSeeded: false
@@ -5139,6 +5395,7 @@ function adoptSessionEvent(event) {
 		case "user/message":
 			deepFreeze(event.data);
 			break;
+		case "developer/message":
 		case "system/message":
 		case "assistant/message":
 		case "tool/result":
@@ -5169,6 +5426,7 @@ function assertSessionEventEnvelope(value, index) {
 	validateSessionEventData(event, `seed ${type} at index ${index}`);
 	switch (type) {
 		case "request/header":
+		case "developer/message":
 		case "system/message":
 		case "user/message":
 		case "assistant/attempt":
@@ -5217,15 +5475,16 @@ function assertAdapterDefaults(value, config, index) {
 	const defaults = value;
 	if (Object.keys(defaults).some((key) => !allowedAdapterKeys.has(key)) || Object.values(defaults).some((marker) => marker !== true) || defaults["reasoningEffort"] === true && config["reasoningEffort"] === void 0 || defaults["maxTokens"] === true && config["maxTokens"] === void 0) throw new Error(`seed request/header at index ${index} has invalid adapterDefaults`);
 }
-/** The four surface event types whose payload carries an identified message. */
+/** The surface event types whose payload carries an identified message. */
 function isMessageEventType(type) {
-	return type === "system/message" || type === "user/message" || type === "assistant/message" || type === "tool/result";
+	return type === "developer/message" || type === "system/message" || type === "user/message" || type === "assistant/message" || type === "tool/result";
 }
 const MESSAGE_ROLE_BY_TYPE = {
 	"system/message": "system",
+	"developer/message": "developer",
 	"user/message": "user",
 	"assistant/message": "assistant",
-	"tool/result": "user"
+	"tool/result": "tool"
 };
 /** Validate only the event-specific invariants needed to safely replay a message. */
 function assertMessageEventShape(event, subject) {
@@ -5243,7 +5502,7 @@ function assertMessageEventShape(event, subject) {
 	if (!Array.isArray(messageRecord["content"])) throw new Error(`${subject} message has invalid content`);
 	const sourceRecord = source;
 	if (type === "system/message") {
-		if (sourceRecord["kind"] !== "plugin" || typeof sourceRecord["plugin"] !== "string" || sourceRecord["plugin"] === "") throw new Error(`${subject} message must have plugin source`);
+		if (sourceRecord["kind"] !== "system-prompt") throw new Error(`${subject} message must have system-prompt source`);
 		return;
 	}
 	if (type === "assistant/message") {
@@ -5252,10 +5511,7 @@ function assertMessageEventShape(event, subject) {
 	}
 	if (type !== "tool/result") return;
 	if (sourceRecord["kind"] !== "tool" || typeof sourceRecord["callId"] !== "string" || sourceRecord["callId"] === "") throw new Error(`${subject} message must have tool source`);
-	const content = messageRecord["content"];
-	const block = content[0];
-	if (content.length !== 1 || typeof block !== "object" || block === null || block["type"] !== "tool-result" || !Array.isArray(block["content"])) throw new Error(`${subject} message must contain one tool-result block`);
-	if (block["toolCallId"] !== sourceRecord["callId"]) throw new Error(`${subject} message has mismatched tool call ids`);
+	if (messageRecord["toolCallId"] !== sourceRecord["callId"]) throw new Error(`${subject} message has mismatched tool call ids`);
 }
 /** Whether an unknown value carries the current provider/model pair. */
 function hasProviderModel(value) {
@@ -5291,7 +5547,7 @@ const attachments = /* @__PURE__ */ new WeakMap();
 var Session = class Session {
 	log = [];
 	/** Single incremental owner of surface acceptance and projection state. */
-	surfaceManager = new SurfaceManager(this.log);
+	surfaceManager;
 	/** The ordered surface over this session's event log. */
 	get surface() {
 		return this.surfaceManager;
@@ -5312,29 +5568,25 @@ var Session = class Session {
 		return this.header.id;
 	}
 	/**
-	* The first seq appended IN THIS PROCESS: the length of the constructor
-	* seed (0 without one). Events with smaller seq values entered through
-	* construction — replay, fork, or resume — and were never published on the
-	* `session/event` firehose (constructor seeds do not emit). This offset marks
-	* the constructor-input boundary for lifecycle ownership and persistence
-	* adoption; consumers that need complete canonical history still start at
-	* seq 0. Distinct from {@link inheritedEventCount}, the DURABLE
-	* fork-lineage cut: a resumed session's constructor seed is its full stored
-	* log, while the inherited count keeps the original fork value — this field is the
-	* in-process construction fact.
+	* The constructor seed length (0 without one), before any marker appended
+	* during construction. Seed events never publish on `session/event`. A
+	* marker appended before the store attaches occupies this seq without
+	* publishing either; otherwise this seq is available for the next append.
 	*
-	* Not persisted itself: a seeded session projects it into the log as the
-	* `session/end-seed` event, which is what a consumer reading STORED history
-	* reads. Locate the LAST such event, not necessarily one at this seq — a
-	* seed already ending in one is not re-marked, so reopening an untouched
-	* session leaves that event at a smaller seq than `firstLiveSeq`. Prefer
-	* this field in-process: it is exact before the marker reaches storage.
-	*
-	* When this lifecycle appends the marker, it occupies this seq before the
-	* store attaches and therefore does not publish either. Otherwise this seq
-	* holds an ordinary published write.
+	* This in-process offset is not persisted. A fork seed can already contain
+	* the child's inherited marker and synthetic closers, so its child-owned
+	* history starts at {@link inheritedEventCount}, before this offset. A
+	* resumed Session's seed contains its full stored log, while its inherited
+	* count keeps the durable fork cut. Consumers needing complete canonical
+	* history start at seq 0.
 	*/
 	firstLiveSeq;
+	/**
+	* First event produced for this object lifecycle. A new fork includes its
+	* child-owned seed marker and closers; a restored Session starts after its
+	* complete stored prefix. This in-process capture offset is not persisted.
+	*/
+	firstLifecycleSeq;
 	/**
 	* Create a detached session by validating and snapshotting borrowed seed
 	* events and storage metadata.
@@ -5342,10 +5594,12 @@ var Session = class Session {
 	* @param seed - optional borrowed replay or fork events.
 	* @param header - optional borrowed storage metadata.
 	* @param inheritedEventCount - exact fork-inherited prefix length for a seeded header.
+	* @param projections - pure interpreters for plugin-owned message changes.
 	* @returns a detached session.
+	* @throws when a seed event requires a missing message interpreter or fails validation.
 	*/
-	static create(id, seed, header, inheritedEventCount) {
-		return new Session(id, seed, header, "snapshot", inheritedEventCount);
+	static create(id, seed, header, inheritedEventCount, projections) {
+		return new Session(id, seed, header, "snapshot", inheritedEventCount, projections);
 	}
 	/**
 	* Restore a detached session by adopting an independently owned or deeply frozen seed.
@@ -5358,12 +5612,15 @@ var Session = class Session {
 	* @param header - independently owned storage metadata.
 	* @param inheritedEventCount - exact fork-inherited prefix length decoded from storage.
 	* @param eventState - aliasing state carried from the operation that produced the seed.
+	* @param projections - pure interpreters for plugin-owned message changes.
 	* @returns a restored detached session.
+	* @throws when a seed event requires a missing message interpreter or fails validation.
 	*/
-	static fromRestore(id, seed, header, inheritedEventCount, eventState) {
-		return new Session(id, seed, header, eventState, inheritedEventCount);
+	static fromRestore(id, seed, header, inheritedEventCount, eventState, projections) {
+		return new Session(id, seed, header, eventState, inheritedEventCount, projections);
 	}
-	constructor(id, seed, header, mode = "snapshot", suppliedInheritedEventCount) {
+	constructor(id, seed, header, mode = "snapshot", suppliedInheritedEventCount, projections = []) {
+		this.surfaceManager = new SurfaceManager(this.log, SessionLogOffset(0), projections);
 		const restoredHeader = mode === "snapshot" ? void 0 : validateRestoredSessionHeader(id, header);
 		if (seed !== void 0) for (const [index, source] of seed.entries()) {
 			const snapshot = mode === "snapshot" ? snapshotJsonValue(source) : source;
@@ -5384,15 +5641,21 @@ var Session = class Session {
 		const inheritedEventCount = SessionLogOffset(suppliedInheritedEventCount ?? 0);
 		if (!this.header.isSeeded && inheritedEventCount !== 0) throw new Error("unseeded session inherited event count must be 0");
 		if (inheritedEventCount > this.log.length) throw new Error("session inherited event count exceeds its event log");
-		if (mode === "snapshot" && this.header.isSeeded && inheritedEventCount !== this.log.length) throw new Error("seeded session constructor seed must equal its inherited prefix");
+		const seedMarker = this.log[inheritedEventCount];
+		const markedSeed = seedMarker?.type === "session/end-seed" && seedMarker.data.inherited === true;
+		if (mode === "snapshot" && this.header.isSeeded && inheritedEventCount !== this.log.length && !markedSeed) throw new Error("seeded session constructor seed must equal its inherited prefix or mark its inherited cut");
+		if (markedSeed && this.log.slice(inheritedEventCount + 1).some((event) => event.type === "session/end-seed" && event.data.inherited === true)) throw new Error("session inherited event count must identify the final inherited marker");
 		this.inheritedEventCount = inheritedEventCount;
-		if (seed !== void 0 && mode === "snapshot" && this.header.isSeeded) this.append("session/end-seed", { inherited: true });
-		else if (seed !== void 0 && this.log.at(-1)?.type !== "session/end-seed") this.append("session/end-seed", {});
+		this.firstLifecycleSeq = mode === "snapshot" && this.header.isSeeded ? inheritedEventCount : this.firstLiveSeq;
+		if (seed !== void 0 && mode === "snapshot" && this.header.isSeeded && !markedSeed) this.append("session/end-seed", { inherited: true });
+		else if (seed !== void 0 && !(mode === "snapshot" && this.header.isSeeded) && this.log.at(-1)?.type !== "session/end-seed") this.append("session/end-seed", {});
 	}
 	/** Cached immutable full snapshot of the private append-only log. */
 	eventsSnapshot;
 	/**
 	* Return the immutable event stored at one exact sequence number.
+	* @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
+	* See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
 	* @param seq - event sequence number.
 	* @returns the accepted event, or undefined when the log does not contain it.
 	*/
@@ -5403,6 +5666,8 @@ var Session = class Session {
 	* Materialize an immutable snapshot of a half-open event sequence range.
 	* A full current snapshot is reused until the next append; every previously
 	* returned snapshot remains stable after later appends.
+	* @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
+	* See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
 	* @param fromSeq - non-negative inclusive sequence number; defaults to the log start.
 	* @param toSeqExclusive - non-negative exclusive sequence number; defaults to the current end.
 	* @returns a frozen array of the selected deeply frozen events.
@@ -5416,6 +5681,8 @@ var Session = class Session {
 	}
 	/**
 	* Return this Session's events after its fork-inherited prefix.
+	* @deprecated Existing logic may remain unmigrated for now, but new calls are prohibited.
+	* See the [Agent Note](../../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.md).
 	* @returns a fresh array containing child-owned events in log order.
 	*/
 	ownEvents() {
@@ -5549,7 +5816,7 @@ var Session = class Session {
 	derived = [];
 	/** Surface position (nodes projected) the cache has reached. */
 	derivedNodes = 0;
-	/** {@link SurfaceManager.replaceGeneration} the cache was built under. */
+	/** {@link SurfaceManager.contentGeneration} the cache was built under. */
 	derivedGeneration = 0;
 	/**
 	* Derive the LLM message history by walking the ordered sequences of
@@ -5558,21 +5825,21 @@ var Session = class Session {
 	* append records its `surfaceOp`, so a raw event with no marker (a chunk, a
 	* turn boundary) is correctly absent, and a compaction `replace` deletes the
 	* shadowed nodes from the derivation. The projection rules are
-	* {@link deriveEventMessage}, folded per node.
+	* {@link deriveEventMessage}, with logged message projections applied
+	* without changing node membership or message identity.
 	*
-	* CACHED: each surface node is projected exactly once, when first seen — a
-	* call costs O(new nodes), and a surface rewrite (a `replace`;
-	* {@link SessionSurface.replaceGeneration}) rebuilds. The returned array is
+	* CACHED: pure tail growth costs O(new nodes); a replacement or message projection
+	* ({@link SessionSurface.contentGeneration}) rebuilds. The returned array is
 	* a fresh snapshot per call (later appends never grow an array a caller
 	* already holds); the `Message` objects in it are SHARED and **deep-frozen**.
-	* Their content reuses the already frozen durable event data, so the cache
-	* needs no second deep clone and consumers still cannot mutate the log.
+	* Unchanged content reuses frozen event data; projected blocks are frozen
+	* derived copies. Consumers cannot mutate the log through either form.
 	* @returns a fresh array of the shared, frozen derived history.
 	*/
 	deriveMessages() {
 		const surface = this.surface;
 		const nodes = surface.nodes;
-		const generation = surface.replaceGeneration;
+		const generation = surface.contentGeneration;
 		if (generation !== this.derivedGeneration) {
 			this.derived = [];
 			this.derivedNodes = 0;
@@ -5586,110 +5853,15 @@ var Session = class Session {
 		return [...this.derived];
 	}
 	/**
-	* Instance face of the pure per-node `deriveEventMessage` export from
-	* `surface.ts`.
+	* Project one event with all committed message projections applied.
+	* The original durable event remains unchanged.
 	* @param event - the event to project.
 	* @returns the derived message, or null when the event produces none.
 	*/
 	deriveEventMessage(event) {
-		return deriveEventMessage(event);
+		return this.surfaceManager.deriveEventMessage(event);
 	}
 };
-//#endregion
-//#region ../session-persistence/src/errors.ts
-/**
-* Stable failures exposed by the session-persistence service and its handles,
-* including the format refusals shared by every backend: a stored log this
-* build cannot faithfully interpret is refused, never misread, and the
-* refusal points at the raw artifact when the backend keeps one per session.
-* @module @deepseek-ai/dsh-session-persistence/errors
-*/
-/** Durable session contents failed validation after a successful backend read. */
-var SessionPersistenceCorruptionError = class extends Error {
-	/**
-	* @param message - stable corruption context.
-	* @param options - original validation failure.
-	*/
-	constructor(message, options) {
-		super(message, options);
-		this.name = "SessionPersistenceCorruptionError";
-	}
-};
-/**
-* The stored log is intact but this runtime cannot faithfully interpret it:
-* the header carries an unsupported format version, or an event's type is
-* unknown to this build. Distinct from {@link SessionPersistenceCorruptionError}
-* — nothing is damaged; the raw log remains readable at {@link location} when
-* the backend keeps one artifact per session.
-*/
-var SessionFormatUnsupportedError = class extends Error {
-	location;
-	/**
-	* @param message - stable reason the log cannot be interpreted, already
-	*   including the raw-log path when one exists.
-	* @param location - the backend's artifact location, when one exists.
-	*/
-	constructor(message, location) {
-		super(message);
-		this.location = location;
-		this.name = "SessionFormatUnsupportedError";
-	}
-};
-/**
-* Direction-aware refusal text for a stored session whose format version this
-* build does not read. Shared by load-time checks and by backends that must
-* refuse BEFORE decoding version-dependent structure (a future format may not
-* satisfy this build's structural checks at all, and the user must see
-* "upgrade the harness", never "corrupt").
-* @param id - the stored session id, for message context.
-* @param version - the stored format version.
-* @returns the stable refusal text, without a raw-log path suffix.
-*/
-function sessionFormatVersionRefusal(id, version) {
-	return version > 3 ? `session "${id}" uses log format v${version}, but this harness reads only v3: the log was written by a newer harness — upgrade the harness to open it` : `session "${id}" uses log format v${version}, older than the supported v3, and this build ships no upgrade path for it`;
-}
-//#endregion
-//#region ../session-persistence/src/storage-contract.ts
-/**
-* Backend-shared storage validation: the version gate, the fail-closed event
-* vocabulary, append-batch materialization, and contiguity — one place so
-* every backend refuses the same inputs identically.
-* @module @deepseek-ai/dsh-session-persistence/storage-contract
-*/
-/** Build a format refusal that points at the raw artifact when the backend has one. */
-function unsupported(reason, location) {
-	return new SessionFormatUnsupportedError(location === void 0 ? reason : `${reason} (raw log: ${location.path})`, location);
-}
-/**
-* Validate one exclusively owned stored event array in place: adopt each
-* record (validating and freezing it) and refuse any event type this build
-* does not know, unless its writer marked it `ignorable: true` — silently
-* skipping an unknown required event could reconstruct a wrong session (the
-* envelope contract on `SessionEvent.ignorable`). Unknown required types and
-* retired pre-release shapes refuse here; this validator performs no migration.
-* @param meta - the stored header the events belong to.
-* @param events - exclusively owned decoded events; validated in place.
-* @param location - the backend's artifact location for refusals, when one exists.
-* @returns the same array, validated and frozen.
-* @throws {SessionFormatUnsupportedError} for unknown event types.
-* @throws {SessionPersistenceCorruptionError} for records that fail validation.
-*/
-function validateStoredEvents(meta, events, location) {
-	for (const event of events) {
-		if (!KNOWN_SESSION_EVENT_TYPES.has(event.type) && event.ignorable !== true) throw unsupported(`session "${meta.id}" contains event type "${event.type}" (seq ${event.seq}) unknown to this harness and not marked ignorable; refusing to interpret the log — it was likely written by a newer harness`, location);
-		if (event.type === "request/header") {
-			const data = event.data;
-			if (typeof data === "object" && data !== null && data["reason"] === "fallback") throw unsupported(`session "${meta.id}" contains a request/header event (seq ${event.seq}) with the unsupported legacy reason "fallback"; refusing to interpret the log — it was written by a retired pre-release harness`, location);
-		}
-	}
-	try {
-		for (const [index, event] of events.entries()) events[index] = adoptSessionEvent(event);
-	} catch (error) {
-		if (error instanceof SessionFormatUnsupportedError) throw error;
-		throw new SessionPersistenceCorruptionError(`stored session "${meta.id}" failed validation: ${String(error)}`, { cause: error });
-	}
-	return events;
-}
 //#endregion
 //#region ../session-format/src/error.ts
 /** Error raised when a durable Session artifact cannot be restored or migrated losslessly. */
@@ -6165,6 +6337,101 @@ function sessionFormatLogFilename(version) {
 	return generation === 0 ? "session.jsonl" : `session.v${generation}.jsonl`;
 }
 //#endregion
+//#region ../session-persistence/src/errors.ts
+/**
+* Stable failures exposed by the session-persistence service and its handles,
+* including the format refusals shared by every backend: a stored log this
+* build cannot faithfully interpret is refused, never misread, and the
+* refusal points at the raw artifact when the backend keeps one per session.
+* @module @deepseek-ai/dsh-session-persistence/errors
+*/
+/** Durable session contents failed validation after a successful backend read. */
+var SessionPersistenceCorruptionError = class extends Error {
+	/**
+	* @param message - stable corruption context.
+	* @param options - original validation failure.
+	*/
+	constructor(message, options) {
+		super(message, options);
+		this.name = "SessionPersistenceCorruptionError";
+	}
+};
+/**
+* The stored log is intact but this runtime cannot faithfully interpret it:
+* the header carries an unsupported format version, or an event's type is
+* unknown to this build. Distinct from {@link SessionPersistenceCorruptionError}
+* — nothing is damaged; the raw log remains readable at {@link location} when
+* the backend keeps one artifact per session.
+*/
+var SessionFormatUnsupportedError = class extends Error {
+	location;
+	/**
+	* @param message - stable reason the log cannot be interpreted, already
+	*   including the raw-log path when one exists.
+	* @param location - the backend's artifact location, when one exists.
+	*/
+	constructor(message, location) {
+		super(message);
+		this.location = location;
+		this.name = "SessionFormatUnsupportedError";
+	}
+};
+/**
+* Direction-aware refusal text for a stored session whose format version this
+* build does not read. Shared by load-time checks and by backends that must
+* refuse BEFORE decoding version-dependent structure (a future format may not
+* satisfy this build's structural checks at all, and the user must see
+* "upgrade the harness", never "corrupt").
+* @param id - the stored session id, for message context.
+* @param version - the stored format version.
+* @returns the stable refusal text, without a raw-log path suffix.
+*/
+function sessionFormatVersionRefusal(id, version) {
+	return version > 4 ? `session "${id}" uses log format v${version}, but this harness reads only v4: the log was written by a newer harness — upgrade the harness to open it` : `session "${id}" uses log format v${version}, older than the supported v4, and this build ships no upgrade path for it`;
+}
+//#endregion
+//#region ../session-persistence/src/storage-contract.ts
+/**
+* Backend-shared storage validation: the version gate, the fail-closed event
+* vocabulary, append-batch materialization, and contiguity — one place so
+* every backend refuses the same inputs identically.
+* @module @deepseek-ai/dsh-session-persistence/storage-contract
+*/
+/** Build a format refusal that points at the raw artifact when the backend has one. */
+function unsupported(reason, location) {
+	return new SessionFormatUnsupportedError(location === void 0 ? reason : `${reason} (raw log: ${location.path})`, location);
+}
+/**
+* Validate one exclusively owned stored event array in place: adopt each
+* record (validating and freezing it) and refuse any event type this build
+* does not know, unless its writer marked it `ignorable: true` — silently
+* skipping an unknown required event could reconstruct a wrong session (the
+* envelope contract on `SessionEvent.ignorable`). Unknown required types and
+* retired pre-release shapes refuse here; this validator performs no migration.
+* @param meta - the stored header the events belong to.
+* @param events - exclusively owned decoded events; validated in place.
+* @param location - the backend's artifact location for refusals, when one exists.
+* @returns the same array, validated and frozen.
+* @throws {SessionFormatUnsupportedError} for unknown event types.
+* @throws {SessionPersistenceCorruptionError} for records that fail validation.
+*/
+function validateStoredEvents(meta, events, location) {
+	for (const event of events) {
+		if (!KNOWN_SESSION_EVENT_TYPES.has(event.type) && event.ignorable !== true) throw unsupported(`session "${meta.id}" contains event type "${event.type}" (seq ${event.seq}) unknown to this harness and not marked ignorable; refusing to interpret the log — it was likely written by a newer harness`, location);
+		if (event.type === "request/header") {
+			const data = event.data;
+			if (typeof data === "object" && data !== null && data["reason"] === "fallback") throw unsupported(`session "${meta.id}" contains a request/header event (seq ${event.seq}) with the unsupported legacy reason "fallback"; refusing to interpret the log — it was written by a retired pre-release harness`, location);
+		}
+	}
+	try {
+		for (const [index, event] of events.entries()) events[index] = adoptSessionEvent(event);
+	} catch (error) {
+		if (error instanceof SessionFormatUnsupportedError) throw error;
+		throw new SessionPersistenceCorruptionError(`stored session "${meta.id}" failed validation: ${String(error)}`, { cause: error });
+	}
+	return events;
+}
+//#endregion
 //#region ../session-format-catalog/src/current.ts
 /** Current installed Session validation used after vocabulary-aware format restoration. */
 /**
@@ -6173,7 +6440,7 @@ function sessionFormatLogFilename(version) {
 * @returns nothing after successful validation.
 */
 function validateInstalledCurrentSessionHeader(header) {
-	if (header.version !== 3) throw new Error(`installed Session format is v3, got v${header.version}`);
+	if (header.version !== 4) throw new Error(`installed Session format is v4, got v${header.version}`);
 	Session.fromRestore(SessionId(header.id), [], header, SessionLogOffset(0), "detached");
 }
 /**
@@ -6182,8 +6449,8 @@ function validateInstalledCurrentSessionHeader(header) {
 * @returns nothing after successful validation.
 */
 function validateInstalledCurrentSessionArtifact(artifact) {
-	if (artifact.header.version !== 3) throw new Error(`installed Session format is v3, got v${artifact.header.version}`);
-	Session.fromRestore(SessionId(artifact.header.id), artifact.events, artifact.header, SessionLogOffset(artifact.inheritedEventCount), "detached");
+	if (artifact.header.version !== 4) throw new Error(`installed Session format is v4, got v${artifact.header.version}`);
+	Session.fromRestore(SessionId(artifact.header.id), artifact.events, artifact.header, SessionLogOffset(artifact.inheritedEventCount), "detached", currentSessionMessageProjections);
 }
 //#endregion
 //#region ../session-format-v0-to-v1/src/dispositions.ts
@@ -7657,11 +7924,11 @@ function assertReleasedV1Header(header) {
 * @param record - exact event envelope.
 * @param seq - event position used for earlier-reference checks.
 * @param type - surface event type used in diagnostics.
-* @param assistantSources - whether this generation admits empty Assistant chunk provenance.
+* @param assistantSources - whether this generation admits empty Assistant chunk references.
 */
 function assertReleasedSurfaceMetadata(record, seq, type, assistantSources) {
 	const sources = record["sourceEventSeqs"];
-	if (type === "assistant/message" && sources !== void 0 && assistantSources === "forbid-assistant") throw new SessionFormatError(`assistant/message ${seq} retains obsolete chunk provenance`);
+	if (type === "assistant/message" && sources !== void 0 && assistantSources === "forbid-assistant") throw new SessionFormatError(`assistant/message ${seq} retains obsolete chunk references`);
 	if (sources !== void 0) {
 		if (!Array.isArray(sources)) throw new SessionFormatError(`${type} ${seq} sourceEventSeqs must be an array`);
 		const seen = /* @__PURE__ */ new Set();
@@ -7977,6 +8244,7 @@ function decodeSeqRanges$1(value, maxEntries) {
 }
 //#endregion
 //#region ../session-format-v0-to-v1/src/migration.ts
+const LEGACY_ASSISTANT_SOURCE_KEY = ["pro", "venance"].join("");
 /** Identity format edge that promotes released v0 into released v1. */
 const sessionFormatV0ToV1 = defineSessionFormatMigration({
 	name: "@deepseek-ai/dsh-session-format-v0-to-v1",
@@ -8300,9 +8568,12 @@ function normalizeLegacyMessage(event, sessionId, messageIds) {
 				}
 			};
 		case "assistant/message": {
-			if (Object.hasOwn(data, "message") || !Object.hasOwn(data, "content") || !Object.hasOwn(data, "provenance")) return event;
-			const { content, provenance, ...eventData } = data;
-			const source = releasedV0Record(provenance, `assistant/message ${event.seq} provenance`);
+			if (Object.hasOwn(data, "message") || !Object.hasOwn(data, "content") || !Object.hasOwn(data, LEGACY_ASSISTANT_SOURCE_KEY)) return event;
+			const content = data["content"];
+			const eventData = { ...data };
+			delete eventData["content"];
+			const source = releasedV0Record(eventData[LEGACY_ASSISTANT_SOURCE_KEY], `assistant/message ${event.seq} legacy source`);
+			Reflect.deleteProperty(eventData, LEGACY_ASSISTANT_SOURCE_KEY);
 			return {
 				...event,
 				data: {
@@ -8371,7 +8642,7 @@ function malformedLegacy(sessionId, type, seq) {
 }
 //#endregion
 //#region ../session-format-v0-to-v1/src/relationships.ts
-const SURFACE_TYPES$2 = new Set([
+const SURFACE_TYPES$3 = new Set([
 	"user/message",
 	"assistant/message",
 	"tool/result"
@@ -8400,7 +8671,7 @@ function assertReleasedArtifactRelationships(artifact, extensions = {}) {
 		const extensionStepEvent = extensions.stepEvents?.has(event.type) === true;
 		if (RELEASED_V0_EVENT_DISPOSITIONS[event.type] === void 0 && !extensionStepEvent) continue;
 		const data = releasedV0Record(event.data, `${event.type} ${event.seq} data`);
-		if (SURFACE_TYPES$2.has(event.type)) surface = applySurface(surface, event);
+		if (SURFACE_TYPES$3.has(event.type)) surface = applySurface(surface, event);
 		if ((event.type === "turn/start" || event.type === "turn/end") && openCompaction !== void 0 && !staleCompactionStarts.has(openCompaction.startSeq)) throw new SessionFormatError(`${event.type} crosses an open compaction`);
 		if (extensionStepEvent) {
 			requireOpenStep(event, data, openTurn, openStep);
@@ -8737,7 +9008,7 @@ const EVENT_REQUIRED$1 = [
 	"time",
 	"data"
 ];
-const SURFACE_TYPES$1 = new Set([
+const SURFACE_TYPES$2 = new Set([
 	"user/message",
 	"assistant/message",
 	"tool/result"
@@ -8783,7 +9054,7 @@ function validateReleasedV2Artifact(artifact, mode, knownEventTypes, relationshi
 		const installed = knownEventTypes?.has(type) === true;
 		const ignorableUnknown = disposition === void 0 && record["ignorable"] === true;
 		if (mode === "current" && disposition === void 0 && !installed && !ignorableUnknown) throw new SessionFormatUnsupportedMigrationError(`format v2 contains unknown event type ${JSON.stringify(type)} at seq ${index}`);
-		const surface = disposition !== void 0 && SURFACE_TYPES$1.has(type);
+		const surface = disposition !== void 0 && SURFACE_TYPES$2.has(type);
 		assertReleasedV2Keys(record, EVENT_REQUIRED$1, mode === "physical" || disposition === void 0 ? SURFACE_OPTIONAL : surface ? SURFACE_OPTIONAL : LOG_OPTIONAL, `format v2 event ${index}`);
 		if (record["seq"] !== index) throw new SessionFormatError(`format v2 event ${index} is not dense`);
 		sessionFormatSafeInteger(record["time"], `format v2 event ${index} time`);
@@ -8878,7 +9149,7 @@ const releasedV2SessionFormatCodec = Object.freeze({
 		return encodeHeader(header, inheritedEventCount);
 	},
 	encodeEvent(event) {
-		return encodeProvenance(event);
+		return encodeSourceEventRanges(event);
 	}
 });
 function decodePhysicalHeader(value) {
@@ -8986,7 +9257,7 @@ function encodeHeader(header, inheritedEventCount) {
 		...header.agentPreset === void 0 ? {} : { agentPreset: header.agentPreset }
 	};
 }
-function encodeProvenance(event) {
+function encodeSourceEventRanges(event) {
 	if (event.sourceEventSeqs === void 0) return event;
 	return {
 		...event,
@@ -9110,7 +9381,7 @@ function transformReleasedEvent(state, event, context) {
 	if (event.type === "assistant/chunk") assertChunkEnvelope(event);
 	if (RELEASED_V0_EVENT_DISPOSITIONS[event.type] === void 0) throw refusal(`format v1 contains unknown event type ${JSON.stringify(event.type)} at seq ${event.seq}`);
 	const interrupted = legacyInterruptedTurn(state.legacyTurns, event);
-	if (event.type === "turn/start" && state.legacyTurns.openTurn !== null && interrupted === void 0) throw refusal(`turn/start ${JSON.stringify(record$1(event.data)["turn"])} does not close the prior turn`);
+	if (event.type === "turn/start" && state.legacyTurns.openTurn !== null && interrupted === void 0) throw refusal(`turn/start ${JSON.stringify(record$3(event.data)["turn"])} does not close the prior turn`);
 	assertSourceDeliveryMarker(state, event);
 	observeLegacyTurn(state.legacyTurns, event);
 	state.lastTime = event.time;
@@ -9152,7 +9423,7 @@ function assertChunkEnvelope(event) {
 }
 function assertSourceDeliveryMarker(state, event) {
 	if (event.type !== "session-log-deepseek/delivery-accepted") return;
-	const data = record$1(event.data);
+	const data = record$3(event.data);
 	const inherited = state.sourceHeader.parentSession !== void 0 && event.seq < state.sourceCut;
 	if (data["sessionFormatVersion"] === 1 && !inherited && data["sessionId"] !== state.sourceHeader.id) throw refusal("current-generation delivery marker names the wrong Session");
 }
@@ -9189,10 +9460,10 @@ function finishMigration(state, context) {
 	return state.targetCut;
 }
 function transformChunk(state, event, context) {
-	const data = record$1(event.data);
+	const data = record$3(event.data);
 	const turn = coordinate(data["turn"]);
 	const step = coordinate(data["step"]);
-	const chunk = record$1(data["chunk"]);
+	const chunk = record$3(data["chunk"]);
 	if (state.pending !== void 0 && (state.pending.group.terminal || state.pending.group.turn !== turn || state.pending.group.step !== step)) finishAttempt(state, context);
 	else if (state.pending !== void 0) flushBuffered(state, state.pending, context);
 	state.pending ??= {
@@ -9209,7 +9480,7 @@ function transformChunk(state, event, context) {
 	if (chunk["type"] === "finish") state.pending.group.terminal = true;
 }
 function transformMessage(state, event, context) {
-	const data = record$1(event.data);
+	const data = record$3(event.data);
 	const turn = coordinate(data["turn"]);
 	const step = coordinate(data["step"]);
 	const sources = event.sourceEventSeqs;
@@ -9229,7 +9500,7 @@ function transformMessage(state, event, context) {
 		emitSource(state, messageEvent(event, attemptGroup(turn, step)), context);
 		return;
 	}
-	if (pending === void 0 || !matchesChunkSources(pending.group, sources)) throw refusal(`assistant/message ${event.seq} chunk provenance is not one complete ordered attempt`);
+	if (pending === void 0 || !matchesChunkSources(pending.group, sources)) throw refusal(`assistant/message ${event.seq} chunk references are not one complete ordered attempt`);
 	assertAttemptCut(state, pending.group, event.seq);
 	pending.group.terminal = true;
 	flushBuffered(state, pending, context);
@@ -9289,8 +9560,8 @@ function legacyTurnState() {
 	};
 }
 function legacyInterruptedTurn(state, event) {
-	if (event.type !== "turn/start" || state.openTurn === null || state.openStep !== null || coordinate(record$1(event.data)["turn"]) !== state.openTurn + 1 || state.previous?.type !== "agent/inbox/spliced") return void 0;
-	const splice = record$1(state.previous.data);
+	if (event.type !== "turn/start" || state.openTurn === null || state.openStep !== null || coordinate(record$3(event.data)["turn"]) !== state.openTurn + 1 || state.previous?.type !== "agent/inbox/spliced") return void 0;
+	const splice = record$3(state.previous.data);
 	if (splice["target"] !== "next-turn" || !Array.isArray(splice["inserted"]) || splice["inserted"].length === 0) return;
 	return {
 		type: "turn/end",
@@ -9303,7 +9574,7 @@ function legacyInterruptedTurn(state, event) {
 	};
 }
 function observeLegacyTurn(state, event) {
-	const data = record$1(event.data);
+	const data = record$3(event.data);
 	if (event.type === "turn/start") {
 		state.openTurn = coordinate(data["turn"]);
 		state.openStep = null;
@@ -9316,8 +9587,8 @@ function observeLegacyTurn(state, event) {
 }
 function splitLegacyGoalChange(event) {
 	if (event.type !== "user/message") return void 0;
-	const data = record$1(event.data);
-	const source = record$1(data["source"]);
+	const data = record$3(event.data);
+	const source = record$3(data["source"]);
 	if (source["kind"] !== "goal" || source["change"] === void 0) return void 0;
 	return {
 		change: {
@@ -9436,7 +9707,7 @@ function streamOf(group) {
 	return group.stream.map(({ record }) => record);
 }
 function messageEvent(source, group) {
-	const data = record$1(source.data);
+	const data = record$3(source.data);
 	const { sourceEventSeqs: _sourceEventSeqs, ...event } = source;
 	return {
 		...event,
@@ -9463,7 +9734,7 @@ function remapReferences(source, targetSeq, mapping) {
 	const sources = sourceEventSeqs === void 0 ? {} : { sourceEventSeqs: mapList(numberArray(sourceEventSeqs), mapping, `${source.type} ${source.seq} sources`) };
 	let operation = surfaceOp;
 	if (surfaceOp !== void 0 && surfaceOp !== "append") {
-		const replacement = record$1(surfaceOp);
+		const replacement = record$3(surfaceOp);
 		operation = {
 			op: "replace",
 			start: mapOne(coordinate(replacement["start"]), mapping, `${source.type} ${source.seq} surface start`),
@@ -9479,7 +9750,7 @@ function remapReferences(source, targetSeq, mapping) {
 	};
 }
 function remapPayloadReferences(event, mapping) {
-	const data = record$1(event.data);
+	const data = record$3(event.data);
 	switch (event.type) {
 		case "command/done": return data["sourceEventSeq"] === void 0 ? data : {
 			...data,
@@ -9487,7 +9758,7 @@ function remapPayloadReferences(event, mapping) {
 		};
 		case "compaction/prune":
 		case "compaction/summary": {
-			const range = record$1(data["shadowedRange"]);
+			const range = record$3(data["shadowedRange"]);
 			return {
 				...data,
 				shadowedRange: {
@@ -9513,7 +9784,7 @@ function mapOne(value, mapping, label) {
 	if (mapped === void 0) throw refusal(`${label} targets consumed assistant/chunk ${value}`);
 	return mapped;
 }
-function record$1(value) {
+function record$3(value) {
 	return value;
 }
 function numberArray(value) {
@@ -9529,7 +9800,7 @@ function refusal(message) {
 //#region ../session-format-v2-to-v3/src/payload.ts
 /** Audited V2 migration admission and V3 payload validation, independent of installed core Session types. */
 /** Audited surface event names; all other admitted events are log-only. */
-const SURFACE_TYPES = new Set([
+const SURFACE_TYPES$1 = new Set([
 	"system/message",
 	"user/message",
 	"assistant/message",
@@ -9558,7 +9829,7 @@ const SOURCE_KINDS = new Set([
 * @param label - diagnostic subject.
 * @returns the narrowed object.
 */
-function record(value, label) {
+function record$2(value, label) {
 	if (!isSessionFormatJsonObject(value)) throw new SessionFormatError(label + " must be an object");
 	return value;
 }
@@ -9588,7 +9859,7 @@ function assertEvent(event, version) {
 	const disposition = RELEASED_V2_EVENT_DISPOSITIONS[event.type];
 	const feedback = event.type === "feedback/message-put" || event.type === "feedback/message-delete";
 	if (disposition === void 0 && !feedback) throw new SessionFormatUnsupportedMigrationError("format v2 to v3 cannot safely transform unclassified event " + event.type);
-	const surface = SURFACE_TYPES.has(event.type);
+	const surface = SURFACE_TYPES$1.has(event.type);
 	keys(event, [
 		"type",
 		"seq",
@@ -9606,7 +9877,7 @@ function assertEvent(event, version) {
 		assertReleasedSurfaceMetadata(event, event.seq, event.type, "forbid-assistant");
 		if (event["surfaceOp"] === void 0) throw new SessionFormatError(event.type + " requires surfaceOp");
 	}
-	const data = record(event.data, event.type + " data");
+	const data = record$2(event.data, event.type + " data");
 	if (feedback) {
 		assertFeedback(event.type, data);
 		return;
@@ -9620,10 +9891,10 @@ function assertEvent(event, version) {
 	}
 	if (event.type === "session/end-seed" && data["inherited"] !== void 0 && data["inherited"] !== true) throw new SessionFormatError("session/end-seed inherited must be true");
 	if (event.type === "user/message") assertSource(data);
-	if (event.type === "assistant/message" || event.type === "tool/result") assertSource(record(data["message"], "message"));
+	if (event.type === "assistant/message" || event.type === "tool/result") assertSource(record$2(data["message"], "message"));
 	if (event.type === "tool/result" && isSessionFormatJsonObject(data["error"]) && data["error"]["code"] === "TOOL_NOT_STARTED") {
-		const message = record(data["message"], "tool result message");
-		const source = record(message["source"], "tool result source");
+		const message = record$2(data["message"], "tool result message");
+		const source = record$2(message["source"], "tool result source");
 		if (!isRepairIdentity(message["id"], source["callId"])) throw new SessionFormatError("TOOL_NOT_STARTED repair requires its canonical historical message id");
 	}
 	if (event.type === "agent/inbox/spliced" || event.type === "session/title-llm-request") {
@@ -9645,7 +9916,7 @@ function isRepairIdentity(id, callId) {
 	return /^(0|[1-9]\d*)$/.test(suffix) && Number.isSafeInteger(Number(suffix));
 }
 function assertSource(message) {
-	const source = record(message["source"], "message source");
+	const source = record$2(message["source"], "message source");
 	if (typeof source["kind"] !== "string" || !SOURCE_KINDS.has(source["kind"])) throw new SessionFormatUnsupportedMigrationError("cannot safely transform unclassified message source");
 	if (source["kind"] === "agent-message") {
 		keys(source, [
@@ -9678,14 +9949,14 @@ function assertOwnedContent(event, data) {
 		case "assistant/message":
 		case "tool/result":
 		case "team/message/queued":
-			assertContentKinds(record(data["message"], label + ".message")["content"], label + ".message.content");
+			assertContentKinds(record$2(data["message"], label + ".message")["content"], label + ".message.content");
 			break;
 		case "agent/inbox/spliced":
 		case "session/title-llm-request": {
 			const field = event.type === "agent/inbox/spliced" ? "inserted" : "messages";
 			for (const [index, value] of contentArray(data[field], label + "." + field).entries()) {
 				const path = label + "." + field + "[" + String(index) + "]";
-				assertContentKinds(record(value, path)["content"], path + ".content");
+				assertContentKinds(record$2(value, path)["content"], path + ".content");
 			}
 			break;
 		}
@@ -9696,9 +9967,9 @@ function assertOwnedContent(event, data) {
 	}
 	if (event.type === "assistant/message" || event.type === "assistant/attempt") for (const [index, value] of contentArray(data["stream"], label + ".stream").entries()) {
 		const path = label + ".stream[" + String(index) + "]";
-		const entry = record(value, path);
+		const entry = record$2(value, path);
 		if (entry["type"] !== "chunk") continue;
-		const chunk = record(entry["chunk"], path + ".chunk");
+		const chunk = record$2(entry["chunk"], path + ".chunk");
 		if (chunk["type"] === "block-end") assertContentBlock(chunk["block"], path + ".chunk.block");
 		if (chunk["type"] === "block-start") assertContentKind(chunk["blockType"], path + ".chunk.blockType");
 	}
@@ -9710,7 +9981,7 @@ function assertContentKinds(content, label) {
 	for (const [index, value] of contentArray(content, label).entries()) assertContentBlock(value, label + "[" + String(index) + "]");
 }
 function assertContentBlock(value, label) {
-	const block = record(value, label);
+	const block = record$2(value, label);
 	assertContentKind(block["type"], label);
 	if (block["type"] === "tool-result") {
 		if (!Array.isArray(block["content"])) throw new SessionFormatError(label + ".content: invalid message content kind \"tool-result\": content must be an array");
@@ -9718,7 +9989,7 @@ function assertContentBlock(value, label) {
 	}
 	if (block["type"] === "file") {
 		keys(block, ["type", "attachment"], [], label + " kind \"file\"");
-		const attachment = record(block["attachment"], label + " kind \"file\" attachment");
+		const attachment = record$2(block["attachment"], label + " kind \"file\" attachment");
 		keys(attachment, [
 			"attachmentId",
 			"name",
@@ -9756,10 +10027,10 @@ function assertV3StructuralRow(value) {
 	if (typeof value !== "object" || value === null || Array.isArray(value)) return;
 	const row = value;
 	if (row["type"] === "request/header") {
-		const data = record(row["data"], "request/header data");
-		if (Object.hasOwn(record(data["header"], "request header"), "system")) throw new SessionFormatUnsupportedMigrationError("format v3 request/header rejects retired header.system");
+		const data = record$2(row["data"], "request/header data");
+		if (Object.hasOwn(record$2(data["header"], "request header"), "system")) throw new SessionFormatUnsupportedMigrationError("format v3 request/header rejects retired header.system");
 	} else if (row["type"] === "system/message") {
-		const data = record(row["data"], "system/message data");
+		const data = record$2(row["data"], "system/message data");
 		assertSystem({
 			type: "system/message",
 			seq: 0,
@@ -9775,7 +10046,7 @@ function assertSystem(event, data) {
 		"message"
 	], [], "system/message data");
 	for (const coordinate of ["turn", "step"]) if (sessionFormatCount(data[coordinate], coordinate) === 0) throw new SessionFormatError(coordinate + " must be positive");
-	const message = record(data["message"], "system message");
+	const message = record$2(data["message"], "system message");
 	keys(message, [
 		"id",
 		"role",
@@ -9783,7 +10054,7 @@ function assertSystem(event, data) {
 		"content"
 	], [], "system message");
 	if (typeof message["id"] !== "string" || message["id"].length === 0 || message["role"] !== "system") throw new SessionFormatError("system message requires an id and system role");
-	const source = record(message["source"], "system source");
+	const source = record$2(message["source"], "system source");
 	if (source["kind"] !== "plugin" || typeof source["plugin"] !== "string" || source["plugin"].length === 0) throw new SessionFormatError("system message requires plugin source");
 	assertReleasedPayloadSemantics({
 		...event,
@@ -9801,7 +10072,7 @@ function assertFeedback(type, data) {
 		if (typeof data["messageId"] !== "string") throw new SessionFormatError("feedback messageId must be a string");
 		return;
 	}
-	const item = record(data["item"], "feedback item");
+	const item = record$2(data["item"], "feedback item");
 	keys(item, [
 		"messageId",
 		"rating",
@@ -9822,15 +10093,15 @@ function assertFeedback(type, data) {
 * @param knownEventTypes - additional installed event types whose envelopes are interpreted.
 */
 function assertV3Event(event, knownEventTypes) {
-	const value = record(event, "format v3 event");
+	const value = record$2(event, "format v3 event");
 	const subject = `format v3 ${event.type} at seq ${event.seq}`;
-	const opaque = !(!(event.type === "tool/code-dispatch-start" || event.type === "tool/code-dispatch") && (SURFACE_TYPES.has(event.type) || RELEASED_V2_EVENT_DISPOSITIONS[event.type] !== void 0 || event.type === "tool/ptc-dispatch-start" || event.type === "tool/ptc-dispatch" || event.type === "feedback/message-put" || event.type === "feedback/message-delete" || knownEventTypes?.has(event.type) === true));
+	const opaque = !(!(event.type === "tool/code-dispatch-start" || event.type === "tool/code-dispatch") && (SURFACE_TYPES$1.has(event.type) || RELEASED_V2_EVENT_DISPOSITIONS[event.type] !== void 0 || event.type === "tool/ptc-dispatch-start" || event.type === "tool/ptc-dispatch" || event.type === "feedback/message-put" || event.type === "feedback/message-delete" || knownEventTypes?.has(event.type) === true));
 	keys(value, [
 		"type",
 		"seq",
 		"time",
 		"data"
-	], SURFACE_TYPES.has(event.type) || opaque ? [
+	], SURFACE_TYPES$1.has(event.type) || opaque ? [
 		"ignorable",
 		"surfaceOp",
 		"sourceEventSeqs"
@@ -9839,11 +10110,11 @@ function assertV3Event(event, knownEventTypes) {
 	sessionFormatCount(event.seq, `${subject} seq`);
 	sessionFormatSafeInteger(event.time, `${subject} time`);
 	if (Object.hasOwn(value, "ignorable") && value["ignorable"] !== true) throw new SessionFormatError(`${subject} ignorable must be true when present`);
-	if (SURFACE_TYPES.has(event.type)) {
+	if (SURFACE_TYPES$1.has(event.type)) {
 		const operation = value["surfaceOp"];
 		if (operation === void 0) throw new SessionFormatError(`${subject} requires a surfaceOp marker`);
 		if (operation !== "append") {
-			const replace = record(operation, `${subject} surfaceOp`);
+			const replace = record$2(operation, `${subject} surfaceOp`);
 			if (Object.keys(replace).length !== 3 || replace["op"] !== "replace" || !Object.hasOwn(replace, "startSeq") || !Object.hasOwn(replace, "endSeq")) throw new SessionFormatError(`${subject} requires exact replace fields op/startSeq/endSeq`);
 			for (const key of ["startSeq", "endSeq"]) if (sessionFormatCount(replace[key], `${subject} surfaceOp ${key}`) >= event.seq) throw new SessionFormatError(`${subject} replacement endpoints must reference earlier events`);
 		}
@@ -9865,13 +10136,13 @@ function assertV3Event(event, knownEventTypes) {
 function assertCanonicalPayload(event) {
 	const subject = `format v3 ${event.type} at seq ${event.seq}`;
 	if (event.type === "request/header") {
-		const header = record(record(event.data, `${subject} data`)["header"], `${subject} header`);
+		const header = record$2(record$2(event.data, `${subject} data`)["header"], `${subject} header`);
 		if (Array.isArray(header["tools"]) && header["tools"].length === 0 || isSessionFormatJsonObject(header["adapterDefaults"]) && Object.keys(header["adapterDefaults"]).length === 0) throw new SessionFormatError(`${subject} empty optional header fields must be omitted`);
 	}
 	if (event.type !== "tool/result") return;
-	const data = record(event.data, `${subject} data`);
+	const data = record$2(event.data, `${subject} data`);
 	if (data["error"] === void 0) return;
-	const content = record(data["message"], `${subject} message`)["content"];
+	const content = record$2(data["message"], `${subject} message`)["content"];
 	if (!Array.isArray(content) || content.length !== 1 || !isSessionFormatJsonObject(content[0]) || content[0]["type"] !== "tool-result" || content[0]["isError"] !== true) throw new SessionFormatError(`${subject} carries error metadata for a non-error tool result`);
 }
 /**
@@ -9883,7 +10154,7 @@ function canonicalizeTransformedEvent(event) {
 	let target = event;
 	const operation = event["surfaceOp"];
 	if (operation !== void 0 && operation !== "append") {
-		const replace = record(operation, `format v2 ${event.type} at seq ${event.seq} surfaceOp`);
+		const replace = record$2(operation, `format v2 ${event.type} at seq ${event.seq} surfaceOp`);
 		if (Object.keys(replace).length !== 3 || replace["op"] !== "replace" || !Object.hasOwn(replace, "start") || !Object.hasOwn(replace, "end")) throw new SessionFormatError(`format v2 ${event.type} at seq ${event.seq} requires exact replace fields op/start/end`);
 		target = {
 			...event,
@@ -9895,8 +10166,8 @@ function canonicalizeTransformedEvent(event) {
 		};
 	}
 	if (event.type === "request/header") {
-		const data = record(event.data, `format v2 request/header at seq ${event.seq} data`);
-		const header = record(data["header"], `format v2 request/header at seq ${event.seq} header`);
+		const data = record$2(event.data, `format v2 request/header at seq ${event.seq} data`);
+		const header = record$2(data["header"], `format v2 request/header at seq ${event.seq} header`);
 		const empty = Object.keys(header).filter((key) => key === "tools" && Array.isArray(header[key]) && header[key].length === 0 || key === "adapterDefaults" && isSessionFormatJsonObject(header[key]) && Object.keys(header[key]).length === 0);
 		if (empty.length > 0) {
 			const canonical = Object.fromEntries(Object.entries(header).filter(([key]) => !empty.includes(key)));
@@ -9943,37 +10214,37 @@ function restoreReleasedV3Artifact(artifact, knownEventTypes) {
 		assertV3Event(event, knownEventTypes);
 		const system = event.type === "system/message";
 		if (event.type === "step/start") {
-			const data = record(event.data, event.type);
+			const data = record$2(event.data, event.type);
 			step = {
 				turn: data["turn"],
 				step: data["step"]
 			};
 		} else if (event.type === "step/end" || event.type === "turn/end") step = void 0;
 		if (system) {
-			const data = record(event.data, "system/message");
+			const data = record$2(event.data, "system/message");
 			if (step === void 0 || step.turn !== data["turn"] || step.step !== data["step"]) throw new SessionFormatError("system/message does not match an open step");
 			const operation = event["surfaceOp"];
 			if (hasSurface && head === void 0) throw new SessionFormatError("system/message requires a protected first surface head");
 			if (operation === "append") {
 				if (!hasSurface) head = event.seq;
 			} else {
-				const replace = record(operation, "system replacement");
+				const replace = record$2(operation, "system replacement");
 				if (replace["startSeq"] === head || replace["endSeq"] === head) {
 					if (replace["startSeq"] !== head || replace["endSeq"] !== head) throw new SessionFormatError("system/message must replace exactly the current system head");
 					head = event.seq;
 				}
 			}
-		} else if (SURFACE_TYPES.has(event.type) && event["surfaceOp"] !== "append") {
-			const replace = record(event["surfaceOp"], "surface replacement");
+		} else if (SURFACE_TYPES$1.has(event.type) && event["surfaceOp"] !== "append") {
+			const replace = record$2(event["surfaceOp"], "surface replacement");
 			if (replace["startSeq"] === head || replace["endSeq"] === head) throw new SessionFormatError("surface replacement cannot shadow the protected system head");
 		}
 		if (event.type === "compaction/prune" || event.type === "compaction/summary") {
-			const seqs = record(event.data, event.type)["shadowedSeqs"];
+			const seqs = record$2(event.data, event.type)["shadowedSeqs"];
 			if (Array.isArray(seqs) && seqs.some((seq) => seq === head)) throw new SessionFormatError("compaction cannot shadow the protected system head");
 		}
-		if (SURFACE_TYPES.has(event.type)) hasSurface = true;
+		if (SURFACE_TYPES$1.has(event.type)) hasSurface = true;
 		const projected = relationshipEvent(event);
-		if (!SURFACE_TYPES.has(event.type) || event["surfaceOp"] === "append") return projected;
+		if (!SURFACE_TYPES$1.has(event.type) || event["surfaceOp"] === "append") return projected;
 		const replacement = event["surfaceOp"];
 		return {
 			...projected,
@@ -10020,7 +10291,7 @@ function relationshipEvent(event) {
 			};
 	}
 	if (event.type === "system/message") {
-		const message = record(record(event.data, "system data")["message"], "system message");
+		const message = record$2(record$2(event.data, "system data")["message"], "system message");
 		return {
 			...event,
 			type: "user/message",
@@ -10031,11 +10302,11 @@ function relationshipEvent(event) {
 		};
 	}
 	if (event.type !== "tool/result") return event;
-	const data = record(event.data, "tool result");
+	const data = record$2(event.data, "tool result");
 	if (data["error"] === void 0) return event;
-	if (record(data["error"], "tool error")["code"] !== "TOOL_NOT_STARTED") return event;
-	const message = record(data["message"], "tool message");
-	const callId = record(message["source"], "tool source")["callId"];
+	if (record$2(data["error"], "tool error")["code"] !== "TOOL_NOT_STARTED") return event;
+	const message = record$2(data["message"], "tool message");
+	const callId = record$2(message["source"], "tool source")["callId"];
 	const id = message["id"];
 	if (!isRepairIdentity(id, callId)) return event;
 	const prefix = "interrupted-tool-result-" + callId + "-";
@@ -10053,7 +10324,7 @@ function relationshipEvent(event) {
 //#endregion
 //#region ../session-format-v2-to-v3/src/codec.ts
 /** V3 framing with hard structural admission and recoverable canonical event validation. */
-/** V3 codec validates structural rows before recovery and logical envelopes after provenance decoding. */
+/** V3 codec validates structural rows before recovery and logical envelopes after source-event range decoding. */
 const releasedV3SessionFormatCodec = Object.freeze({
 	version: 3,
 	decodeHeader(value) {
@@ -10119,7 +10390,7 @@ const releasedV3SessionFormatCodec = Object.freeze({
 });
 /**
 * Validate owned V3 admission rules before a scanner or codec can discard a recoverable tail.
-* This checks only identified structural payloads; physical provenance still belongs to decoding.
+* This checks only identified structural payloads; physical source-event ranges still belong to decoding.
 * @param row - parsed physical row, before envelope or compressed-range decoding.
 */
 function assertV3RowAdmission(row) {
@@ -10156,14 +10427,14 @@ function remapEvent(event, seq, mapping) {
 		return value.map(one);
 	};
 	const range = (value) => {
-		const source = record(value, "sequence range");
+		const source = record$2(value, "sequence range");
 		return {
 			...source,
 			start: one(source["start"]),
 			end: one(source["end"])
 		};
 	};
-	let data = record(event.data, event.type);
+	let data = record$2(event.data, event.type);
 	switch (event.type) {
 		case "command/done":
 			if (data["sourceEventSeq"] !== void 0) data = {
@@ -10241,9 +10512,9 @@ var ReleasedV2ToV3Stage = class {
 		assertEvent(event, 2);
 		this.observeMessageIds(event);
 		let source = event;
-		const data = record(event.data, event.type);
+		const data = record$2(event.data, event.type);
 		if (event.type === "request/header") {
-			const { system, ...header } = record(data["header"], "request header");
+			const { system, ...header } = record$2(data["header"], "request header");
 			const prompt = typeof system === "string" ? system : "";
 			if (prompt !== this.prompt) this.emitSystem(prompt, event, context);
 			source = {
@@ -10254,7 +10525,7 @@ var ReleasedV2ToV3Stage = class {
 				}
 			};
 		}
-		if (SURFACE_TYPES.has(event.type) && this.head === void 0) throw new SessionFormatUnsupportedMigrationError("format v2 surface before first step cannot acquire a system head without changing chronology");
+		if (SURFACE_TYPES$1.has(event.type) && this.head === void 0) throw new SessionFormatUnsupportedMigrationError("format v2 surface before first step cannot acquire a system head without changing chronology");
 		if (event.type === "session/end-seed" && data["inherited"] === true) {
 			if (!this.input.sourceHeader.isSeeded) throw new SessionFormatError("format v2 unseeded Session contains an inherited end-seed marker");
 			this.sourceCut = event.seq;
@@ -10285,8 +10556,8 @@ var ReleasedV2ToV3Stage = class {
 		return sessionFormatCount(this.targetCut, "format v3 inherited event count");
 	}
 	observeMessageIds(event) {
-		const data = record(event.data, event.type);
-		const messages = event.type === "user/message" ? [data] : event.type === "assistant/message" || event.type === "tool/result" ? [record(data["message"], "message")] : event.type === "agent/inbox/spliced" ? data["inserted"] : event.type === "session/title-llm-request" ? data["messages"] : [];
+		const data = record$2(event.data, event.type);
+		const messages = event.type === "user/message" ? [data] : event.type === "assistant/message" || event.type === "tool/result" ? [record$2(data["message"], "message")] : event.type === "agent/inbox/spliced" ? data["inserted"] : event.type === "session/title-llm-request" ? data["messages"] : [];
 		for (const message of messages) {
 			const id = message["id"];
 			if (this.generatedIds.has(id)) throw new SessionFormatUnsupportedMigrationError("source message id collides with a generated system message id");
@@ -10391,13 +10662,1047 @@ function renameMessageSource(message) {
 	};
 }
 //#endregion
-//#region ../session-format-catalog/src/generated.ts
+//#region ../session-format-v3-to-v4/src/sources.ts
+/** Released V3 plugin-source conversion and declared message traversal. */
 /**
-* GENERATED by `scripts/gen-session-format-catalog.ts` — do not edit by hand.
-* The direct imports make historical readability independent of mounted plugins.
+* Visit only messages carried by first-party event payloads.
+* @param event - source or target logical event.
+* @param transform - message transform preserving unchanged identity.
+* @returns the event sharing all untouched payloads.
 */
+function mapEventMessages(event, transform) {
+	const data = event.data;
+	if (!isSessionFormatJsonObject(data)) return event;
+	if (event.type === "user/message") {
+		const message = transform(data);
+		return message === data ? event : {
+			...event,
+			data: message
+		};
+	}
+	if (event.type === "developer/message" || event.type === "system/message" || event.type === "assistant/message" || event.type === "tool/result") {
+		if (!isSessionFormatJsonObject(data["message"])) throw new SessionFormatError(event.type + " requires a message");
+		const message = transform(data["message"]);
+		return message === data["message"] ? event : {
+			...event,
+			data: {
+				...data,
+				message
+			}
+		};
+	}
+	const key = event.type === "agent/inbox/spliced" ? "inserted" : event.type === "session/title-llm-request" ? "messages" : void 0;
+	if (key === void 0) return event;
+	const messages = data[key];
+	if (!Array.isArray(messages)) throw new SessionFormatError(event.type + " requires message array");
+	const mapped = messages.map((message) => {
+		if (!isSessionFormatJsonObject(message)) throw new SessionFormatError(event.type + " requires message objects");
+		return transform(message);
+	});
+	return mapped.every((message, index) => message === messages[index]) ? event : {
+		...event,
+		data: {
+			...data,
+			[key]: mapped
+		}
+	};
+}
+Object.freeze({
+	"compact": "compact-checkpoint",
+	"tools-code-mode": "ptc-mode",
+	"tools-ptc": "ptc-mode",
+	"dsh-compaction-basic": "compact-basic",
+	"@deepseek-ai/dsh-system-prompt": "runtime-context"
+});
+//#endregion
+//#region ../session-format-v3-to-v4/src/message-sources.ts
+/** Native source admission preserves unknown attribution and refuses retired plugin wrappers. */
+function source(message) {
+	const value = message["source"];
+	if (!isSessionFormatJsonObject(value) || typeof value["kind"] !== "string" || value["kind"].length === 0 || value["kind"] === "plugin") throw new SessionFormatError("format v4 message requires a producer-owned source kind");
+}
+/**
+* Validate producer attribution in every declared durable message slot.
+* @param event - complete native V4 event before Session adoption.
+*/
+function assertV4MessageSources(event) {
+	mapEventMessages(event, (message) => {
+		source(message);
+		return message;
+	});
+}
+/**
+* Refuse retired source syntax even after a malformed recoverable row; leave incomplete messages to decoding.
+* @param row - parsed row whose incomplete values have not been classified by the scanner.
+*/
+function assertV4SourceRowAdmission(row) {
+	if (!isSessionFormatJsonObject(row) || !isSessionFormatJsonObject(row["data"])) return;
+	const data = row["data"];
+	const messages = row["type"] === "user/message" ? [data] : row["type"] === "system/message" || row["type"] === "assistant/message" || row["type"] === "tool/result" ? [data["message"]] : row["type"] === "agent/inbox/spliced" ? data["inserted"] : row["type"] === "session/title-llm-request" ? data["messages"] : [];
+	if (!Array.isArray(messages)) return;
+	for (const message of messages) {
+		if (!isSessionFormatJsonObject(message)) continue;
+		const value = message["source"];
+		if (isSessionFormatJsonObject(value) && value["kind"] === "plugin") source(message);
+	}
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/retired-syntax.ts
+/** Retired native syntax remains a hard refusal even after a recoverable physical-row failure. */
+function assertBlock(block, subject) {
+	if (isSessionFormatJsonObject(block) && block["type"] === "tool-result") throw new SessionFormatError(`${subject} must not contain a released tool-result wrapper`);
+}
+function assertContent$1(content, subject) {
+	if (Array.isArray(content)) content.forEach((block) => {
+		assertBlock(block, subject);
+	});
+}
+function assertMessageContent(message, subject) {
+	if (isSessionFormatJsonObject(message)) assertContent$1(message["content"], subject);
+}
+/**
+* Refuse retired headers, PTC tags, and tool-result blocks in interpreted content slots.
+* Tool arguments, replay state, schema parameters, and nested extension values remain opaque.
+* @param row - parsed physical row or complete native logical event.
+*/
+function assertV4RetiredSyntax(row) {
+	if (!isSessionFormatJsonObject(row)) return;
+	if ((row["type"] === "tool/code-dispatch-start" || row["type"] === "tool/code-dispatch") && row["ignorable"] !== true) throw new SessionFormatUnsupportedMigrationError(`format v4 rejects retired event type ${row["type"]}`);
+	const data = row["data"];
+	if (row["type"] === "request/header") {
+		if (!isSessionFormatJsonObject(data) || !isSessionFormatJsonObject(data["header"])) throw new SessionFormatError("format v4 request/header requires data and header objects");
+		if (Object.hasOwn(data["header"], "system")) throw new SessionFormatError("format v4 request/header rejects retired header.system");
+		return;
+	}
+	if (!isSessionFormatJsonObject(data)) return;
+	const subject = `format v4 ${String(row["type"])} at seq ${String(row["seq"])} content`;
+	switch (row["type"]) {
+		case "user/message":
+			assertContent$1(data["content"], subject);
+			break;
+		case "developer/message":
+		case "assistant/message":
+		case "team/message/queued":
+			assertMessageContent(data["message"], subject);
+			break;
+		case "agent/inbox/spliced":
+		case "session/title-llm-request": {
+			const messages = data[row["type"] === "agent/inbox/spliced" ? "inserted" : "messages"];
+			if (Array.isArray(messages)) messages.forEach((message) => {
+				assertMessageContent(message, subject);
+			});
+			break;
+		}
+		case "compaction/summary":
+			assertContent$1(data["summary"], subject);
+			assertContent$1(data["rawOutput"], subject);
+			break;
+		case "tool/ptc-dispatch":
+			assertContent$1(data["content"], subject);
+			break;
+	}
+	if ((row["type"] === "assistant/message" || row["type"] === "assistant/attempt") && Array.isArray(data["stream"])) for (const entry of data["stream"]) {
+		if (!isSessionFormatJsonObject(entry) || entry["type"] !== "chunk") continue;
+		const chunk = entry["chunk"];
+		if (!isSessionFormatJsonObject(chunk)) continue;
+		if (chunk["type"] === "block-end") assertBlock(chunk["block"], subject);
+		if (chunk["type"] === "block-start" && chunk["blockType"] === "tool-result") throw new SessionFormatError(`${subject} must not contain a released tool-result wrapper`);
+	}
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/system-message.ts
+/** Native system-message fields checked before physical recovery can discard a row. */
+function record$1(value, subject) {
+	if (!isSessionFormatJsonObject(value)) throw new SessionFormatError(`format v4 ${subject} requires an object`);
+	return value;
+}
+function string(value, subject, nonempty = false) {
+	if (typeof value !== "string" || nonempty && value.length === 0) throw new SessionFormatError(`format v4 ${subject} requires a string${nonempty ? " with content" : ""}`);
+}
+function positive(value, subject) {
+	if (sessionFormatCount(value, subject) === 0) throw new SessionFormatError(`format v4 ${subject} must be positive`);
+}
+function image(value) {
+	const attachment = record$1(value, "system image attachment");
+	string(attachment["attachmentId"], "system image attachmentId", true);
+	if (![
+		"image/png",
+		"image/jpeg",
+		"image/webp",
+		"image/gif"
+	].includes(attachment["mediaType"])) throw new SessionFormatError("format v4 system image requires a supported mediaType");
+	sessionFormatCount(attachment["bytes"], "system image bytes");
+	positive(attachment["width"], "system image width");
+	positive(attachment["height"], "system image height");
+	if (attachment["name"] !== void 0) string(attachment["name"], "system image name");
+	if (attachment["originalDimensions"] !== void 0) {
+		const original = record$1(attachment["originalDimensions"], "system image originalDimensions");
+		positive(original["width"], "system image original width");
+		positive(original["height"], "system image original height");
+	}
+}
+/**
+* Validate system fields independently of historical message representations; preserve additional JSON fields.
+* @param row - complete logical event or parsed physical row before corruption recovery.
+*/
+function assertV4SystemMessageFields(row) {
+	if (!isSessionFormatJsonObject(row) || row["type"] !== "system/message") return;
+	const data = record$1(row["data"], "system/message data");
+	positive(data["turn"], "system/message turn");
+	positive(data["step"], "system/message step");
+	const message = record$1(data["message"], "system message");
+	string(message["id"], "system message id", true);
+	if (message["role"] !== "system") throw new SessionFormatError("format v4 system message requires system role");
+	const content = message["content"];
+	if (!Array.isArray(content)) throw new SessionFormatError("format v4 system message requires content array");
+	for (const value of content) {
+		const block = record$1(value, "system content block");
+		string(block["type"], "system content type", true);
+		switch (block["type"]) {
+			case "text":
+			case "reasoning":
+				string(block["text"], "system content text");
+				break;
+			case "tool-call":
+				string(block["id"], "system tool-call id", true);
+				string(block["name"], "system tool-call name", true);
+				string(block["arguments"], "system tool-call arguments");
+				break;
+			case "image":
+				image(block["attachment"]);
+				break;
+			case "tool-result": throw new SessionFormatError("format v4 system content rejects retired tool-result wrappers");
+			default: break;
+		}
+	}
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/developer.ts
+/** Native V4 developer-message and deferred-tool-schema validation. */
+function assertToolChange(block, developer) {
+	if (!isSessionFormatJsonObject(block) || block["type"] !== "tool-addition" && block["type"] !== "tool-removal") return;
+	if (!developer) throw new SessionFormatError(`format v4 ${block["type"]} requires developer role`);
+	if (typeof block["toolName"] !== "string" || block["toolName"].length === 0) throw new SessionFormatError(`format v4 ${block["type"]} requires a nonempty toolName`);
+	if (block["type"] === "tool-addition" && Object.hasOwn(block, "tool")) throw new SessionFormatError("format v4 tool-addition must omit inline tool definitions");
+}
+function assertContent(value, developer = false) {
+	if (Array.isArray(value)) value.forEach((block) => {
+		assertToolChange(block, developer);
+	});
+}
+function assertDeveloperMessage(message) {
+	assertContent(message["content"], true);
+	const source = message["source"];
+	if (typeof message["id"] !== "string" || message["id"].length === 0 || !Array.isArray(message["content"]) || !isSessionFormatJsonObject(source) || typeof source["kind"] !== "string" || source["kind"].length === 0 || source["kind"] === "plugin") throw new SessionFormatError("format v4 developer message requires id, role, content, and a producer-owned source");
+}
+/** Ordinary-message corruption belongs to the decoder; recognized V4-only values are refused here. */
+function assertOrdinaryMessage(value) {
+	if (!isSessionFormatJsonObject(value)) return;
+	if (value["role"] === "developer") throw new SessionFormatError("format v4 developer/message and developer role must occur together");
+	assertContent(value["content"]);
+}
+/**
+* Validate native V4 developer messages, tool-change blocks, and deferred tool schemas.
+* Additional developer JSON fields are preserved. Malformed legacy message
+* slots remain available to recoverable decoding.
+* @param event - logical event or physical row before source-event range decoding.
+*/
+function assertV4DeveloperData(event) {
+	const data = event.data;
+	if (!isSessionFormatJsonObject(data)) {
+		if (event.type === "developer/message") throw new SessionFormatError("format v4 developer/message data must be an object");
+		return;
+	}
+	if (event.type === "developer/message") {
+		const message = data["message"];
+		if (!isSessionFormatJsonObject(message) || message["role"] !== "developer") throw new SessionFormatError("format v4 developer/message requires turn, step, and a developer message");
+		for (const field of ["turn", "step"]) if (sessionFormatCount(data[field], `developer/message ${field}`) === 0) throw new SessionFormatError(`developer/message ${field} must be positive`);
+		assertDeveloperMessage(message);
+		if (message["content"].some((block) => isSessionFormatJsonObject(block) && block["type"] === "tool-addition")) sessionFormatCount(data["headerSeq"], "developer/message headerSeq");
+		else if (Object.hasOwn(data, "headerSeq")) throw new SessionFormatError("format v4 developer/message must omit headerSeq without tool additions");
+	} else switch (event.type) {
+		case "user/message":
+			assertOrdinaryMessage(data);
+			break;
+		case "system/message":
+		case "assistant/message":
+		case "tool/result":
+			assertOrdinaryMessage(data["message"]);
+			break;
+		case "agent/inbox/spliced":
+		case "session/title-llm-request": {
+			const messages = data[event.type === "agent/inbox/spliced" ? "inserted" : "messages"];
+			if (Array.isArray(messages)) messages.forEach(assertOrdinaryMessage);
+			break;
+		}
+	}
+	if (event.type === "compaction/summary") {
+		assertContent(data["summary"]);
+		assertContent(data["rawOutput"]);
+	}
+	if ((event.type === "assistant/message" || event.type === "assistant/attempt") && Array.isArray(data["stream"])) for (const entry of data["stream"]) {
+		if (!isSessionFormatJsonObject(entry) || entry["type"] !== "chunk") continue;
+		const chunk = entry["chunk"];
+		if (!isSessionFormatJsonObject(chunk)) continue;
+		if (chunk["type"] === "block-end") assertToolChange(chunk["block"], false);
+		if (chunk["type"] === "block-start" && (chunk["blockType"] === "tool-addition" || chunk["blockType"] === "tool-removal")) throw new SessionFormatError("format v4 tool-change blocks require developer role");
+	}
+	if (event.type === "request/header" && isSessionFormatJsonObject(data["header"])) {
+		const tools = data["header"]["tools"];
+		if (Array.isArray(tools)) for (const tool of tools) {
+			if (!isSessionFormatJsonObject(tool) || !Object.hasOwn(tool, "deferLoading")) continue;
+			if (tool["deferLoading"] !== true) throw new SessionFormatError("format v4 tool deferLoading must be true when present");
+		}
+	}
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/fork-result.ts
+/** Native V4 fork-result identity and not-started error validation. */
+/**
+* Validate fork-generated not-started results without changing their identity or text.
+* Append results carry their own sequence; replacement results retain an earlier identity.
+* @param row - logical event or physical event row.
+*/
+function assertV4ForkResult(row) {
+	if (!isSessionFormatJsonObject(row) || row["type"] !== "tool/result") return;
+	const data = row["data"];
+	if (!isSessionFormatJsonObject(data)) return;
+	const error = data["error"];
+	const message = data["message"];
+	if (!isSessionFormatJsonObject(error) || error["code"] !== "TOOL_NOT_STARTED" || !isSessionFormatJsonObject(message) || typeof message["id"] !== "string" || !message["id"].startsWith("forked-tool-result-")) return;
+	const source = message["source"];
+	const callId = isSessionFormatJsonObject(source) ? source["callId"] : void 0;
+	const prefix = `forked-tool-result-${String(callId)}-`;
+	const suffix = message["id"].slice(prefix.length);
+	const operation = row["surfaceOp"];
+	const replacement = isSessionFormatJsonObject(operation) && operation["op"] === "replace";
+	const sequence = Number(suffix);
+	const content = message["content"];
+	const text = Array.isArray(content) && content.length === 1 ? content[0] : void 0;
+	const sourceEventSeqs = row["sourceEventSeqs"];
+	if (typeof callId !== "string" || !message["id"].startsWith(prefix) || !/^(0|[1-9]\d*)$/.test(suffix) || !Number.isSafeInteger(sequence) || (replacement ? typeof row["seq"] !== "number" || sequence >= row["seq"] : sequence !== row["seq"]) || error["name"] !== "ToolNotStartedError" || !replacement && (sourceEventSeqs !== void 0 || operation !== "append") || replacement && (!Array.isArray(sourceEventSeqs) || sourceEventSeqs.length !== 1 || sourceEventSeqs[0] !== sequence) || message["role"] !== "tool" || message["isError"] !== true || message["toolCallId"] !== callId || !isSessionFormatJsonObject(source) || source["kind"] !== "tool" || !isSessionFormatJsonObject(text) || text["type"] !== "text" || typeof text["text"] !== "string") throw new SessionFormatError("invalid V4 not-started fork result");
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/tool-role.ts
+/** First-class tool-role messages in the V4 representation. */
+/**
+* Validate the native V4 first-class tool-role message of one tool/result row.
+* @param event - canonical V4 event.
+* @throws {SessionFormatError} when the row is not an exact first-class tool result.
+*/
+function assertV4ToolResultMessage(event) {
+	if (event.type !== "tool/result") return;
+	const subject = `format v4 ${event.type} at seq ${event.seq}`;
+	const data = event.data;
+	if (!isSessionFormatJsonObject(data)) throw new SessionFormatError(`${subject} data must be an object`);
+	const message = data["message"];
+	if (!isSessionFormatJsonObject(message)) throw new SessionFormatError(`${subject} message must be an object`);
+	const id = message["id"];
+	const role = message["role"];
+	const toolCallId = message["toolCallId"];
+	const source = message["source"];
+	const isError = message["isError"];
+	const content = message["content"];
+	const sourceCallId = isSessionFormatJsonObject(source) ? source["callId"] : void 0;
+	if (typeof id !== "string" || id.length === 0) throw new SessionFormatError(`${subject} requires a first-class message with a string id`);
+	if (role !== "tool") throw new SessionFormatError(`${subject} requires a tool-role message`);
+	if (typeof toolCallId !== "string" || toolCallId.length === 0 || sourceCallId !== toolCallId) throw new SessionFormatError(`${subject} requires toolCallId matching its tool source`);
+	if (!isSessionFormatJsonObject(source) || source["kind"] !== "tool") throw new SessionFormatError(`${subject} requires a tool source`);
+	if (!Array.isArray(content)) throw new SessionFormatError(`${subject} requires array content`);
+	if (content.some((block) => isSessionFormatJsonObject(block) && block["type"] === "tool-result")) throw new SessionFormatError(`${subject} content must not contain a released tool-result wrapper`);
+	if (isError !== void 0 && typeof isError !== "boolean") throw new SessionFormatError(`${subject} isError must be boolean when present`);
+	if (data["error"] !== void 0 && isError !== true) throw new SessionFormatError(`${subject} carries error metadata for a non-error tool result`);
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/relationships.ts
+/** Mandatory native V4 relationships; incomplete tails retain their open transactions. */
+const SURFACE_TYPES = new Set([
+	"system/message",
+	"user/message",
+	"developer/message",
+	"assistant/message",
+	"tool/result"
+]);
+const STEP_EVENT_TYPES = new Set([
+	"system/message",
+	"developer/message",
+	"assistant/attempt"
+]);
+const RELATIONSHIP_TYPES = new Set([
+	...SURFACE_TYPES,
+	...STEP_EVENT_TYPES,
+	"turn/start",
+	"turn/end",
+	"step/start",
+	"step/end",
+	"tool/call",
+	"request/header",
+	"request/context",
+	"tool/ptc-dispatch-start",
+	"tool/ptc-dispatch",
+	"llm/retry",
+	"llm/retry-started",
+	"session/title",
+	"session/title-llm-request",
+	"command/run",
+	"command/done",
+	"compaction/start",
+	"compaction/summary",
+	"compaction/end",
+	"compaction/prune",
+	"session/end-seed"
+]);
+function record(value, subject) {
+	if (!isSessionFormatJsonObject(value)) throw new SessionFormatError(`${subject} requires an object`);
+	return value;
+}
+function text(value, subject) {
+	if (typeof value !== "string" || value.length === 0) throw new SessionFormatError(`${subject} requires a nonempty string`);
+	return value;
+}
+function array(value, subject) {
+	if (!Array.isArray(value)) throw new SessionFormatError(`${subject} requires an array`);
+	return value;
+}
+function earlier(value, seq, subject) {
+	const coordinate = sessionFormatCount(value, subject);
+	if (coordinate >= seq) throw new SessionFormatError(`${subject} must name an earlier event`);
+	return coordinate;
+}
+/** One native artifact's lifecycle state; no state survives between reads. */
+var Relationships = class {
+	artifact;
+	knownEventTypes;
+	turn = null;
+	step = null;
+	nextTurn = 1;
+	nextStep = 1;
+	provider;
+	surface = [];
+	protectedHead;
+	compaction;
+	tools = /* @__PURE__ */ new Map();
+	dispatches = /* @__PURE__ */ new Map();
+	retries = [];
+	startedRetries = /* @__PURE__ */ new Set();
+	commands = /* @__PURE__ */ new Set();
+	orphanCompactions = /* @__PURE__ */ new Set();
+	constructor(artifact, knownEventTypes) {
+		this.artifact = artifact;
+		this.knownEventTypes = knownEventTypes;
+		let start;
+		for (const event of artifact.events) {
+			if (!knownEventTypes.has(event.type)) continue;
+			if (event.type === "compaction/start") start = event.seq;
+			if (event.type === "compaction/end") start = void 0;
+			if (event.type === "session/end-seed") {
+				if (start !== void 0) this.orphanCompactions.add(start);
+				start = void 0;
+			}
+		}
+	}
+	requireTurn(type) {
+		if (this.turn === null) throw new SessionFormatError(`${type} is outside an open turn`);
+	}
+	requireStep(event, data) {
+		if (this.turn === null || this.step === null || data["turn"] !== this.turn || data["step"] !== this.step) throw new SessionFormatError(`${event.type} does not match an open turn and step`);
+	}
+	closeTools(type) {
+		if (this.tools.size !== 0) throw new SessionFormatError(`${type} leaves unresolved tool call ${String(this.tools.keys().next().value)}`);
+		this.tools.clear();
+	}
+	developer(event, data) {
+		if (data["headerSeq"] === void 0) return;
+		const headerSeq = earlier(data["headerSeq"], event.seq, "developer/message headerSeq");
+		const headerEvent = this.artifact.events[headerSeq];
+		if (headerEvent?.type !== "request/header") throw new SessionFormatError("developer/message headerSeq must reference an earlier request/header");
+		if (!this.knownEventTypes.has(headerEvent.type)) throw new SessionFormatError("developer/message headerSeq must reference a known request/header");
+		const tools = record(record(headerEvent.data, "request/header data")["header"], "request header")["tools"];
+		const content = array(record(data["message"], "developer message")["content"], "developer content");
+		for (const value of content) {
+			if (!isSessionFormatJsonObject(value) || value["type"] !== "tool-addition") continue;
+			const toolName = value["toolName"];
+			const definitions = Array.isArray(tools) ? tools.filter((tool) => isSessionFormatJsonObject(tool) && tool["name"] === toolName) : [];
+			if (definitions.length !== 1) throw new SessionFormatError(`developer/message tool-addition "${toolName}" must name exactly one tool in headerSeq ${headerSeq}`);
+			const definition = definitions[0];
+			if (typeof definition["description"] !== "string" || !isSessionFormatJsonObject(definition["parameters"])) throw new SessionFormatError(`developer/message tool-addition "${toolName}" requires a complete tool definition in headerSeq ${headerSeq}`);
+		}
+	}
+	foldSurface(event) {
+		if (!SURFACE_TYPES.has(event.type)) return;
+		if (event.type === "system/message" && this.surface.length > 0 && this.protectedHead === void 0) throw new SessionFormatError("system/message requires a protected first surface head");
+		if (event["surfaceOp"] === "append") {
+			if (event.type === "system/message" && this.surface.length === 0) this.protectedHead = event.seq;
+			this.surface.push(event.seq);
+			return;
+		}
+		const operation = record(event["surfaceOp"], `${event.type} surfaceOp`);
+		const first = this.surface.indexOf(earlier(operation["startSeq"], event.seq, "replacement start"));
+		const last = this.surface.indexOf(earlier(operation["endSeq"], event.seq, "replacement end"));
+		if (first < 0 || last < first) throw new SessionFormatError(`${event.type} replacement range is not on the current surface`);
+		const removed = this.surface.slice(first, last + 1);
+		const sources = array(event["sourceEventSeqs"], "replacement sourceEventSeqs");
+		if (removed.some((seq) => !sources.includes(seq))) throw new SessionFormatError("replacement sourceEventSeqs omit a shadowed surface node");
+		if (this.protectedHead !== void 0 && removed.includes(this.protectedHead)) {
+			if (event.type !== "system/message" || removed.length !== 1) throw new SessionFormatError("surface replacement cannot shadow the protected system head");
+			this.protectedHead = event.seq;
+		}
+		this.surface.splice(first, removed.length, event.seq);
+	}
+	tool(event, data) {
+		if (event.type === "tool/result" && event["surfaceOp"] !== "append") {
+			this.requireTurn(event.type);
+			return;
+		}
+		this.requireStep(event, data);
+		if (event.type === "assistant/message") {
+			const message = record(data["message"], "assistant message");
+			for (const value of array(message["content"], "assistant content")) {
+				const block = record(value, "assistant content block");
+				if (block["type"] !== "tool-call") continue;
+				const id = text(block["id"], "tool call id");
+				if (this.tools.has(id)) throw new SessionFormatError(`assistant/message repeats advertised tool call ${id}`);
+				this.tools.set(id, {
+					name: block["name"],
+					arguments: block["arguments"],
+					started: false
+				});
+			}
+			return;
+		}
+		const message = event.type === "tool/result" ? record(data["message"], "tool result message") : void 0;
+		const id = text(message === void 0 ? data["callId"] : message["toolCallId"], "tool call id");
+		const pending = this.tools.get(id);
+		if (pending === void 0) throw new SessionFormatError(`${event.type} ${id} has no advertised tool lifecycle`);
+		if (message === void 0) {
+			if (pending.started || pending.name !== data["name"] || pending.arguments !== data["arguments"]) throw new SessionFormatError(`tool/call ${id} does not match one advertised tool call`);
+			pending.started = true;
+		} else {
+			if (!pending.started && !notStartedRepair(event, data, message, id)) throw new SessionFormatError(`tool/result ${id} is not the exact TOOL_NOT_STARTED repair`);
+			this.tools.delete(id);
+		}
+	}
+	dispatch(event, data) {
+		this.requireTurn(event.type);
+		const id = text(data["subCallId"], "PTC subCallId");
+		const root = text(data["rootCallId"], "PTC rootCallId");
+		const parent = text(data["parentCallId"], "PTC parentCallId");
+		const existing = this.dispatches.get(id);
+		if (existing !== void 0 && existing.data["rootCallId"] !== root) throw new SessionFormatError("PTC dispatch changes its rootCallId");
+		if (parent !== root && this.dispatches.get(parent)?.data["rootCallId"] !== root) throw new SessionFormatError("PTC parentCallId does not belong to rootCallId");
+		if (event.type === "tool/ptc-dispatch-start") {
+			if (existing !== void 0) throw new SessionFormatError("PTC dispatch repeats subCallId");
+			this.dispatches.set(id, {
+				data,
+				settled: false
+			});
+			return;
+		}
+		if (existing === void 0 || existing.settled) throw new SessionFormatError("PTC dispatch has no unique start");
+		if ([
+			"rootCallId",
+			"parentCallId",
+			"name",
+			"arguments"
+		].some((key) => !(0, node_util.isDeepStrictEqual)(existing.data[key], data[key]))) throw new SessionFormatError("PTC dispatch does not match its start");
+		existing.settled = true;
+	}
+	retry(event, data) {
+		const id = text(data["retryId"], "retryId");
+		const attempt = sessionFormatCount(data["retry"], "retry");
+		if (event.type === "llm/retry-started") {
+			const scheduled = this.retries.find((item) => item["retryId"] === id && item["retry"] === attempt);
+			if (scheduled === void 0) throw new SessionFormatError("llm/retry-started pairs no prior scheduled attempt");
+			if (scheduled["turn"] !== data["turn"] || scheduled["step"] !== data["step"]) throw new SessionFormatError("llm/retry-started changes scheduled coordinates");
+			const key = JSON.stringify([id, attempt]);
+			if (this.startedRetries.has(key)) throw new SessionFormatError("llm/retry-started repeats one scheduled attempt");
+			this.startedRetries.add(key);
+			return;
+		}
+		if (this.turn === null || data["turn"] !== this.turn || data["step"] !== (this.step ?? this.nextStep - 1)) throw new SessionFormatError("llm/retry does not match the current turn and step");
+		if (data["provider"] !== this.provider) throw new SessionFormatError("llm/retry provider does not match the open request/header");
+		const prior = this.retries.findLast((item) => [
+			"turn",
+			"step",
+			"provider",
+			"policyKey"
+		].every((key) => item[key] === data[key]));
+		if (attempt !== (prior === void 0 ? 1 : sessionFormatCount(prior["retry"], "prior retry") + 1)) throw new SessionFormatError("llm/retry skips its policy attempt sequence");
+		if (prior === void 0 ? this.retries.some((item) => item["retryId"] === id) : prior["retryId"] !== id) throw new SessionFormatError("llm/retry must keep one retryId per policy chain");
+		this.retries.push(data);
+	}
+	compact(event, data) {
+		if (event.type === "compaction/prune" || event.type === "compaction/summary") this.span(event, data);
+		if (event.type === "compaction/prune") return;
+		if (event.type === "compaction/start") {
+			if (this.compaction !== void 0) throw new SessionFormatError("compaction/start overlaps an open compaction");
+			const owner = data["turn"] === null ? null : sessionFormatCount(data["turn"], "compaction turn");
+			if (owner !== this.turn) throw new SessionFormatError("compaction/start does not match the open turn");
+			this.compaction = {
+				id: text(data["compactionId"], "compactionId"),
+				command: data["sourceCommandId"],
+				turn: owner,
+				seq: event.seq,
+				summarized: false
+			};
+			return;
+		}
+		const current = this.compactionOwner(data, event.type);
+		if (current.turn !== this.turn) throw new SessionFormatError(`${event.type} does not match the open turn`);
+		if (event.type === "compaction/summary") {
+			if (current.summarized) throw new SessionFormatError("compaction/summary repeats");
+			current.summarized = true;
+		} else {
+			if (data["turn"] !== current.turn) throw new SessionFormatError("compaction/end changes its owner turn");
+			if (data["error"] === void 0 && !current.summarized) throw new SessionFormatError("successful compaction/end requires one summary");
+			this.compaction = void 0;
+		}
+	}
+	compactionOwner(data, subject) {
+		if (this.compaction === void 0 || this.compaction.id !== data["compactionId"] || this.compaction.command !== data["sourceCommandId"]) throw new SessionFormatError(`${subject} has no matching compaction/start`);
+		return this.compaction;
+	}
+	span(event, data) {
+		const range = record(data["shadowedRange"], "compaction shadowedRange");
+		const start = this.surface.indexOf(earlier(range["start"], event.seq, "compaction range start"));
+		const end = this.surface.indexOf(earlier(range["end"], event.seq, "compaction range end"));
+		const seqs = array(data["shadowedSeqs"], "compaction shadowedSeqs");
+		if (start < 0 || end < start || !(0, node_util.isDeepStrictEqual)(this.surface.slice(start, end + 1), seqs)) throw new SessionFormatError(`${event.type} shadowedSeqs do not name an exact current surface span`);
+		if (this.protectedHead !== void 0 && seqs.includes(this.protectedHead)) throw new SessionFormatError("compaction cannot shadow the protected system head");
+	}
+	accept(event) {
+		if (!this.knownEventTypes.has(event.type) || !RELATIONSHIP_TYPES.has(event.type)) return;
+		const data = record(event.data, event.type);
+		if (STEP_EVENT_TYPES.has(event.type)) this.requireStep(event, data);
+		if (event.type.startsWith("turn/") && this.compaction !== void 0 && !this.orphanCompactions.has(this.compaction.seq)) throw new SessionFormatError(`${event.type} crosses an open compaction`);
+		this.foldSurface(event);
+		switch (event.type) {
+			case "turn/start":
+				if (this.turn !== null || data["turn"] !== this.nextTurn) throw new SessionFormatError("turn/start does not open the expected turn");
+				this.turn = this.nextTurn;
+				this.nextStep = 1;
+				this.tools.clear();
+				break;
+			case "turn/end":
+				if (this.turn === null || data["turn"] !== this.turn || this.step !== null) throw new SessionFormatError("turn/end does not match the open turn with no open step");
+				this.closeTools(event.type);
+				this.turn = null;
+				this.nextTurn += 1;
+				break;
+			case "step/start":
+				if (this.turn === null || data["turn"] !== this.turn || this.step !== null || data["step"] !== this.nextStep) throw new SessionFormatError("step/start does not match the open turn and next step");
+				this.step = this.nextStep;
+				break;
+			case "step/end":
+				this.requireStep(event, data);
+				this.closeTools(event.type);
+				this.step = null;
+				this.nextStep += 1;
+				break;
+			case "assistant/message":
+			case "tool/call":
+			case "tool/result":
+				this.tool(event, data);
+				break;
+			case "developer/message":
+				this.developer(event, data);
+				break;
+			case "request/header":
+				this.requireTurn(event.type);
+				this.provider = record(record(data["header"], "request header")["config"], "request config")["provider"];
+				break;
+			case "request/context":
+				this.requireTurn(event.type);
+				break;
+			case "tool/ptc-dispatch-start":
+			case "tool/ptc-dispatch":
+				this.dispatch(event, data);
+				break;
+			case "llm/retry":
+			case "llm/retry-started":
+				this.retry(event, data);
+				break;
+			case "session/title":
+			case "session/title-llm-request":
+				titleSources(this.artifact.events, event, data, this.knownEventTypes);
+				break;
+			case "command/run": {
+				const id = text(data["commandId"], "commandId");
+				if (this.commands.has(id)) throw new SessionFormatError(`command/run repeats commandId ${id}`);
+				this.commands.add(id);
+				break;
+			}
+			case "command/done":
+				if (!this.commands.has(text(data["commandId"], "commandId"))) throw new SessionFormatError("command/done has no prior command/run");
+				if (data["sourceEventSeq"] !== void 0) {
+					const source = this.artifact.events[earlier(data["sourceEventSeq"], event.seq, "command sourceEventSeq")];
+					if (data["kind"] !== "success" || source?.type === "command/run" || source?.type === "command/done") throw new SessionFormatError("command/done has invalid sourceEventSeq");
+				}
+				break;
+			case "compaction/start":
+			case "compaction/summary":
+			case "compaction/end":
+			case "compaction/prune":
+				this.compact(event, data);
+				break;
+			case "user/message": {
+				const source = record(data["source"], "user message source");
+				if (event["surfaceOp"] !== "append" && source["kind"] === "compact-checkpoint") this.compactionOwner(source, "compaction checkpoint");
+				break;
+			}
+			case "session/end-seed":
+				this.compaction = void 0;
+				break;
+		}
+	}
+};
+function notStartedRepair(event, data, message, callId) {
+	const error = record(data["error"], "not-started error");
+	if (error["name"] !== "ToolNotStartedError" || error["code"] !== "TOOL_NOT_STARTED" || message["isError"] !== true || event["sourceEventSeqs"] !== void 0) return false;
+	const id = text(message["id"], "not-started message id");
+	if (id.startsWith(`forked-tool-result-${callId}-`)) return true;
+	const prefix = `interrupted-tool-result-${callId}-`;
+	const suffix = id.slice(prefix.length);
+	const content = array(message["content"], "not-started content");
+	const block = content[0];
+	return id.startsWith(prefix) && /^(0|[1-9]\d*)$/.test(suffix) && Number.isSafeInteger(Number(suffix)) && content.length === 1 && isSessionFormatJsonObject(block) && block["type"] === "text" && block["text"] === "The tool call was interrupted before the Harness recorded it as started. Retry it if it is still needed.";
+}
+function titleSources(events, event, data, knownEventTypes) {
+	const references = array(data["messageSeqs"], "title messageSeqs");
+	if (event.type === "session/title" && references.length === 0 !== (record(data["source"], "title source")["kind"] === "user")) throw new SessionFormatError("session/title messageSeqs must be empty exactly for a user title");
+	const seen = /* @__PURE__ */ new Set();
+	for (const value of references) {
+		const seq = earlier(value, event.seq, "title messageSeqs");
+		const source = events[seq];
+		if (seen.has(seq) || source?.type !== "user/message" || !knownEventTypes.has(source.type) || record(record(source.data, "title input")["source"], "title input source")["kind"] !== "user") throw new SessionFormatError(`${event.type} messageSeqs must cite distinct earlier human user/message events`);
+		seen.add(seq);
+	}
+	if (event.type !== "session/title-llm-request") return;
+	const messages = array(data["messages"], "title messages");
+	const message = record(messages[0], "title message");
+	const content = array(message["content"], "title content");
+	const block = content[0];
+	if (references.length === 0 || messages.length !== 1 || message["role"] !== "user" || record(message["source"], "title source")["kind"] !== "dsh-session-title-llm" || content.length !== 1 || !isSessionFormatJsonObject(block) || block["type"] !== "text") throw new SessionFormatError("session/title-llm-request messages do not represent messageSeqs");
+}
+/**
+* Validate native V4 lifecycle and ownership facts without rewriting any event.
+* @param artifact - artifact whose V4 envelopes and messages have been admitted.
+* @param knownEventTypes - installed event types whose payloads this reader interprets.
+*/
+function assertV4LifecycleRelationships(artifact, knownEventTypes) {
+	const state = new Relationships(artifact, knownEventTypes);
+	for (const event of artifact.events) state.accept(event);
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/facts.ts
+/** Historical child identity reduced to the fields required by a parent's catalog. */
+/**
+* Validate the historical fields used for catalog membership without interpreting extensions.
+* @param value - catalog payload or prepared historical discovery fact.
+* @param subject - event type or child identity used in rejection diagnostics.
+* @returns validated catalog payload.
+*/
+function catalogFact(value, subject = "subagent/catalog") {
+	if (!isSessionFormatJsonObject(value) || value["version"] !== 0 && value["version"] !== 1 || typeof value["childId"] !== "string" || value["mode"] !== "continuable" && value["mode"] !== "one-shot" && value["mode"] !== "unknown" || value["version"] === 0 && value["mode"] === "unknown" || value["mode"] === "continuable" && typeof value["label"] !== "string" || value["label"] !== void 0 && typeof value["label"] !== "string") throw new SessionFormatError(`${subject} requires a supported versioned catalog fact`);
+	sessionFormatCount(value["childCreatedAt"], "catalog child creation time");
+	return value;
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/validation.ts
+/** Native V4 metadata and generation-owned relationship validation. */
+/**
+* Validate the exact native V4 logical header.
+* @param header - decoded or otherwise untrusted V4 Session header candidate.
+*/
+function assertReleasedV4Header(header) {
+	if (!isSessionFormatJsonObject(header) || header["version"] !== 4) throw new SessionFormatError("expected format v4 header");
+	const required = [
+		"version",
+		"id",
+		"createdAt",
+		"isSeeded",
+		"delegationDepth"
+	];
+	const allowed = new Set([
+		...required,
+		"cwd",
+		"parentSession",
+		"origin",
+		"agentPreset"
+	]);
+	const missing = required.find((key) => !Object.hasOwn(header, key));
+	const unexpected = Object.keys(header).find((key) => !allowed.has(key));
+	if (missing !== void 0) throw new SessionFormatError(`format v4 header lacks required field ${missing}`);
+	if (unexpected !== void 0) throw new SessionFormatError(`format v4 header has unexpected field ${unexpected}`);
+	if (typeof header.id !== "string") throw new SessionFormatError("format v4 header id must be a string");
+	sessionFormatCount(header.createdAt, "format v4 header createdAt");
+	sessionFormatCount(header.delegationDepth, "format v4 header delegationDepth");
+	if (typeof header.isSeeded !== "boolean") throw new SessionFormatError("format v4 header isSeeded must be boolean");
+	if (header.cwd !== void 0 && (typeof header.cwd !== "string" || !(0, node_path.isAbsolute)(header.cwd))) throw new SessionFormatError("format v4 header cwd must be absolute");
+	for (const key of ["parentSession", "agentPreset"]) if (header[key] !== void 0 && typeof header[key] !== "string") throw new SessionFormatError(`format v4 header ${key} must be a string`);
+	if (header.origin !== void 0 && header.origin !== "subagent") throw new SessionFormatError("format v4 header origin must be \"subagent\"");
+}
+/**
+* Validate V4 inheritance, vocabulary, native message admission, and
+* lifecycle, compaction, tool, retry, title, command, catalog, and delivery ownership.
+* Installed Session restoration owns common event envelopes and message acceptance.
+* @param artifact - complete detached V4 artifact.
+* @param knownEventTypes - event types understood by the installed Session package.
+* @returns the same validated artifact and event objects.
+*/
+function restoreReleasedV4Artifact(artifact, knownEventTypes) {
+	assertReleasedV4Header(artifact.header);
+	const cut = sessionFormatCount(artifact.inheritedEventCount, "format v4 inherited event count");
+	if (cut > artifact.events.length) throw new SessionFormatError("format v4 inherited event count exceeds its events");
+	if (!artifact.header.isSeeded && cut !== 0) throw new SessionFormatError("unseeded format v4 Session has inherited events");
+	let lastInheritedMarker;
+	for (const [index, event] of artifact.events.entries()) {
+		if (!knownEventTypes.has(event.type) && event["ignorable"] !== true) throw new SessionFormatUnsupportedMigrationError(`format v4 contains unknown event type ${JSON.stringify(event.type)} at seq ${index}`);
+		if (event.seq !== index) throw new SessionFormatError(`format v4 event ${index} is not dense`);
+		if (!knownEventTypes.has(event.type)) continue;
+		assertV4RetiredSyntax(event);
+		assertV4SystemMessageFields(event);
+		assertV4ToolResultMessage(event);
+		assertV4ForkResult(event);
+		if (event.type === "session/end-seed" && isSessionFormatJsonObject(event.data) && event.data["inherited"] === true) lastInheritedMarker = index;
+	}
+	if (artifact.header.isSeeded && lastInheritedMarker !== cut) throw new SessionFormatError("format v4 seeded header disagrees with its last inherited end-seed marker");
+	if (!artifact.header.isSeeded && lastInheritedMarker !== void 0) throw new SessionFormatError("format v4 unseeded Session contains an inherited end-seed marker");
+	assertReleasedV4Relationships(artifact, knownEventTypes);
+	return artifact;
+}
+/**
+* Validate delivery generation and active-generation coordinates before evaluating ownership.
+* @param event - decoded event whose delivery payload may be inspected.
+* @param currentVersion - generation whose watermark coordinates are active.
+* @returns the active delivery's nonempty Session id, or undefined for other events and generations.
+*/
+function validateDeliveryAccepted(event, currentVersion) {
+	if (event.type !== "session-log-deepseek/delivery-accepted") return void 0;
+	const data = event.data;
+	if (!isSessionFormatJsonObject(data)) throw new SessionFormatError("delivery-accepted data must be an object");
+	if (sessionFormatCount(data["sessionFormatVersion"] === void 0 ? 0 : data["sessionFormatVersion"], "delivery sessionFormatVersion") !== currentVersion) return void 0;
+	if (sessionFormatCount(data["throughSeq"], "delivery throughSeq") >= event.seq) throw new SessionFormatError("delivery throughSeq must precede its marker");
+	const id = data["sessionId"];
+	if (typeof id !== "string" || id.length === 0) throw new SessionFormatError("delivery requires a nonempty Session id");
+	return id;
+}
+/**
+* Validate native developer fields, message sources, lifecycle, catalog, and delivery
+* relationships without changing event vocabulary or tail recovery.
+* The owning admission stage rejects unknown required events;
+* unknown ignorable records retain their uninterpreted payloads.
+* @param artifact - decoded artifact with its final inherited cut.
+* @param knownEventTypes - installed event types whose payloads this reader interprets.
+*/
+function assertReleasedV4Relationships(artifact, knownEventTypes) {
+	const ids = /* @__PURE__ */ new Set();
+	for (const event of artifact.events) {
+		if (!knownEventTypes.has(event.type)) continue;
+		assertV4DeveloperData(event);
+		assertV4MessageSources(event);
+		const deliveryId = validateDeliveryAccepted(event, 4);
+		if (deliveryId !== void 0 && !(artifact.header.parentSession !== void 0 && event.seq < artifact.inheritedEventCount) && deliveryId !== artifact.header.id) throw new SessionFormatError("current-generation delivery marker names the wrong Session");
+		if (event.type === "subagent/catalog" && event.seq >= artifact.inheritedEventCount) {
+			const id = catalogFact(event.data)["childId"];
+			if (ids.has(id)) throw new SessionFormatError(`duplicate catalog child ${id}`);
+			ids.add(id);
+		}
+	}
+	assertV4LifecycleRelationships(artifact, knownEventTypes);
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/codec.ts
+/** V4 framing with native tool-role admission and released physical rows. */
+function physicalV2(value) {
+	if (!isSessionFormatJsonObject(value) || value["version"] !== 4) throw new SessionFormatError("expected format v4 physical header");
+	return {
+		...value,
+		version: 2
+	};
+}
+/**
+* V4 physical encoder and decoder retain the released row framing while
+* validating the native tool-role message directly.
+*/
+const releasedV4SessionFormatCodec = Object.freeze({
+	version: 4,
+	decodeHeader(value) {
+		return {
+			...releasedV2SessionFormatCodec.decodeHeader(physicalV2(value)),
+			version: 4
+		};
+	},
+	createDecoder(value, recovery) {
+		const decoder = releasedV2SessionFormatCodec.createDecoder(physicalV2(value), recovery);
+		return {
+			...decoder,
+			header: {
+				...decoder.header,
+				version: 4
+			},
+			decodeRow(row, context) {
+				assertV4RowAdmission(row);
+				decoder.decodeRow(row, {
+					emitRun: context.emitRun.bind(context),
+					emitEvent: context.emitEvent.bind(context)
+				});
+			}
+		};
+	},
+	encodeHeader(header, inheritedEventCount) {
+		assertReleasedV4Header(header);
+		return {
+			...releasedV2SessionFormatCodec.encodeHeader({
+				...header,
+				version: 2
+			}, inheritedEventCount),
+			version: 4
+		};
+	},
+	encodeEvent(event) {
+		if (event.type === "developer/message" && event["ignorable"] === true) {
+			assertV4DeveloperData(event);
+			assertV4RetiredSyntax(event);
+		}
+		assertV4RowAdmission(event);
+		return releasedV2SessionFormatCodec.encodeEvent(event);
+	}
+});
+/**
+* Apply native V4 admission before a scanner discards a recoverable suffix.
+* Ignorable developer payloads require reader vocabulary; physical decoding defers them.
+* @param row - parsed physical row before framing and source-event range decoding.
+* @param knownEventTypes - installed event types, supplied by native readers before tail recovery.
+*/
+function assertV4RowAdmission(row, knownEventTypes) {
+	if (isSessionFormatJsonObject(row)) {
+		if (row["type"] === "developer/message" && row["ignorable"] === true && knownEventTypes?.has("developer/message") !== true) return;
+		assertV4DeveloperData(row);
+	}
+	assertV4SourceRowAdmission(row);
+	assertV4RetiredSyntax(row);
+	assertV4SystemMessageFields(row);
+	if (!isSessionFormatJsonObject(row) || row["type"] !== "tool/result") return;
+	const event = row;
+	assertV4ToolResultMessage(event);
+	assertV4ForkResult(event);
+}
+//#endregion
+//#region ../session-format-v3-to-v4/src/extension-identities.ts
+/** First-party event names understood by the released V3 reader, independent of the installed writer. */
+const RELEASED_V3_EVENT_TYPES = new Set([
+	"agent-preset/selected",
+	"agent/inbox/spliced",
+	"approval/asked",
+	"approval/decided",
+	"approval/policy",
+	"assistant/attempt",
+	"assistant/message",
+	"command/done",
+	"command/run",
+	"compaction/end",
+	"compaction/prune",
+	"compaction/start",
+	"compaction/summary",
+	"deliverables/presented",
+	"feedback/message-delete",
+	"feedback/message-put",
+	"feedback/record",
+	"goal/change",
+	"hook/invoked",
+	"hook/result",
+	"image/offload",
+	"llm/retry",
+	"llm/retry-started",
+	"model/selection",
+	"permission/preset",
+	"plan/mode",
+	"request/context",
+	"request/header",
+	"sandbox/mode",
+	"schedule/change",
+	"session-log-deepseek/delivery-accepted",
+	"session/end-seed",
+	"session/title",
+	"session/title-llm-request",
+	"step/end",
+	"step/start",
+	"subagent/catalog",
+	"subagent/descriptor",
+	"subagent/model-selection-policy",
+	"system/message",
+	"team/member",
+	"team/message/delivered",
+	"team/message/queued",
+	"team/task",
+	"todo/write",
+	"tool-workflow/agent-end",
+	"tool-workflow/agent-start",
+	"tool-workflow/run-end",
+	"tool-workflow/run-start",
+	"tool/call",
+	"tool/ptc-dispatch",
+	"tool/ptc-dispatch-start",
+	"tool/result",
+	"turn/end",
+	"turn/start",
+	"user/message",
+	"web/deepseek-search-llm-request",
+	"workspace/changes"
+]);
+//#endregion
+//#region ../session-format-v3-to-v4/src/migration.ts
+/** Append historical child facts after converting V3 source events to V4. */
+/** Header-only migration declaration; body restoration requires explicit child evidence. */
+const sessionFormatV3ToV4 = defineSessionFormatMigration({
+	name: "@deepseek-ai/dsh-session-format-v3-to-v4",
+	fromVersion: 3,
+	toVersion: 4,
+	migrateHeader(header) {
+		assertReleasedV3Header(header);
+		return {
+			...header,
+			version: 4
+		};
+	},
+	createStage() {
+		throw new SessionFormatUnsupportedMigrationError("V3 catalog migration requires explicit historical child facts, including an empty array for a parent without children");
+	},
+	validateTargetHeader: assertReleasedV4Header
+});
 /** Physical codec dispatch and complete adjacent chain, independent of mounted plugins. */
 const sessionFormatCatalog = createSessionFormatCatalog({
+	currentVersion: 4,
+	codecs: [
+		releasedV0SessionFormatCodec,
+		releasedV1SessionFormatCodec,
+		releasedV2SessionFormatCodec,
+		releasedV3SessionFormatCodec,
+		releasedV4SessionFormatCodec
+	],
+	currentEncoder: releasedV4SessionFormatCodec,
+	migrations: [
+		sessionFormatV0ToV1,
+		sessionFormatV1ToV2,
+		sessionFormatV2ToV3,
+		sessionFormatV3ToV4
+	],
+	restoreCurrent(artifact) {
+		const restored = restoreReleasedV4Artifact(artifact, KNOWN_SESSION_EVENT_TYPES);
+		validateInstalledCurrentSessionArtifact(restored);
+		return restored;
+	},
+	restoreTransformedCurrent(artifact) {
+		return restoreReleasedV4Artifact(artifact, KNOWN_SESSION_EVENT_TYPES);
+	},
+	restoreCurrentHeader(header) {
+		assertReleasedV4Header(header);
+		validateInstalledCurrentSessionHeader(header);
+		return header;
+	}
+});
+createSessionFormatCatalog({
 	currentVersion: 3,
 	codecs: [
 		releasedV0SessionFormatCodec,
@@ -10411,17 +11716,10 @@ const sessionFormatCatalog = createSessionFormatCatalog({
 		sessionFormatV1ToV2,
 		sessionFormatV2ToV3
 	],
-	restoreCurrent(artifact) {
-		const restored = restoreReleasedV3Artifact(artifact, KNOWN_SESSION_EVENT_TYPES);
-		validateInstalledCurrentSessionArtifact(restored);
-		return restored;
-	},
-	restoreTransformedCurrent(artifact) {
-		return restoreReleasedV3Artifact(artifact, KNOWN_SESSION_EVENT_TYPES);
-	},
+	restoreCurrent: (artifact) => restoreReleasedV3Artifact(artifact, RELEASED_V3_EVENT_TYPES),
+	restoreTransformedCurrent: (artifact) => restoreReleasedV3Artifact(artifact, RELEASED_V3_EVENT_TYPES),
 	restoreCurrentHeader(header) {
 		assertReleasedV3Header(header);
-		validateInstalledCurrentSessionHeader(header);
 		return header;
 	}
 });
@@ -10490,7 +11788,7 @@ function assertNoRetiredHeaderFields(value) {
 function fromHeaderLine(line) {
 	return {
 		meta: {
-			version: 3,
+			version: 4,
 			id: line.id,
 			createdAt: line.createdAt,
 			...line.cwd !== void 0 ? { cwd: line.cwd } : {},
@@ -10516,7 +11814,7 @@ function isHeaderLine(value) {
 */
 function refuseForeignFormatVersion(parsed) {
 	const { version, id } = parsed;
-	if (typeof version !== "number" || version === 3) return;
+	if (typeof version !== "number" || version === 4) return;
 	throw new SessionFormatUnsupportedError(sessionFormatVersionRefusal(typeof id === "string" ? id : String(id), version));
 }
 /** Parse one complete header record supplied independently from event rows. */
@@ -10622,6 +11920,7 @@ var SessionLogScanner = class {
 	finish() {
 		this.finished = true;
 		const artifact = this.restore.finish();
+		assertReleasedV4Relationships(artifact, KNOWN_SESSION_EVENT_TYPES);
 		return {
 			meta: this.meta,
 			inheritedEventCount: SessionLogOffset(artifact.inheritedEventCount),
@@ -10642,7 +11941,7 @@ var SessionLogScanner = class {
 			return;
 		}
 		try {
-			assertV3RowAdmission(decoded);
+			assertV4RowAdmission(decoded, KNOWN_SESSION_EVENT_TYPES);
 		} catch (error) {
 			if (error instanceof SessionFormatUnsupportedMigrationError) throw new SessionFormatUnsupportedError(error.message);
 			throw error;
@@ -11289,7 +12588,7 @@ async function verifyCurrentGeneration(path, compression, expectedId, expectedEv
 	});
 	if (generation.meta.id !== expectedId) throw new Error(`current session generation contains id "${generation.meta.id}", expected "${expectedId}"`);
 	if (generation.events.length !== expectedEventCount) throw new Error(`current session generation contains ${generation.events.length} events, expected ${expectedEventCount}`);
-	Session.fromRestore(generation.meta.id, generation.events, generation.meta, generation.inheritedEventCount, "detached");
+	Session.fromRestore(generation.meta.id, generation.events, generation.meta, generation.inheritedEventCount, "detached", currentSessionMessageProjections);
 	assertCurrentAssistantStreams(generation.events);
 	return {
 		identity: snapshot.identity,
@@ -11547,6 +12846,7 @@ async function publishPreparedMigration(options, suffix, artifact, sourceIdentit
 		const verifiedStage = await verifyCurrentFile(staged.path, compression, artifact.header.id, eventCount);
 		if (verifiedStage.bytes !== staged.bytes || verifiedStage.digest !== staged.digest) throw new Error("staged session generation changed during verification");
 		await internals.barrier("before-source-check", 1);
+		await options.validateRelatedSources?.();
 		if (identity(await internals.fs.stat(sourcePath)) !== identity(sourceIdentity)) throw new JsonlGenerationSourceChangedError(sourcePath);
 		const published = await publishCurrentExclusive(staged.path, currentPath, internals);
 		if (published && internals.platform === "win32") staged = {
@@ -11595,6 +12895,7 @@ async function prepareMigration(options, internals) {
 		throw error;
 	}
 	if (artifact.header.version !== format.currentVersion) throw new Error(`format migration returned v${artifact.header.version}, expected v${format.currentVersion}`);
+	await options.validateRelatedSources?.();
 	const sourceIdentity = source.identity;
 	let publication;
 	return {

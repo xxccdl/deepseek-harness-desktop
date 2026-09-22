@@ -14,7 +14,7 @@ export interface FileTypeProjectContext {
  */
 export declare function isCodeFileType(type: string): type is CodeFileType;
 /**
- * Test whether an extension belonged to the established coarse LinkIcon code category.
+ * Test whether an extension belongs to the established coarse link-icon code category.
  * @param extension - Extension without a leading dot.
  * @returns Whether clickable links keep the code glyph for this extension.
  */

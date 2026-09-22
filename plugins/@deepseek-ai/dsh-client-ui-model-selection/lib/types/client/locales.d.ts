@@ -9,6 +9,7 @@
  */
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export declare const zh: {
+    'command.label': string;
     'command.description': string;
     'option.loadError': string;
     'option.deepseekV4Flash.description': string;
@@ -24,6 +25,7 @@ export declare const zh: {
     'effort.providerDefault': string;
     'status.loading': string;
     'error.action': string;
+    'error.sessionInUse': string;
     'action.reload': string;
     'warning.groupLoad': string;
     'empty.models': string;
@@ -34,6 +36,7 @@ export declare const zh: {
 export type ModelKey = keyof typeof zh;
 /** English dictionary, checked complete against the zh key set. */
 export declare const en: {
+    'command.label': string;
     'command.description': string;
     'option.loadError': string;
     'option.deepseekV4Flash.description': string;
@@ -49,6 +52,7 @@ export declare const en: {
     'effort.providerDefault': string;
     'status.loading': string;
     'error.action': string;
+    'error.sessionInUse': string;
     'action.reload': string;
     'warning.groupLoad': string;
     'empty.models': string;

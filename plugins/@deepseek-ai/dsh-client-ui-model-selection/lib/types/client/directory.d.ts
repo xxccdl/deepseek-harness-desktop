@@ -6,7 +6,7 @@
  */
 import type { ModelCatalogFailure, ModelProviderGroup, ModelSelection } from '@deepseek-ai/dsh-api-session-controller/types';
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client';
-import type { TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol';
+import type { RemoteResult, TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol';
 import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-store';
 import type { ModelCatalogDirectory } from './catalog.ts';
 /** Directory snapshot both entries render from. */
@@ -61,10 +61,11 @@ export declare class ModelDirectory {
     /**
      * Select the complete provider/model/reasoning selection. The durable
      * projection frame updates the shared current; failures surface on the store
-     * and throw so each entry's own retry surface engages.
+     * and return with the operation so each entry can present its own failure.
      * @param selection - provider, provider-owned model id, and optional adapter-owned effort.
-   */
-    select(selection: ModelSelection): Promise<void>;
+     * @returns the selection outcome, including the original Remote failure.
+     */
+    select(selection: ModelSelection): Promise<RemoteResult<void>>;
     /**
      * Invalidate an in-flight selection response from the previous Host generation.
      */

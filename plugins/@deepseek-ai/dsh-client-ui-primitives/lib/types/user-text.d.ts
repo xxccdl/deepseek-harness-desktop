@@ -15,6 +15,13 @@
  * tokens (`/plan。`) stay plain even for a loaded name.
  */
 import type { ReactNode } from 'react';
+/** Optional navigation supplied by consumers that can preview references. */
+export interface UserTextReferences {
+    /** Open a file path decoded from an `@` mention. */
+    openFile: (path: string) => void;
+    /** Open the source of a skill loaded for this message. */
+    openSkill: (name: string) => void;
+}
 /**
  * Split one sent text into inline plain runs and reference chips.
  * @param text - the logged model text of the message or queue row.
@@ -23,7 +30,8 @@ import type { ReactNode } from 'react';
  * host loaded for this message, or the command a command bubble echoes
  * (unsent queue rows pass none).
  * @param slashKind - the chip kind those tokens render as.
+ * @param references - optional file and skill preview actions; session and command tokens stay labels.
  * @returns inline nodes covering the whole text.
  */
-export declare function projectUserText(text: string, sessionLabels: readonly string[], slashNames?: readonly string[], slashKind?: 'skill' | 'command'): ReactNode;
+export declare function projectUserText(text: string, sessionLabels: readonly string[], slashNames?: readonly string[], slashKind?: 'skill' | 'command', references?: UserTextReferences): ReactNode;
 //# sourceMappingURL=user-text.d.ts.map

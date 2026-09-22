@@ -60,7 +60,7 @@ export interface DeepSeekModelsEditorProps {
 }
 /**
  * Render the direct DeepSeek adapter's model catalog: id and display name on
- * each row, capacities behind the row's own disclosure.
+ * each row, capacities and input types behind the row's own disclosure.
  * @param props - effective rows plus the array-level override actions.
  * @returns the catalog editor.
  */
