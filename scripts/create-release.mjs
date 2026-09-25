@@ -22,6 +22,7 @@ const body = [
   "## 1.7.0",
   "",
   "本次把 fork 重基到上游 **dsh 0.1.7-alpha.1**。上游这一版带来侧边栏会话置顶与归档、工作过程展示与性能用量设置、后台任务列表、文件预览与改动审阅、Team 任务看板、内置浏览器在 Electron 默认开启等大量改动（完整清单见上游 `dsh-v0.1.7-alpha.1`）。重基的改动面很大：65 个覆盖层包全部重新对齐，下面是本次与桌面端直接相关的修复。",
+  "- **修复：安装版启动即失败（`node-addon-require-builtin unsupported`）**。原生插件 `node-addon-require-builtin` 内置的是**精确到补丁号**的 Electron 运行时指纹白名单（43.0.0 / 44.0.0 / 45.0.0-alpha.6），而 `devDependencies` 写的是 `^43.4.0`：npm 装到 43.4.0，构建便打进 43.4.0，其 Node 24.18.1 / V8 15.0.245.28 指纹不在表内，内核准备阶段直接抛 `Unsupported/no-context`，安装版连窗口都起不来。开发时用的是固定版本的 Electron 43.0.0，所以这条一直没暴露。现在 Electron 精确锁定 43.0.0，开发与打包同源",
   "- **修复：fork 自研插件几乎全都没加载**。0.1.7 把前端图标库的命名从固定规格改成带规格后缀（`IconXxxOutline16` 变为 `IconXxxOutlineRegular`），覆盖层仍按旧名字取组件，取到的是 `undefined`，于是按钮渲染成空白；同时 `conversation.composer.dock` 的槽语义从「卡片内竖排」变成了「卡片下的横向胶囊行」，塞进去的全宽内容会被压成一根窄柱，看起来就像整块界面消失。现在图标名与新槽语义都已对齐，价格标签、插件发布条等自研界面恢复正常",
   "- **修复：登录**。新装或登出后不会再自动打开登录链接，回调被拒时直接报「登录失败」",
   "- **修复：Windows 上终端类工具全线失败（`PTY shell exited during startup`）**。根因是 Windows ACL 沙箱在给工作区根目录写授权之前，需要往目录的 SACL 里写 Low 完整性标签，而这一步要求调用者**拥有该目录并持有 WRITE_OWNER**：工作区只继承到 `Authenticated Users: Modify` 时（Modify 不含 WRITE_OWNER）授权必然失败，沙箱运行器以 127 退出，PTY 还没启动就已经不在，界面上只剩一句 `PTY shell exited during startup`。现在这条路径被 Windows 拒绝时不再 fail-closed：命令以降级（不隔离）方式执行，并在控制台写明原因、恢复办法，以及为什么不能简单地补权限——沙箱的 Low 标签是按 `(OI)(CI)` 整棵树继承的，工作区里放着自己的可执行文件时会被一并标低",
