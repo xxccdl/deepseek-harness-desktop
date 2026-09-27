@@ -6,9 +6,13 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export declare const zh: {
     'defaultWorkspace.failed': string;
-    'defaultWorkspace.title': string;
     'group.ungrouped': string;
     'session.new': string;
+    'shortcut.noSession': string;
+    'shortcut.noPicker': string;
+    'shortcut.directoryBusy': string;
+    'shortcut.noCompletedTurn': string;
+    'shortcut.forkFailed': string;
     'section.workspaces': string;
     'section.sessions': string;
     'viewOptions.label': string;
@@ -20,11 +24,14 @@ export declare const zh: {
     'orderBy.manual': string;
     'orderBy.updated': string;
     'filterBy.label': string;
+    'viewOptions.hideArchived': string;
     'viewOptions.showArchived': string;
     'viewOptions.onlyArchived': string;
     'sessions.expand': string;
     'sessions.collapse': string;
     'empty.none': string;
+    'empty.noneArchived': string;
+    'empty.viewOthers': string;
     'empty.noMatches': string;
     'workspace.add': string;
     'search.sessions.aria': string;
@@ -99,7 +106,6 @@ export declare const zh: {
     'status.compact.planReview': string;
     'status.compact.answer': string;
     'status.completed': string;
-    'schedule.active': string;
     'hover.created': string;
     'hover.copied': string;
     'date.ymd': string;
@@ -116,9 +122,13 @@ export type WorkspaceKey = keyof typeof zh;
 /** English dictionary, checked complete against the zh key set. */
 export declare const en: {
     'defaultWorkspace.failed': string;
-    'defaultWorkspace.title': string;
     'group.ungrouped': string;
     'session.new': string;
+    'shortcut.noSession': string;
+    'shortcut.noPicker': string;
+    'shortcut.directoryBusy': string;
+    'shortcut.noCompletedTurn': string;
+    'shortcut.forkFailed': string;
     'section.workspaces': string;
     'section.sessions': string;
     'viewOptions.label': string;
@@ -130,11 +140,14 @@ export declare const en: {
     'orderBy.manual': string;
     'orderBy.updated': string;
     'filterBy.label': string;
+    'viewOptions.hideArchived': string;
     'viewOptions.showArchived': string;
     'viewOptions.onlyArchived': string;
     'sessions.expand': string;
     'sessions.collapse': string;
     'empty.none': string;
+    'empty.noneArchived': string;
+    'empty.viewOthers': string;
     'empty.noMatches': string;
     'workspace.add': string;
     'search.sessions.aria': string;
@@ -209,7 +222,6 @@ export declare const en: {
     'status.compact.planReview': string;
     'status.compact.answer': string;
     'status.completed': string;
-    'schedule.active': string;
     'hover.created': string;
     'hover.copied': string;
     'date.ymd': string;

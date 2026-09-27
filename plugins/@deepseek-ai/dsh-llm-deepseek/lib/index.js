@@ -1,18 +1,452 @@
-import { IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ProviderRequestId, ReasoningEffortId, RetryPolicySchema, ToolCallId, assertUsableApiKey, attributionHeaders, contentHasImage, isContextWindowExceededError, isQuotaExceededError, offloadedImageText, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText } from "@deepseek-ai/dsh-llm";
-import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
-import { deepEqualJson } from "@deepseek-ai/dsh-util-values";
-import { getOrCreateAnonymousUserId } from "@deepseek-ai/dsh-anonymous-user-id";
+import z from "@deepseek-ai/schemastery";
+import { isVolatile } from "@deepseek-ai/cosmokit";
+import { IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ProviderRequestId, ReasoningEffortId, RetryPolicySchema, ToolCallId, attributionHeaders, contentHasImage, isContextWindowExceededError, isQuotaExceededError, offloadedImageText, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText } from "@deepseek-ai/dsh-llm";
 import { MAX_TIMER_DELAY_MS, deadline, idleWatchdog, timeoutOf } from "@deepseek-ai/dsh-timeout";
+import { ImageVariantId, longEdgeDimensions, requestImageDimensions } from "@deepseek-ai/dsh-attachment";
 import { createHash } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { withFileLock, writeFileAtomic } from "@deepseek-ai/dsh-atomic-write";
 import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
-import { ImageVariantId, longEdgeDimensions, requestImageDimensions } from "@deepseek-ai/dsh-attachment";
 import { EventSourceParserStream } from "eventsource-parser/stream";
-import z from "@deepseek-ai/schemastery";
-import { isVolatile } from "@deepseek-ai/cosmokit";
-import { credentialRef } from "@deepseek-ai/dsh-credentials";
+import { getOrCreateAnonymousUserId } from "@deepseek-ai/dsh-anonymous-user-id";
+import { deepEqualJson } from "@deepseek-ai/dsh-util-values";
+//#region lib/types/defaults.js
+/** Shared provider limits and Chat Files API defaults. */
+/** Default maximum idle interval while an adapter stream read is outstanding. */
+const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 3e5;
+/** Default combined request/response context capacity. */
+const DEFAULT_CONTEXT_WINDOW = 1e6;
+/** Default per-request output-token cap. */
+const DEFAULT_MAX_TOKENS = 256e3;
+/** Default bound on accumulated base64 image payload after Files API fallback. */
+const DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES = 20 * 1024 * 1024;
+/** Deterministic raw-byte removal step. */
+const DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM = 64 * 1024 * 1024;
+/** Deterministic base64-byte removal step after Files API fallback. */
+const DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM = 10 * 1024 * 1024;
+/** Deterministic image-count removal step. */
+const DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM = 20;
+/** Default explicit lifetime for uploaded images. */
+const DEFAULT_FILE_EXPIRY_SECONDS = 10080 * 60;
+/** Default proactive refresh window for indexed file ids. */
+const DEFAULT_FILE_REFRESH_MARGIN_SECONDS = 3600;
+/** Default number of oldest harness-owned files removed on quota recovery. */
+const DEFAULT_FILE_QUOTA_CLEANUP_BATCH = 100;
+/** Default deadline for resolving one request image through the Files API. */
+const DEFAULT_FILES_API_TIMEOUT_MS = 6e4;
+//#endregion
+//#region lib/types/models.js
+/** Default DeepSeek model catalog. */
+/** Advisory official model entries; deployments may replace the catalog. */
+const DEFAULT_MODELS = [{
+	id: "deepseek-flash",
+	name: "DeepSeek-V4.1-Flash",
+	contextWindow: DEFAULT_CONTEXT_WINDOW,
+	inputModalities: ["text", "image"],
+	systemPromptUpdate: "in-history",
+	toolUpdate: "addition-only"
+}, {
+	id: "deepseek-v4-pro",
+	name: "DeepSeek-V4-Pro-0813",
+	description: "Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.",
+	contextWindow: DEFAULT_CONTEXT_WINDOW
+}];
+//#endregion
+//#region lib/types/image-tokens.js
+/**
+* DeepSeek vision-token accounting: the provider's published image-token
+* calculator (api-docs.deepseek.com, Token & Token Usage) ported verbatim in
+* its current `v41` configuration. The provider scales an image below
+* 544×544 total pixels up, aligns it to a 14px-patch grid, downsamples 3:1
+* per axis into token cells, and caps one image at 1024 tokens by solving the
+* largest aspect-preserving grid inside that budget. The count is exact: this
+* configuration has no alignment pad and no aspect-ratio clamp. Actual usage
+* remains authoritative.
+*
+* @module dsh-llm-deepseek/image-tokens
+*/
+/** Vision patch edge in pixels. */
+const PATCH_SIZE = 14;
+/** Per-axis patch-to-token downsampling ratio. */
+const DOWNSAMPLE_RATIO = 3;
+/** Provider cap on tokens for one request image. */
+const MAX_IMAGE_TOKENS = 1024;
+/** Total-pixel floor; smaller images are scaled up before grid projection. */
+const MIN_PIXELS = 544 * 544;
+/** Pixels covered by one token cell along either axis. */
+const CELL_SIZE = PATCH_SIZE * DOWNSAMPLE_RATIO;
+const intDiv = (value, divisor) => Math.floor(value / divisor);
+const ceilDiv = (value, divisor) => Math.floor((value + divisor - 1) / divisor);
+/** Token count of one grid: every row carries a separator, plus two framing tokens. */
+function gridTokens(gridHeight, gridWidth) {
+	return gridHeight * (gridWidth + 1) + 2;
+}
+/** Token-cell count along one padded pixel axis. */
+function gridCells(paddedLength) {
+	return ceilDiv(intDiv(paddedLength, PATCH_SIZE), DOWNSAMPLE_RATIO);
+}
+/** Solve the largest grid within `budget` tokens preserving the aspect ratio. */
+function solveResizeRatio(height, width, budget) {
+	const aspect = height / width;
+	const idealGridWidth = Math.sqrt((budget - 2) / aspect + .25) - .5;
+	const idealGridHeight = idealGridWidth * aspect;
+	let bestHeight;
+	let bestWidth;
+	if (idealGridWidth < 1) {
+		const solvedGridWidth = 1;
+		const solvedGridHeight = intDiv(budget - 2, 2);
+		bestWidth = solvedGridWidth * CELL_SIZE;
+		bestHeight = solvedGridHeight * CELL_SIZE;
+	} else if (idealGridHeight < 1) {
+		const solvedGridHeight = 1;
+		bestWidth = (intDiv(budget - 2, solvedGridHeight) - 1) * CELL_SIZE;
+		bestHeight = solvedGridHeight * CELL_SIZE;
+	} else {
+		const solvedGridWidth = Math.trunc(idealGridWidth);
+		const solvedGridHeight = Math.trunc(idealGridHeight);
+		const scale = Math.min(solvedGridWidth * CELL_SIZE / width, solvedGridHeight * CELL_SIZE / height);
+		bestWidth = Math.trunc(width * scale / PATCH_SIZE) * PATCH_SIZE;
+		bestHeight = Math.trunc(height * scale / PATCH_SIZE) * PATCH_SIZE;
+	}
+	const gridHeight = gridCells(bestHeight);
+	const gridWidth = gridCells(bestWidth);
+	return {
+		gridHeight,
+		gridWidth,
+		bestHeight,
+		bestWidth,
+		numTokens: gridTokens(gridHeight, gridWidth)
+	};
+}
+/** Project padded pixel dimensions onto the largest in-budget token grid. */
+function safeResize(height, width, paddedHeight, paddedWidth) {
+	const gridHeight = gridCells(paddedHeight);
+	const gridWidth = gridCells(paddedWidth);
+	const direct = {
+		gridHeight,
+		gridWidth,
+		bestHeight: paddedHeight,
+		bestWidth: paddedWidth,
+		numTokens: gridTokens(gridHeight, gridWidth)
+	};
+	if (direct.numTokens <= MAX_IMAGE_TOKENS) return direct;
+	const solved = solveResizeRatio(height, width, MAX_IMAGE_TOKENS);
+	/* v8 ignore next 3 -- the published solver's assertion; the closed-form
+	solve stays within the budget for every positive geometry. */
+	if (solved.numTokens > MAX_IMAGE_TOKENS) throw new Error(`deepseek image tokens: no grid fits the token budget for ${width}x${height}`);
+	return solved;
+}
+/** One scale-pad-project pass; the caller iterates it to a fixpoint. */
+function resizeOnce(width, height) {
+	let scaledWidth = width;
+	let scaledHeight = height;
+	const pixels = scaledWidth * scaledHeight;
+	if (pixels < MIN_PIXELS && pixels > 0) {
+		const scale = Math.sqrt(MIN_PIXELS / pixels);
+		scaledWidth = Math.trunc(scaledWidth * scale);
+		scaledHeight = Math.trunc(scaledHeight * scale);
+	}
+	const paddedWidth = ceilDiv(scaledWidth, PATCH_SIZE) * PATCH_SIZE;
+	const paddedHeight = ceilDiv(scaledHeight, PATCH_SIZE) * PATCH_SIZE;
+	return safeResize(scaledHeight, scaledWidth, paddedHeight, paddedWidth);
+}
+function sameResize(a, b) {
+	return a.gridHeight === b.gridHeight && a.gridWidth === b.gridWidth && a.bestHeight === b.bestHeight && a.bestWidth === b.bestWidth && a.numTokens === b.numTokens;
+}
+/**
+* Dimensions the harness sends so the provider keeps the whole image: the
+* source itself when its patch-padded grid fits the token cap, otherwise the
+* source aspect ratio at the solved grid's long edge. The provider pads the
+* short edge to whole patches on its side. Rounding the aspect-preserving
+* short edge can change the token count from the source's solved grid;
+* request pricing uses the sent dimensions. Small images are never enlarged.
+* @param width - positive integer source width in pixels.
+* @param height - positive integer source height in pixels.
+* @returns the request dimensions to encode.
+*/
+function deepSeekRequestImageDimensions(width, height) {
+	const paddedWidth = ceilDiv(width, PATCH_SIZE) * PATCH_SIZE;
+	if (gridTokens(gridCells(ceilDiv(height, PATCH_SIZE) * PATCH_SIZE), gridCells(paddedWidth)) <= MAX_IMAGE_TOKENS) return {
+		width,
+		height
+	};
+	const solved = solveResizeRatio(height, width, MAX_IMAGE_TOKENS);
+	return longEdgeDimensions(width, height, width >= height ? solved.bestWidth : solved.bestHeight);
+}
+/**
+* Vision tokens DeepSeek charges for one request image of the given
+* dimensions.
+* @param width - positive integer request-image width in pixels.
+* @param height - positive integer request-image height in pixels.
+* @returns the provider vision-token price, at most 1024.
+*/
+function deepSeekImageTokens(width, height) {
+	let result = resizeOnce(width, height);
+	for (let iteration = 1; iteration < 10; iteration += 1) {
+		const next = resizeOnce(result.bestWidth, result.bestHeight);
+		if (sameResize(next, result)) return result.numTokens;
+		result = next;
+	}
+	/* v8 ignore next 2 -- the published solver's non-convergence guard; every
+	pass is a projection, so a second identical pass is a fixpoint. */
+	throw new Error(`deepseek image tokens: resize did not converge for ${width}x${height}`);
+}
+//#endregion
+//#region lib/types/request-pricing.js
+/**
+* Provider-side request-image pricing for DeepSeek routes: prices every
+* retained surface occurrence at its per-model request target with
+* the published vision-token accounting, and every occurrence the surface
+* marks offloaded as its placeholder text. Consumed synchronously by the
+* token meter through `LlmAdapter.imageRequestPricing`; provider usage
+* remains the authoritative anchor for completed requests.
+*
+* @module dsh-llm-deepseek/request-pricing
+*/
+/** Default bound on accumulated file-referenced image bytes per request. */
+const DEFAULT_MAX_REQUEST_FILES_BYTES = 128 * 1024 * 1024;
+/** Provider request image-count limit. */
+const DEFAULT_MAX_IMAGES_PER_REQUEST = 600;
+/** Total-pixel budget matching provider low-detail image input. */
+const DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET = 512 * 512;
+/** Encoded-byte target for one deterministic model-request image; the smallest quality-ladder output is used when no quality fits. */
+const DEFAULT_REQUEST_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+/**
+* Provider per-side limit for a request carrying 15 or more images, applied
+* to every request image so the image count never changes a projection.
+*/
+const REQUEST_IMAGE_MAX_DIMENSION = 4096;
+/**
+* Resolve the encoded-byte target one DeepSeek model route applies to every request image.
+* @param model - Advertised model route and its optional image overrides.
+* @returns the route's encoded-byte target.
+* @internal
+*/
+function resolveRequestImageMaxBytes(model) {
+	return model.imageMaxBytes ?? 2097152;
+}
+/**
+* Resolve the deterministic request target one DeepSeek model route chooses
+* for one source image: the published token grid unless the model overrides
+* it with a pixel budget, then the provider per-side limit, then the route's
+* encoded-byte target. Small images are never enlarged.
+* @param model - Advertised model route and its optional image overrides.
+* @param source - intrinsic dimensions of the normalized attachment.
+* @returns Complete request dimensions and encoded-byte target.
+* @internal
+*/
+function resolveRequestImageTarget(model, source) {
+	const budget = model.imagePixelBudget === "low" ? DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET : model.imagePixelBudget;
+	const projected = budget === void 0 ? deepSeekRequestImageDimensions(source.width, source.height) : requestImageDimensions(source.width, source.height, budget);
+	return {
+		...Math.max(projected.width, projected.height) > 4096 ? longEdgeDimensions(source.width, source.height, REQUEST_IMAGE_MAX_DIMENSION) : projected,
+		maxBytes: resolveRequestImageMaxBytes(model)
+	};
+}
+/**
+* Price one occurrence a text-only route substitutes with deterministic text,
+* reproducing the `projectImagesForTextModel` substitution `LlmRuntime`
+* applies before dispatching to a route without the `image` modality.
+*/
+function textOnlyPrice(block) {
+	return {
+		visualTokens: 0,
+		text: textOnlyImageText(block.attachment)
+	};
+}
+/**
+* Build the request-image pricing for one DeepSeek route from a validated
+* connection snapshot. Uncatalogued and text-only models price every
+* occurrence as its deterministic text substitution; image-capable models
+* price an offloaded occurrence as its placeholder text and a retained one by
+* its projected request dimensions, with each occurrence's handle or
+* placeholder text built through the same access resolution the serializer
+* uses. Access paths resolve at pricing time, so a path that changes before
+* the request only shifts the text price by its own length.
+* @param connection - validated connection facts of the pricing resolution.
+* @param model - exact model id named by the request header.
+* @param resolveAccess - current execution-world access resolution shared with request serialization.
+* @returns synchronous per-occurrence pricing for the route.
+*/
+function deepSeekImageRequestPricing(connection, model, resolveAccess) {
+	const catalogModel = connection.models.find((entry) => entry.id === model);
+	if (catalogModel?.inputModalities?.includes("image") !== true) return { priceImages: (images) => images.map(textOnlyPrice) };
+	return { priceImages: (images) => images.map(({ attachment: ref, offloaded }) => {
+		if (offloaded === true) return {
+			visualTokens: 0,
+			text: offloadedImageText(ref, resolveAccess?.(ref))
+		};
+		const target = resolveRequestImageTarget(catalogModel, ref);
+		return {
+			visualTokens: deepSeekImageTokens(target.width, target.height),
+			text: requestImageHandleText(ref, target, resolveAccess?.(ref))
+		};
+	}) };
+}
+//#endregion
+//#region lib/types/config.js
+const MODEL_MODALITIES = ["text", "image"];
+/** Read the current value behind every reference of a validated Config.
+* @param config Parsed plugin Config.
+* @returns Plain options for the resolver.
+*/
+function plainOptions(config) {
+	return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, isVolatile(value) ? value.get() : value]));
+}
+const catalogModel = z.object({
+	id: z.string().required(),
+	name: z.string(),
+	description: z.string(),
+	contextWindow: z.number().step(1).min(1),
+	maxTokens: z.number().step(1).min(1),
+	inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(["text"]),
+	imagePixelBudget: z.union([z.number().step(1).min(1), "low"]),
+	imageMaxBytes: z.number().step(1).min(1),
+	systemPromptUpdate: z.const("in-history"),
+	toolUpdate: z.union(["in-history", "addition-only"])
+});
+/** Shared schema fields for Messages protocol options. */
+const deepSeekConfigFields = {
+	baseURL: z.string().volatile(),
+	thinking: z.union(["enabled", "disabled"]).volatile(),
+	reasoningEffort: z.union([
+		"off",
+		"low",
+		"high",
+		"max"
+	]).volatile(),
+	maxTokens: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_TOKENS).volatile(),
+	defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW).volatile(),
+	models: z.array(catalogModel).default(DEFAULT_MODELS).volatile(),
+	streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS).volatile(),
+	maxRequestFilesBytes: z.number().step(1).min(1).default(DEFAULT_MAX_REQUEST_FILES_BYTES).volatile(),
+	maxInlineRequestImageBytes: z.number().step(1).min(1).default(DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES).volatile(),
+	maxImagesPerRequest: z.number().step(1).min(1).default(600).volatile(),
+	imageOffloadByteQuantum: z.number().step(1).min(1).default(DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM).volatile(),
+	inlineImageOffloadByteQuantum: z.number().step(1).min(1).default(DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM).volatile(),
+	imageOffloadCountQuantum: z.number().step(1).min(1).default(20).volatile(),
+	filesApiTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_FILES_API_TIMEOUT_MS).volatile(),
+	fileExpiresAfterSeconds: z.number().step(1).min(3600).max(2592e3).default(DEFAULT_FILE_EXPIRY_SECONDS).volatile(),
+	fileRefreshMarginSeconds: z.number().step(1).min(0).default(DEFAULT_FILE_REFRESH_MARGIN_SECONDS).volatile(),
+	fileQuotaCleanupBatch: z.number().step(1).min(1).max(1e3).default(100).volatile(),
+	retryPolicy: RetryPolicySchema.volatile()
+};
+const Config = z.object(deepSeekConfigFields);
+/** Public API default; the internal endpoint comes from $DEEPSEEK_BASE_URL. */
+const PUBLIC_BASE_URL = "https://api.deepseek.com/anthropic";
+/** Environment variable naming this provider's endpoint, honored only from trusted layers. */
+const BASE_URL_ENV = "DEEPSEEK_BASE_URL";
+/** Resolve, validate, and detach the advisory model catalog. */
+function resolveModels(models) {
+	const seen = /* @__PURE__ */ new Set();
+	return (models ?? DEFAULT_MODELS).map((model) => {
+		if (Object.hasOwn(model, "imageDetail")) throw new Error("llm-deepseek: catalog model imageDetail is no longer supported; use imagePixelBudget");
+		if (model.id.length === 0) throw new Error("llm-deepseek: catalog model ids must be non-empty");
+		if (model.name !== void 0 && model.name.length === 0) throw new Error(`llm-deepseek: catalog model "${model.id}" has an empty name`);
+		if (model.contextWindow !== void 0 && (!Number.isInteger(model.contextWindow) || model.contextWindow <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" contextWindow must be a positive integer`);
+		if (model.maxTokens !== void 0 && (!Number.isInteger(model.maxTokens) || model.maxTokens <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" maxTokens must be a positive integer`);
+		const inputModalities = model.inputModalities ?? ["text"];
+		if (inputModalities.length === 0) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not be empty`);
+		if (inputModalities.some((modality) => !MODEL_MODALITIES.includes(modality))) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must contain only "text" and "image"`);
+		if (new Set(inputModalities).size !== inputModalities.length) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not contain duplicates`);
+		const hasImage = inputModalities.includes("image");
+		if (!hasImage && (model.imagePixelBudget !== void 0 || model.imageMaxBytes !== void 0)) throw new Error(`llm-deepseek: text-only catalog model "${model.id}" cannot declare image request limits`);
+		if (model.imagePixelBudget !== void 0 && model.imagePixelBudget !== "low" && (!Number.isSafeInteger(model.imagePixelBudget) || model.imagePixelBudget <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" imagePixelBudget must be "low" or a positive safe integer`);
+		if (model.imageMaxBytes !== void 0 && (!Number.isSafeInteger(model.imageMaxBytes) || model.imageMaxBytes <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" imageMaxBytes must be a positive safe integer`);
+		const systemPromptUpdate = model.systemPromptUpdate;
+		if (systemPromptUpdate !== void 0 && systemPromptUpdate !== "in-history") throw new Error(`llm-deepseek: catalog model "${model.id}" systemPromptUpdate must be "in-history" when present`);
+		const toolUpdate = model.toolUpdate;
+		if (toolUpdate !== void 0 && toolUpdate !== "in-history" && toolUpdate !== "addition-only") throw new Error(`llm-deepseek: catalog model "${model.id}" toolUpdate must be "in-history" or "addition-only" when present`);
+		if (seen.has(model.id)) throw new Error(`llm-deepseek: duplicate catalog model "${model.id}"`);
+		seen.add(model.id);
+		return {
+			id: model.id,
+			...model.name === void 0 ? {} : { name: model.name },
+			...model.description === void 0 ? {} : { description: model.description },
+			...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
+			...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
+			...model.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: model.systemPromptUpdate },
+			...model.toolUpdate === void 0 ? {} : { toolUpdate: model.toolUpdate },
+			inputModalities: [...inputModalities],
+			...hasImage ? {
+				...model.imagePixelBudget === void 0 ? {} : { imagePixelBudget: model.imagePixelBudget },
+				imageMaxBytes: model.imageMaxBytes ?? 2097152
+			} : {}
+		};
+	});
+}
+/**
+* The one explicit resolve step from raw config to validated protocol
+* settings. Programmatic construction may bypass Schemastery normalization, so
+* every default and bound is re-judged here — for the composition entry at
+* load (fail loud) and for each settings snapshot at its first use.
+* @param config - raw plugin config or resolved settings snapshot.
+* @param environment - this run's environment layers, or `undefined` outside
+* the product CLI. Every layer may supply an endpoint: the product trusts the
+* project it is launched in, so a checkout can point its own agent at the
+* gateway that checkout is meant to use.
+* @returns validated protocol settings.
+*/
+function resolveAdapterOptions(config, environment) {
+	if (Object.hasOwn(config, "protocol")) throw new Error("llm-deepseek: protocol is not configurable; remove it and use a Messages-compatible baseURL");
+	if (config.thinking === "disabled" && config.reasoningEffort !== void 0 && config.reasoningEffort !== "off") throw new Error("llm-deepseek: only reasoningEffort \"off\" can be configured when thinking is disabled");
+	if (config.defaultContextWindow !== void 0 && (!Number.isInteger(config.defaultContextWindow) || config.defaultContextWindow <= 0)) throw new Error("llm-deepseek: defaultContextWindow must be a positive integer");
+	if (config.maxTokens !== void 0 && (!Number.isSafeInteger(config.maxTokens) || config.maxTokens <= 0)) throw new Error("llm-deepseek: maxTokens must be a positive safe integer");
+	const streamIdleTimeoutMs = config.streamIdleTimeoutMs ?? 3e5;
+	if (!Number.isFinite(streamIdleTimeoutMs) || streamIdleTimeoutMs <= 0 || streamIdleTimeoutMs > MAX_TIMER_DELAY_MS) throw new Error(`llm-deepseek: streamIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+	const maxRequestFilesBytes = config.maxRequestFilesBytes ?? 134217728;
+	if (!Number.isSafeInteger(maxRequestFilesBytes) || maxRequestFilesBytes <= 0) throw new Error("llm-deepseek: maxRequestFilesBytes must be a positive safe integer");
+	const maxInlineRequestImageBytes = config.maxInlineRequestImageBytes ?? 20971520;
+	if (!Number.isSafeInteger(maxInlineRequestImageBytes) || maxInlineRequestImageBytes <= 0) throw new Error("llm-deepseek: maxInlineRequestImageBytes must be a positive safe integer");
+	const maxImagesPerRequest = config.maxImagesPerRequest ?? 600;
+	if (!Number.isSafeInteger(maxImagesPerRequest) || maxImagesPerRequest <= 0) throw new Error("llm-deepseek: maxImagesPerRequest must be a positive safe integer");
+	const imageOffloadByteQuantum = config.imageOffloadByteQuantum ?? 67108864;
+	if (!Number.isSafeInteger(imageOffloadByteQuantum) || imageOffloadByteQuantum <= 0) throw new Error("llm-deepseek: imageOffloadByteQuantum must be a positive safe integer");
+	if (imageOffloadByteQuantum > maxRequestFilesBytes) throw new Error("llm-deepseek: imageOffloadByteQuantum must not exceed maxRequestFilesBytes");
+	const inlineImageOffloadByteQuantum = config.inlineImageOffloadByteQuantum ?? 10485760;
+	if (!Number.isSafeInteger(inlineImageOffloadByteQuantum) || inlineImageOffloadByteQuantum <= 0) throw new Error("llm-deepseek: inlineImageOffloadByteQuantum must be a positive safe integer");
+	if (inlineImageOffloadByteQuantum > maxInlineRequestImageBytes) throw new Error("llm-deepseek: inlineImageOffloadByteQuantum must not exceed maxInlineRequestImageBytes");
+	const imageOffloadCountQuantum = config.imageOffloadCountQuantum ?? 20;
+	if (!Number.isSafeInteger(imageOffloadCountQuantum) || imageOffloadCountQuantum <= 0) throw new Error("llm-deepseek: imageOffloadCountQuantum must be a positive safe integer");
+	if (imageOffloadCountQuantum > maxImagesPerRequest) throw new Error("llm-deepseek: imageOffloadCountQuantum must not exceed maxImagesPerRequest");
+	const filesApiTimeoutMs = config.filesApiTimeoutMs ?? 6e4;
+	if (!Number.isFinite(filesApiTimeoutMs) || filesApiTimeoutMs <= 0 || filesApiTimeoutMs > MAX_TIMER_DELAY_MS) throw new Error(`llm-deepseek: filesApiTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+	const fileExpiresAfterSeconds = config.fileExpiresAfterSeconds ?? 604800;
+	if (!Number.isSafeInteger(fileExpiresAfterSeconds) || fileExpiresAfterSeconds < 3600 || fileExpiresAfterSeconds > 2592e3) throw new Error("llm-deepseek: fileExpiresAfterSeconds must be an integer from 3600 through 2592000");
+	const fileRefreshMarginSeconds = config.fileRefreshMarginSeconds ?? 3600;
+	if (!Number.isSafeInteger(fileRefreshMarginSeconds) || fileRefreshMarginSeconds < 0 || fileRefreshMarginSeconds >= fileExpiresAfterSeconds) throw new Error("llm-deepseek: fileRefreshMarginSeconds must be a non-negative integer below fileExpiresAfterSeconds");
+	const fileQuotaCleanupBatch = config.fileQuotaCleanupBatch ?? 100;
+	if (!Number.isSafeInteger(fileQuotaCleanupBatch) || fileQuotaCleanupBatch < 1 || fileQuotaCleanupBatch > 1e3) throw new Error("llm-deepseek: fileQuotaCleanupBatch must be an integer from 1 through 1000");
+	const baseURL = config.baseURL ?? environment?.get(BASE_URL_ENV)?.value ?? "https://api.deepseek.com/anthropic";
+	const parsed = new URL(baseURL);
+	if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error("llm-deepseek: Messages baseURL must be an HTTP(S) root without credentials, query, or fragment");
+	return {
+		baseURL,
+		defaults: {
+			thinking: config.thinking,
+			reasoningEffort: config.reasoningEffort
+		},
+		maxTokens: config.maxTokens ?? 256e3,
+		defaultContextWindow: config.defaultContextWindow ?? 1e6,
+		models: resolveModels(config.models),
+		streamIdleTimeoutMs,
+		maxRequestFilesBytes,
+		maxInlineRequestImageBytes,
+		maxImagesPerRequest,
+		imageOffloadByteQuantum,
+		inlineImageOffloadByteQuantum,
+		imageOffloadCountQuantum,
+		filesApiTimeoutMs,
+		filePolicy: {
+			expiresAfterSeconds: fileExpiresAfterSeconds,
+			refreshMarginSeconds: fileRefreshMarginSeconds,
+			quotaCleanupBatch: fileQuotaCleanupBatch
+		},
+		retryPolicy: resolveRetryPolicy(config.retryPolicy, "llm-deepseek: retryPolicy")
+	};
+}
+//#endregion
 //#region lib/types/model-info.js
 /** Protocol-independent model capabilities and reasoning choices. */
 const OFF_REASONING_EFFORT = ReasoningEffortId("off");
@@ -79,6 +513,7 @@ function modelInfo(connection, provider, model) {
 		context: { contextWindow },
 		defaultMaxTokens: configured?.maxTokens ?? connection.maxTokens,
 		...configured?.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: configured.systemPromptUpdate },
+		...configured?.toolUpdate === void 0 ? {} : { toolUpdate: configured.toolUpdate },
 		...connection.defaults.thinking === "disabled" ? { reasoning: {
 			efforts: OFF_ONLY_REASONING_EFFORTS,
 			defaultEffort: OFF_REASONING_EFFORT
@@ -112,6 +547,8 @@ function DeepSeekFileScope(scope) {
 /** Shared DeepSeek Messages API endpoint and header policy. @module dsh-llm-deepseek/messages-api */
 /** Required opt-in for Messages file operations and file-referenced image requests. */
 const MESSAGES_FILES_BETA = "files-api-2025-04-14";
+/** Required opt-in for mid-conversation `tool_addition` and `tool_removal` blocks. */
+const MESSAGES_TOOL_CHANGES_BETA = "mid-conversation-tool-changes-2026-07-01";
 /**
 * Resolve the API root without duplicating an explicit provider version path.
 * @param baseURL - validated configured endpoint root.
@@ -202,15 +639,13 @@ function providerErrorDetail$1(value) {
 /** Direct Files client retaining the configured URL root and refusing redirects before credentials can leave its origin. */
 var DeepSeekFilesClient = class {
 	baseURL;
-	accountCredential;
-	apiKey;
+	authHeaders;
 	fetchImpl;
 	/**
-	* @param options - endpoint, API-key snapshot, and optional test transport.
+	* @param options - endpoint, authentication headers, and optional test transport.
 	*/
 	constructor(options) {
-		this.apiKey = options.apiKey;
-		this.accountCredential = options.accountCredential === true;
+		this.authHeaders = options.headers;
 		this.fetchImpl = options.fetch ?? globalThis.fetch;
 		this.baseURL = messagesApiRoot(options.baseURL);
 	}
@@ -218,7 +653,7 @@ var DeepSeekFilesClient = class {
 		let response;
 		try {
 			const headers = new Headers(attributionHeaders());
-			headers.set(this.accountCredential ? "x-dsh-auth-token" : "x-api-key", this.apiKey);
+			for (const [name, value] of Object.entries(this.authHeaders)) headers.set(name, value);
 			headers.set("anthropic-version", "2023-06-01");
 			headers.set("anthropic-beta", MESSAGES_FILES_BETA);
 			response = await this.fetchImpl(`${this.baseURL}${path}`, {
@@ -309,13 +744,13 @@ var DeepSeekFilesClient = class {
 /** Durable DeepSeek attachment-to-file-id index. @module dsh-llm-deepseek/upload-index */
 var InvalidUploadIndexError = class extends Error {};
 /**
-* Derive a non-secret stable index namespace without persisting or logging the API key.
+* Derive a non-secret stable index namespace without persisting or logging authentication headers.
 * @param baseURL - normalized provider endpoint namespace.
-* @param apiKey - resolved credential used only as hash input.
+* @param credentials - serialized authentication headers used only as hash input.
 * @returns branded SHA-256 namespace digest.
 */
-function deepSeekFileScope(baseURL, apiKey) {
-	return DeepSeekFileScope(createHash("sha256").update(baseURL.replace(/\/+$/u, "")).update("\0").update(apiKey).digest("hex"));
+function deepSeekFileScope(baseURL, credentials) {
+	return DeepSeekFileScope(createHash("sha256").update(baseURL.replace(/\/+$/u, "")).update("\0").update(credentials).digest("hex"));
 }
 function absent(error) {
 	return error?.code === "ENOENT";
@@ -476,7 +911,7 @@ const MAX_IMAGE_BYTES = 32 * 1024 * 1024;
 const OWNED_FILE_PREFIX = "dsh-";
 /** The Files resource's parent URL identifies the upload namespace. */
 function fileScope(connection) {
-	return deepSeekFileScope(messagesApiRoot(connection.baseURL), connection.apiKey);
+	return deepSeekFileScope(messagesApiRoot(connection.baseURL), JSON.stringify(Object.entries(connection.headers).sort(([left], [right]) => left.localeCompare(right))));
 }
 function abortReason(signal) {
 	const reason = signal.reason;
@@ -544,8 +979,7 @@ var DeepSeekFileStore = class {
 	client(connection) {
 		return new DeepSeekFilesClient({
 			baseURL: connection.baseURL,
-			apiKey: connection.apiKey,
-			...connection.accountCredential === void 0 ? {} : { accountCredential: connection.accountCredential },
+			headers: connection.headers,
 			...this.fetchImpl === void 0 ? {} : { fetch: this.fetchImpl }
 		});
 	}
@@ -895,13 +1329,16 @@ var RequestFiles = class {
 /** Prepare plugin-contributed request fields and commit their delivery after HTTP acceptance. */
 /**
 * Merge contributions without replacing Messages fields. Preparation and
-* acceptance failures report REQUEST_EXTENSION.
+* acceptance failures report REQUEST_EXTENSION. When the merged request fails
+* to serialize, the payload is the base request alone and acceptance is a no-op,
+* so contributors resend their unaccepted state on a later request.
 * @param body - serialized Messages request before extension fields.
 * @param options - request identity, purpose, and cancellation.
 * @param prepare - contributor registry captured for this adapter.
+* @param onOmitted - receives the omitted field names and the serialization failure.
 * @returns HTTP payload and a commit to invoke only after a successful HTTP response.
 */
-async function prepareRequestExtensions(body, options, prepare) {
+async function prepareRequestExtensions(body, options, prepare, onOmitted) {
 	let extensions;
 	try {
 		extensions = await prepare({
@@ -911,12 +1348,24 @@ async function prepareRequestExtensions(body, options, prepare) {
 	} catch (error) {
 		throw new LlmError("DeepSeek request extension preparation failed", "REQUEST_EXTENSION", { cause: error });
 	}
-	for (const field of Object.keys(extensions.fields)) if (Object.hasOwn(body, field)) throw new LlmError(`DeepSeek request extension field ${JSON.stringify(field)} collides with the base request`, "REQUEST_EXTENSION");
-	return {
-		payload: JSON.stringify({
+	const fields = Object.keys(extensions.fields);
+	for (const field of fields) if (Object.hasOwn(body, field)) throw new LlmError(`DeepSeek request extension field ${JSON.stringify(field)} collides with the base request`, "REQUEST_EXTENSION");
+	let payload;
+	try {
+		payload = JSON.stringify({
 			...body,
 			...extensions.fields
-		}),
+		});
+	} catch (error) {
+		const base = JSON.stringify(body);
+		onOmitted(fields, error);
+		return {
+			payload: base,
+			accept: () => Promise.resolve()
+		};
+	}
+	return {
+		payload,
 		async accept() {
 			try {
 				await extensions.accept();
@@ -925,238 +1374,6 @@ async function prepareRequestExtensions(body, options, prepare) {
 			}
 		}
 	};
-}
-//#endregion
-//#region lib/types/image-tokens.js
-/**
-* DeepSeek vision-token accounting: the provider's published image-token
-* calculator (api-docs.deepseek.com, Token & Token Usage) ported verbatim in
-* its current `v41` configuration. The provider scales an image below
-* 544×544 total pixels up, aligns it to a 14px-patch grid, downsamples 3:1
-* per axis into token cells, and caps one image at 1024 tokens by solving the
-* largest aspect-preserving grid inside that budget. The count is exact: this
-* configuration has no alignment pad and no aspect-ratio clamp. Actual usage
-* remains authoritative.
-*
-* @module dsh-llm-deepseek/image-tokens
-*/
-/** Vision patch edge in pixels. */
-const PATCH_SIZE = 14;
-/** Per-axis patch-to-token downsampling ratio. */
-const DOWNSAMPLE_RATIO = 3;
-/** Provider cap on tokens for one request image. */
-const MAX_IMAGE_TOKENS = 1024;
-/** Total-pixel floor; smaller images are scaled up before grid projection. */
-const MIN_PIXELS = 544 * 544;
-/** Pixels covered by one token cell along either axis. */
-const CELL_SIZE = PATCH_SIZE * DOWNSAMPLE_RATIO;
-const intDiv = (value, divisor) => Math.floor(value / divisor);
-const ceilDiv = (value, divisor) => Math.floor((value + divisor - 1) / divisor);
-/** Token count of one grid: every row carries a separator, plus two framing tokens. */
-function gridTokens(gridHeight, gridWidth) {
-	return gridHeight * (gridWidth + 1) + 2;
-}
-/** Token-cell count along one padded pixel axis. */
-function gridCells(paddedLength) {
-	return ceilDiv(intDiv(paddedLength, PATCH_SIZE), DOWNSAMPLE_RATIO);
-}
-/** Solve the largest grid within `budget` tokens preserving the aspect ratio. */
-function solveResizeRatio(height, width, budget) {
-	const aspect = height / width;
-	const idealGridWidth = Math.sqrt((budget - 2) / aspect + .25) - .5;
-	const idealGridHeight = idealGridWidth * aspect;
-	let bestHeight;
-	let bestWidth;
-	if (idealGridWidth < 1) {
-		const solvedGridWidth = 1;
-		const solvedGridHeight = intDiv(budget - 2, 2);
-		bestWidth = solvedGridWidth * CELL_SIZE;
-		bestHeight = solvedGridHeight * CELL_SIZE;
-	} else if (idealGridHeight < 1) {
-		const solvedGridHeight = 1;
-		bestWidth = (intDiv(budget - 2, solvedGridHeight) - 1) * CELL_SIZE;
-		bestHeight = solvedGridHeight * CELL_SIZE;
-	} else {
-		const solvedGridWidth = Math.trunc(idealGridWidth);
-		const solvedGridHeight = Math.trunc(idealGridHeight);
-		const scale = Math.min(solvedGridWidth * CELL_SIZE / width, solvedGridHeight * CELL_SIZE / height);
-		bestWidth = Math.trunc(width * scale / PATCH_SIZE) * PATCH_SIZE;
-		bestHeight = Math.trunc(height * scale / PATCH_SIZE) * PATCH_SIZE;
-	}
-	const gridHeight = gridCells(bestHeight);
-	const gridWidth = gridCells(bestWidth);
-	return {
-		gridHeight,
-		gridWidth,
-		bestHeight,
-		bestWidth,
-		numTokens: gridTokens(gridHeight, gridWidth)
-	};
-}
-/** Project padded pixel dimensions onto the largest in-budget token grid. */
-function safeResize(height, width, paddedHeight, paddedWidth) {
-	const gridHeight = gridCells(paddedHeight);
-	const gridWidth = gridCells(paddedWidth);
-	const direct = {
-		gridHeight,
-		gridWidth,
-		bestHeight: paddedHeight,
-		bestWidth: paddedWidth,
-		numTokens: gridTokens(gridHeight, gridWidth)
-	};
-	if (direct.numTokens <= MAX_IMAGE_TOKENS) return direct;
-	const solved = solveResizeRatio(height, width, MAX_IMAGE_TOKENS);
-	/* v8 ignore next 3 -- the published solver's assertion; the closed-form
-	solve stays within the budget for every positive geometry. */
-	if (solved.numTokens > MAX_IMAGE_TOKENS) throw new Error(`deepseek image tokens: no grid fits the token budget for ${width}x${height}`);
-	return solved;
-}
-/** One scale-pad-project pass; the caller iterates it to a fixpoint. */
-function resizeOnce(width, height) {
-	let scaledWidth = width;
-	let scaledHeight = height;
-	const pixels = scaledWidth * scaledHeight;
-	if (pixels < MIN_PIXELS && pixels > 0) {
-		const scale = Math.sqrt(MIN_PIXELS / pixels);
-		scaledWidth = Math.trunc(scaledWidth * scale);
-		scaledHeight = Math.trunc(scaledHeight * scale);
-	}
-	const paddedWidth = ceilDiv(scaledWidth, PATCH_SIZE) * PATCH_SIZE;
-	const paddedHeight = ceilDiv(scaledHeight, PATCH_SIZE) * PATCH_SIZE;
-	return safeResize(scaledHeight, scaledWidth, paddedHeight, paddedWidth);
-}
-function sameResize(a, b) {
-	return a.gridHeight === b.gridHeight && a.gridWidth === b.gridWidth && a.bestHeight === b.bestHeight && a.bestWidth === b.bestWidth && a.numTokens === b.numTokens;
-}
-/**
-* Dimensions the harness sends so the provider keeps the whole image: the
-* source itself when its patch-padded grid fits the token cap, otherwise the
-* source aspect ratio at the solved grid's long edge. The provider pads the
-* short edge to whole patches on its side. Rounding the aspect-preserving
-* short edge can change the token count from the source's solved grid;
-* request pricing uses the sent dimensions. Small images are never enlarged.
-* @param width - positive integer source width in pixels.
-* @param height - positive integer source height in pixels.
-* @returns the request dimensions to encode.
-*/
-function deepSeekRequestImageDimensions(width, height) {
-	const paddedWidth = ceilDiv(width, PATCH_SIZE) * PATCH_SIZE;
-	if (gridTokens(gridCells(ceilDiv(height, PATCH_SIZE) * PATCH_SIZE), gridCells(paddedWidth)) <= MAX_IMAGE_TOKENS) return {
-		width,
-		height
-	};
-	const solved = solveResizeRatio(height, width, MAX_IMAGE_TOKENS);
-	return longEdgeDimensions(width, height, width >= height ? solved.bestWidth : solved.bestHeight);
-}
-/**
-* Vision tokens DeepSeek charges for one request image of the given
-* dimensions.
-* @param width - positive integer request-image width in pixels.
-* @param height - positive integer request-image height in pixels.
-* @returns the provider vision-token price, at most 1024.
-*/
-function deepSeekImageTokens(width, height) {
-	let result = resizeOnce(width, height);
-	for (let iteration = 1; iteration < 10; iteration += 1) {
-		const next = resizeOnce(result.bestWidth, result.bestHeight);
-		if (sameResize(next, result)) return result.numTokens;
-		result = next;
-	}
-	/* v8 ignore next 2 -- the published solver's non-convergence guard; every
-	pass is a projection, so a second identical pass is a fixpoint. */
-	throw new Error(`deepseek image tokens: resize did not converge for ${width}x${height}`);
-}
-//#endregion
-//#region lib/types/request-pricing.js
-/**
-* Provider-side request-image pricing for DeepSeek routes: prices every
-* retained surface occurrence at its per-model request target with
-* the published vision-token accounting, and every occurrence the surface
-* marks offloaded as its placeholder text. Consumed synchronously by the
-* token meter through `LlmAdapter.imageRequestPricing`; provider usage
-* remains the authoritative anchor for completed requests.
-*
-* @module dsh-llm-deepseek/request-pricing
-*/
-/** Default bound on accumulated file-referenced image bytes per request. */
-const DEFAULT_MAX_REQUEST_FILES_BYTES = 128 * 1024 * 1024;
-/** Provider request image-count limit. */
-const DEFAULT_MAX_IMAGES_PER_REQUEST = 600;
-/** Total-pixel budget matching provider low-detail image input. */
-const DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET = 512 * 512;
-/** Encoded-byte target for one deterministic model-request image; the smallest quality-ladder output is used when no quality fits. */
-const DEFAULT_REQUEST_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
-/**
-* Provider per-side limit for a request carrying 15 or more images, applied
-* to every request image so the image count never changes a projection.
-*/
-const REQUEST_IMAGE_MAX_DIMENSION = 4096;
-/**
-* Resolve the encoded-byte target one DeepSeek model route applies to every request image.
-* @param model - Advertised model route and its optional image overrides.
-* @returns the route's encoded-byte target.
-* @internal
-*/
-function resolveRequestImageMaxBytes(model) {
-	return model.imageMaxBytes ?? 2097152;
-}
-/**
-* Resolve the deterministic request target one DeepSeek model route chooses
-* for one source image: the published token grid unless the model overrides
-* it with a pixel budget, then the provider per-side limit, then the route's
-* encoded-byte target. Small images are never enlarged.
-* @param model - Advertised model route and its optional image overrides.
-* @param source - intrinsic dimensions of the normalized attachment.
-* @returns Complete request dimensions and encoded-byte target.
-* @internal
-*/
-function resolveRequestImageTarget(model, source) {
-	const budget = model.imagePixelBudget === "low" ? DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET : model.imagePixelBudget;
-	const projected = budget === void 0 ? deepSeekRequestImageDimensions(source.width, source.height) : requestImageDimensions(source.width, source.height, budget);
-	return {
-		...Math.max(projected.width, projected.height) > 4096 ? longEdgeDimensions(source.width, source.height, REQUEST_IMAGE_MAX_DIMENSION) : projected,
-		maxBytes: resolveRequestImageMaxBytes(model)
-	};
-}
-/**
-* Price one occurrence a text-only route substitutes with deterministic text,
-* reproducing the `projectImagesForTextModel` substitution `LlmRuntime`
-* applies before dispatching to a route without the `image` modality.
-*/
-function textOnlyPrice(block) {
-	return {
-		visualTokens: 0,
-		text: textOnlyImageText(block.attachment)
-	};
-}
-/**
-* Build the request-image pricing for one DeepSeek route from a validated
-* connection snapshot. Uncatalogued and text-only models price every
-* occurrence as its deterministic text substitution; image-capable models
-* price an offloaded occurrence as its placeholder text and a retained one by
-* its projected request dimensions, with each occurrence's handle or
-* placeholder text built through the same access resolution the serializer
-* uses. Access paths resolve at pricing time, so a path that changes before
-* the request only shifts the text price by its own length.
-* @param connection - validated connection facts of the pricing resolution.
-* @param model - exact model id named by the request header.
-* @param resolveAccess - current execution-world access resolution shared with request serialization.
-* @returns synchronous per-occurrence pricing for the route.
-*/
-function deepSeekImageRequestPricing(connection, model, resolveAccess) {
-	const catalogModel = connection.models.find((entry) => entry.id === model);
-	if (catalogModel?.inputModalities?.includes("image") !== true) return { priceImages: (images) => images.map(textOnlyPrice) };
-	return { priceImages: (images) => images.map(({ attachment: ref, offloaded }) => {
-		if (offloaded === true) return {
-			visualTokens: 0,
-			text: offloadedImageText(ref, resolveAccess?.(ref))
-		};
-		const target = resolveRequestImageTarget(catalogModel, ref);
-		return {
-			visualTokens: deepSeekImageTokens(target.width, target.height),
-			text: requestImageHandleText(ref, target, resolveAccess?.(ref))
-		};
-	}) };
 }
 //#endregion
 //#region lib/types/images.js
@@ -1300,7 +1517,7 @@ function validateReplay(message, model) {
 }
 //#endregion
 //#region lib/types/serialize.js
-/** Map system snapshots and conversation turns to Messages using the configured route capability. */
+/** Map system snapshots, tool changes, and conversation turns to Messages using the configured route capability. */
 function unsupported(type) {
 	throw new LlmError(`DeepSeek Messages cannot represent ${type}`, "UNSUPPORTED_CONTENT");
 }
@@ -1340,6 +1557,9 @@ function assistant(message, model, onReplayDegrade) {
 /** Serialize one complete request using already prepared image bytes.
 * User and tool-result content omits reasoning and tool-call blocks.
 * Empty user messages are skipped; empty tool results retain their call ids.
+* Developer messages, already projected for this route by `LlmRuntime`, become
+* system-role updates after the preceding user turn, with tool changes as
+* `tool_addition` and `tool_removal` references to the declared tool.
 * @param options - provider-neutral request.
 * @param connection - validated defaults and thinking policy.
 * @param history - image-projected history with complete system snapshots; durable messages remain unchanged.
@@ -1389,9 +1609,37 @@ function serialize(options, connection, history, images, access, onReplayDegrade
 		if (messages.at(-1)?.role !== "user") return unsupported("system update without a preceding user or tool-result turn");
 		messages.push(...systemUpdates.splice(0));
 	};
-	if (options.tools?.some((tool) => tool.deferLoading === true)) return unsupported("deferred tool loading");
 	for (const message of history) {
-		if (message.role === "developer") return unsupported("developer message");
+		if (message.role === "developer") {
+			const content = message.content.flatMap((block) => {
+				switch (block.type) {
+					case "text": return block.text.length === 0 ? [] : [{
+						type: "text",
+						text: block.text
+					}];
+					case "tool-addition": return [{
+						type: "tool_addition",
+						tool: {
+							type: "tool_reference",
+							name: block.toolName
+						}
+					}];
+					case "tool-removal": return [{
+						type: "tool_removal",
+						tool: {
+							type: "tool_reference",
+							name: block.toolName
+						}
+					}];
+					default: return unsupported(`developer content ${block.type}`);
+				}
+			});
+			if (content.length > 0) systemUpdates.push({
+				role: "system",
+				content
+			});
+			continue;
+		}
 		if (message.content.some((block) => block.type === "tool-addition" || block.type === "tool-removal")) return unsupported("tool-change blocks outside developer messages");
 		if (message.role === "system") {
 			const texts = message.content.filter((block) => block.type === "text");
@@ -1459,7 +1707,8 @@ function serialize(options, connection, history, images, access, onReplayDegrade
 		...options.tools === void 0 ? {} : { tools: options.tools.map((tool) => ({
 			name: tool.name,
 			description: tool.description,
-			input_schema: tool.parameters
+			input_schema: tool.parameters,
+			...tool.deferLoading === true ? { defer_loading: true } : {}
 		})) }
 	};
 }
@@ -1828,15 +2077,14 @@ var DeepSeekAdapter = class extends LlmAdapter {
 	providerInfo(provider) {
 		return {
 			id: provider,
-			name: "DeepSeek"
+			name: this.dependencies.providerName ?? "DeepSeek"
 		};
 	}
 	providerRetryPolicy(_provider) {
 		return this.dependencies.options().retryPolicy;
 	}
-	listModels(provider) {
-		const connection = this.dependencies.options();
-		return Promise.resolve(connection.models.map((model) => catalogModelInfo(provider, model)));
+	async listModels(provider) {
+		return this.dependencies.discoverModels?.(provider) ?? [];
 	}
 	resolveModel(provider, model, _signal) {
 		return Promise.resolve(modelInfo(this.dependencies.options(), provider, model));
@@ -1893,339 +2141,138 @@ var DeepSeekAdapter = class extends LlmAdapter {
 	async *request(options, connection, signal, activity) {
 		signal.throwIfAborted();
 		const { messages, versions } = await prepareImages(options.messages, connection, options.model, this.dependencies.resolveAttachments?.(), this.imageAccess, signal);
-		const accountToken = await this.dependencies.resolveAccountToken?.(connection);
-		const key = accountToken ?? await this.dependencies.resolveApiKey(connection);
-		const files = new RequestFiles(this.files, {
-			baseURL: connection.baseURL,
-			apiKey: key,
-			accountCredential: accountToken !== void 0
-		}, connection.filePolicy, connection.filesApiTimeoutMs, signal, activity);
-		let inline = false;
-		while (true) {
-			signal.throwIfAborted();
-			files.beginAttempt();
-			let fileIds;
-			if (!inline) try {
-				fileIds = await prepareFileIds(messages, versions, files);
-			} catch (error) {
-				if (!(error instanceof FileResolutionFailure)) throw error;
-				inline = true;
-				continue;
-			}
-			const extensions = await prepareRequestExtensions(serialize(options, connection, inline ? inlineImages(messages, versions, connection) : messages, versions, this.imageAccess, (reason) => {
-				this.dependencies.onReplayDegrade?.({
-					provider: options.provider,
-					model: options.model,
-					reason
-				});
-			}, fileIds), {
-				signal,
-				...options.sessionId === void 0 ? {} : { sessionId: String(options.sessionId) },
-				...options.purpose === void 0 ? {} : { purpose: options.purpose }
-			}, this.dependencies.prepareExtensions);
-			signal.throwIfAborted();
-			const response = await fetch(`${messagesApiRoot(connection.baseURL)}/messages`, {
-				method: "POST",
-				signal,
-				body: extensions.payload,
-				redirect: "error",
-				headers: {
-					...attributionHeaders(),
-					"content-type": "application/json",
-					"accept": "text/event-stream",
-					...accountToken === void 0 ? { "x-api-key": key } : { "x-dsh-auth-token": accountToken },
-					"anthropic-version": "2023-06-01",
-					...fileIds === void 0 || fileIds.size === 0 ? {} : { "anthropic-beta": MESSAGES_FILES_BETA },
-					"x-deepseek-harness-user-id": this.dependencies.resolveUserId(),
-					...options.sessionId === void 0 ? {} : { "x-deepseek-harness-session-id": String(options.sessionId) },
-					...options.purpose === "compaction" ? { "x-deepseek-harness-compact": "1" } : {}
+		const auth = await this.dependencies.resolveAuth(connection);
+		try {
+			const files = new RequestFiles(this.files, {
+				baseURL: connection.baseURL,
+				headers: auth.headers
+			}, connection.filePolicy, connection.filesApiTimeoutMs, signal, activity);
+			let inline = false;
+			while (true) {
+				signal.throwIfAborted();
+				files.beginAttempt();
+				let fileIds;
+				if (!inline) try {
+					fileIds = await prepareFileIds(messages, versions, files);
+				} catch (error) {
+					if (!(error instanceof FileResolutionFailure)) throw error;
+					inline = true;
+					continue;
 				}
-			});
-			if (!response.ok) {
-				const text = await response.text();
-				let raw;
-				try {
-					raw = JSON.parse(text);
-				} catch (_nonJsonGatewayError) {}
-				const detail = providerErrorDetail(raw);
-				if (await files.retry(detail)) continue;
-				const failure = providerError(raw, response.status, response.headers);
-				throw new LlmError(files.errorMessage(response.status, failure.message, detail), failure.code, {
-					...failure.failure,
-					cause: new Error(text)
+				const body = serialize(options, connection, inline ? inlineImages(messages, versions, connection) : messages, versions, this.imageAccess, (reason) => {
+					this.dependencies.onReplayDegrade?.({
+						provider: options.provider,
+						model: options.model,
+						reason
+					});
+				}, fileIds);
+				const extensions = await prepareRequestExtensions(body, {
+					signal,
+					...options.sessionId === void 0 ? {} : { sessionId: String(options.sessionId) },
+					...options.purpose === void 0 ? {} : { purpose: options.purpose }
+				}, this.dependencies.prepareExtensions, (fields, error) => {
+					this.dependencies.onExtensionsOmitted?.({
+						provider: options.provider,
+						model: options.model,
+						fields,
+						error
+					});
 				});
+				signal.throwIfAborted();
+				const betas = [...fileIds !== void 0 && fileIds.size > 0 ? [MESSAGES_FILES_BETA] : [], ...body.messages.some((message) => message.content.some((block) => block.type === "tool_addition" || block.type === "tool_removal")) ? [MESSAGES_TOOL_CHANGES_BETA] : []];
+				const response = await fetch(`${messagesApiRoot(connection.baseURL)}/messages`, {
+					method: "POST",
+					signal,
+					body: extensions.payload,
+					redirect: "error",
+					headers: {
+						...attributionHeaders(),
+						"content-type": "application/json",
+						"accept": "text/event-stream",
+						...auth.headers,
+						"anthropic-version": "2023-06-01",
+						...betas.length === 0 ? {} : { "anthropic-beta": betas.join(",") },
+						"x-deepseek-harness-user-id": this.dependencies.resolveUserId(),
+						...options.sessionId === void 0 ? {} : { "x-deepseek-harness-session-id": String(options.sessionId) },
+						...options.purpose === "compaction" ? { "x-deepseek-harness-compact": "1" } : {}
+					}
+				});
+				if (!response.ok) {
+					const text = await response.text();
+					let raw;
+					try {
+						raw = JSON.parse(text);
+					} catch (_nonJsonGatewayError) {}
+					const detail = providerErrorDetail(raw);
+					if (await files.retry(detail)) continue;
+					const failure = providerError(raw, response.status, response.headers);
+					throw new LlmError(files.errorMessage(response.status, failure.message, detail), failure.code, {
+						...failure.failure,
+						cause: new Error(text)
+					});
+				}
+				await extensions.accept();
+				if (response.body === null) throw new LlmError("DeepSeek Messages returned no response body", "EMPTY_RESPONSE");
+				yield* translate(parseSse(response.body, activity), options.model);
+				return;
 			}
-			await extensions.accept();
-			if (response.body === null) throw new LlmError("DeepSeek Messages returned no response body", "EMPTY_RESPONSE");
-			yield* translate(parseSse(response.body, activity), options.model);
-			return;
+		} catch (error) {
+			if (auth.onRequestError !== void 0) {
+				let mapped;
+				try {
+					mapped = await auth.onRequestError(error);
+				} catch (_credentialUpdateFailed) {
+					throw error;
+				}
+				throw mapped;
+			}
+			throw error;
 		}
 	}
 };
 //#endregion
-//#region lib/types/defaults.js
-/** Shared provider limits and Chat Files API defaults. */
-/** Default maximum idle interval while an adapter stream read is outstanding. */
-const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 3e5;
-/** Default combined request/response context capacity. */
-const DEFAULT_CONTEXT_WINDOW = 1e6;
-/** Default per-request output-token cap. */
-const DEFAULT_MAX_TOKENS = 256e3;
-/** Default bound on accumulated base64 image payload after Files API fallback. */
-const DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES = 20 * 1024 * 1024;
-/** Deterministic raw-byte removal step. */
-const DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM = 64 * 1024 * 1024;
-/** Deterministic base64-byte removal step after Files API fallback. */
-const DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM = 10 * 1024 * 1024;
-/** Deterministic image-count removal step. */
-const DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM = 20;
-/** Default explicit lifetime for uploaded images. */
-const DEFAULT_FILE_EXPIRY_SECONDS = 10080 * 60;
-/** Default proactive refresh window for indexed file ids. */
-const DEFAULT_FILE_REFRESH_MARGIN_SECONDS = 3600;
-/** Default number of oldest harness-owned files removed on quota recovery. */
-const DEFAULT_FILE_QUOTA_CLEANUP_BATCH = 100;
-/** Default deadline for resolving one request image through the Files API. */
-const DEFAULT_FILES_API_TIMEOUT_MS = 6e4;
-//#endregion
-//#region lib/types/models.js
-/** Default DeepSeek model catalog. */
-/** Advisory official model entries; deployments may replace the catalog. */
-const DEFAULT_MODELS = [{
-	id: "deepseek-flash",
-	name: "DeepSeek-V4.1-Flash",
-	contextWindow: DEFAULT_CONTEXT_WINDOW,
-	inputModalities: ["text", "image"],
-	systemPromptUpdate: "in-history"
-}, {
-	id: "deepseek-v4-pro",
-	name: "DeepSeek-V4-Pro-0813",
-	description: "Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.",
-	contextWindow: DEFAULT_CONTEXT_WINDOW
-}];
-//#endregion
-//#region lib/types/config.js
-const DEFAULT_API_KEY_ENV = "DEEPSEEK_API_KEY";
-const MODEL_MODALITIES = ["text", "image"];
-/** Read the current value behind every reference of a validated Config.
-* @param config Parsed plugin Config.
-* @returns Plain options for the resolver.
-*/
-function plainOptions(config) {
-	return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, isVolatile(value) ? value.get() : value]));
-}
-const catalogModel = z.object({
-	id: z.string().required(),
-	name: z.string(),
-	description: z.string(),
-	contextWindow: z.number().step(1).min(1),
-	maxTokens: z.number().step(1).min(1),
-	inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(["text"]),
-	imagePixelBudget: z.union([z.number().step(1).min(1), "low"]),
-	imageMaxBytes: z.number().step(1).min(1),
-	systemPromptUpdate: z.const("in-history")
-});
-const Config = z.object({
-	apiKeyEnv: z.string().role("credential-ref").default(DEFAULT_API_KEY_ENV).volatile(),
-	baseURL: z.string().volatile(),
-	thinking: z.union(["enabled", "disabled"]).volatile(),
-	reasoningEffort: z.union([
-		"off",
-		"low",
-		"high",
-		"max"
-	]).volatile(),
-	maxTokens: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_TOKENS).volatile(),
-	defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW).volatile(),
-	models: z.array(catalogModel).default(DEFAULT_MODELS).volatile(),
-	streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS).volatile(),
-	maxRequestFilesBytes: z.number().step(1).min(1).default(DEFAULT_MAX_REQUEST_FILES_BYTES).volatile(),
-	maxInlineRequestImageBytes: z.number().step(1).min(1).default(DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES).volatile(),
-	maxImagesPerRequest: z.number().step(1).min(1).default(600).volatile(),
-	imageOffloadByteQuantum: z.number().step(1).min(1).default(DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM).volatile(),
-	inlineImageOffloadByteQuantum: z.number().step(1).min(1).default(DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM).volatile(),
-	imageOffloadCountQuantum: z.number().step(1).min(1).default(20).volatile(),
-	filesApiTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_FILES_API_TIMEOUT_MS).volatile(),
-	fileExpiresAfterSeconds: z.number().step(1).min(3600).max(2592e3).default(DEFAULT_FILE_EXPIRY_SECONDS).volatile(),
-	fileRefreshMarginSeconds: z.number().step(1).min(0).default(DEFAULT_FILE_REFRESH_MARGIN_SECONDS).volatile(),
-	fileQuotaCleanupBatch: z.number().step(1).min(1).max(1e3).default(100).volatile(),
-	retryPolicy: RetryPolicySchema.volatile()
-});
-/** Public API default; the internal endpoint comes from $DEEPSEEK_BASE_URL. */
-const PUBLIC_BASE_URL = "https://api.deepseek.com/anthropic";
-/** Environment variable naming this provider's endpoint, honored only from trusted layers. */
-const BASE_URL_ENV = "DEEPSEEK_BASE_URL";
-/** Resolve, validate, and detach the advisory model catalog. */
-function resolveModels(models) {
-	const seen = /* @__PURE__ */ new Set();
-	return (models ?? DEFAULT_MODELS).map((model) => {
-		if (Object.hasOwn(model, "imageDetail")) throw new Error("llm-deepseek: catalog model imageDetail is no longer supported; use imagePixelBudget");
-		if (model.id.length === 0) throw new Error("llm-deepseek: catalog model ids must be non-empty");
-		if (model.name !== void 0 && model.name.length === 0) throw new Error(`llm-deepseek: catalog model "${model.id}" has an empty name`);
-		if (model.contextWindow !== void 0 && (!Number.isInteger(model.contextWindow) || model.contextWindow <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" contextWindow must be a positive integer`);
-		if (model.maxTokens !== void 0 && (!Number.isInteger(model.maxTokens) || model.maxTokens <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" maxTokens must be a positive integer`);
-		const inputModalities = model.inputModalities ?? ["text"];
-		if (inputModalities.length === 0) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not be empty`);
-		if (inputModalities.some((modality) => !MODEL_MODALITIES.includes(modality))) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must contain only "text" and "image"`);
-		if (new Set(inputModalities).size !== inputModalities.length) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not contain duplicates`);
-		const hasImage = inputModalities.includes("image");
-		if (!hasImage && (model.imagePixelBudget !== void 0 || model.imageMaxBytes !== void 0)) throw new Error(`llm-deepseek: text-only catalog model "${model.id}" cannot declare image request limits`);
-		if (model.imagePixelBudget !== void 0 && model.imagePixelBudget !== "low" && (!Number.isSafeInteger(model.imagePixelBudget) || model.imagePixelBudget <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" imagePixelBudget must be "low" or a positive safe integer`);
-		if (model.imageMaxBytes !== void 0 && (!Number.isSafeInteger(model.imageMaxBytes) || model.imageMaxBytes <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" imageMaxBytes must be a positive safe integer`);
-		const systemPromptUpdate = model.systemPromptUpdate;
-		if (systemPromptUpdate !== void 0 && systemPromptUpdate !== "in-history") throw new Error(`llm-deepseek: catalog model "${model.id}" systemPromptUpdate must be "in-history" when present`);
-		if (seen.has(model.id)) throw new Error(`llm-deepseek: duplicate catalog model "${model.id}"`);
-		seen.add(model.id);
-		return {
-			id: model.id,
-			...model.name === void 0 ? {} : { name: model.name },
-			...model.description === void 0 ? {} : { description: model.description },
-			...model.contextWindow === void 0 ? {} : { contextWindow: model.contextWindow },
-			...model.maxTokens === void 0 ? {} : { maxTokens: model.maxTokens },
-			...model.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: model.systemPromptUpdate },
-			inputModalities: [...inputModalities],
-			...hasImage ? {
-				...model.imagePixelBudget === void 0 ? {} : { imagePixelBudget: model.imagePixelBudget },
-				imageMaxBytes: model.imageMaxBytes ?? 2097152
-			} : {}
-		};
-	});
-}
+//#region lib/types/host.js
 /**
-* The one explicit resolve step from raw config to validated connection
-* facts. Programmatic construction may bypass Schemastery normalization, so
-* every default and bound is re-judged here — for the composition entry at
-* load (fail loud) and for each settings snapshot at its first use.
-* @param config - raw plugin config or resolved settings snapshot.
-* @param environment - this run's environment layers, or `undefined` outside
-* the product CLI. Every layer may supply an endpoint: the product trusts the
-* project it is launched in, so a checkout can point its own agent at the
-* gateway that checkout is meant to use.
-* @returns validated connection facts plus the credential reference.
+* Register one provider with request-local transport services and live retry policy.
+* @param ctx - provider plugin lifetime with the LLM registry injected.
+* @param provider - exact route owned by this plugin.
+* @param dependencies - provider-owned discovery, credential, and configuration callbacks.
 */
-function resolveAdapterOptions(config, environment) {
-	if (Object.hasOwn(config, "protocol")) throw new Error("llm-deepseek: protocol is not configurable; remove it and use a Messages-compatible baseURL");
-	if (config.thinking === "disabled" && config.reasoningEffort !== void 0 && config.reasoningEffort !== "off") throw new Error("llm-deepseek: only reasoningEffort \"off\" can be configured when thinking is disabled");
-	if (config.defaultContextWindow !== void 0 && (!Number.isInteger(config.defaultContextWindow) || config.defaultContextWindow <= 0)) throw new Error("llm-deepseek: defaultContextWindow must be a positive integer");
-	if (config.maxTokens !== void 0 && (!Number.isSafeInteger(config.maxTokens) || config.maxTokens <= 0)) throw new Error("llm-deepseek: maxTokens must be a positive safe integer");
-	const streamIdleTimeoutMs = config.streamIdleTimeoutMs ?? 3e5;
-	if (!Number.isFinite(streamIdleTimeoutMs) || streamIdleTimeoutMs <= 0 || streamIdleTimeoutMs > MAX_TIMER_DELAY_MS) throw new Error(`llm-deepseek: streamIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
-	const maxRequestFilesBytes = config.maxRequestFilesBytes ?? 134217728;
-	if (!Number.isSafeInteger(maxRequestFilesBytes) || maxRequestFilesBytes <= 0) throw new Error("llm-deepseek: maxRequestFilesBytes must be a positive safe integer");
-	const maxInlineRequestImageBytes = config.maxInlineRequestImageBytes ?? 20971520;
-	if (!Number.isSafeInteger(maxInlineRequestImageBytes) || maxInlineRequestImageBytes <= 0) throw new Error("llm-deepseek: maxInlineRequestImageBytes must be a positive safe integer");
-	const maxImagesPerRequest = config.maxImagesPerRequest ?? 600;
-	if (!Number.isSafeInteger(maxImagesPerRequest) || maxImagesPerRequest <= 0) throw new Error("llm-deepseek: maxImagesPerRequest must be a positive safe integer");
-	const imageOffloadByteQuantum = config.imageOffloadByteQuantum ?? 67108864;
-	if (!Number.isSafeInteger(imageOffloadByteQuantum) || imageOffloadByteQuantum <= 0) throw new Error("llm-deepseek: imageOffloadByteQuantum must be a positive safe integer");
-	if (imageOffloadByteQuantum > maxRequestFilesBytes) throw new Error("llm-deepseek: imageOffloadByteQuantum must not exceed maxRequestFilesBytes");
-	const inlineImageOffloadByteQuantum = config.inlineImageOffloadByteQuantum ?? 10485760;
-	if (!Number.isSafeInteger(inlineImageOffloadByteQuantum) || inlineImageOffloadByteQuantum <= 0) throw new Error("llm-deepseek: inlineImageOffloadByteQuantum must be a positive safe integer");
-	if (inlineImageOffloadByteQuantum > maxInlineRequestImageBytes) throw new Error("llm-deepseek: inlineImageOffloadByteQuantum must not exceed maxInlineRequestImageBytes");
-	const imageOffloadCountQuantum = config.imageOffloadCountQuantum ?? 20;
-	if (!Number.isSafeInteger(imageOffloadCountQuantum) || imageOffloadCountQuantum <= 0) throw new Error("llm-deepseek: imageOffloadCountQuantum must be a positive safe integer");
-	if (imageOffloadCountQuantum > maxImagesPerRequest) throw new Error("llm-deepseek: imageOffloadCountQuantum must not exceed maxImagesPerRequest");
-	const filesApiTimeoutMs = config.filesApiTimeoutMs ?? 6e4;
-	if (!Number.isFinite(filesApiTimeoutMs) || filesApiTimeoutMs <= 0 || filesApiTimeoutMs > MAX_TIMER_DELAY_MS) throw new Error(`llm-deepseek: filesApiTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
-	const fileExpiresAfterSeconds = config.fileExpiresAfterSeconds ?? 604800;
-	if (!Number.isSafeInteger(fileExpiresAfterSeconds) || fileExpiresAfterSeconds < 3600 || fileExpiresAfterSeconds > 2592e3) throw new Error("llm-deepseek: fileExpiresAfterSeconds must be an integer from 3600 through 2592000");
-	const fileRefreshMarginSeconds = config.fileRefreshMarginSeconds ?? 3600;
-	if (!Number.isSafeInteger(fileRefreshMarginSeconds) || fileRefreshMarginSeconds < 0 || fileRefreshMarginSeconds >= fileExpiresAfterSeconds) throw new Error("llm-deepseek: fileRefreshMarginSeconds must be a non-negative integer below fileExpiresAfterSeconds");
-	const fileQuotaCleanupBatch = config.fileQuotaCleanupBatch ?? 100;
-	if (!Number.isSafeInteger(fileQuotaCleanupBatch) || fileQuotaCleanupBatch < 1 || fileQuotaCleanupBatch > 1e3) throw new Error("llm-deepseek: fileQuotaCleanupBatch must be an integer from 1 through 1000");
-	const baseURL = config.baseURL ?? environment?.get(BASE_URL_ENV)?.value ?? "https://api.deepseek.com/anthropic";
-	const parsed = new URL(baseURL);
-	if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error("llm-deepseek: Messages baseURL must be an HTTP(S) root without credentials, query, or fragment");
-	return {
-		apiKeyEnv: credentialRef(config.apiKeyEnv ?? DEFAULT_API_KEY_ENV),
-		baseURL,
-		defaults: {
-			thinking: config.thinking,
-			reasoningEffort: config.reasoningEffort
-		},
-		maxTokens: config.maxTokens ?? 256e3,
-		defaultContextWindow: config.defaultContextWindow ?? 1e6,
-		models: resolveModels(config.models),
-		streamIdleTimeoutMs,
-		maxRequestFilesBytes,
-		maxInlineRequestImageBytes,
-		maxImagesPerRequest,
-		imageOffloadByteQuantum,
-		inlineImageOffloadByteQuantum,
-		imageOffloadCountQuantum,
-		filesApiTimeoutMs,
-		filePolicy: {
-			expiresAfterSeconds: fileExpiresAfterSeconds,
-			refreshMarginSeconds: fileRefreshMarginSeconds,
-			quotaCleanupBatch: fileQuotaCleanupBatch
-		},
-		retryPolicy: resolveRetryPolicy(config.retryPolicy, "llm-deepseek: retryPolicy")
-	};
-}
-//#endregion
-//#region lib/types/index.js
-const name = "llm-deepseek";
-const inject = ["llm"];
-const NS = "llm-deepseek";
-const PROVIDER = "deepseek-official";
-function apply(ctx, config) {
+function registerDeepSeekProvider(ctx, provider, dependencies) {
 	ctx.inject(["settings"], (child) => {
 		child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
 	});
-	const options = () => resolveAdapterOptions(plainOptions(config), launchEnvironmentOf(ctx));
-	options();
-	const resolveApiKey = async (connection) => {
-		const ref = connection.apiKeyEnv;
-		const credentials = ctx.get("credentials");
-		if (credentials !== void 0) {
-			const hit = await credentials.resolve(ref);
-			if (hit !== void 0) return assertUsableApiKey(hit.value, "llm-deepseek", ref);
-		} else {
-			const ambient = launchEnvironmentOf(ctx).get(ref);
-			if (ambient !== void 0 && ambient.value.length > 0) return assertUsableApiKey(ambient.value, "llm-deepseek", ref);
-		}
-		throw new LlmError(`llm-deepseek: no API key for provider route "${PROVIDER}"; store ${ref} through the credentials service (the web Models page writes it), or export ${ref} in the launching environment`, "MISSING_CREDENTIAL");
-	};
 	let userId;
-	const resolveUserId = () => userId ??= getOrCreateAnonymousUserId();
 	const adapter = new DeepSeekAdapter({
-		options,
+		...dependencies,
+		resolveUserId: () => userId ??= getOrCreateAnonymousUserId(),
 		onReplayDegrade: ({ provider, model, reason }) => {
 			ctx.logger.warn(`llm-deepseek: unusable Messages replay state on assistant history for route "${provider}/${model}"; sending provider-neutral content (${reason})`);
 		},
-		resolveApiKey,
-		resolveAccountToken: (connection) => ctx.get("deepseekAccount")?.resolveToken(connection.baseURL) ?? Promise.resolve(void 0),
-		resolveUserId,
+		onExtensionsOmitted: ({ provider, model, fields, error }) => {
+			ctx.logger.warn(`llm-deepseek: sending route "${provider}/${model}" without request extension fields ${fields.join(", ")} because they failed to serialize: %o`, error);
+		},
 		resolveAttachments: () => ctx.get("attachments"),
 		resolveImageAccess: (attachments, ref) => resolveImageAttachmentAccess(attachments, (hostPath) => ctx.get("fs")?.processPathFromHostPath(hostPath), ref),
-		prepareExtensions: (request) => {
-			return ctx.get("deepseekLlmApiExtensions")?.prepare(request) ?? Promise.resolve({
-				fields: {},
-				accept: () => Promise.resolve()
-			});
-		}
+		prepareExtensions: (request) => ctx.get("deepseekLlmApiExtensions")?.prepare(request) ?? Promise.resolve({
+			fields: {},
+			accept: () => Promise.resolve()
+		})
 	});
-	ctx.llm.registerConfigurableProviders([{
-		provider: PROVIDER,
-		displayName: "DeepSeek",
-		settingsNs: ctx.fiber.entry?.options.id ?? NS,
-		settingsPath: []
-	}]);
-	const registration = ctx.llm.registerAdapter([PROVIDER], adapter);
-	let registeredPolicy = options().retryPolicy;
-	const ensureRegistrationFacts = () => {
+	const registration = ctx.llm.registerAdapter([provider], adapter);
+	let registeredPolicy = dependencies.options().retryPolicy;
+	ctx.on("loader/volatile-update", () => {
 		let policy;
 		try {
-			policy = options().retryPolicy;
+			policy = dependencies.options().retryPolicy;
 		} catch (error) {
 			ctx.logger.warn(error);
 			return;
 		}
 		if (deepEqualJson(policy, registeredPolicy)) return;
-		registration.replace([PROVIDER]);
+		registration.replace([provider]);
 		registeredPolicy = policy;
-	};
-	ctx.on("loader/volatile-update", ensureRegistrationFacts);
+	});
 }
 //#endregion
-export { Config, DEFAULT_CONTEXT_WINDOW, DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILE_EXPIRY_SECONDS, DEFAULT_FILE_QUOTA_CLEANUP_BATCH, DEFAULT_FILE_REFRESH_MARGIN_SECONDS, DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM, DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET, DEFAULT_MAX_IMAGES_PER_REQUEST, DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES, DEFAULT_MAX_REQUEST_FILES_BYTES, DEFAULT_MAX_TOKENS, DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DeepSeekAdapter, DeepSeekFileId, DeepSeekFileStore, DeepSeekFilesClient, DeepSeekUploadIndex, MAX_FILE_EXPIRY_SECONDS, MAX_FILE_UPLOAD_BYTES, MAX_IMAGE_BYTES, MAX_STORED_FILE_BYTES, MAX_STORED_FILE_COUNT, MIN_FILE_EXPIRY_SECONDS, PUBLIC_BASE_URL, REQUEST_IMAGE_MAX_DIMENSION, apply, deepSeekFileScope, deepSeekImageRequestPricing, deepSeekImageTokens, deepSeekRequestImageDimensions, inject, name, plainOptions, resolveAdapterOptions, resolveRequestImageMaxBytes, resolveRequestImageTarget };
+export { Config, DEFAULT_CONTEXT_WINDOW, DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILE_EXPIRY_SECONDS, DEFAULT_FILE_QUOTA_CLEANUP_BATCH, DEFAULT_FILE_REFRESH_MARGIN_SECONDS, DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM, DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET, DEFAULT_MAX_IMAGES_PER_REQUEST, DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES, DEFAULT_MAX_REQUEST_FILES_BYTES, DEFAULT_MAX_TOKENS, DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DeepSeekAdapter, DeepSeekFileId, DeepSeekFileStore, DeepSeekFilesClient, DeepSeekUploadIndex, MAX_FILE_EXPIRY_SECONDS, MAX_FILE_UPLOAD_BYTES, MAX_IMAGE_BYTES, MAX_STORED_FILE_BYTES, MAX_STORED_FILE_COUNT, MIN_FILE_EXPIRY_SECONDS, PUBLIC_BASE_URL, REQUEST_IMAGE_MAX_DIMENSION, catalogModelInfo, deepSeekConfigFields, deepSeekFileScope, deepSeekImageRequestPricing, deepSeekImageTokens, deepSeekRequestImageDimensions, plainOptions, registerDeepSeekProvider, resolveAdapterOptions, resolveRequestImageMaxBytes, resolveRequestImageTarget };

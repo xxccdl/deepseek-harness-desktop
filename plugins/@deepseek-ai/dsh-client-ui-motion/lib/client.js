@@ -63,9 +63,24 @@ window.__ModuleLoader__.load({
 			".hHd-Xa_newSession,.hHd-Xa_iconButton,.hHd-Xa_toggle,.bhn1Oq_iconButton,.bhn1Oq_searchButton,.YDXeBa_iconButton,.uV2eYG_primary{transition:transform var(--dsm-t-fast) var(--dsm-ease-out),background-color var(--dsm-t-fast) ease,color var(--dsm-t-fast) ease,border-color var(--dsm-t-fast) ease,opacity var(--dsm-t-fast) ease}",
 			".hHd-Xa_newSession:active,.hHd-Xa_iconButton:active,.hHd-Xa_toggle:active,.bhn1Oq_iconButton:active,.bhn1Oq_searchButton:active,.YDXeBa_iconButton:active{transform:scale(.94)}",
 			".uV2eYG_primary:active:not(:disabled){transform:scale(.9)}",
+			// ── the overlays ──
+			// Dialogs, menus and popovers mount as fixed layers over a scrim and
+			// arrive by appearing. These are keyed on the roles and the portal hook
+			// the shell already publishes rather than on hashed classes, so every
+			// page that opens a layer gets the same arrival without a per-page rule —
+			// which is what keeps the vocabulary from drifting surface by surface.
+			// The scrim fades with its own panel: a panel that arrives over a scrim
+			// that does not reads as a snap.
+			"[role=dialog],[role=alertdialog],[role=menu],[role=listbox],[data-menu-material]{animation:dsmRise var(--dsm-t-fast) var(--dsm-ease-out)}",
+			"[role=presentation]:has(>[role=dialog]),[role=presentation]:has(>[role=alertdialog]){animation:dsmFade var(--dsm-t-fast) ease}",
+			// ── the tab strip ──
+			// Switching between the conversation and the trajectory repaints the
+			// active tab; without a transition the label and its underline swap in a
+			// single frame.
+			"[data-conversation-tabs] button{transition:color var(--dsm-t-fast) ease,background-color var(--dsm-t-fast) ease}",
 			// Everything above is decoration: with reduced motion the tokens collapse
-			// to a millisecond and the two entrances are dropped outright.
-			"@media (prefers-reduced-motion: reduce){:root{--dsm-t-fast:1ms;--dsm-t-base:1ms;--dsm-t-slow:1ms;--dsm-rise:0px}.wSkVaW_viewArea,.wSkVaW_scrollBody,.Sixlwa_userRow,.Sixlwa_userStack,.Sixlwa_compactionRow,.Sixlwa_retryRow,.Sixlwa_turnErrorRow,.Sixlwa_contextRow,.l_V-RG_root,.YDXeBa_sessionRow,.YDXeBa_projectRow,.YDXeBa_searchResultRow{animation:none}.hHd-Xa_newSession:active,.hHd-Xa_iconButton:active,.hHd-Xa_toggle:active,.bhn1Oq_iconButton:active,.bhn1Oq_searchButton:active,.YDXeBa_iconButton:active,.uV2eYG_primary:active:not(:disabled){transform:none}}"
+			// to a millisecond and the entrances are dropped outright.
+			"@media (prefers-reduced-motion: reduce){:root{--dsm-t-fast:1ms;--dsm-t-base:1ms;--dsm-t-slow:1ms;--dsm-rise:0px}.wSkVaW_viewArea,.wSkVaW_scrollBody,.Sixlwa_userRow,.Sixlwa_userStack,.Sixlwa_compactionRow,.Sixlwa_retryRow,.Sixlwa_turnErrorRow,.Sixlwa_contextRow,.l_V-RG_root,.YDXeBa_sessionRow,.YDXeBa_projectRow,.YDXeBa_searchResultRow,[role=dialog],[role=alertdialog],[role=menu],[role=listbox],[data-menu-material],[role=presentation]:has(>[role=dialog]),[role=presentation]:has(>[role=alertdialog]){animation:none}.hHd-Xa_newSession:active,.hHd-Xa_iconButton:active,.hHd-Xa_toggle:active,.bhn1Oq_iconButton:active,.bhn1Oq_searchButton:active,.YDXeBa_iconButton:active,.uV2eYG_primary:active:not(:disabled){transform:none}}"
 		].join("");
 		const tagId = "@deepseek-ai/dsh-client-ui-motion/styles";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {

@@ -1,5 +1,5 @@
 import type { IconProps } from './icons/props.ts';
-/** Terminal plugin artwork (prompt chevron and cursor bar). */
+/** Light-blue terminal artwork shared by plugin cards and sidebar guide entries. */
 export declare const PluginArtworkTerminal: ({ size, className }: IconProps) => import("react").JSX.Element;
 /** Agent-loop plugin artwork (four leaves circling a center). */
 export declare const PluginArtworkLoop: ({ size, className }: IconProps) => import("react").JSX.Element;

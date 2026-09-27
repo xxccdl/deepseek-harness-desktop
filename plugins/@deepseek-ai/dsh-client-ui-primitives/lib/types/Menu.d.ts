@@ -4,6 +4,11 @@ export interface MenuItem {
     id: string;
     label: ReactNode;
     disabled?: boolean;
+    /** Effective binding supplied by the command owner; omitted for unbound actions. */
+    shortcut?: {
+        keys: readonly string[];
+        aria?: string | undefined;
+    };
     /** Leading icon (figma .Menu_cell gap 8). */
     icon?: ReactNode;
     /** Destructive row: error-colored text/icon and danger hover fill. */
@@ -28,6 +33,8 @@ export type MenuEntry = MenuItem | MenuSeparator | MenuLabel;
 export interface MenuItemButtonProps {
     /** Visible row label. */
     children: ReactNode;
+    /** Effective binding supplied by the command owner; omitted for unbound actions. */
+    shortcut?: MenuItem['shortcut'];
     /** Leading icon (figma .Menu_cell gap 8). */
     icon?: ReactNode;
     /** Whether the row cannot be activated. */
@@ -51,6 +58,7 @@ export interface MenuItemButtonProps {
  * without any shared state. Closing the menu stays the owner's decision, as
  * it is for data rows.
  * @param props.children - visible row label.
+ * @param props.shortcut - effective key labels and accessible combination.
  * @param props.icon - optional leading icon.
  * @param props.disabled - whether the row cannot be activated.
  * @param props.danger - whether to use the destructive row colors.
@@ -58,7 +66,7 @@ export interface MenuItemButtonProps {
  * @param props.onSelect - row activation callback.
  * @returns one menu-item row.
  */
-export declare function MenuItemButton({ children, icon, disabled, danger, separatorBefore, onSelect, }: MenuItemButtonProps): import("react").JSX.Element;
+export declare function MenuItemButton({ children, shortcut, icon, disabled, danger, separatorBefore, onSelect, }: MenuItemButtonProps): import("react").JSX.Element;
 /**
  * Render an anchored dropdown menu. While the list is open its keys mirror the
  * composer's: Tab settles the focused row — from the trigger, Tab enters the
@@ -79,7 +87,7 @@ export declare function MenuItemButton({ children, icon, disabled, danger, separ
  * @param props.align - list alignment against the anchor (default 'start').
  * @param props.side - open below (`bottom`, default) or above (`top`) the anchor.
  * @param props.portal - render the list into document.body, fixed-positioned
- * from the anchor rect (repositions on scroll/resize while open). Use when an
+ * from the anchor rect (follows movement and resizing while open). Use when an
  * ancestor's overflow clipping would crop the in-place list; default false
  * keeps the pure-CSS in-place behavior.
  * @param props.closeOnPointerLeave - close the list once the pointer has left
@@ -92,8 +100,8 @@ export declare function MenuItemButton({ children, icon, disabled, danger, separ
  * directly (e.g. from a host-owned trigger button) instead of measuring the
  * Menu's own wrapper span. Required when the wrapper isn't itself laid out at
  * the trigger (render-prop anchors, effect-positioned proxies — measuring the
- * wrapper there races the host's layout effects). Called on open and on every
- * scroll/resize; return null to skip placement for that frame.
+ * wrapper there races the host's layout effects). Called on open, each animation
+ * frame, and scroll/resize; return null to skip placement for that frame.
  * @param props.footer - rows pinned below the scrolling items area, separated
  * by a hairline; they stay visible while the items above scroll.
  * @param props.children - component rows rendered after `items` in the same

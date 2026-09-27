@@ -98,7 +98,21 @@ window.__ModuleLoader__.load({
 			//     outlives the delay fades in as usual.
 			"[data-composer-seat]{position:relative}",
 			"[data-queue-dock]{position:absolute;bottom:100%;left:0;right:0;animation:dspQueueIn .16s ease .18s backwards}",
-			"@keyframes dspQueueIn{from{opacity:0;transform:translateY(3px)}}"
+			"@keyframes dspQueueIn{from{opacity:0;transform:translateY(3px)}}",
+			/* ── the composer's status row ── */
+			// The stats pills and the context meter render BELOW the card, and the
+			// card is pinned to the seat's bottom edge — so the card's top is exactly
+			// one dock-height above that edge and every change to the row moves the
+			// input box. Measured in a live Session: the row arriving lifted the card
+			// 28px and its removal dropped it back, natively, in both directions.
+			// The row comes and goes with the data it reports (the first turn's
+			// stats, the context meter's first percentage), which is what made the
+			// input box drift "up" on its own. Reserving the row's own measured
+			// height keeps the box still and leaves the row itself untouched.
+			// The hero shell is excluded: it centers the whole composer rather than
+			// pinning it, so a reserved row would offset the card there instead of
+			// stabilizing it.
+			".uV2eYG_root:not(.uV2eYG_hero) .uV2eYG_dock{min-height:32px;box-sizing:border-box}"
 		].join("");
 		const tagId = "@deepseek-ai/dsh-client-ui-panel/styles";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {

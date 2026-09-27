@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { ImageLightboxLabels } from '../ImageLightbox.tsx';
 /**
  * Handle one sanitized absolute HTTP(S) URL selected from Markdown.
  * @param href - destination URL.
@@ -6,6 +7,15 @@ import type { ReactNode } from 'react';
 export type MarkdownExternalLinkHandler = (href: string) => void;
 /** Navigation capabilities supplied by the nearest Markdown owner. */
 export interface MarkdownDelegate {
+    /** Image previews for decoded local paths in this owner's workspace. */
+    readonly fileImages?: {
+        resolve: (path: string) => string | undefined;
+        labels: ImageLightboxLabels & {
+            open: string;
+            loading: string;
+            failed: string;
+        };
+    } | undefined;
     /** Ordinary HTTP(S) activation; absent handlers retain native anchor behavior. */
     readonly openExternalLink?: MarkdownExternalLinkHandler | undefined;
     /**
@@ -27,7 +37,7 @@ export interface MarkdownDelegateProviderProps extends MarkdownDelegate {
  * @param props - Child tree and its file and HTTP(S) link handlers.
  * @returns the scoped child tree.
  */
-export declare function MarkdownDelegateProvider({ children, openExternalLink, openFile, }: MarkdownDelegateProviderProps): ReactNode;
+export declare function MarkdownDelegateProvider({ children, openExternalLink, openFile, fileImages, }: MarkdownDelegateProviderProps): ReactNode;
 /**
  * Read the nearest Markdown navigation capabilities.
  * @returns Owner callbacks, or an empty delegate outside a provider.

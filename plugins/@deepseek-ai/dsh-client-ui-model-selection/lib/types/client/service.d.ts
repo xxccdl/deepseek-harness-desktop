@@ -26,15 +26,10 @@ export declare class ModelDirectoryResolver extends Service {
     static inject: string[];
     private readonly live;
     private readonly catalog;
-    /** Localized composer-block copy; this plugin owns the string it raises. */
-    private readonly blockReason;
     /**
      * @param ctx - owning root context (the service registers itself as `models`).
-     * @param config - the bound translator for this plugin's own dictionary.
      */
-    constructor(ctx: Context, config: {
-        blockReason: () => string;
-    });
+    constructor(ctx: Context);
     /**
      * Resolve the per-session shared directory (lazy; the scope disposer
      * removes and disposes it). Unknown sessions fail loud.

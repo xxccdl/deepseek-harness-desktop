@@ -3,11 +3,18 @@ interface WeightedArtworkProps extends IconProps {
     strokeWidth: number;
 }
 /**
- * Render shared new-conversation geometry for product and reference icons.
+ * Render new-conversation geometry — the bubble around a plus — for product icons.
  * @param props - Size, optional CSS class, and inherited stroke width.
  * @returns The decorative SVG artwork.
  */
 export declare const NewChatOutlineArtwork: ({ size, className, strokeWidth }: WeightedArtworkProps) => import("react").JSX.Element;
+/**
+ * Render shared conversation geometry — the chat bubble around two text
+ * lines — for the queue product icon and session reference icons.
+ * @param props - Size, optional CSS class, and inherited stroke width.
+ * @returns The decorative SVG artwork.
+ */
+export declare const ChatLinesOutlineArtwork: ({ size, className, strokeWidth }: WeightedArtworkProps) => import("react").JSX.Element;
 /**
  * Render shared globe geometry for product and link icons.
  * @param props - Size, optional CSS class, and inherited stroke width.

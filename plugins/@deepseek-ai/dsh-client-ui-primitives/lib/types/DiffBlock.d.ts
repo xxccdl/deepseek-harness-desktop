@@ -1,3 +1,4 @@
+import { type CodeToolbarLabels } from './CodeToolbar.tsx';
 /** Output lines shown before the height cap collapses the middle. */
 export declare const DEFAULT_DIFF_MAX_LINES = 16;
 /**
@@ -23,21 +24,20 @@ export interface DiffBlockProps {
     className?: string | undefined;
 }
 /** Localized chrome for {@link DiffBlock}. */
-export interface DiffBlockLabels {
+export interface DiffBlockLabels extends CodeToolbarLabels {
     copy: string;
     copied: string;
     collapseAria: string;
     expandAria: (hidden: number) => string;
     collapse: string;
     expand: (hidden: number) => string;
-    files: (count: number) => string;
 }
 /**
  * Count displayed additions and deletions. Exact patches exclude shared context;
  * comparisons exceeding the edit limit count both complete fragments as replaced.
  * Text follows {@link contentLines}'s terminator rule.
  * @param diffs - the hunks to count.
- * @returns the +/- totals for summaries and the card footer.
+ * @returns the +/- totals for tool summaries.
  */
 export declare function diffTotals(diffs: DiffHunk[]): {
     added: number;

@@ -29,8 +29,10 @@ declare module '../contract/chat-nodes.ts' {
 }
 /** User, steering, and injected-context message classification Definition. */
 export declare const messageDefinition: ConversationNodeDefinition<MessageNode>;
+/** Developer history uses the input-message lifecycle and context presentation. */
+export declare const developerMessageDefinition: ConversationNodeDefinition<MessageNode>;
 /**
- * Register the user, steering, and injected-context message contribution.
+ * Register user, steering, injected-context, and developer message contributions.
  * @param ctx - owning UI Conversation context.
  */
 export declare function registerMessageConversationNode(ctx: Context): void;

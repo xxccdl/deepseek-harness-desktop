@@ -5,10 +5,42 @@ window.__ModuleLoader__.load({
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let _deepseek_ai_dsh_client_ui_slots = require("@deepseek-ai/dsh-client-ui-slots");
-		let react_jsx_runtime = require("react/jsx-runtime");
-		let react = require("react");
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
+		let react_jsx_runtime = require("react/jsx-runtime");
+		let react = require("react");
+		let react_dom = require("react-dom");
+		//#region lib/types/client/shell-store.js
+		/** Shared settings viewing state for its mouse and command entry points. */
+		/**
+		* Declare the settings dialog state and its complete mutation API.
+		* @returns one root-scoped store handle for the settings shell.
+		*/
+		function createSettingsShellStore() {
+			return (0, _deepseek_ai_dsh_client_store.defineStore)({
+				init: () => ({
+					open: false,
+					activeId: void 0
+				}),
+				actions: {
+					open: (d) => {
+						d.open = true;
+					},
+					close: (d) => {
+						d.open = false;
+						d.activeId = void 0;
+					},
+					select: (d, id) => {
+						d.activeId = id;
+					},
+					openSection: (d, id) => {
+						d.activeId = id;
+						d.open = true;
+					}
+				}
+			});
+		}
+		//#endregion
 		//#region ../../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 		function r(e) {
 			var t, f, n = "";
@@ -25,7 +57,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.module.css.mjs
-		const css$6 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:12px;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute;inset:0}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-top-clearance,24px))));background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border-radius:32px;display:flex;position:relative;overflow:hidden}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:28px;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}[data-platform=darwin] .VOzbGW_overlay{-webkit-app-region:no-drag}";
+		const css$6 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute;inset:0}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-top-clearance,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId$6 = "@deepseek-ai/dsh-client-ui-settings-general/SettingsRoot.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
@@ -59,7 +91,7 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/DesktopUpdateIndicator.module.css.mjs
-		const css$5 = ".DOUpOa_indicator{border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 20%, transparent);color:var(--dsw-alias-brand-primary-new-colorprimary-new-color);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 8%, transparent);font:inherit;white-space:nowrap;cursor:pointer;border-radius:6px;flex:none;align-items:center;gap:6px;margin-inline-end:4px;padding:1px 8px;font-size:12px;line-height:20px;display:inline-flex}.DOUpOa_indicator[data-error]{color:var(--dsw-alias-state-error-primary)}.DOUpOa_badge{inset-inline-end:2px;corner-shape:round;background:var(--dsw-alias-brand-primary-new-colorprimary-new-color);border-radius:50%;width:6px;height:6px;position:absolute;top:2px}.DOUpOa_badge[data-error],.DOUpOa_errorDot{background:var(--dsw-alias-state-error-primary)}.DOUpOa_errorDot{corner-shape:round;border-radius:50%;width:6px;height:6px}.DOUpOa_spinner{animation:1s linear infinite DOUpOa_spin}@keyframes DOUpOa_spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.DOUpOa_spinner{animation:none}}.DOUpOa_indicator[aria-disabled=true]{cursor:default}";
+		const css$5 = ".DOUpOa_indicator{box-sizing:border-box;border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 20%, transparent);border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 8%, transparent);text-align:left;white-space:nowrap;cursor:pointer;flex:none;grid-template-columns:14px max-content;align-items:center;column-gap:4px;padding:0 8px;font-family:inherit;font-size:12px;font-weight:500;line-height:18px;display:inline-grid}.DOUpOa_icon{place-items:center;width:14px;height:14px;display:grid}.DOUpOa_badge{inset-inline-end:2px;corner-shape:round;background:var(--dsw-alias-brand-primary-new-colorprimary-new-color);border-radius:50%;width:6px;height:6px;position:absolute;top:2px}.DOUpOa_errorDot{corner-shape:round;background:currentColor;border-radius:50%;width:6px;height:6px}.DOUpOa_spinner{animation:1s linear infinite DOUpOa_spin}@keyframes DOUpOa_spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.DOUpOa_spinner{animation:none}}.DOUpOa_indicator[aria-disabled=true]{cursor:default}";
 		const tagId$5 = "@deepseek-ai/dsh-client-ui-settings-general/DesktopUpdateIndicator.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
@@ -71,6 +103,7 @@ window.__ModuleLoader__.load({
 		var DesktopUpdateIndicator_module_css_default = {
 			"badge": "DOUpOa_badge",
 			"errorDot": "DOUpOa_errorDot",
+			"icon": "DOUpOa_icon",
 			"indicator": "DOUpOa_indicator",
 			"spin": "DOUpOa_spin",
 			"spinner": "DOUpOa_spinner"
@@ -125,6 +158,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/**
+		* Render update status with connection-indicator geometry and brand-blue labels, including retries.
 		* @param props - Connection priority, sidebar width, and localized bridge-failure copy.
 		* @returns Desktop-only status beside the account button, or nothing in browsers.
 		*/
@@ -145,25 +179,25 @@ window.__ModuleLoader__.load({
 				children: (0, react_jsx_runtime.jsxs)("button", {
 					type: "button",
 					className: DesktopUpdateIndicator_module_css_default.indicator,
-					"data-error": error || void 0,
 					"aria-label": label,
 					"aria-disabled": busy,
 					onClick: () => {
 						if (!busy) onOpen();
 					},
-					children: [error ? (0, react_jsx_runtime.jsx)("span", {
-						className: DesktopUpdateIndicator_module_css_default.errorDot,
-						"aria-hidden": "true"
-					}) : busy ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLoadingOutlineRegular, {
-						className: DesktopUpdateIndicator_module_css_default.spinner,
-						size: 16
-					}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDownloadOutlineRegular, { size: 14 }), (0, react_jsx_runtime.jsx)("span", { children: label })]
+					children: [(0, react_jsx_runtime.jsx)("span", {
+						className: DesktopUpdateIndicator_module_css_default.icon,
+						"aria-hidden": "true",
+						children: error ? (0, react_jsx_runtime.jsx)("span", { className: DesktopUpdateIndicator_module_css_default.errorDot }) : busy ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconLoadingOutlineRegular, {
+							className: DesktopUpdateIndicator_module_css_default.spinner,
+							size: 14
+						}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDownloadOutlineRegular, { size: 14 })
+					}), (0, react_jsx_runtime.jsx)("span", { children: label })]
 				})
 			});
 		}
 		/**
 		* @param props - Framework-bound carrier and connection state.
-		* @returns A non-interactive notification on the sidebar expand button.
+		* @returns A non-interactive brand-blue notification on the sidebar expand button.
 		*/
 		function DesktopUpdateBadge({ useDesktopUpdate, useConnectionState, t }) {
 			const { presentation: state, failed } = useDesktopUpdate((value) => value);
@@ -181,8 +215,7 @@ window.__ModuleLoader__.load({
 				children: (0, react_jsx_runtime.jsx)("span", {
 					role: "img",
 					"aria-label": label,
-					className: DesktopUpdateIndicator_module_css_default.badge,
-					"data-error": failed || state?.phase === "error" || void 0
+					className: DesktopUpdateIndicator_module_css_default.badge
 				})
 			});
 		}
@@ -195,7 +228,7 @@ window.__ModuleLoader__.load({
 		* close label, sections) arrives from registrants through slots; accessible
 		* names resolve from localized content (trigger: shell locale; dialog:
 		* aria-labelledby the title node; close: visually-hidden slot text). Modal
-		* open state and the active section id are component-local viewing state;
+		* open state and the active section id belong to the declared owner store;
 		* the onboarding coordinator mounts exactly one ordered registrant while the
 		* sessions-derived empty-Hero fact is active. Visible dialog chrome belongs
 		* to the step, so a mounted-but-deciding step paints nothing here.
@@ -275,27 +308,16 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/**
-		* The modal layer: full-viewport mask + centered panel. Close paths: the
+		* Body-portaled modal layer: full-viewport mask + centered panel. Close paths: the
 		* header button, a mask click, and document-level Escape (mounted only while
 		* open, so the listener lifetime is the panel's).
 		*/
 		function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }) {
 			const active = rows.find((r) => r.id === activeId)?.id ?? rows[0]?.id;
 			const titleId = (0, react.useId)();
-			(0, react.useEffect)(() => {
-				const onKeyDown = (e) => {
-					if (e.key === "Escape") onClose();
-				};
-				document.addEventListener("keydown", onKeyDown);
-				return () => {
-					document.removeEventListener("keydown", onKeyDown);
-				};
-			}, [onClose]);
-			const closeButton = (0, react.useRef)(null);
-			(0, react.useEffect)(() => {
-				closeButton.current?.focus();
-			}, []);
-			return (0, react_jsx_runtime.jsxs)("div", {
+			const panel = (0, react.useRef)(null);
+			(0, _deepseek_ai_dsh_client_ui_primitives.useModalLayer)(panel, true, onClose);
+			return (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)("div", {
 				className: SettingsRoot_module_css_default.overlay,
 				role: "presentation",
 				children: [(0, react_jsx_runtime.jsx)("div", {
@@ -303,6 +325,9 @@ window.__ModuleLoader__.load({
 					"aria-hidden": "true",
 					onClick: onClose
 				}), (0, react_jsx_runtime.jsxs)("div", {
+					ref: panel,
+					tabIndex: -1,
+					"data-shortcut-modal": "settings",
 					className: SettingsRoot_module_css_default.panel,
 					role: "dialog",
 					"aria-modal": "true",
@@ -312,6 +337,8 @@ window.__ModuleLoader__.load({
 						children: [(0, react_jsx_runtime.jsx)("div", {
 							className: SettingsRoot_module_css_default.navTitle,
 							id: titleId,
+							tabIndex: -1,
+							"data-modal-autofocus": active === void 0 ? "" : void 0,
 							children: renderSlot("settings.header", {})
 						}), (0, react_jsx_runtime.jsx)("div", {
 							className: SettingsRoot_module_css_default.navList,
@@ -319,6 +346,7 @@ window.__ModuleLoader__.load({
 								type: "button",
 								className: clsx(SettingsRoot_module_css_default.navCell, row.id === active && SettingsRoot_module_css_default.active),
 								"aria-current": row.id === active ? "true" : void 0,
+								"data-modal-autofocus": row.id === active ? "" : void 0,
 								onClick: () => {
 									onSelect(row.id);
 								},
@@ -336,7 +364,6 @@ window.__ModuleLoader__.load({
 								className: SettingsRoot_module_css_default.actions,
 								children: renderSlot("settings.action", {})
 							}), (0, react_jsx_runtime.jsxs)("button", {
-								ref: closeButton,
 								type: "button",
 								className: SettingsRoot_module_css_default.close,
 								onClick: onClose,
@@ -351,7 +378,7 @@ window.__ModuleLoader__.load({
 						})]
 					})]
 				})]
-			});
+			}), document.body);
 		}
 		/**
 		* Render the settings trigger and panel.
@@ -359,29 +386,15 @@ window.__ModuleLoader__.load({
 		* @returns the settings shell element tree.
 		*/
 		function SettingsRoot(props) {
-			const { wide, reconnect, useConnectionState, useSections, useOnboardingSteps, useSessions, renderSlot, t, useDesktopUpdate, openDesktopUpdate } = props;
-			const [open, setOpen] = (0, react.useState)(false);
-			const [activeId, setActiveId] = (0, react.useState)(void 0);
+			const { wide, reconnect, useConnectionState, useSections, useOnboardingSteps, useSessions, renderSlot, t, useDesktopUpdate, openDesktopUpdate, useStore, actions, useShortcuts } = props;
+			const { open, activeId } = useStore((state) => state);
+			const shortcut = useShortcuts((rows) => rows.find((row) => row.id === "settings.open"));
+			const { close, openSection } = actions;
 			const [requestedOnboarding, setRequestedOnboarding] = (0, react.useState)();
 			const [completedOnboarding, setCompletedOnboarding] = (0, react.useState)(() => /* @__PURE__ */ new Set());
 			const [showRecovery, setShowRecovery] = (0, react.useState)(false);
 			const [holdConnecting, setHoldConnecting] = (0, react.useState)(false);
 			const connectingShownAt = (0, react.useRef)(void 0);
-			const triggerRow = (0, react.useRef)(null);
-			const triggerButton = (0, react.useRef)(null);
-			const wasOpen = (0, react.useRef)(open);
-			const close = (0, react.useCallback)(() => {
-				setOpen(false);
-				setActiveId(void 0);
-			}, []);
-			(0, react.useEffect)(() => {
-				if (wasOpen.current && !open) triggerRow.current?.querySelector("button")?.focus();
-				wasOpen.current = open;
-			}, [open]);
-			const openSection = (0, react.useCallback)((id) => {
-				setActiveId(id);
-				setOpen(true);
-			}, []);
 			const rows = useSections((s) => s);
 			const desktopUpdate = useDesktopUpdate((state) => state);
 			const connectionState = useConnectionState((state) => state);
@@ -396,6 +409,16 @@ window.__ModuleLoader__.load({
 				if (onboardingActive) return;
 				setCompletedOnboarding(/* @__PURE__ */ new Set());
 			}, [onboardingActive]);
+			const onboardingStepSeen = (0, react.useRef)(onboardingStep);
+			(0, react.useEffect)(() => {
+				const appeared = onboardingStepSeen.current === void 0 && onboardingStep !== void 0;
+				onboardingStepSeen.current = onboardingStep;
+				if (appeared && open) close();
+			}, [
+				onboardingStep,
+				open,
+				close
+			]);
 			(0, react.useLayoutEffect)(() => {
 				const previous = previousConnectionState.current;
 				previousConnectionState.current = connectionState;
@@ -447,29 +470,36 @@ window.__ModuleLoader__.load({
 			else if (showRecovery) connectionIndicator = "recovered";
 			return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 				(0, react_jsx_runtime.jsxs)("div", {
-					ref: triggerRow,
 					className: clsx(SettingsRoot_module_css_default.triggerRow, !wide && SettingsRoot_module_css_default.railRow),
 					children: [
 						renderSlot("settings.launcher", {
 							wide,
-							openSettings: () => {
-								setOpen(true);
-							},
+							settingsOpen: open,
+							openSettings: actions.open,
+							...shortcut?.keys.length ? { settingsShortcut: {
+								keys: shortcut.keys,
+								aria: shortcut.aria
+							} } : {},
 							openOnboarding: (id) => {
-								setOpen(false);
+								close();
 								setRequestedOnboarding(id);
 							}
-						}, { fallback: (0, react_jsx_runtime.jsx)("button", {
-							ref: triggerButton,
-							type: "button",
-							className: clsx(SettingsRoot_module_css_default.trigger, !wide && SettingsRoot_module_css_default.rail),
-							"aria-label": t("trigger"),
-							"aria-haspopup": "dialog",
-							"aria-expanded": open,
-							onClick: () => {
-								setOpen(true);
-							},
-							children: renderSlot("settings.trigger", { wide })
+						}, { fallback: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+							disabled: open,
+							label: t("trigger"),
+							shortcutKeys: shortcut?.keys,
+							children: (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: clsx(SettingsRoot_module_css_default.trigger, !wide && SettingsRoot_module_css_default.rail),
+								"aria-label": t("trigger"),
+								"aria-keyshortcuts": shortcut?.aria,
+								"aria-haspopup": "dialog",
+								"aria-expanded": open,
+								onClick: () => {
+									actions.open();
+								},
+								children: renderSlot("settings.trigger", { wide })
+							})
 						}) }),
 						(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.ConnectionIndicator, {
 							state: wide && desktopUpdate.presentation?.phase !== "installing" ? connectionIndicator : void 0,
@@ -493,7 +523,7 @@ window.__ModuleLoader__.load({
 					rows,
 					renderSlot,
 					activeId,
-					onSelect: setActiveId,
+					onSelect: actions.select,
 					onClose: close
 				}),
 				onboardingStep !== void 0 && renderSlot("settings.onboarding", {
@@ -670,7 +700,7 @@ window.__ModuleLoader__.load({
 		function CurrentVersionRow({ t }) {
 			return (0, react_jsx_runtime.jsx)("div", {
 				className: CurrentVersionRow_module_css_default.row,
-				children: t("general.currentVersion", { version: "0.1.7-alpha.1" })
+				children: t("general.currentVersion", { version: "0.1.7-rc.2" })
 			});
 		}
 		//#endregion
@@ -869,9 +899,10 @@ window.__ModuleLoader__.load({
 		/** Simplified Chinese dictionary (the key-set source of truth). */
 		const zh = {
 			"trigger": "设置",
+			"shortcut.open": "打开设置",
 			"desktop.update.available": "新版本",
 			"desktop.update.checking": "正在检查更新…",
-			"desktop.update.progress": "{percent}%…",
+			"desktop.update.progress": "{percent}%",
 			"desktop.update.verifying": "正在校验更新文件…",
 			"desktop.update.installing": "正在准备重启…",
 			"desktop.update.ready": "安装并重启",
@@ -893,9 +924,9 @@ window.__ModuleLoader__.load({
 			"openDocument.error": "无法打开配置文件",
 			"general.nav": "通用设置",
 			"general.currentVersion": "当前版本：{version}",
-			"developerTools.title": "开发者工具",
+			"developerTools.title": "代码工作工具",
 			"developerTools.error": "保存失败，请重试",
-			"developerTools.description": "显示用于调试和排查问题的工具与信息",
+			"developerTools.description": "开启后显示轨迹、本轮代码差异，新对话中的 Agent 预设切换",
 			"connection.error": "连接异常，刷新重试",
 			"connection.connecting": "重新连接中",
 			"connection.connected": "连接成功",
@@ -905,9 +936,10 @@ window.__ModuleLoader__.load({
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
 			"trigger": "Settings",
+			"shortcut.open": "Open settings",
 			"desktop.update.available": "Update",
 			"desktop.update.checking": "Checking for updates…",
-			"desktop.update.progress": "{percent}%…",
+			"desktop.update.progress": "{percent}%",
 			"desktop.update.verifying": "Verifying update files…",
 			"desktop.update.installing": "Preparing to restart…",
 			"desktop.update.ready": "Install and Restart",
@@ -929,9 +961,9 @@ window.__ModuleLoader__.load({
 			"openDocument.error": "Could not open configuration file",
 			"general.nav": "General",
 			"general.currentVersion": "Current version: {version}",
-			"developerTools.title": "Developer tools",
+			"developerTools.title": "Coding Tools",
 			"developerTools.error": "Could not save. Please try again.",
-			"developerTools.description": "Show tools and information for debugging and troubleshooting",
+			"developerTools.description": "Shows trajectory, code diffs, and Agent preset switching in new chats",
 			"connection.error": "Disconnected",
 			"connection.connecting": "Reconnecting",
 			"connection.connected": "Connected",
@@ -953,7 +985,8 @@ window.__ModuleLoader__.load({
 			"connection",
 			"remote",
 			"remote.settings",
-			"configForms"
+			"configForms",
+			"shortcuts"
 		];
 		/**
 		* Register the `settings` dictionaries, the chrome content, and the General
@@ -1017,6 +1050,7 @@ window.__ModuleLoader__.load({
 					connection.reconnect();
 				},
 				hooks: {
+					shortcuts: ctx.shortcuts.catalog,
 					desktopUpdate: desktopUpdate.store,
 					connectionState: connection.state,
 					sections: {
@@ -1061,41 +1095,100 @@ window.__ModuleLoader__.load({
 					}
 				}
 			});
-			ctx.slots.inject("sidebar.settings", () => ctx.slots.register({
-				name: "sidebar.settings",
-				locale: NS,
-				children: {
-					"settings.launcher": {
-						kind: "single",
-						scope: "root"
+			ctx.slots.inject("sidebar.settings", () => {
+				const shellHandle = createSettingsShellStore();
+				const shellInstance = shellHandle.create();
+				const shellStore = {
+					...shellHandle,
+					create: () => shellInstance
+				};
+				const disposeCommand = ctx.shortcuts.register({
+					id: "settings.open",
+					label: () => t("shortcut.open"),
+					aliases: ["settings", "preferences"],
+					defaults: {
+						"desktop:macos": {
+							code: "Comma",
+							modifiers: ["primary"]
+						},
+						"desktop:windows": {
+							code: "Comma",
+							modifiers: ["primary"]
+						},
+						"desktop:linux": {
+							code: "Comma",
+							modifiers: ["primary"]
+						},
+						"web:macos": {
+							code: "Comma",
+							modifiers: ["primary"]
+						},
+						"web:windows": {
+							code: "Comma",
+							modifiers: ["primary"]
+						}
 					},
-					"settings.trigger": {
-						kind: "single",
-						scope: "root"
-					},
-					"settings.header": {
-						kind: "single",
-						scope: "root"
-					},
-					"settings.action": {
-						kind: "list",
-						scope: "root"
-					},
-					"settings.close": {
-						kind: "single",
-						scope: "root"
-					},
-					"settings.section": {
-						kind: "list",
-						scope: "root"
-					},
-					"settings.onboarding": {
-						kind: "list",
-						scope: "root"
+					regions: [
+						"page",
+						"editable",
+						"terminal"
+					],
+					modals: ["settings"],
+					resolve: ({ modal }) => {
+						if (modal !== null && modal !== "settings") return {
+							status: "blocked",
+							reason: "modal"
+						};
+						return {
+							status: "handled",
+							run: () => {
+								if (modal === "settings") (0, _deepseek_ai_dsh_client_ui_primitives.closeTopModal)(document);
+								else shellInstance.actions.open();
+							}
+						};
 					}
-				},
-				inject: shellInjected
-			}, SettingsRoot));
+				});
+				const disposeSlot = ctx.slots.register({
+					name: "sidebar.settings",
+					locale: NS,
+					store: shellStore,
+					children: {
+						"settings.launcher": {
+							kind: "single",
+							scope: "root"
+						},
+						"settings.trigger": {
+							kind: "single",
+							scope: "root"
+						},
+						"settings.header": {
+							kind: "single",
+							scope: "root"
+						},
+						"settings.action": {
+							kind: "list",
+							scope: "root"
+						},
+						"settings.close": {
+							kind: "single",
+							scope: "root"
+						},
+						"settings.section": {
+							kind: "list",
+							scope: "root"
+						},
+						"settings.onboarding": {
+							kind: "list",
+							scope: "root"
+						}
+					},
+					inject: shellInjected
+				}, SettingsRoot);
+				return () => {
+					disposeCommand();
+					disposeSlot();
+				};
+			});
 			ctx.slots.inject("settings.trigger", () => ctx.slots.register({
 				name: "settings.trigger",
 				locale: NS

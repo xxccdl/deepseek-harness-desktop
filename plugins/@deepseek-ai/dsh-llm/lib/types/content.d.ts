@@ -1,5 +1,5 @@
 /** Content-block structure helpers. @module @deepseek-ai/dsh-llm/content */
-import type { ContentBlock, ImageBlock, LlmImageRequestBudget } from './types.ts';
+import type { ContentBlock, ImageBlock, LlmImageRequestBudget, ToolSchema, ToolUpdate, ToolHistory } from './types.ts';
 import type { RequestMessage } from './types.ts';
 import type { Message } from './message.ts';
 import type { AttachmentStore, FileAttachmentRef, ImageAttachmentRef, RequestImageAttachment } from '@deepseek-ai/dsh-attachment';
@@ -128,4 +128,22 @@ export declare function projectImagesForTextModel(messages: readonly Message[]):
  * @returns original inputs without images, otherwise copies with stable placeholders.
  */
 export declare function projectImagesForTextModel(messages: readonly RequestMessage[]): readonly RequestMessage[];
+/** Request messages and tools after one route's tool update projection. */
+export interface ProjectedToolUpdates {
+    /** History with only the developer updates supported by this route and declaration series. */
+    readonly messages: readonly RequestMessage[];
+    /** Provider declarations, including deferred and retained definitions when supported. */
+    readonly tools: readonly ToolSchema[] | undefined;
+}
+/**
+ * Construct provider declarations from session-folded history without changing logged active tools.
+ * Unsupported routes and incomplete history use current declarations without developer updates.
+ * Explicitly deferred baseline tools become available only after their first retained addition.
+ * @param messages - complete request inputs, or the prefix selected for an auxiliary call.
+ * @param tools - currently active tool schemas.
+ * @param toolUpdate - the resolved route's update mode.
+ * @param history - immutable state folded from committed headers and developer messages.
+ * @returns provider declarations and the corresponding filtered history.
+ */
+export declare function projectToolUpdates(messages: readonly RequestMessage[], tools: readonly ToolSchema[] | undefined, toolUpdate: ToolUpdate | undefined, history?: ToolHistory): ProjectedToolUpdates;
 //# sourceMappingURL=content.d.ts.map

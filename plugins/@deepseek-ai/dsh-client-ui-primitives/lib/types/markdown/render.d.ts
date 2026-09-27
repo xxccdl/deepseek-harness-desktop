@@ -17,6 +17,7 @@
  */
 import type { ReactNode } from 'react';
 import type * as Md from 'mdast';
+import type { CodeToolbarLabels } from '../CodeToolbar.tsx';
 import type { PositionedBlock } from './incremental.ts';
 /** Copy-button labels forwarded to fence CodeBlocks (this package is cordis-free, so copy arrives via props). */
 export interface MarkdownCodeLabels {
@@ -24,6 +25,8 @@ export interface MarkdownCodeLabels {
     copyLabel: string;
     /** Copy-button label during the post-copy confirmation window. */
     copiedLabel: string;
+    /** Shared card controls; omitted for custom toolbar layouts. */
+    toolbarLabels?: CodeToolbarLabels | undefined;
 }
 /** Localized chrome for a Markdown document. */
 export interface MarkdownLabels {

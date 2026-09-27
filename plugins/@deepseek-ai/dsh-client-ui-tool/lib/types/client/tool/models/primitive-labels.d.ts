@@ -1,7 +1,13 @@
 /** Localized copy adapters for Cordis-free UI primitives used by Tool cards. */
-import type { DiffBlockLabels, MarkdownLabels, ReadBlockLabels, SearchBlockLabels, WebBlockLabels } from '@deepseek-ai/dsh-client-ui-primitives';
+import type { CodeToolbarLabels, DiffBlockLabels, MarkdownLabels, ReadBlockLabels, SearchBlockLabels, WebBlockLabels } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 type T = TranslateNS<'conversation'>;
+/**
+ * Localize the shared code-card toolbar.
+ * @param t - Conversation locale seat.
+ * @returns Language fallback and wrapping actions.
+ */
+export declare function codeToolbarLabels(t: T): CodeToolbarLabels;
 /**
  * Build localized Markdown chrome labels.
  * @param t - Conversation locale seat.

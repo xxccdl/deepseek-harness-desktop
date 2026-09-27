@@ -1,5 +1,5 @@
-import { C as bindManagedProcess, D as createProcessInspector, E as validateSubprocessSpec, O as controlPipe, S as loadLinuxExecve, T as spawnSubprocess, _ as parseWindowsRunnerResult, c as runnerStdio, d as cleanupLinuxLaunchFiles, l as spawnRunnerInvocation, m as deserializeRunnerError, n as WINDOWS_RUNNER_SELECTION, o as runnerEnvironment, p as createLinuxLaunchFiles, s as runnerInvocationAvailable, u as targetEnvironment, w as childEnv, y as readLinuxStartupError } from "./runner-launch-DGV26RBf.js";
-import { prepareManagedProcessBinding } from "./output.js";
+import { C as bindManagedProcess, D as createProcessInspector, E as validateSubprocessSpec, O as controlPipe, S as loadLinuxExecve, T as spawnSubprocess, _ as parseWindowsRunnerResult, c as runnerStdio, d as cleanupLinuxLaunchFiles, l as spawnRunnerInvocation, m as deserializeRunnerError, n as WINDOWS_RUNNER_SELECTION, o as runnerEnvironment, p as createLinuxLaunchFiles, s as runnerInvocationAvailable, u as targetEnvironment, w as childEnv, y as readLinuxStartupError } from "./runner-launch-B2zsQ1Dz.js";
+import { logSpillFailure, prepareManagedProcessBinding } from "./output.js";
 import { closeSync, constants, existsSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { constants as constants$1, devNull, tmpdir, userInfo } from "node:os";
@@ -1260,6 +1260,31 @@ function prepareShellActivity(spec, env, platform) {
 */
 const requireNodePty = createLazyRequire("node-pty", import.meta.url);
 /**
+* The program a PTY can actually be attached to, with the arguments to launch
+* it.
+*
+* A pseudoconsole hands its console to the direct child, and Windows only
+* attaches a console to a console-subsystem image. Every confined argv in this
+* desktop fork starts with `process.execPath` — Electron, a GUI-subsystem
+* binary — so the pseudoconsole never reaches it: the child gets no usable
+* standard handles, the ACL runner behind it exits with code 127 before
+* spawning anything, and the terminal backend reports "PTY shell exited during
+* startup". Fronting the same command with the console host gives the
+* pseudoconsole a child it can attach to; node-pty quotes each argument, so
+* paths containing spaces or `&` still survive. A target that is any other
+* program keeps its argv, because it already is the console image the PTY wants.
+* @param file - resolved program to launch.
+* @param args - resolved program arguments.
+* @returns the program and arguments to hand to node-pty.
+*/
+function consoleHostedPtyProgram(file, args) {
+	if (process.platform !== "win32" || process.versions.electron === void 0) return { file, args };
+	/* Win32 paths are case-insensitive and the same binary arrives with either
+	* casing, so compare normalized rather than by exact string. */
+	if (typeof file !== "string" || file.toLowerCase() !== process.execPath.toLowerCase()) return { file, args };
+	return { file: process.env.ComSpec ?? "cmd.exe", args: ["/d", "/c", file, ...args] };
+}
+/**
 * Local subprocess service: platform-selected managed ranges, Node-shaped stdio
 * dispositions (raw pipes, inherit, bounded tail-keep collection with spill
 * files), credential-scrubbed environment, and provider-owned range signalling.
@@ -1294,6 +1319,8 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 			};
 		}, "local subprocess teardown");
 	}
+	/** Spill failures reach the plugin logger; the log line is the only trace of why a result has no spill path. */
+	reportSpillFailure = logSpillFailure(this.ctx.logger, "subprocess-local");
 	terminateForHostExit() {
 		for (const handle of this.live) try {
 			handle.terminateForHostExit();
@@ -1356,9 +1383,13 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 		const env = targetEnvironment(spec);
 		const containmentMode = this.selectContainmentMode("ordinary");
 		let handle;
-		if (containmentMode === "fallback") handle = spawnSubprocess(spec, this.internals);
+		const internals = {
+			...this.internals,
+			onSpillFailure: this.reportSpillFailure
+		};
+		if (containmentMode === "fallback") handle = spawnSubprocess(spec, internals);
 		else {
-			const binding = prepareManagedProcessBinding(this.internals);
+			const binding = prepareManagedProcessBinding(internals);
 			handle = bindManagedProcess(spec, containmentMode === "linux-scope" ? launchLinuxScope(spec, env) : launchWindowsJob(spec, env), binding);
 		}
 		this.live.add(handle);
@@ -1441,7 +1472,8 @@ var LocalSubprocessRuntime = class extends SubprocessRuntime {
 				options.cwd = scope.cwd;
 				options.env = scope.env;
 			}
-			terminal = requireNodePty().spawn(scope?.command ?? file, scope?.args ?? [...launch.argv.slice(1)], options);
+			const attached = consoleHostedPtyProgram(scope?.command ?? file, scope?.args ?? [...launch.argv.slice(1)]);
+			terminal = requireNodePty().spawn(attached.file, attached.args, options);
 		} catch (error) {
 			scope?.cleanup();
 			activity?.dispose();

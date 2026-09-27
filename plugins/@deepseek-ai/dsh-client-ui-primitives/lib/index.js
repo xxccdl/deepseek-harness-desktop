@@ -1,7 +1,7 @@
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import clsx from "clsx";
 import css from "./StateDot.module.css";
-import { Fragment as Fragment$1, cloneElement, createContext, createElement, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment as Fragment$1, cloneElement, createContext, createElement, forwardRef, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import css$1 from "./TextShimmer.module.css";
 import css$2 from "./DisclosureRow.module.css";
 import css$3 from "./Button.module.css";
@@ -15,33 +15,36 @@ import css$9 from "./SegmentedControl.module.css";
 import css$10 from "./Checkbox.module.css";
 import css$11 from "./Input.module.css";
 import { createPortal } from "react-dom";
-import css$12 from "./Menu.module.css";
-import css$13 from "./HoverCard.module.css";
-import css$14 from "./Modal.module.css";
-import css$15 from "./OnboardingSurface.module.css";
-import css$16 from "./RiskConfirmation.module.css";
-import css$17 from "./ConnectionIndicator.module.css";
-import css$18 from "./FileTypeIcon.module.css";
+import css$12 from "./ShortcutKeys.module.css";
+import css$13 from "./MenuSurface.module.css";
+import css$14 from "./Menu.module.css";
+import css$15 from "./Tooltip.module.css";
+import css$16 from "./HoverCard.module.css";
+import css$17 from "./Modal.module.css";
+import css$18 from "./RiskConfirmation.module.css";
+import css$19 from "./ConnectionIndicator.module.css";
+import css$20 from "./FileTypeIcon.module.css";
 import { siAliexpress, siApple, siBaidu, siBilibili, siCsdn, siDuckduckgo, siEbay, siFacebook, siGithub, siGitlab, siGoogle, siInstagram, siJuejin, siMdnwebdocs, siNetflix, siNpm, siPypi, siQq, siQuora, siReddit, siSinaweibo, siSpotify, siStackoverflow, siTaobao, siTelegram, siTiktok, siV2ex, siWechat, siWhatsapp, siWikipedia, siX, siYcombinator, siYoutube, siZhihu } from "simple-icons";
-import css$19 from "./user-text.module.css";
+import css$21 from "./user-text.module.css";
 import markdownCss from "./markdown/MarkdownText.module.css";
-import css$20 from "./Tooltip.module.css";
-import css$21 from "./Toast.module.css";
-import css$22 from "./settings-form/SettingsForm.module.css";
-import css$23 from "./settings-form/fields.module.css";
+import css$22 from "./Toast.module.css";
+import css$23 from "./settings-form/SettingsForm.module.css";
+import css$24 from "./settings-form/fields.module.css";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { createCssVariablesTheme, createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine, defaultJavaScriptRegexConstructor } from "shiki/engine/javascript";
 import langTs from "@shikijs/langs/typescript";
 import langBash from "@shikijs/langs/shellscript";
 import langJson from "@shikijs/langs/json";
-import css$24 from "./JsonTree.module.css";
+import { CODE_HIGHLIGHT_EXTENSIONS, languageForPath } from "@deepseek-ai/dsh-util-code-language";
+import css$25 from "./JsonTree.module.css";
 import Anser from "anser";
-import css$25 from "./TerminalBlock.module.css";
-import css$26 from "./ReadBlock.module.css";
+import css$26 from "./TerminalBlock.module.css";
+import cardCss from "./CodeCard.module.css";
+import css$27 from "./ReadBlock.module.css";
 import { structuredPatch } from "diff";
-import css$27 from "./DiffBlock.module.css";
-import css$28 from "./SearchBlock.module.css";
+import css$28 from "./DiffBlock.module.css";
+import css$29 from "./SearchBlock.module.css";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { mathFromMarkdown } from "mdast-util-math";
@@ -53,14 +56,16 @@ import { classifyCharacter } from "micromark-util-classify-character";
 import { codes, constants, types } from "micromark-util-symbol";
 import { factorySpace } from "micromark-factory-space";
 import { normalizeUri } from "micromark-util-sanitize-uri";
-import css$29 from "./markdown/CodeBlock.module.css";
+import css$30 from "./markdown/CodeBlock.module.css";
 import katex from "katex";
+import css$31 from "./ImageLightbox.module.css";
+import css$32 from "./ImagePreview.module.css";
 import "katex/dist/katex.min.css";
-import css$30 from "./WebBlock.module.css";
-import css$31 from "./markdown/JsonBlock.module.css";
+import css$33 from "./WebBlock.module.css";
+import css$34 from "./markdown/JsonBlock.module.css";
 //#region lib/types/icons/shared-artwork.js
 /**
-* Render shared new-conversation geometry for product and reference icons.
+* Render new-conversation geometry — the bubble around a plus — for product icons.
 * @param props - Size, optional CSS class, and inherited stroke width.
 * @returns The decorative SVG artwork.
 */
@@ -84,6 +89,36 @@ const NewChatOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("s
 		}),
 		jsx("path", {
 			d: "M5 8H11",
+			stroke: "currentColor"
+		})
+	]
+});
+/**
+* Render shared conversation geometry — the chat bubble around two text
+* lines — for the queue product icon and session reference icons.
+* @param props - Size, optional CSS class, and inherited stroke width.
+* @returns The decorative SVG artwork.
+*/
+const ChatLinesOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M5 6.75H11",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M5 9H8",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M2.37067 11.2497C1.5872 9.89252 1.32042 8.29798 1.61945 6.7597C1.91847 5.22141 2.76317 3.84293 3.99801 2.87809C5.23285 1.91325 6.7747 1.427 8.33964 1.50888C9.90458 1.59076 11.3873 2.23526 12.5147 3.32369C13.6422 4.41232 14.3384 5.8717 14.4751 7.43304C14.6118 8.99438 14.1797 10.5525 13.2585 11.8205C12.3372 13.0885 10.9889 13.9809 9.4617 14.3334C8.18666 14.6277 6.8587 14.529 5.64964 14.0601C5.17095 13.8745 4.76937 13.4929 4.26509 13.3963C3.67389 13.2832 2.95232 13.5595 2.0377 14.3334",
 			stroke: "currentColor"
 		})
 	]
@@ -204,6 +239,10 @@ const FolderCloseArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg"
 });
 //#endregion
 //#region lib/types/icons/index.js
+/**
+* Shared current-color product icons. Names identify the glyph and weight;
+* rendered size remains a prop instead of part of the component name.
+*/
 /** Shared shield contour used by composite icons outside this module. */
 const SHIELD_OUTLINE_PATH = "M6.80132 2.14853C7.70663 1.80917 8.70422 1.80919 9.60952 2.14859L14.1296 3.84317V7.11961C14.1296 11.6089 10.7615 13.5975 8.20543 14.5779C5.64931 13.5975 2.28052 11.6089 2.28052 7.11961V3.84317L6.80132 2.14853Z";
 /** Regular stroke width used by the product icon set. */
@@ -1242,10 +1281,10 @@ const IconUserOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("
 	"aria-hidden": "true",
 	strokeWidth,
 	children: [jsx("path", {
-		d: "M8 8.5C9.65685 8.5 11 7.15685 11 5.5C11 3.84315 9.65685 2.5 8 2.5C6.34315 2.5 5 3.84315 5 5.5C5 7.15685 6.34315 8.5 8 8.5Z",
+		d: "M8 8.25C9.51878 8.25 10.75 7.01878 10.75 5.5C10.75 3.98122 9.51878 2.75 8 2.75C6.48122 2.75 5.25 3.98122 5.25 5.5C5.25 7.01878 6.48122 8.25 8 8.25Z",
 		stroke: "currentColor"
 	}), jsx("path", {
-		d: "M1.5 14.5C1.5 11.25 4.25 10 8 10C11.75 10 14.5 11.25 14.5 14.5",
+		d: "M2.5 14.5C2.5 11.5 5.25 10.25 8 10.25C10.75 10.25 13.5 11.5 13.5 14.5",
 		stroke: "currentColor"
 	})]
 });
@@ -1256,6 +1295,44 @@ const IconUserOutlineRegular = (props) => jsx(IconUserOutlineArtwork, {
 });
 /** Medium IconUserOutline artwork with a 1.3px stroke. */
 const IconUserOutlineMedium = (props) => jsx(IconUserOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
+const IconUsersOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
+	width: size,
+	height: size,
+	className,
+	viewBox: "0 0 16 16",
+	fill: "none",
+	xmlns: "http://www.w3.org/2000/svg",
+	"aria-hidden": "true",
+	strokeWidth,
+	children: [
+		jsx("path", {
+			d: "M6 8.25C7.51878 8.25 8.75 7.01878 8.75 5.5C8.75 3.98122 7.51878 2.75 6 2.75C4.48122 2.75 3.25 3.98122 3.25 5.5C3.25 7.01878 4.48122 8.25 6 8.25Z",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M1 14.5C1 11.5 3.5 10.25 6 10.25C8.5 10.25 11 11.5 11 14.5",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M10.5 2.9C11.65 3.35 12.45 4.35 12.45 5.5C12.45 6.65 11.65 7.65 10.5 8.1",
+			stroke: "currentColor"
+		}),
+		jsx("path", {
+			d: "M12.4 10.6C13.9 11.3 15 12.6 15 14.5",
+			stroke: "currentColor"
+		})
+	]
+});
+/** Regular one-pixel IconUsersOutline artwork: a front person with a second person behind. */
+const IconUsersOutlineRegular = (props) => jsx(IconUsersOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconUsersOutline artwork with a 1.3px stroke. */
+const IconUsersOutlineMedium = (props) => jsx(IconUsersOutlineArtwork, {
 	...props,
 	strokeWidth: ICON_MEDIUM_STROKE
 });
@@ -1952,10 +2029,10 @@ const IconClockOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs(
 	"aria-hidden": "true",
 	strokeWidth,
 	children: [jsx("path", {
-		d: "M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z",
+		d: "M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z",
 		stroke: "currentColor"
 	}), jsx("path", {
-		d: "M8 4V8.5L11.25 10.25",
+		d: "M8 4.31V8.46L11 10.08",
 		stroke: "currentColor"
 	})]
 });
@@ -2030,29 +2107,9 @@ const IconSendOutlineMedium = (props) => jsx(IconSendOutlineArtwork, {
 	...props,
 	strokeWidth: ICON_MEDIUM_STROKE
 });
-const IconQueueOutlineArtwork = ({ size = 14, className, strokeWidth }) => jsxs("svg", {
-	width: size,
-	height: size,
-	className,
-	viewBox: "0 0 16 16",
-	fill: "none",
-	xmlns: "http://www.w3.org/2000/svg",
-	"aria-hidden": "true",
-	strokeWidth,
-	children: [
-		jsx("path", {
-			d: "M5 6.75H11",
-			stroke: "currentColor"
-		}),
-		jsx("path", {
-			d: "M5 9H8",
-			stroke: "currentColor"
-		}),
-		jsx("path", {
-			d: "M2.37067 11.2497C1.5872 9.89252 1.32042 8.29798 1.61945 6.7597C1.91847 5.22141 2.76317 3.84293 3.99801 2.87809C5.23285 1.91325 6.7747 1.427 8.33964 1.50888C9.90458 1.59076 11.3873 2.23526 12.5147 3.32369C13.6422 4.41232 14.3384 5.8717 14.4751 7.43304C14.6118 8.99438 14.1797 10.5525 13.2585 11.8205C12.3372 13.0885 10.9889 13.9809 9.4617 14.3334C8.18666 14.6277 6.8587 14.529 5.64964 14.0601C5.17095 13.8745 4.76937 13.4929 4.26509 13.3963C3.67389 13.2832 2.95232 13.5595 2.0377 14.3334",
-			stroke: "currentColor"
-		})
-	]
+const IconQueueOutlineArtwork = ({ size = 14, ...rest }) => jsx(ChatLinesOutlineArtwork, {
+	size,
+	...rest
 });
 /** Regular one-pixel IconQueueOutline artwork. */
 const IconQueueOutlineRegular = (props) => jsx(IconQueueOutlineArtwork, {
@@ -2825,6 +2882,64 @@ const IconChevronsUpDownOutlineMedium = (props) => jsx(IconChevronsUpDownOutline
 	...props,
 	strokeWidth: ICON_MEDIUM_STROKE
 });
+const IconArchiveOffOutlineArtwork = ({ size = 16, className, strokeWidth }) => {
+	const maskId = `dsh-archive-off-${useId().replaceAll(":", "")}`;
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 16 16",
+		fill: "none",
+		stroke: "currentColor",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		"aria-hidden": "true",
+		strokeWidth,
+		children: [
+			jsxs("mask", {
+				id: maskId,
+				maskUnits: "userSpaceOnUse",
+				x: "0",
+				y: "0",
+				width: "16",
+				height: "16",
+				children: [jsx("rect", {
+					x: "0",
+					y: "0",
+					width: "16",
+					height: "16",
+					fill: "white",
+					stroke: "none"
+				}), jsx("path", {
+					d: "m2.2 1.3 11.6 12.8",
+					stroke: "black",
+					strokeWidth: strokeWidth + 3
+				})]
+			}),
+			jsxs("g", {
+				mask: `url(#${maskId})`,
+				children: [jsx("rect", {
+					x: "1.9",
+					y: "2.1",
+					width: "12.2",
+					height: "3.4",
+					rx: "1.1"
+				}), jsx("path", { d: "M2.95 5.7v4.8a2.9 2.9 0 0 0 2.9 2.9h4.3a2.9 2.9 0 0 0 2.9-2.9V5.7" })]
+			}),
+			jsx("path", { d: "m2.2 1.3 11.6 12.8" })
+		]
+	});
+};
+/** Regular one-pixel IconArchiveOffOutline artwork. */
+const IconArchiveOffOutlineRegular = (props) => jsx(IconArchiveOffOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Medium IconArchiveOffOutline artwork with a 1.3px stroke. */
+const IconArchiveOffOutlineMedium = (props) => jsx(IconArchiveOffOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
 const IconArchiveCheckOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs("svg", {
 	width: size,
 	height: size,
@@ -3056,12 +3171,14 @@ const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandabl
 /**
 * Render a button.
 * @param props.variant - visual family (default 'ghost').
-* @param props.size - 'md' 36px capsule (figma Button) or 'sm' 28px compact.
+* @param props.size - 'md' 36px control with 12px corners or 'sm' 28px control with 8px corners.
 * @param props.icon - optional leading 16px icon node.
+* @param ref - native button for focus management and overlay anchors.
 * @returns the button element; native button attributes pass through.
 */
-function Button({ variant = "ghost", size = "md", icon, className, children, ...rest }) {
+const Button = forwardRef(function Button({ variant = "ghost", size = "md", icon, className, children, ...rest }, ref) {
 	return jsxs("button", {
+		ref,
 		type: "button",
 		className: clsx(css$3.button, css$3[variant], css$3[size], className),
 		...rest,
@@ -3070,7 +3187,7 @@ function Button({ variant = "ghost", size = "md", icon, className, children, ...
 			children: icon
 		}), children]
 	});
-}
+});
 //#endregion
 //#region lib/types/Pill.js
 /**
@@ -3431,6 +3548,234 @@ function usePointerGrace(close) {
 	};
 }
 //#endregion
+//#region lib/types/keyboard-composition.js
+/** Composition lifetime for local keyboard handlers, including a late closing keydown. */
+/**
+* Observe composition until its closing key is released or consumed.
+* @param document - document whose input events belong to the caller.
+* @returns an event guard and a disposer for all listeners.
+*/
+function observeComposition(document) {
+	let composing = false;
+	let ended = false;
+	const start = () => {
+		composing = true;
+	};
+	const end = () => {
+		composing = false;
+		ended = true;
+	};
+	const release = () => {
+		ended = false;
+	};
+	const blur = () => {
+		composing = false;
+		ended = false;
+	};
+	document.addEventListener("compositionstart", start, true);
+	document.addEventListener("compositionend", end, true);
+	document.addEventListener("keyup", release, true);
+	document.defaultView?.addEventListener("blur", blur);
+	return {
+		guards: (event) => {
+			const guarded = composing || ended || event.isComposing || event.keyCode === 229;
+			ended = false;
+			return guarded;
+		},
+		dispose: () => {
+			document.removeEventListener("compositionstart", start, true);
+			document.removeEventListener("compositionend", end, true);
+			document.removeEventListener("keyup", release, true);
+			document.defaultView?.removeEventListener("blur", blur);
+		}
+	};
+}
+//#endregion
+//#region lib/types/focus.js
+/** Focus presentation for automatic entry and restoration. */
+const releases = /* @__PURE__ */ new WeakMap();
+const navigationKeys = new Set([
+	"Tab",
+	"ArrowUp",
+	"ArrowDown",
+	"ArrowLeft",
+	"ArrowRight",
+	"Home",
+	"End"
+]);
+/**
+* Focus an automatic destination without a focus outline until keyboard navigation or blur.
+* The theme suppresses outlines while data-dsh-automatic-focus is present; borders and shadows remain intact.
+* Tab and directional navigation restore normal focus styling.
+* @param element - control or container receiving automatic focus.
+* @param options - browser focus options, including scroll preservation.
+*/
+function focusWithoutRing(element, options) {
+	releases.get(element)?.();
+	const release = () => {
+		element.removeAttribute("data-dsh-automatic-focus");
+		element.removeEventListener("blur", release);
+		element.removeEventListener("keydown", navigate, true);
+		releases.delete(element);
+	};
+	const navigate = (event) => {
+		if (!event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey && navigationKeys.has(event.key)) release();
+	};
+	releases.set(element, release);
+	element.setAttribute("data-dsh-automatic-focus", "");
+	element.addEventListener("blur", release);
+	element.addEventListener("keydown", navigate, true);
+	element.focus(options);
+	if (!element.matches(":focus")) release();
+}
+//#endregion
+//#region lib/types/useModalLayer.js
+/** Shared modal keyboard ownership and focus lifetime. */
+/** Dialog and menu elements whose document order determines foreground shortcut ownership. */
+const modalSelector = "[role=\"dialog\"][aria-modal=\"true\"], [role=\"menu\"]";
+const layers = /* @__PURE__ */ new WeakMap();
+/**
+* Request closure of the foreground registered modal using its current onClose callback.
+* A newer menu or unregistered dialog blocks dismissal of the modal behind it.
+* @param document - product document whose modal owns the close command.
+*/
+function closeTopModal(document) {
+	const top = layers.get(document)?.at(-1);
+	if (top === void 0) return;
+	if ([...document.querySelectorAll("[role=\"dialog\"][aria-modal=\"true\"], [role=\"menu\"]")].at(-1) === top.element) top.close();
+}
+/**
+* Whether an anchor belongs behind the current modal and must yield keyboard input.
+* @param anchor - local control owning the input handler.
+* @returns true when another modal owns the foreground.
+*/
+function isBehindModal(anchor) {
+	if (anchor === null) return false;
+	const top = layers.get(anchor.ownerDocument)?.at(-1);
+	return top !== void 0 && !top.element.contains(anchor);
+}
+const focusable = "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex=\"0\"]";
+/**
+* Give only the top modal Escape and Tab ownership, then restore its previous focus.
+* Automatic entry and return focus omit outlines; keyboard traversal retains its indicators.
+* Controls mounted with the dialog use data-modal-autofocus for initial focus;
+* React autoFocus runs before this layer can capture the invoking control.
+* Local menus handle their Escape during capture before this bubble listener.
+* @param dialog - mounted dialog element.
+* @param open - whether this layer is active.
+* @param onClose - top-layer Escape or application close action.
+*/
+function useModalLayer(dialog, open, onClose) {
+	const close = useRef(onClose);
+	close.current = onClose;
+	useLayoutEffect(() => {
+		const element = dialog.current;
+		if (!open || element === null) return;
+		const document = element.ownerDocument;
+		const composition = observeComposition(document);
+		const previous = document.activeElement;
+		const stack = layers.get(document) ?? [];
+		layers.set(document, stack);
+		const layer = {
+			element,
+			close: () => {
+				close.current();
+			}
+		};
+		stack.push(layer);
+		const initial = element.querySelector("[data-modal-autofocus]") ?? element.querySelector(focusable) ?? element;
+		if (!element.contains(document.activeElement)) focusWithoutRing(initial);
+		const keydown = (event) => {
+			const composing = composition.guards(event);
+			if (stack.at(-1) !== layer || event.defaultPrevented || composing || event.ctrlKey || event.altKey || event.metaKey) return;
+			if (event.key === "Escape" && !event.shiftKey) {
+				event.preventDefault();
+				if (!event.repeat) close.current();
+			}
+			if (event.key !== "Tab") return;
+			if (document.activeElement?.closest("[role=\"menu\"]")) return;
+			const items = [...element.querySelectorAll(focusable)].filter((item) => !item.closest("[inert], [hidden]"));
+			const first = items[0] ?? element;
+			const last = items.at(-1) ?? element;
+			const atEdge = event.shiftKey ? document.activeElement === first : document.activeElement === last;
+			if (document.activeElement === element || !element.contains(document.activeElement) || atEdge) {
+				event.preventDefault();
+				(event.shiftKey ? last : first).focus();
+			}
+		};
+		document.addEventListener("keydown", keydown);
+		return () => {
+			composition.dispose();
+			const wasTop = stack.at(-1) === layer;
+			stack.splice(stack.indexOf(layer), 1);
+			document.removeEventListener("keydown", keydown);
+			if (stack.length === 0) layers.delete(document);
+			if (wasTop) {
+				const target = previous instanceof HTMLElement && previous.isConnected ? previous : stack.at(-1)?.element;
+				if (target !== void 0) focusWithoutRing(target);
+			}
+		};
+	}, [dialog, open]);
+}
+//#endregion
+//#region lib/types/ShortcutKeys.js
+/** Shared shortcut keycaps; callers supply the effective platform presentation. */
+/**
+* Render one command's keycaps without owning binding defaults or localized copy.
+* @param props - effective key labels, presentation variant and optional interaction styling.
+* @returns unboxed keys by default, or tooltip keycaps with plus-separated combinations grouped together.
+*/
+function ShortcutKeys({ keys, variant = "plain", className }) {
+	return jsx("span", {
+		className: clsx(css$12.keys, variant === "tooltip" && css$12.tooltip, variant === "tooltip" && keys.includes("+") && css$12.joined, className),
+		children: keys.map((key, index) => jsx("kbd", {
+			className: key === "+" ? css$12.separator : css$12.key,
+			children: key
+		}, index))
+	});
+}
+//#endregion
+//#region lib/types/MenuSurface.js
+/** Shared menu material and the macOS backing that lets Chromium blur transparent windows. */
+/**
+* Paint a menu and, on macOS, an opaque backing behind the page content within its bounds.
+* CSS anchors keep each backing aligned during placement, resizing, and nested-menu movement.
+* @param props - Div content and placement, and compact geometry.
+* @param ref - The visible menu div, excluding the non-interactive backing.
+* @returns Menu content plus a backing portal removed with the menu.
+*/
+const MenuSurface = forwardRef(function MenuSurface({ compact = false, className, style, children, ...props }, ref) {
+	const id = useId();
+	const backingRef = useRef(null);
+	useLayoutEffect(() => {
+		document.body.appendChild(backingRef.current);
+	}, []);
+	const anchorStyle = { "--dsh-menu-anchor": `--dsh-menu-${id.replaceAll(":", "")}` };
+	return jsxs(Fragment, { children: [jsxs("div", {
+		...props,
+		ref,
+		"data-menu-material": "translucent",
+		className: clsx(css$13.surface, compact && css$13.compact, className),
+		style: {
+			...style,
+			...anchorStyle
+		},
+		children: [jsx("div", {
+			"aria-hidden": "true",
+			className: css$13.material
+		}), children]
+	}), createPortal(jsx("div", {
+		ref: backingRef,
+		"aria-hidden": "true",
+		"data-menu-backing": "",
+		className: clsx(css$13.backing, compact && css$13.compact),
+		style: {
+			...anchorStyle,
+			visibility: style?.visibility
+		}
+	}), document.body)] });
+});
+//#endregion
 //#region lib/types/Menu.js
 /**
 * Render one `role="menuitem"` row for a {@link Menu} whose rows are
@@ -3439,6 +3784,7 @@ function usePointerGrace(close) {
 * without any shared state. Closing the menu stays the owner's decision, as
 * it is for data rows.
 * @param props.children - visible row label.
+* @param props.shortcut - effective key labels and accessible combination.
 * @param props.icon - optional leading icon.
 * @param props.disabled - whether the row cannot be activated.
 * @param props.danger - whether to use the destructive row colors.
@@ -3446,25 +3792,37 @@ function usePointerGrace(close) {
 * @param props.onSelect - row activation callback.
 * @returns one menu-item row.
 */
-function MenuItemButton({ children, icon, disabled = false, danger = false, separatorBefore = false, onSelect }) {
+function MenuItemButton({ children, shortcut, icon, disabled = false, danger = false, separatorBefore = false, onSelect }) {
 	return jsxs("div", {
-		className: css$12.itemWrap,
+		className: css$14.itemWrap,
 		children: [separatorBefore && jsx("div", {
-			className: css$12.separator,
+			className: css$14.separator,
 			role: "separator"
 		}), jsxs("button", {
 			type: "button",
 			role: "menuitem",
-			className: clsx(css$12.item, danger && css$12.danger),
+			className: clsx(css$14.item, danger && css$14.danger),
 			disabled,
+			"aria-keyshortcuts": shortcut?.aria,
 			onClick: onSelect,
-			children: [icon !== void 0 && jsx("span", {
-				className: css$12.itemIcon,
-				children: icon
-			}), jsx("span", {
-				className: css$12.itemLabel,
-				children
-			})]
+			children: [
+				icon !== void 0 && jsx("span", {
+					className: css$14.itemIcon,
+					children: icon
+				}),
+				jsx("span", {
+					className: css$14.itemLabel,
+					children
+				}),
+				shortcut !== void 0 && jsx("span", {
+					"aria-hidden": "true",
+					className: css$14.shortcut,
+					children: jsx(ShortcutKeys, {
+						keys: shortcut.keys,
+						className: css$14.shortcutKeys
+					})
+				})
+			]
 		})]
 	});
 }
@@ -3500,7 +3858,7 @@ const MEASURE_STYLE = {
 * @param props.align - list alignment against the anchor (default 'start').
 * @param props.side - open below (`bottom`, default) or above (`top`) the anchor.
 * @param props.portal - render the list into document.body, fixed-positioned
-* from the anchor rect (repositions on scroll/resize while open). Use when an
+* from the anchor rect (follows movement and resizing while open). Use when an
 * ancestor's overflow clipping would crop the in-place list; default false
 * keeps the pure-CSS in-place behavior.
 * @param props.closeOnPointerLeave - close the list once the pointer has left
@@ -3513,8 +3871,8 @@ const MEASURE_STYLE = {
 * directly (e.g. from a host-owned trigger button) instead of measuring the
 * Menu's own wrapper span. Required when the wrapper isn't itself laid out at
 * the trigger (render-prop anchors, effect-positioned proxies — measuring the
-* wrapper there races the host's layout effects). Called on open and on every
-* scroll/resize; return null to skip placement for that frame.
+* wrapper there races the host's layout effects). Called on open, each animation
+* frame, and scroll/resize; return null to skip placement for that frame.
 * @param props.footer - rows pinned below the scrolling items area, separated
 * by a hairline; they stay visible while the items above scroll.
 * @param props.children - component rows rendered after `items` in the same
@@ -3542,19 +3900,20 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 	* able to name by position.
 	*/
 	const triggerRef = useRef(null);
+	const selectingWithTab = useRef(false);
 	/**
 	* Hand the keyboard back to the trigger that opened the menu — or, when the
 	* anchor never held it, to the anchor's first button. Focus left on a removed
 	* row otherwise falls to the page body, where the next Tab restarts from the
 	* top of the page.
+	* @param navigation - whether explicit keyboard traversal should retain its focus indicator.
 	*/
-	const refocusAnchor = () => {
+	const refocusAnchor = (navigation = false) => {
 		const trigger = triggerRef.current;
-		if (trigger !== null && document.contains(trigger) && !trigger.disabled) {
-			trigger.focus();
-			return;
-		}
-		rootRef.current?.querySelector("button:not(:disabled)")?.focus();
+		const target = trigger !== null && document.contains(trigger) && !trigger.disabled ? trigger : rootRef.current?.querySelector("button:not(:disabled)");
+		if (target == null) return;
+		if (navigation) target.focus();
+		else focusWithoutRing(target);
 	};
 	/**
 	* Post-selection focus, for the paths where the rows unmount with the list.
@@ -3564,10 +3923,11 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 	* its removal produced) comes back to the trigger.
 	*/
 	const refocusAfterSelection = () => {
+		const navigation = selectingWithTab.current;
 		queueMicrotask(() => {
 			if (openRef.current) return;
 			const active = document.activeElement;
-			if (active === null || active === document.body || listRef.current?.contains(active) === true) refocusAnchor();
+			if (active === null || active === document.body || listRef.current?.contains(active) === true) refocusAnchor(navigation);
 		});
 	};
 	const openRef = useRef(open);
@@ -3607,15 +3967,21 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			}
 			if (lw > 0) x = Math.min(Math.max(x, MARGIN), vw - lw - MARGIN);
 			if (lh > 0) y = Math.min(Math.max(y, overlayTopMargin(MARGIN)), vh - lh - MARGIN);
-			setFixedPos({
+			setFixedPos((current) => current?.left === x && current.top === y ? current : {
 				left: x,
 				top: y
 			});
 		};
 		place();
+		const track = () => {
+			place();
+			frame = requestAnimationFrame(track);
+		};
+		let frame = requestAnimationFrame(track);
 		window.addEventListener("scroll", place, true);
 		window.addEventListener("resize", place);
 		return () => {
+			cancelAnimationFrame(frame);
 			window.removeEventListener("scroll", place, true);
 			window.removeEventListener("resize", place);
 		};
@@ -3638,7 +4004,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		if (!open || !autoFocus) return;
 		const first = listRef.current?.querySelector("button:not(:disabled)");
 		walkIndex.current = first === void 0 || first === null ? null : 0;
-		first?.focus();
+		if (first != null) focusWithoutRing(first);
 	}, [open, autoFocus]);
 	useEffect(() => {
 		if (!open) {
@@ -3646,6 +4012,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			walkIndex.current = null;
 			return;
 		}
+		const composition = observeComposition(document);
 		const onPointerDown = (e) => {
 			if (!(e.target instanceof Node)) return;
 			if (rootRef.current?.contains(e.target) === true) return;
@@ -3653,10 +4020,13 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			onClose();
 		};
 		const onKeyDown = (e) => {
+			if (composition.guards(e) || isBehindModal(rootRef.current) || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;
 			const focused = document.activeElement;
 			const insideList = listRef.current?.contains(focused) === true;
 			const anchored = rootRef.current?.contains(focused) === true || insideList;
-			if (e.key === "Escape") {
+			if (e.key === "Escape" && !e.shiftKey) {
+				e.preventDefault();
+				if (e.repeat) return;
 				onClose();
 				if (anchored || autoFocus) refocusAnchor();
 			}
@@ -3666,13 +4036,18 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 				if (e.shiftKey) {
 					e.preventDefault();
 					onClose();
-					refocusAnchor();
+					refocusAnchor(true);
 					return;
 				}
 				if (insideList) {
 					if (focused instanceof Element && focused.getAttribute("role") === "menuitem") {
 						e.preventDefault();
-						focused.click();
+						selectingWithTab.current = true;
+						try {
+							focused.click();
+						} finally {
+							selectingWithTab.current = false;
+						}
 					}
 					return;
 				}
@@ -3704,11 +4079,20 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			if (document.activeElement instanceof HTMLIFrameElement) onClose();
 		};
 		document.addEventListener("pointerdown", onPointerDown);
-		document.addEventListener("keydown", onKeyDown);
+		const onEscape = (event) => {
+			if (event.key === "Escape") onKeyDown(event);
+		};
+		const onOtherKey = (event) => {
+			if (event.key !== "Escape") onKeyDown(event);
+		};
+		document.addEventListener("keydown", onOtherKey);
+		document.addEventListener("keydown", onEscape, true);
 		window.addEventListener("blur", onWindowBlur);
 		return () => {
+			composition.dispose();
 			document.removeEventListener("pointerdown", onPointerDown);
-			document.removeEventListener("keydown", onKeyDown);
+			document.removeEventListener("keydown", onOtherKey);
+			document.removeEventListener("keydown", onEscape, true);
 			window.removeEventListener("blur", onWindowBlur);
 		};
 	}, [
@@ -3722,11 +4106,11 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 	const scrollable = !items.some((entry) => !isSeparator(entry) && !isLabel(entry) && entry.submenu !== void 0 && entry.submenu.length > 0);
 	const renderEntry = (entry) => {
 		if (isSeparator(entry)) return jsx("div", {
-			className: css$12.separator,
+			className: css$14.separator,
 			role: "separator"
 		}, entry.id);
 		if (isLabel(entry)) return jsx("div", {
-			className: css$12.label,
+			className: css$14.label,
 			role: "presentation",
 			children: entry.text
 		}, entry.id);
@@ -3734,7 +4118,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		const subOpen = hasSub && openSubmenuId === entry.id;
 		const selected = entry.id === selectedId || selectedIds?.includes(entry.id) === true;
 		return jsxs("div", {
-			className: css$12.itemWrap,
+			className: css$14.itemWrap,
 			onMouseEnter: hasSub ? () => {
 				setOpenSubmenuId(entry.id);
 			} : void 0,
@@ -3744,8 +4128,9 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			children: [jsxs("button", {
 				type: "button",
 				role: "menuitem",
-				className: clsx(css$12.item, selected && (selection === "fill" ? css$12.selectedFill : css$12.selected), entry.danger === true && css$12.danger),
+				className: clsx(css$14.item, selected && (selection === "fill" ? css$14.selectedFill : css$14.selected), entry.danger === true && css$14.danger),
 				disabled: entry.disabled,
+				"aria-keyshortcuts": entry.shortcut?.aria,
 				"aria-haspopup": hasSub ? "menu" : void 0,
 				"aria-expanded": hasSub ? subOpen : void 0,
 				onFocus: hasSub ? () => {
@@ -3760,33 +4145,55 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 				},
 				children: [
 					entry.icon !== void 0 && jsx("span", {
-						className: css$12.itemIcon,
+						className: css$14.itemIcon,
 						children: entry.icon
 					}),
 					jsx("span", {
-						className: css$12.itemLabel,
+						className: css$14.itemLabel,
 						children: entry.label
 					}),
-					selected && selection === "check" && jsx(IconCheckOutlineRegular, { className: css$12.check })
+					entry.shortcut !== void 0 && jsx("span", {
+						"aria-hidden": "true",
+						className: css$14.shortcut,
+						children: jsx(ShortcutKeys, {
+							keys: entry.shortcut.keys,
+							className: css$14.shortcutKeys
+						})
+					}),
+					selected && selection === "check" && jsx(IconCheckOutlineRegular, { className: css$14.check })
 				]
-			}), subOpen && entry.submenu !== void 0 && jsx("div", {
-				className: clsx(css$12.submenu, compact && css$12.compactList),
+			}), subOpen && entry.submenu !== void 0 && jsx(MenuSurface, {
+				compact,
+				className: clsx(css$14.submenu, compact && css$14.compactList),
 				role: "menu",
 				children: entry.submenu.map((sub) => jsxs("button", {
 					type: "button",
 					role: "menuitem",
-					className: css$12.item,
+					className: css$14.item,
 					disabled: sub.disabled,
+					"aria-keyshortcuts": sub.shortcut?.aria,
 					onClick: () => {
 						onSelect?.(sub.id);
+						refocusAfterSelection();
 					},
-					children: [sub.icon !== void 0 && jsx("span", {
-						className: css$12.itemIcon,
-						children: sub.icon
-					}), jsx("span", {
-						className: css$12.itemLabel,
-						children: sub.label
-					})]
+					children: [
+						sub.icon !== void 0 && jsx("span", {
+							className: css$14.itemIcon,
+							children: sub.icon
+						}),
+						jsx("span", {
+							className: css$14.itemLabel,
+							children: sub.label
+						}),
+						sub.shortcut !== void 0 && jsx("span", {
+							"aria-hidden": "true",
+							className: css$14.shortcut,
+							children: jsx(ShortcutKeys, {
+								keys: sub.shortcut.keys,
+								className: css$14.shortcutKeys
+							})
+						})
+					]
 				}, sub.id))
 			})]
 		}, entry.id);
@@ -3797,9 +4204,10 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		if (row.closest("[role=\"menu\"]") !== e.currentTarget) return;
 		setOpenSubmenuId(null);
 	};
-	const list = open && jsxs("div", {
+	const list = open && jsxs(MenuSurface, {
+		compact,
 		ref: listRef,
-		className: clsx(css$12.list, listClassName, dense && css$12.denseList, compact && css$12.compactList, scrollable && css$12.scrollable, portal && css$12.portal, side === "top" && !portal && css$12.sideTop, align === "end" && !portal && css$12.alignEnd),
+		className: clsx(css$14.list, listClassName, dense && css$14.denseList, compact && css$14.compactList, scrollable && css$14.scrollable, portal && css$14.portal, side === "top" && !portal && css$14.sideTop, align === "end" && !portal && css$14.alignEnd),
 		style: portal ? fixedPos ?? MEASURE_STYLE : void 0,
 		role: "menu",
 		onClick: (e) => {
@@ -3810,18 +4218,18 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		onMouseOver: collapseSubmenuFrom,
 		onFocus: collapseSubmenuFrom,
 		children: [jsxs("div", {
-			className: css$12.viewport,
+			className: css$14.viewport,
 			role: "presentation",
 			children: [items.map(renderEntry), children]
 		}), footer !== void 0 && footer.length > 0 && jsx("div", {
-			className: css$12.footer,
+			className: css$14.footer,
 			role: "presentation",
 			children: footer.map(renderEntry)
 		})]
 	});
 	return jsxs("span", {
 		ref: rootRef,
-		className: clsx(css$12.root, className),
+		className: clsx(css$14.root, className),
 		onPointerEnter: closeOnPointerLeave ? cancelClose : void 0,
 		onPointerLeave: closeOnPointerLeave ? () => {
 			if (open) armClose();
@@ -4011,15 +4419,285 @@ async function writeClipboard(text) {
 	}
 }
 //#endregion
+//#region lib/types/input-modality.js
+/**
+* Document-wide input tracking shared by tooltips and focus-ring styles.
+* Tooltips follow the last input; rings follow navigation or a key followed by
+* focus on a different control. Modifiers and refocusing alone keep rings silent.
+* Module-level listeners live for the document lifetime; Node imports are inert.
+*/
+/** Modality values published on the document element. */
+const INPUT_MODALITY = {
+	pointer: "pointer",
+	keyboard: "keyboard"
+};
+/** Attribute carrying whether focus navigation last owned focus. */
+const INPUT_MODALITY_ATTRIBUTE = "data-input-modality";
+const FOCUS_NAVIGATION = new Set([
+	"Tab",
+	"Home",
+	"End",
+	"PageUp",
+	"PageDown"
+]);
+let pointer = false;
+let pointerOwnsFocus = false;
+let keyFocusOrigin;
+function publish() {
+	document.documentElement.setAttribute(INPUT_MODALITY_ATTRIBUTE, pointerOwnsFocus ? INPUT_MODALITY.pointer : INPUT_MODALITY.keyboard);
+}
+/**
+* Whether the last input came from a pointer, independently of ring visibility.
+* @returns True after pointer input; false after any key.
+*/
+function pointerModality() {
+	return pointer;
+}
+if (typeof window !== "undefined") {
+	window.addEventListener("pointerdown", () => {
+		pointer = true;
+		pointerOwnsFocus = true;
+		keyFocusOrigin = void 0;
+		publish();
+	}, true);
+	window.addEventListener("keydown", (event) => {
+		pointer = false;
+		if (event.isComposing) {
+			keyFocusOrigin = void 0;
+			return;
+		}
+		keyFocusOrigin = event.composedPath()[0];
+		if (!FOCUS_NAVIGATION.has(event.key) && !event.key.startsWith("Arrow")) return;
+		pointerOwnsFocus = false;
+		publish();
+	}, true);
+	window.addEventListener("focusin", (event) => {
+		if (keyFocusOrigin === void 0 || event.composedPath()[0] === keyFocusOrigin) return;
+		keyFocusOrigin = void 0;
+		if (!pointerOwnsFocus) return;
+		pointerOwnsFocus = false;
+		publish();
+	}, true);
+	window.addEventListener("blur", () => {
+		keyFocusOrigin = void 0;
+	});
+}
+//#endregion
+//#region lib/types/Tooltip.js
+/** Anchor-preserving tooltips; an optional body portal escapes clipping containers and stacking contexts that cap the bubble's z-index. */
+/**
+* Suppression channel for enclosing tooltip and hover-card anchors: a visible
+* tooltip within an anchor withdraws the enclosing preview while its bubble is shown.
+*/
+const TooltipSuppression = createContext(null);
+/**
+* Attach a hover/focus tooltip to an anchor element.
+* @param props.label - bubble text, or a resolver evaluated only while visible; an empty string shows only shortcut keys.
+* @param props.shortcutKeys - effective key labels rendered as platform-formatted keycaps after optional text.
+* @param props.side - placement relative to the anchor (default 'right').
+* @param props.align - horizontal anchor-edge alignment for 'bottom'/'top' bubbles: 'end' pins
+* the bubble's right edge to the anchor's (for anchors beside other hover surfaces the centered
+* bubble would overlap); default 'center'. Ignored for side 'right'.
+* @param props.portal - render the bubble under document.body, so an ancestor's clipping or its
+* stacking context (which confines the bubble's z-index to that context) cannot hide it.
+* @param props.delayMs - hover delay in milliseconds; keyboard focus remains immediate.
+* @param props.gap - anchor-to-bubble distance in pixels for 'bottom'/'top' bubbles (default 8);
+* ignored for side 'right'.
+* @param props.disabled - suppress the bubble while true; the anchor renders identically so
+* toggling never remounts it (which would cut its CSS transitions).
+* @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
+* half-viewport cap would render a slab wider than the surface the anchor sits on.
+* @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
+* @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body.
+* The bubble stays hidden until ResizeObserver supplies its size for viewport fitting; clicking the
+* anchor dismisses the bubble until the next trigger, and focus arriving after a pointer
+* interaction (a closing menu refocusing its trigger) never raises it.
+*/
+function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, children }) {
+	const anchor = useRef(null);
+	const childRef = children.ref;
+	const mergedRef = useCallback((el) => {
+		anchor.current = el;
+		if (typeof childRef === "function") childRef(el);
+		else if (childRef != null) childRef.current = el;
+	}, [childRef]);
+	const [pos, setPos] = useState(null);
+	const bubble = useRef(null);
+	const resolvedLabel = pos === null ? null : typeof label === "function" ? label() : label;
+	const y = pos === null ? 0 : side === "right" ? pos.top + (pos.bottom - pos.top) / 2 : side === "top" ? pos.top - gap : pos.bottom + gap;
+	const showTimer = useRef(null);
+	const triggers = useRef({
+		hover: false,
+		focus: false
+	});
+	const suppressAncestors = useContext(TooltipSuppression);
+	const [suppressed, setSuppressed] = useState(false);
+	const announce = useCallback((active) => {
+		suppressAncestors?.(active);
+	}, [suppressAncestors]);
+	const visible = pos !== null && !disabled;
+	useEffect(() => {
+		const el = bubble.current;
+		if (pos === null || !visible || suppressed || el === null) return;
+		const edgeMargin = 12;
+		let size;
+		let placement = side;
+		const fit = () => {
+			if (size === void 0) return;
+			const { inlineSize: width, blockSize: height } = size;
+			const offset = side === "right" ? 0 : align === "end" ? width : width / 2;
+			const left = Math.max(edgeMargin, Math.min(pos.x - offset, window.innerWidth - edgeMargin - width));
+			const fitsBelow = pos.bottom + gap + height <= window.innerHeight - edgeMargin;
+			const fitsAbove = pos.top - gap - height >= edgeMargin;
+			if (placement === "bottom" && !fitsBelow && fitsAbove) placement = "top";
+			else if (placement === "top" && !fitsAbove && fitsBelow) placement = "bottom";
+			el.style.left = `${left + offset}px`;
+			el.style.top = `${placement === "right" ? (pos.top + pos.bottom) / 2 : placement === "top" ? pos.top - gap : pos.bottom + gap}px`;
+			el.dataset.side = placement;
+			el.style.visibility = "visible";
+		};
+		const observer = new ResizeObserver((entries) => {
+			size = entries[0]?.borderBoxSize[0];
+			fit();
+		});
+		observer.observe(el, { box: "border-box" });
+		window.addEventListener("resize", fit);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", fit);
+		};
+	}, [
+		align,
+		gap,
+		pos,
+		side,
+		suppressed,
+		visible
+	]);
+	useEffect(() => {
+		announce(visible);
+		return () => {
+			announce(false);
+		};
+	}, [announce, visible]);
+	const cancelShow = useCallback(() => {
+		if (showTimer.current === null) return;
+		clearTimeout(showTimer.current);
+		showTimer.current = null;
+	}, []);
+	useEffect(() => {
+		if (disabled) {
+			cancelShow();
+			triggers.current = {
+				hover: false,
+				focus: false
+			};
+			setPos(null);
+		}
+		return cancelShow;
+	}, [cancelShow, disabled]);
+	const show = () => {
+		if (disabled) return;
+		const el = anchor.current;
+		/* v8 ignore next -- the ref is attached by event time: events fire on the cloned anchor. */
+		if (el === null) return;
+		const r = el.getBoundingClientRect();
+		setPos({
+			x: side === "right" ? r.right + 10 : align === "end" ? r.right : r.left + r.width / 2,
+			top: r.top,
+			bottom: r.bottom
+		});
+		announce(true);
+	};
+	const showAfterHoverDelay = () => {
+		cancelShow();
+		if (delayMs <= 0) {
+			show();
+			return;
+		}
+		showTimer.current = setTimeout(() => {
+			showTimer.current = null;
+			show();
+		}, delayMs);
+	};
+	const withdraw = () => {
+		setPos(null);
+		announce(false);
+	};
+	const hide = () => {
+		cancelShow();
+		if (!triggers.current.hover && !triggers.current.focus) withdraw();
+	};
+	const content = visible && !suppressed && jsxs("span", {
+		ref: bubble,
+		className: css$15.bubble,
+		"data-side": side,
+		"data-portal": portal || void 0,
+		"data-align": align,
+		"data-has-shortcut": shortcutKeys?.length ? true : void 0,
+		style: {
+			left: pos.x,
+			top: y,
+			visibility: "hidden",
+			...maxWidth === void 0 ? {} : { maxWidth }
+		},
+		role: "tooltip",
+		"aria-label": shortcutKeys?.length ? [resolvedLabel, shortcutKeys.join(" ")].filter(Boolean).join(" ") : void 0,
+		children: [resolvedLabel && jsx("span", {
+			className: css$15.label,
+			children: resolvedLabel
+		}), shortcutKeys !== void 0 && shortcutKeys.length > 0 && jsx(ShortcutKeys, {
+			keys: shortcutKeys,
+			variant: "tooltip"
+		})]
+	});
+	return jsxs(TooltipSuppression.Provider, {
+		value: setSuppressed,
+		children: [cloneElement(children, {
+			ref: mergedRef,
+			onMouseEnter: (e) => {
+				children.props.onMouseEnter?.(e);
+				triggers.current.hover = true;
+				showAfterHoverDelay();
+			},
+			onMouseLeave: (e) => {
+				children.props.onMouseLeave?.(e);
+				triggers.current.hover = false;
+				cancelShow();
+				withdraw();
+			},
+			onClick: (e) => {
+				children.props.onClick?.(e);
+				triggers.current.focus = false;
+				cancelShow();
+				withdraw();
+			},
+			onFocus: (e) => {
+				children.props.onFocus?.(e);
+				if (pointerModality()) return;
+				triggers.current.focus = true;
+				cancelShow();
+				show();
+			},
+			onBlur: (e) => {
+				children.props.onBlur?.(e);
+				triggers.current.focus = false;
+				hide();
+			}
+		}), portal ? content !== false && createPortal(content, document.body) : content]
+	});
+}
+//#endregion
 //#region lib/types/HoverCard.js
 /** Preview opacity transition and retained lifetime during dismissal. */
 const PREVIEW_FADE_MS = 100;
 const PREVIEW_MAX_HEIGHT = 420;
 const PREVIEW_INSET = 24;
+const INLINE_PREVIEW_WIDTH = 300;
 const ANCHOR_GAP = 8;
 const VIEWPORT_MARGIN = 8;
 /**
-* Render an anchor with a hover-triggered preview card.
+* Render an anchor with a hover-triggered preview card, hidden while a tooltip within the anchor is visible.
 * @param props.anchor - the hover target (rendered in place inside a wrapper span).
 * @param props.content - card content; the pointer may rest on it, so it is
 * readable and selectable, but it carries no dismissal affordance of its own.
@@ -4027,6 +4705,7 @@ const VIEWPORT_MARGIN = 8;
 * @param props.variant - compact card beside the anchor, or a preview above/below it
 * with 24px side insets, a 420px height cap, frame-top clearance, and 100ms opacity transitions.
 * @param props.widthAnchorRef - optional element whose width and horizontal position size the preview.
+* @param props.inline - keep the anchor in prose; show a contained preview on hover or keyboard focus.
 * @param props.disabled - suppress opening; turning true dismisses an open card.
 * @param props.copyText - optional primary value copied by activation and
 * included in the card's accessible name.
@@ -4034,7 +4713,7 @@ const VIEWPORT_MARGIN = 8;
 * @param props.copiedLabel - localized visible success label.
 * @returns anchor wrapper with the conditional portaled card.
 */
-function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyText, copyLabel, copiedLabel, variant = "compact", widthAnchorRef }) {
+function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyText, copyLabel, copiedLabel, variant = "compact", widthAnchorRef, inline = false }) {
 	const rootRef = useRef(null);
 	const cardRef = useRef(null);
 	const timerRef = useRef(null);
@@ -4049,6 +4728,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 	const [pos, setPos] = useState(null);
 	const positioned = pos !== null;
 	const [copied, setCopied] = useState(false);
+	const [suppressed, setSuppressed] = useState(false);
 	const clearCopied = useCallback(() => {
 		if (copyTimerRef.current !== null) {
 			clearTimeout(copyTimerRef.current);
@@ -4101,19 +4781,22 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		};
 	}, []);
 	useEffect(() => {
-		if (!open || variant !== "preview") return;
+		if (!open || variant !== "preview" && !inline) return;
 		const dismiss = (event) => {
 			if (event.key !== "Escape") return;
+			if (inline) event.stopPropagation();
+			clearTimer();
 			cancelClose();
 			close();
 		};
-		window.addEventListener("keydown", dismiss);
+		window.addEventListener("keydown", dismiss, inline);
 		return () => {
-			window.removeEventListener("keydown", dismiss);
+			window.removeEventListener("keydown", dismiss, inline);
 		};
 	}, [
 		open,
 		variant,
+		inline,
 		cancelClose,
 		close
 	]);
@@ -4145,6 +4828,23 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 				});
 				return;
 			}
+			if (inline) {
+				const height = Math.max(h, cardRef.current?.scrollHeight ?? 0);
+				const width = Math.max(0, Math.min(INLINE_PREVIEW_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2));
+				const topMargin = overlayTopMargin(VIEWPORT_MARGIN);
+				const belowTop = Math.max(topMargin, r.bottom + ANCHOR_GAP);
+				const above = Math.max(0, r.top - ANCHOR_GAP - topMargin);
+				const below = Math.max(0, window.innerHeight - belowTop - VIEWPORT_MARGIN);
+				const onTop = height > below && above > below;
+				const maxHeight = onTop ? above : below;
+				setPos({
+					left: Math.max(VIEWPORT_MARGIN, Math.min(r.left, window.innerWidth - width - VIEWPORT_MARGIN)),
+					top: onTop ? r.top - ANCHOR_GAP - Math.min(height, maxHeight) : belowTop,
+					width,
+					maxHeight
+				});
+				return;
+			}
 			const top = r.top + h > window.innerHeight - VIEWPORT_MARGIN ? window.innerHeight - h - VIEWPORT_MARGIN : r.top;
 			setPos({
 				left: r.right + ANCHOR_GAP,
@@ -4152,7 +4852,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			});
 		};
 		place();
-		const observer = variant === "preview" && typeof ResizeObserver !== "undefined" ? new ResizeObserver(place) : null;
+		const observer = (variant === "preview" || inline) && typeof ResizeObserver !== "undefined" ? new ResizeObserver(place) : null;
 		for (const element of [
 			cardRef.current,
 			rootRef.current,
@@ -4169,10 +4869,11 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		open,
 		variant,
 		widthAnchorRef,
-		positioned
+		positioned,
+		inline
 	]);
 	useLayoutEffect(() => {
-		if (!open || pos === null || variant === "preview") return;
+		if (!open || pos === null || variant === "preview" || inline || suppressed) return;
 		/* v8 ignore next -- the card is mounted whenever pos is set, so the ref is attached here. */
 		const h = cardRef.current?.offsetHeight ?? 0;
 		if (pos.top + h > window.innerHeight - VIEWPORT_MARGIN) setPos({
@@ -4182,7 +4883,9 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 	}, [
 		open,
 		pos,
-		variant
+		variant,
+		inline,
+		suppressed
 	]);
 	const copy = async (text) => {
 		if (copied || copyingRef.current) return;
@@ -4204,9 +4907,9 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		cancelClose();
 		close();
 	};
-	const card = open && pos !== null && jsx("div", {
+	const card = open && pos !== null && !suppressed && jsx("div", {
 		ref: cardRef,
-		className: clsx(css$13.card, variant === "preview" && css$13.preview, copyable && css$13.copyable, copied && css$13.feedback),
+		className: clsx(css$16.card, variant === "preview" && css$16.preview, inline && css$16.media, copyable && css$16.copyable, copied && css$16.feedback),
 		"data-closing": closing || void 0,
 		style: {
 			...pos,
@@ -4229,16 +4932,29 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			copy(copyText);
 		} : void 0,
 		children: copied ? jsx("span", {
-			className: css$13.copied,
+			className: css$16.copied,
 			"aria-hidden": "true",
 			children: copiedLabel
 		}) : content
 	});
 	return jsxs("span", {
 		ref: rootRef,
-		className: css$13.root,
-		onPointerEnter: () => {
-			if (disabled) return;
+		className: clsx(css$16.root, inline && css$16.inline),
+		onFocus: inline ? (event) => {
+			if (!disabled && event.target.matches(":focus-visible")) {
+				cancelClose();
+				setPhase("open");
+			}
+		} : void 0,
+		onBlur: inline ? (event) => {
+			if (!event.currentTarget.contains(event.relatedTarget)) {
+				clearTimer();
+				cancelClose();
+				close();
+			}
+		} : void 0,
+		onPointerEnter: (event) => {
+			if (disabled || inline && event.pointerType === "touch") return;
 			cancelClose();
 			if (open) {
 				setPhase("open");
@@ -4256,9 +4972,12 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		onPointerDownCapture: dismissFromAnchor,
 		onClickCapture: dismissFromAnchor,
 		children: [
-			anchor,
-			open && copyable && jsx("span", {
-				className: css$13.status,
+			jsx(TooltipSuppression.Provider, {
+				value: setSuppressed,
+				children: anchor
+			}),
+			open && !suppressed && copyable && jsx("span", {
+				className: css$16.status,
 				role: "status",
 				children: copied ? copiedLabel : ""
 			}),
@@ -4271,100 +4990,73 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 /**
 * Render a centered, body-portaled modal over a blurred page mask.
 * @param props.open - whether the dialog is showing.
-* @param props.onClose - Escape or mask click; while a menu is open inside the
+* @param props.onClose - application close command, Escape, or mask click; while a menu is open inside the
 * dialog, Escape belongs to that menu first.
 * @param props.title - dialog heading (aria-label in every mode).
 * @param props.closeLabel - localized accessible close-button label.
 * @param props.description - optional supporting sentence under the title.
-* @param props.children - body (inputs, etc.).
+* @param props.children - dialog body; mark its initial-focus control with
+* data-modal-autofocus instead of React autoFocus to preserve return focus.
 * @param props.footer - action row (Cancel / Create).
 * @param props.contentClassName - optional class for a scrollable content region.
+* @param props.backdropBlur - disable when the caller already blurs the page; defaults to true.
+* @param props.shortcutModal - command scope allowed by shortcut owners; unnamed
+* dialogs block application commands unless their owner allows the "other" scope.
 * @param props.headless - render children directly in the card (no default
 * header/close/body chrome); mask, card, Escape, and aria-label remain.
+* @param props.onKeyDownCapture - handle a nested dialog's keys before the document Escape listeners.
 * @returns null when closed; otherwise the overlay tree.
 */
-function Modal({ open, onClose, title, closeLabel, description, children, footer, className, contentClassName, headless = false }) {
-	useEffect(() => {
-		if (!open) return;
-		const onKeyDown = (e) => {
-			if (e.key === "Escape") onClose();
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => {
-			document.removeEventListener("keydown", onKeyDown);
-		};
-	}, [open, onClose]);
+function Modal({ open, onClose, title, closeLabel, description, children, footer, className, contentClassName, onKeyDownCapture, headless = false, backdropBlur = true, shortcutModal }) {
+	const dialog = useRef(null);
+	useModalLayer(dialog, open, onClose);
 	if (!open) return null;
 	return createPortal(jsxs("div", {
-		className: css$14.root,
+		className: css$17.root,
 		role: "presentation",
+		onKeyDownCapture,
 		children: [jsx("div", {
-			className: css$14.mask,
+			className: css$17.mask,
+			style: backdropBlur ? void 0 : { backdropFilter: "none" },
 			"aria-hidden": "true",
 			onClick: onClose
 		}), jsx("div", {
-			className: clsx(css$14.dialog, className),
+			ref: dialog,
+			tabIndex: -1,
+			"data-shortcut-modal": shortcutModal,
+			className: clsx(css$17.dialog, className),
 			role: "dialog",
 			"aria-modal": "true",
 			"aria-label": title,
 			children: headless ? children : jsxs(Fragment, { children: [jsxs("div", {
-				className: clsx(css$14.content, contentClassName),
+				className: clsx(css$17.content, contentClassName),
 				children: [
 					jsxs("div", {
-						className: css$14.header,
+						className: css$17.header,
 						children: [jsx("h2", {
-							className: css$14.title,
+							className: css$17.title,
 							children: title
 						}), jsx("button", {
 							type: "button",
-							className: css$14.close,
+							className: css$17.close,
 							"aria-label": closeLabel,
 							onClick: onClose,
 							children: jsx(IconCloseOutlineRegular, { size: 14 })
 						})]
 					}),
 					description !== void 0 && description !== "" && jsx("p", {
-						className: css$14.description,
+						className: css$17.description,
 						children: description
 					}),
 					children !== void 0 && jsx("div", {
-						className: css$14.body,
+						className: css$17.body,
 						children
 					})
 				]
 			}), footer !== void 0 && jsx("div", {
-				className: css$14.footer,
+				className: css$17.footer,
 				children: footer
 			})] })
-		})]
-	}), document.body);
-}
-//#endregion
-//#region lib/types/OnboardingSurface.js
-/**
-* Render a body-portaled onboarding stage and keep the application root inert
-* while mounted.
-* @param props.children - the step's page content, centered on the stage.
-* @returns the body-portaled overlay tree.
-*/
-function OnboardingSurface({ children }) {
-	useEffect(() => {
-		const appRoot = document.getElementById("root");
-		if (appRoot === null) return;
-		appRoot.inert = true;
-		return () => {
-			appRoot.inert = false;
-		};
-	}, []);
-	return createPortal(jsxs("div", {
-		className: css$15.onboardingOverlay,
-		role: "presentation",
-		children: [jsx("div", {
-			className: css$15.onboardingMask,
-			"aria-hidden": "true"
-		}), jsx("div", {
-			className: css$15.onboardingStage,
-			children
 		})]
 	}), document.body);
 }
@@ -4384,33 +5076,33 @@ function RiskConfirmation({ open, title, description, acknowledgeLabel, cancelLa
 		onClose: onCancel,
 		title,
 		closeLabel,
-		className: css$16.confirmation ?? "",
-		contentClassName: css$16.confirmationContent ?? "",
+		className: css$18.confirmation ?? "",
+		contentClassName: css$18.confirmationContent ?? "",
 		footer: jsxs(Fragment, { children: [jsx(Button, {
 			variant: "outline",
-			className: css$16.modalAction,
+			className: css$18.modalAction,
 			onClick: onCancel,
 			children: cancelLabel
 		}), jsx(Button, {
 			variant: "primary",
-			className: css$16.confirmAction,
+			className: css$18.confirmAction,
 			disabled: disabled || !acknowledged,
 			onClick: onConfirm,
 			children: confirmLabel
 		})] }),
 		children: [jsxs("div", {
-			className: css$16.warning,
+			className: css$18.warning,
 			children: [jsx(IconWarningOutlineRegular, {
 				size: 18,
-				className: css$16.warningIcon
+				className: css$18.warningIcon
 			}), jsx("p", { children: description })]
 		}), jsxs("label", {
-			className: css$16.acknowledgement,
+			className: css$18.acknowledgement,
 			children: [jsx("input", {
 				type: "checkbox",
 				checked: acknowledged,
 				disabled,
-				autoFocus: true,
+				"data-modal-autofocus": true,
 				onChange: (event) => {
 					onAcknowledgedChange(event.currentTarget.checked);
 				}
@@ -4453,44 +5145,44 @@ function ConnectionIndicator({ state, disconnectedLabel, connectingLabel, recove
 		};
 	}, [state, rendered]);
 	if (rendered === void 0) return null;
-	const leavingClass = leaving ? ` ${css$17.leaving}` : "";
+	const leavingClass = leaving ? ` ${css$19.leaving}` : "";
 	if (rendered === "recovered") return jsxs("div", {
-		className: `${css$17.indicator} ${css$17.success}${leavingClass}`,
+		className: `${css$19.indicator} ${css$19.success}${leavingClass}`,
 		role: "status",
 		"aria-label": recoveredLabel,
 		children: [jsx("span", {
-			className: css$17.icon,
+			className: css$19.icon,
 			"aria-hidden": "true",
 			children: jsx(IconCheckOutlineRegular, { size: 14 })
 		}), jsx("span", {
-			className: css$17.label,
+			className: css$19.label,
 			children: recoveredLabel
 		})]
 	});
 	const connecting = rendered === "connecting";
 	return jsxs("button", {
 		type: "button",
-		className: `${css$17.indicator} ${css$17.warning}${leavingClass}`,
+		className: `${css$19.indicator} ${css$19.warning}${leavingClass}`,
 		"data-phase": rendered,
 		"aria-label": connecting ? restartActionLabel : reconnectActionLabel,
 		onClick: onReconnect,
 		children: [jsx("span", {
-			className: css$17.icon,
+			className: css$19.icon,
 			"aria-hidden": "true",
 			children: connecting ? jsx(StateDot, { state: "ongoing" }) : jsx(IconRefreshOutlineRegular, { size: 14 })
 		}), jsx("span", {
-			className: css$17.label,
+			className: css$19.label,
 			children: connecting ? jsxs(Fragment, { children: [connectingLabel, jsxs("span", {
-				className: css$17.dots,
+				className: css$19.dots,
 				"aria-hidden": "true",
 				children: [
 					jsx("span", { children: "." }),
 					jsx("span", {
-						className: css$17.secondDot,
+						className: css$19.secondDot,
 						children: "."
 					}),
 					jsx("span", {
-						className: css$17.thirdDot,
+						className: css$19.thirdDot,
 						children: "."
 					})
 				]
@@ -4807,7 +5499,7 @@ function PermissionIconFullAccessMedium(props) {
 */
 function ReferenceIconArtwork({ kind, size = 16, className, strokeWidth }) {
 	switch (kind) {
-		case "session": return jsx(NewChatOutlineArtwork, {
+		case "session": return jsx(ChatLinesOutlineArtwork, {
 			size,
 			className,
 			strokeWidth
@@ -5393,14 +6085,23 @@ function glyph(type, size, className) {
 		case "code": return jsxs(FileGlyph, {
 			size,
 			className,
-			markTransform: FILE_MARK_TRANSFORM,
-			children: [jsx("path", {
-				d: "M8.61 16.3601L11.76 18.3901V20.1401L7 17.0601V15.6601L11.76 12.5801V14.3301L8.61 16.3601Z",
-				fill: "currentColor"
-			}), jsx("path", {
-				d: "M16.1918 14.3301V12.5801L20.9518 15.6601V17.0601L16.1918 20.1401V18.3901L19.3418 16.3601L16.1918 14.3301Z",
-				fill: "currentColor"
-			})]
+			children: [
+				jsx("path", {
+					d: "M10.0053 13.126L7.0236 16.3788C6.96052 16.4476 6.96052 16.5532 7.0236 16.622L10.0053 19.8748",
+					stroke: "currentColor",
+					strokeWidth: "1.35"
+				}),
+				jsx("path", {
+					d: "M17.9941 13.126L20.9759 16.3788C21.039 16.4476 21.039 16.5532 20.9759 16.622L17.9941 19.8748",
+					stroke: "currentColor",
+					strokeWidth: "1.35"
+				}),
+				jsx("path", {
+					d: "M15.2652 12.957L12.7344 20.0433",
+					stroke: "currentColor",
+					strokeWidth: "1.35"
+				})
+			]
 		});
 		case "excel": return jsx(SpreadsheetGlyph, {
 			size,
@@ -5512,7 +6213,7 @@ function FileTypeIcon(props) {
 		type: resolvedType,
 		size,
 		className
-	}) : glyph(resolvedType, size, clsx(css$18.icon, css$18[resolvedType], className));
+	}) : glyph(resolvedType, size, clsx(css$20.icon, css$20[resolvedType], className));
 }
 //#endregion
 //#region lib/types/SiteGlyph.js
@@ -5841,7 +6542,7 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 	let cursor = 0;
 	const pushPlain = (from, to) => {
 		parts.push(jsx("span", {
-			className: css$19.plainRun,
+			className: css$21.plainRun,
 			children: text.slice(from, to)
 		}, `t${from}`));
 	};
@@ -5854,14 +6555,14 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 		const contents = jsxs(Fragment, { children: [referenceKind !== void 0 && jsx(ReferenceIconRegular, {
 			kind: referenceKind,
 			size: 16,
-			className: css$19.refIcon
+			className: css$21.refIcon
 		}), displayLabel] });
 		const open = references === void 0 ? void 0 : referenceKind === "file" ? () => {
 			references.openFile(label.slice(1).replace(/^"|"$/gu, ""));
 		} : referenceKind === void 0 && slashKind === "skill" ? () => {
 			references.openSkill(label.slice(1));
 		} : void 0;
-		const className = clsx(css$19.refChip, referenceKind === void 0 && css$19.slashChip);
+		const className = clsx(css$21.refChip, referenceKind === void 0 && css$21.slashChip);
 		parts.push(open === void 0 ? jsx("span", {
 			className,
 			"data-ref-chip": referenceKind ?? slashKind,
@@ -5881,206 +6582,11 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 		cursor = end;
 	}
 	if (parts.length === 0) return jsx("span", {
-		className: css$19.plainRun,
+		className: css$21.plainRun,
 		children: text
 	});
 	if (cursor < text.length) pushPlain(cursor, text.length);
 	return jsx(Fragment, { children: parts });
-}
-//#endregion
-//#region lib/types/Tooltip.js
-/** Anchor-preserving tooltips with optional body portals for clipping containers. */
-/**
-* Suppression channel from a tooltip to the tooltips above it: a tooltip hands
-* this setter to its own descendants, and a visible descendant bubble calls it
-* so the ancestor withdraws its bubble for as long as the descendant shows one.
-*/
-const TooltipSuppression = createContext(null);
-let pointerModality = false;
-if (typeof window !== "undefined") {
-	window.addEventListener("pointerdown", () => {
-		pointerModality = true;
-	}, true);
-	window.addEventListener("keydown", () => {
-		pointerModality = false;
-	}, true);
-}
-/**
-* Attach a hover/focus tooltip to an anchor element.
-* @param props.label - bubble text, or a resolver evaluated only while the bubble is visible.
-* @param props.side - placement relative to the anchor (default 'right').
-* @param props.align - horizontal anchor-edge alignment for 'bottom'/'top' bubbles: 'end' pins
-* the bubble's right edge to the anchor's (for anchors beside other hover surfaces the centered
-* bubble would overlap); default 'center'. Ignored for side 'right'.
-* @param props.portal - render the bubble under document.body to escape containing blocks and clipping ancestors.
-* @param props.delayMs - hover delay in milliseconds; keyboard focus remains immediate.
-* @param props.disabled - suppress the bubble while true; the anchor renders identically so
-* toggling never remounts it (which would cut its CSS transitions).
-* @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
-* half-viewport cap would render a slab wider than the surface the anchor sits on.
-* @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
-* @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body; clicking the
-* anchor dismisses the bubble until the next trigger, and focus arriving after a pointer
-* interaction (a closing menu refocusing its trigger) never raises it.
-*/
-function Tooltip({ label, side = "right", align = "center", delayMs = 0, disabled = false, portal = false, maxWidth, children }) {
-	const anchor = useRef(null);
-	const childRef = children.ref;
-	const mergedRef = useCallback((el) => {
-		anchor.current = el;
-		if (typeof childRef === "function") childRef(el);
-		else if (childRef != null) childRef.current = el;
-	}, [childRef]);
-	const [pos, setPos] = useState(null);
-	const [placement, setPlacement] = useState(side);
-	const bubble = useRef(null);
-	const resolvedLabel = pos === null ? null : typeof label === "function" ? label() : label;
-	const y = pos === null ? 0 : placement === "right" ? pos.top + (pos.bottom - pos.top) / 2 : placement === "top" ? pos.top - 8 : pos.bottom + 8;
-	const EDGE_MARGIN = 12;
-	useLayoutEffect(() => {
-		if (pos === null) return;
-		const fit = () => {
-			const el = bubble.current;
-			/* v8 ignore next -- pos is set only while the bubble is mounted. */
-			if (el === null) return;
-			el.style.left = `${pos.x}px`;
-			const r = el.getBoundingClientRect();
-			let dx = 0;
-			if (r.right > window.innerWidth - EDGE_MARGIN) dx = window.innerWidth - EDGE_MARGIN - r.right;
-			if (r.left + dx < EDGE_MARGIN) dx = EDGE_MARGIN - r.left;
-			el.style.left = `${pos.x + dx}px`;
-			if (side === "right") return;
-			const fitsBelow = pos.bottom + 8 + r.height <= window.innerHeight - EDGE_MARGIN;
-			const fitsAbove = pos.top - 8 - r.height >= EDGE_MARGIN;
-			if (placement === "bottom" && !fitsBelow && fitsAbove) setPlacement("top");
-			if (placement === "top" && !fitsAbove && fitsBelow) setPlacement("bottom");
-		};
-		fit();
-		window.addEventListener("resize", fit);
-		return () => {
-			window.removeEventListener("resize", fit);
-		};
-	}, [
-		placement,
-		pos,
-		resolvedLabel,
-		side
-	]);
-	const showTimer = useRef(null);
-	const triggers = useRef({
-		hover: false,
-		focus: false
-	});
-	const suppressAncestors = useContext(TooltipSuppression);
-	const [suppressed, setSuppressed] = useState(false);
-	const announce = useCallback((active) => {
-		suppressAncestors?.(active);
-	}, [suppressAncestors]);
-	const visible = pos !== null && !disabled;
-	useEffect(() => {
-		announce(visible);
-		return () => {
-			announce(false);
-		};
-	}, [announce, visible]);
-	const cancelShow = useCallback(() => {
-		if (showTimer.current === null) return;
-		clearTimeout(showTimer.current);
-		showTimer.current = null;
-	}, []);
-	useEffect(() => {
-		if (disabled) {
-			cancelShow();
-			triggers.current = {
-				hover: false,
-				focus: false
-			};
-			setPos(null);
-		}
-		return cancelShow;
-	}, [cancelShow, disabled]);
-	const show = () => {
-		if (disabled) return;
-		const el = anchor.current;
-		/* v8 ignore next -- the ref is attached by event time: events fire on the cloned anchor. */
-		if (el === null) return;
-		const r = el.getBoundingClientRect();
-		setPlacement(side);
-		setPos({
-			x: side === "right" ? r.right + 10 : align === "end" ? r.right : r.left + r.width / 2,
-			top: r.top,
-			bottom: r.bottom
-		});
-		announce(true);
-	};
-	const showAfterHoverDelay = () => {
-		cancelShow();
-		if (delayMs <= 0) {
-			show();
-			return;
-		}
-		showTimer.current = setTimeout(() => {
-			showTimer.current = null;
-			show();
-		}, delayMs);
-	};
-	const withdraw = () => {
-		setPos(null);
-		announce(false);
-	};
-	const hide = () => {
-		cancelShow();
-		if (!triggers.current.hover && !triggers.current.focus) withdraw();
-	};
-	const content = visible && !suppressed && jsx("span", {
-		ref: bubble,
-		className: css$20.bubble,
-		"data-side": placement,
-		"data-portal": portal || void 0,
-		"data-align": align,
-		style: {
-			left: pos.x,
-			top: y,
-			...maxWidth === void 0 ? {} : { maxWidth }
-		},
-		role: "tooltip",
-		children: resolvedLabel
-	});
-	return jsxs(TooltipSuppression.Provider, {
-		value: setSuppressed,
-		children: [cloneElement(children, {
-			ref: mergedRef,
-			onMouseEnter: (e) => {
-				children.props.onMouseEnter?.(e);
-				triggers.current.hover = true;
-				showAfterHoverDelay();
-			},
-			onMouseLeave: (e) => {
-				children.props.onMouseLeave?.(e);
-				triggers.current.hover = false;
-				cancelShow();
-				withdraw();
-			},
-			onClick: (e) => {
-				children.props.onClick?.(e);
-				triggers.current.focus = false;
-				cancelShow();
-				withdraw();
-			},
-			onFocus: (e) => {
-				children.props.onFocus?.(e);
-				if (pointerModality) return;
-				triggers.current.focus = true;
-				cancelShow();
-				show();
-			},
-			onBlur: (e) => {
-				children.props.onBlur?.(e);
-				triggers.current.focus = false;
-				hide();
-			}
-		}), portal ? content !== false && createPortal(content, document.body) : content]
-	});
 }
 //#endregion
 //#region lib/types/Toast.js
@@ -6149,25 +6655,25 @@ function Toast({ text, icon, tone, anchor, holdMs = HOLD_MS, actions, onDone }) 
 		};
 	}, [anchor]);
 	return createPortal(jsxs("div", {
-		className: css$21.toast,
+		className: css$22.toast,
 		role: "alert",
 		style: {
 			...left === null ? {} : { left },
 			"--dsh-toast-hold": `${String(holdMs)}ms`
 		},
 		children: [tone === "success" ? jsx("span", {
-			className: `${css$21.icon} ${css$21.success}`,
+			className: `${css$22.icon} ${css$22.success}`,
 			"aria-hidden": true,
 			children: jsx(IconCheckCircleOutlineRegular, {})
 		}) : icon !== void 0 && jsx("span", {
-			className: css$21.icon,
+			className: css$22.icon,
 			"aria-hidden": true,
 			children: icon
 		}), jsxs("span", {
-			className: css$21.text,
+			className: css$22.text,
 			children: [text, actions?.map((action) => jsxs(Fragment$1, { children: [action.prefix, jsx("button", {
 				type: "button",
-				className: css$21.action,
+				className: css$22.action,
 				onClick: action.onClick,
 				children: action.label
 			})] }, action.label))]
@@ -6217,29 +6723,29 @@ function SettingsForm(props) {
 		discard.current();
 	}, []);
 	if (!state.available) return jsx("p", {
-		className: css$22.unavailable,
+		className: css$23.unavailable,
 		role: "status",
 		children: labels.unavailable
 	});
 	const blocked = !state.dirty || state.invalid || state.saving;
 	return jsxs("div", {
-		className: css$22.form,
+		className: css$23.form,
 		children: [
 			!state.writable ? jsx("p", {
-				className: css$22.readOnly,
+				className: css$23.readOnly,
 				role: "status",
 				children: labels.readOnly
 			}) : null,
 			props.children,
 			jsxs("div", {
-				className: css$22.footer,
+				className: css$23.footer,
 				children: [state.failed ? jsx("p", {
-					className: css$22.failed,
+					className: css$23.failed,
 					role: "status",
 					children: labels.saveFailed
 				}) : null, jsx("button", {
 					type: "button",
-					className: css$22.save,
+					className: css$23.save,
 					disabled: blocked,
 					onClick: props.onSave,
 					children: state.saving ? labels.saving : labels.save
@@ -6271,19 +6777,19 @@ function SettingsValueField(props) {
 	const hasMessage = props.invalid || Boolean(props.hint);
 	const description = [hasMessage ? messageId : "", helpOpen ? helpId : ""].filter(Boolean).join(" ");
 	return jsxs("div", {
-		className: css$23.field,
+		className: css$24.field,
 		children: [
 			jsxs("div", {
-				className: css$23.head,
+				className: css$24.head,
 				children: [jsxs("div", {
-					className: css$23.labelGroup,
+					className: css$24.labelGroup,
 					children: [jsx("label", {
-						className: css$23.label,
+						className: css$24.label,
 						htmlFor: props.id,
 						children: props.label
 					}), props.help !== void 0 ? jsx("button", {
 						type: "button",
-						className: css$23.helpButton,
+						className: css$24.helpButton,
 						"aria-label": props.help.label,
 						"aria-expanded": helpOpen,
 						"aria-controls": helpId,
@@ -6293,13 +6799,13 @@ function SettingsValueField(props) {
 						children: jsx(IconInfoOutlineRegular, { size: 12 })
 					}) : null]
 				}), props.overridden ? jsxs("span", {
-					className: css$23.badges,
+					className: css$24.badges,
 					children: [jsx(Tag, {
 						tone: "neutral",
 						children: props.overriddenLabel
 					}), jsx("button", {
 						type: "button",
-						className: css$23.reset,
+						className: css$24.reset,
 						disabled: props.disabled,
 						onClick: props.onReset,
 						children: props.resetLabel
@@ -6308,7 +6814,7 @@ function SettingsValueField(props) {
 			}),
 			jsx("input", {
 				id: props.id,
-				className: css$23.input,
+				className: css$24.input,
 				type: "text",
 				...props.numeric === true ? { inputMode: "numeric" } : {},
 				...props.invalid ? { "aria-invalid": true } : {},
@@ -6322,12 +6828,12 @@ function SettingsValueField(props) {
 			}),
 			hasMessage ? jsx("p", {
 				id: messageId,
-				className: props.invalid ? css$23.invalid : css$23.hint,
+				className: props.invalid ? css$24.invalid : css$24.hint,
 				children: props.invalid ? props.invalidLabel : props.hint
 			}) : null,
 			props.help !== void 0 && helpOpen ? jsx("div", {
 				id: helpId,
-				className: css$23.help,
+				className: css$24.help,
 				role: "region",
 				"aria-label": props.help.label,
 				children: props.help.content
@@ -6339,21 +6845,22 @@ function SettingsValueField(props) {
 * A write-only credential control. The value never rides a response, so the
 * control reports only whether one is configured and starts blank; a blank
 * draft writes nothing, which keeps the stored key rather than clearing it.
+* The control asks browsers not to autofill saved login passwords.
 * @param props - the field's copy, its staged text, and the configured state.
 * @returns the labelled control.
 */
 function SettingsSecretField(props) {
 	return jsxs("div", {
-		className: css$23.field,
+		className: css$24.field,
 		children: [
 			jsxs("div", {
-				className: css$23.head,
+				className: css$24.head,
 				children: [jsx("label", {
-					className: css$23.label,
+					className: css$24.label,
 					htmlFor: props.id,
 					children: props.label
 				}), jsx("span", {
-					className: css$23.badges,
+					className: css$24.badges,
 					children: jsx(Tag, {
 						tone: props.configured ? "neutral" : "quiet",
 						children: props.stateLabel
@@ -6362,9 +6869,9 @@ function SettingsSecretField(props) {
 			}),
 			jsx("input", {
 				id: props.id,
-				className: css$23.input,
+				className: css$24.input,
 				type: "password",
-				autoComplete: "off",
+				autoComplete: "new-password",
 				value: props.text,
 				disabled: props.disabled,
 				onChange: (event) => {
@@ -6372,7 +6879,7 @@ function SettingsSecretField(props) {
 				}
 			}),
 			jsx("p", {
-				className: css$23.hint,
+				className: css$24.hint,
 				children: props.hint
 			})
 		]
@@ -6678,16 +7185,16 @@ var SettingsFormModel = class {
 * dark blocks), never here — the repo's tokens-only styling rule.
 *
 * Only the three markdown-fence and `run_code` grammars (TypeScript, shell,
-* JSON) load into the singleton at boot — the set every session renders. The
-* read card's wider extension set (the file-extension language hints the read
-* tool's `langFromPath` emits — `packages/fs/tool-fs`: python, rust, yaml,
-* markup, …) is imported lazily and registered the first time such a language
-* is requested, so a session that never opens a read card in one of those
-* languages pays neither the ~1.6 MB of grammar modules nor their synchronous
-* init. The first render of a lazy language falls back to plain text while its
-* grammar loads, then {@link onGrammarLoaded} notifies subscribers to re-render
-* with highlighting. An unknown or absent language falls back to plain text (no
-* highlighting, still monospace) — never an error.
+* JSON) load into the singleton at boot — the set every session renders. Every
+* other language in the shared extension table
+* (`@deepseek-ai/dsh-util-code-language`: python, rust, yaml, markup, …) is
+* imported lazily and registered the first time such a language is requested,
+* so a session that never opens a code surface in one of those languages pays
+* neither the grammar modules nor their synchronous init. The first render of a
+* lazy language falls back to plain text while its grammar loads, then
+* {@link onGrammarLoaded} notifies subscribers to re-render with highlighting.
+* An unknown or absent language falls back to plain text (no highlighting, still
+* monospace) — never an error.
 */
 /**
 * Grammars the singleton loads at boot; each entry's own `name` is the id
@@ -6695,8 +7202,8 @@ var SettingsFormModel = class {
 * resolve to the TypeScript grammar rather than a separate one: it tokenizes
 * plain TS/JS exactly, and JSX/TSX approximately (shiki's TS grammar is not the
 * dedicated TSX grammar, so JSX elements tokenize imperfectly) — an accepted
-* trade to keep the boot set to one JS-family grammar. The read card's wider
-* set loads lazily through {@link LAZY_GRAMMARS}.
+* trade to keep the boot set to one JS-family grammar. Every other language in
+* the shared extension table loads lazily through {@link LAZY_GRAMMARS}.
 */
 const LANGS = [
 	langTs,
@@ -6704,8 +7211,8 @@ const LANGS = [
 	langJson
 ];
 /**
-* The read card's extension grammars, each behind a dynamic import so its
-* module stays out of the boot chunk until a read of that language renders.
+* The non-boot extension grammars, each behind a dynamic import so its module
+* stays out of the boot chunk until a code surface renders that language.
 * Keyed by the grammar id (`LanguageRegistration.name`) the aliases resolve to.
 * `@shikijs/langs`' default export is a `LanguageRegistration[]`; the loader
 * hands the whole array to `loadLanguageSync`, which registers each entry
@@ -6735,16 +7242,51 @@ const LAZY_GRAMMARS = new Map([
 	["less", () => import("@shikijs/langs/less")],
 	["sql", () => import("@shikijs/langs/sql")],
 	["xml", () => import("@shikijs/langs/xml")],
-	["lua", () => import("@shikijs/langs/lua")]
+	["lua", () => import("@shikijs/langs/lua")],
+	["bat", () => import("@shikijs/langs/bat")],
+	["powershell", () => import("@shikijs/langs/powershell")],
+	["fish", () => import("@shikijs/langs/fish")],
+	["dotenv", () => import("@shikijs/langs/dotenv")],
+	["log", () => import("@shikijs/langs/log")],
+	["csv", () => import("@shikijs/langs/csv")],
+	["diff", () => import("@shikijs/langs/diff")],
+	["http", () => import("@shikijs/langs/http")],
+	["rst", () => import("@shikijs/langs/rst")],
+	["latex", () => import("@shikijs/langs/latex")],
+	["bibtex", () => import("@shikijs/langs/bibtex")],
+	["asciidoc", () => import("@shikijs/langs/asciidoc")],
+	["r", () => import("@shikijs/langs/r")],
+	["julia", () => import("@shikijs/langs/julia")],
+	["dart", () => import("@shikijs/langs/dart")],
+	["scala", () => import("@shikijs/langs/scala")],
+	["clojure", () => import("@shikijs/langs/clojure")],
+	["erlang", () => import("@shikijs/langs/erlang")],
+	["elixir", () => import("@shikijs/langs/elixir")],
+	["haskell", () => import("@shikijs/langs/haskell")],
+	["fsharp", () => import("@shikijs/langs/fsharp")],
+	["vb", () => import("@shikijs/langs/vb")],
+	["perl", () => import("@shikijs/langs/perl")],
+	["verilog", () => import("@shikijs/langs/verilog")],
+	["system-verilog", () => import("@shikijs/langs/system-verilog")],
+	["graphql", () => import("@shikijs/langs/graphql")],
+	["proto", () => import("@shikijs/langs/proto")],
+	["hcl", () => import("@shikijs/langs/hcl")],
+	["nix", () => import("@shikijs/langs/nix")],
+	["vue", () => import("@shikijs/langs/vue")],
+	["svelte", () => import("@shikijs/langs/svelte")],
+	["make", () => import("@shikijs/langs/make")],
+	["cmake", () => import("@shikijs/langs/cmake")],
+	["groovy", () => import("@shikijs/langs/groovy")]
 ]);
 /**
 * Language ids (and aliases) the highlighter accepts; everything else renders
 * plain. A Map, not an object: fence info strings are assistant-authored, so
 * a label like `constructor` or `__proto__` must miss instead of resolving an
 * inherited property and crashing the renderer inside shiki. Keys cover both
-* the markdown-fence aliases `CodeBlock` uses and the file-extension hint ids
-* the read tool's `langFromPath` emits, so both callers resolve the same
-* grammars. The JS family maps to the TypeScript grammar (see {@link LANGS} for
+* the markdown-fence aliases `CodeBlock` uses, the file-extension language ids
+* `@deepseek-ai/dsh-util-code-language` resolves, and the short ids
+* `readLangHintForPath` persists, so every caller resolves the same grammars.
+* A new short name in the shared table must be aliased here too. The JS family maps to the TypeScript grammar (see {@link LANGS} for
 * the JSX/TSX approximation). A value not in {@link LANGS} names a
 * {@link LAZY_GRAMMARS} entry loaded on first use.
 */
@@ -6790,15 +7332,89 @@ const LANG_ALIASES = new Map([
 	["less", "less"],
 	["sql", "sql"],
 	["xml", "xml"],
-	["lua", "lua"]
+	["lua", "lua"],
+	["bat", "bat"],
+	["batch", "bat"],
+	["powershell", "powershell"],
+	["ps1", "powershell"],
+	["ps", "powershell"],
+	["fish", "fish"],
+	["properties", "ini"],
+	["dotenv", "dotenv"],
+	["env", "dotenv"],
+	["log", "log"],
+	["csv", "csv"],
+	["diff", "diff"],
+	["patch", "diff"],
+	["http", "http"],
+	["rst", "rst"],
+	["latex", "latex"],
+	["tex", "latex"],
+	["bibtex", "bibtex"],
+	["bib", "bibtex"],
+	["asciidoc", "asciidoc"],
+	["adoc", "asciidoc"],
+	["r", "r"],
+	["julia", "julia"],
+	["jl", "julia"],
+	["dart", "dart"],
+	["scala", "scala"],
+	["clojure", "clojure"],
+	["clj", "clojure"],
+	["erlang", "erlang"],
+	["erl", "erlang"],
+	["elixir", "elixir"],
+	["ex", "elixir"],
+	["exs", "elixir"],
+	["haskell", "haskell"],
+	["hs", "haskell"],
+	["fsharp", "fsharp"],
+	["fs", "fsharp"],
+	["fsi", "fsharp"],
+	["fsx", "fsharp"],
+	["vb", "vb"],
+	["vbnet", "vb"],
+	["perl", "perl"],
+	["pl", "perl"],
+	["pm", "perl"],
+	["verilog", "verilog"],
+	["v", "verilog"],
+	["system-verilog", "system-verilog"],
+	["systemverilog", "system-verilog"],
+	["sv", "system-verilog"],
+	["svh", "system-verilog"],
+	["graphql", "graphql"],
+	["gql", "graphql"],
+	["proto", "proto"],
+	["protobuf", "proto"],
+	["hcl", "hcl"],
+	["tf", "hcl"],
+	["tfvars", "hcl"],
+	["nix", "nix"],
+	["vue", "vue"],
+	["svelte", "svelte"],
+	["make", "make"],
+	["makefile", "make"],
+	["mk", "make"],
+	["cmake", "cmake"],
+	["groovy", "groovy"],
+	["gradle", "groovy"]
 ]);
+/**
+* Resolve a language hint to the grammar id {@link LANG_ALIASES} selects.
+* @param lang - Language hint from a code surface: a canonical grammar id or the read card's persisted short id.
+* @returns The resolved grammar id, or `undefined` when the table aliases no grammar.
+*/
+function grammarForHint(lang) {
+	return lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+}
 /**
 * Whether a language hint can use the shared syntax highlighter.
 * @param lang - Language hint from a code surface.
 * @returns Whether the hint resolves to a supported grammar.
 */
 function supportsHighlighting(lang) {
-	return lang !== void 0 && LANG_ALIASES.has(lang.toLowerCase());
+	return grammarForHint(lang) !== void 0;
 }
 /** All token colors resolve through `--shiki-*` custom properties (theme package sheets). */
 const cssVariablesTheme = createCssVariablesTheme({
@@ -6919,7 +7535,7 @@ setTimeout(() => {
 * @returns the highlighted HTML, or `undefined` for unknown or not-yet-loaded languages.
 */
 function highlightToHtml(code, lang) {
-	const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+	const resolved = grammarForHint(lang);
 	if (resolved === void 0) return void 0;
 	if (!ensureGrammar(resolved)) return void 0;
 	return highlighter().codeToHtml(code, {
@@ -7031,7 +7647,7 @@ var StreamingHighlightSession = class {
 		this.lastCode = code;
 		this.lastLang = lang;
 		this.lastResult = void 0;
-		const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+		const resolved = grammarForHint(lang);
 		if (resolved === void 0 || !ensureGrammar(resolved)) {
 			this.reset(void 0);
 			return;
@@ -7091,7 +7707,7 @@ var StreamingHighlightSession = class {
 * @returns one entry per source line (each an array of runs), or `undefined` for unknown or not-yet-loaded languages.
 */
 function highlightLines(code, lang) {
-	const resolved = lang === void 0 ? void 0 : LANG_ALIASES.get(lang.toLowerCase());
+	const resolved = grammarForHint(lang);
 	if (resolved === void 0) return void 0;
 	if (!ensureGrammar(resolved)) return void 0;
 	const { tokens } = highlighter().codeToTokens(code, {
@@ -7107,89 +7723,6 @@ function highlightLines(code, lang) {
 //#endregion
 //#region lib/types/code-highlighting.js
 /** Shared filename-to-grammar selection and lazy line highlighter for source views. */
-const LANGUAGES = new Map(Object.entries({
-	typescript: [
-		"ts",
-		"tsx",
-		"mts",
-		"cts"
-	],
-	javascript: [
-		"js",
-		"jsx",
-		"mjs",
-		"cjs"
-	],
-	shellscript: [
-		"sh",
-		"bash",
-		"zsh"
-	],
-	json: [
-		"json",
-		"jsonc",
-		"jsonl",
-		"ndjson"
-	],
-	python: [
-		"py",
-		"pyw",
-		"pyi"
-	],
-	ruby: [
-		"rb",
-		"rake",
-		"gemspec"
-	],
-	go: ["go"],
-	rust: ["rs"],
-	java: ["java"],
-	c: ["c", "h"],
-	cpp: [
-		"cc",
-		"cpp",
-		"cxx",
-		"hh",
-		"hpp",
-		"hxx"
-	],
-	csharp: ["cs"],
-	kotlin: ["kt", "kts"],
-	swift: ["swift"],
-	php: ["php"],
-	yaml: ["yaml", "yml"],
-	toml: ["toml"],
-	ini: ["ini"],
-	markdown: ["md", "markdown"],
-	mdx: ["mdx"],
-	html: [
-		"html",
-		"htm",
-		"xhtml"
-	],
-	css: ["css"],
-	scss: ["scss"],
-	less: ["less"],
-	sql: ["sql"],
-	xml: [
-		"xml",
-		"xsd",
-		"xsl",
-		"xslt"
-	],
-	lua: ["lua"]
-}).flatMap(([language, extensions]) => extensions.map((extension) => [extension, language])));
-/** Recognized filename suffixes whose source can use the shared syntax highlighter. */
-const CODE_HIGHLIGHT_EXTENSIONS = [...LANGUAGES.keys()];
-/**
-* Select the shared syntax highlighter's grammar from a filename.
-* @param path - decoded source filename or path.
-* @returns a supported grammar hint, or `undefined` for other suffixes.
-*/
-function languageForPath(path) {
-	const extension = /\.([^./]+)$/u.exec(path.replaceAll("\\", "/"))?.[1]?.toLowerCase();
-	return extension === void 0 ? void 0 : LANGUAGES.get(extension);
-}
 /**
 * Bind the shared lazy highlighter to one language and refresh after its grammar loads.
 * @param language - grammar hint selected from the source filename.
@@ -7412,7 +7945,7 @@ function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) 
 	const object = typeof target.value === "object" && target.value !== null;
 	const copyTitle = state === "copied" ? labels.copied : state === "failed" ? labels.copyFailed : object ? labels.copyPrettyJson : labels.copyValue;
 	return jsx("span", {
-		className: css$24.copySlot,
+		className: css$25.copySlot,
 		children: (persistent || snapshot !== void 0) && jsx(Menu, {
 			open: snapshot?.menuOpen === true,
 			compact: true,
@@ -7421,7 +7954,7 @@ function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) 
 			anchor: jsx("button", {
 				ref: buttonRef,
 				type: "button",
-				className: css$24.actionButton,
+				className: css$25.actionButton,
 				"data-json-copy-button": true,
 				"data-state": state,
 				"aria-label": copyTitle,
@@ -7460,35 +7993,35 @@ function bracketOf(value) {
 }
 function previewPrimitive(value) {
 	if (value === null) return jsx("span", {
-		className: css$24.keywordValue,
+		className: css$25.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$24.stringValue,
+		className: css$25.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$24.numberValue,
+		className: css$25.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$24.keywordValue,
+		className: css$25.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: value.toString()
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: "undefined"
 	});
 	if (typeof value === "symbol") return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: value.description ?? "Symbol"
 	});
 	if (typeof value === "function") return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: value.name || "Function"
 	});
 	return null;
@@ -7502,71 +8035,71 @@ function previewValue(value, depth) {
 	const [open, close] = bracketOf(value);
 	return jsxs(Fragment, { children: [
 		jsx("span", {
-			className: css$24.punctuation,
+			className: css$25.punctuation,
 			children: open
 		}),
 		depth >= PREVIEW_DEPTH_LIMIT ? jsx("span", {
-			className: css$24.previewEllipsis,
+			className: css$25.previewEllipsis,
 			children: "…"
 		}) : visible.map(([key, item], index) => jsxs("span", { children: [
 			index > 0 && jsx("span", {
-				className: css$24.punctuation,
+				className: css$25.punctuation,
 				children: ", "
 			}),
 			!array && jsxs(Fragment, { children: [jsx("span", {
-				className: css$24.previewProperty,
+				className: css$25.previewProperty,
 				children: key
 			}), jsx("span", {
-				className: css$24.punctuation,
+				className: css$25.punctuation,
 				children: ": "
 			})] }),
 			previewValue(item, depth + 1)
 		] }, key)),
 		depth < PREVIEW_DEPTH_LIMIT && entries.length > limit && jsx("span", {
-			className: css$24.previewEllipsis,
+			className: css$25.previewEllipsis,
 			children: ", …"
 		}),
 		jsx("span", {
-			className: css$24.punctuation,
+			className: css$25.punctuation,
 			children: close
 		})
 	] });
 }
 function primitiveValue(value) {
 	if (value === null) return jsx("span", {
-		className: css$24.keywordValue,
+		className: css$25.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$24.stringValue,
+		className: css$25.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$24.keywordValue,
+		className: css$25.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$24.numberValue,
+		className: css$25.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$24.numberValue,
+		className: css$25.numberValue,
 		children: `${value.toString()}n`
 	});
 	if (value instanceof Date) return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: value.toISOString()
 	});
 	if (typeof value === "function") return jsxs("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: ["function() ", "{ }"]
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: "undefined"
 	});
 	return jsx("span", {
-		className: css$24.otherValue,
+		className: css$25.otherValue,
 		children: value.toString()
 	});
 }
@@ -7594,7 +8127,7 @@ function moveFocus(button, direction) {
 function NodeField({ field, expandable, onToggle }) {
 	if (field === void 0) return null;
 	return jsxs("span", {
-		className: clsx(css$24.label, expandable && css$24.clickableLabel),
+		className: clsx(css$25.label, expandable && css$25.clickableLabel),
 		onClick: expandable ? onToggle : void 0,
 		children: [fieldText(field), ":"]
 	});
@@ -7631,7 +8164,7 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 		if (!expanded) return;
 		const raw = rawRef.current;
 		const clips = [];
-		const tree = raw.closest(`.${css$24.root}`);
+		const tree = raw.closest(`.${css$25.root}`);
 		for (let parent = tree.parentElement; parent !== null; parent = parent.parentElement) if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowY)) clips.push(parent);
 		const measure = () => {
 			let top = 0;
@@ -7660,33 +8193,33 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 	if (expanded) {
 		const fieldId = `${contentsId}-field`;
 		return jsxs("div", {
-			className: css$24.stringField,
+			className: css$25.stringField,
 			"data-expanded": true,
 			children: [
 				field !== void 0 && jsxs("span", {
 					id: fieldId,
-					className: css$24.label,
+					className: css$25.label,
 					children: [fieldText(field), ":"]
 				}),
 				jsx("pre", {
 					ref: rawRef,
 					id: contentsId,
-					className: css$24.stringRaw,
+					className: css$25.stringRaw,
 					"data-wrap": wrapped,
 					tabIndex: 0,
 					"aria-labelledby": field === void 0 ? void 0 : fieldId,
 					children: value
 				}),
 				!lastElement && jsx("span", {
-					className: css$24.punctuation,
+					className: css$25.punctuation,
 					children: ","
 				}),
 				jsxs("div", {
-					className: css$24.stringActions,
+					className: css$25.stringActions,
 					children: [
 						stringWrapping !== void 0 && jsx("button", {
 							type: "button",
-							className: css$24.actionButton,
+							className: css$25.actionButton,
 							"aria-label": stringWrapping.label,
 							title: stringWrapping.label,
 							"aria-pressed": wrapped,
@@ -7700,7 +8233,7 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 						}),
 						jsx("button", {
 							type: "button",
-							className: css$24.actionButton,
+							className: css$25.actionButton,
 							"aria-label": labels.collapseNode,
 							title: labels.collapseNode,
 							"aria-expanded": true,
@@ -7725,18 +8258,18 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 		});
 	}
 	return jsxs(Fragment, { children: [renderCopy?.(), jsx("span", {
-		className: css$24.stringField,
+		className: css$25.stringField,
 		"data-expanded": expanded,
 		children: jsxs("span", {
 			ref: contentRef,
 			id: contentsId,
-			className: css$24.stringText,
+			className: css$25.stringText,
 			children: [
 				truncated && jsx("span", {
-					className: css$24.stringToggleSlot,
+					className: css$25.stringToggleSlot,
 					children: jsxs("button", {
 						type: "button",
-						className: css$24.stringToggle,
+						className: css$25.stringToggle,
 						"aria-label": labels.expandNode,
 						"aria-expanded": false,
 						"aria-controls": contentsId,
@@ -7751,12 +8284,12 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 					})
 				}),
 				field !== void 0 && jsxs("span", {
-					className: css$24.label,
+					className: css$25.label,
 					children: [fieldText(field), ":"]
 				}),
 				primitiveValue(value),
 				!lastElement && jsx("span", {
-					className: css$24.punctuation,
+					className: css$25.punctuation,
 					children: ","
 				})
 			]
@@ -7787,7 +8320,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		}
 	};
 	const row = (children, ariaExpanded) => jsxs("div", {
-		className: css$24.row,
+		className: css$25.row,
 		role: "treeitem",
 		"aria-expanded": ariaExpanded,
 		onMouseOver: (event) => {
@@ -7822,7 +8355,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		}),
 		primitiveValue(value),
 		!lastElement && jsx("span", {
-			className: css$24.punctuation,
+			className: css$25.punctuation,
 			children: ","
 		})
 	] }));
@@ -7834,22 +8367,22 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 			onToggle: toggle
 		}),
 		jsx("span", {
-			className: css$24.punctuation,
+			className: css$25.punctuation,
 			children: open
 		}),
 		jsx("span", {
-			className: css$24.punctuation,
+			className: css$25.punctuation,
 			children: close
 		}),
 		!lastElement && jsx("span", {
-			className: css$24.punctuation,
+			className: css$25.punctuation,
 			children: ","
 		})
 	] }));
 	return row(jsxs(Fragment, { children: [
 		jsx("span", {
 			ref: expanderRef,
-			className: clsx(css$24.expander, expanded ? css$24.collapseIcon : css$24.expandIcon),
+			className: clsx(css$25.expander, expanded ? css$25.collapseIcon : css$25.expandIcon),
 			"data-json-expander": true,
 			role: "button",
 			"aria-label": expanded ? labels.collapseNode : labels.expandNode,
@@ -7863,7 +8396,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 			onKeyDown: onExpanderKeyDown
 		}),
 		jsxs("span", {
-			className: css$24.summary,
+			className: css$25.summary,
 			children: [
 				jsx(NodeField, {
 					field,
@@ -7871,11 +8404,11 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 					onToggle: toggle
 				}),
 				jsx("span", {
-					className: css$24.preview,
+					className: css$25.preview,
 					children: previewValue(value, 0)
 				}),
 				!lastElement && jsx("span", {
-					className: css$24.punctuation,
+					className: css$25.punctuation,
 					children: ","
 				})
 			]
@@ -7883,7 +8416,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		expanded && jsx("ul", {
 			id: contentsId,
 			role: "group",
-			className: css$24.children,
+			className: css$25.children,
 			children: entries.map(([key, item], index) => jsx(JsonTreeNode, {
 				collapsedStringLines,
 				stringWrapping,
@@ -8015,17 +8548,17 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 		onClose: clearCopyTarget
 	}) : void 0;
 	return jsx("div", {
-		className: clsx(css$24.root, className),
+		className: clsx(css$25.root, className),
 		style: { "--json-tree-collapsed-lines": collapsedStringLines },
 		onMouseOver: handleRootMouseOver,
 		onMouseLeave: () => {
 			if (!copyStore.get()?.menuOpen) clearCopyTarget();
 		},
 		children: expandTopLevel ? jsxs("div", {
-			className: css$24.expandedTopLevel,
+			className: css$25.expandedTopLevel,
 			children: [
 				jsxs("div", {
-					className: clsx(css$24.row, css$24.topLevelBracket),
+					className: clsx(css$25.row, css$25.topLevelBracket),
 					"data-json-root-row": true,
 					onMouseOver: (event) => {
 						event.stopPropagation();
@@ -8038,13 +8571,13 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 						path: [],
 						value: data
 					}), jsx("span", {
-						className: css$24.punctuation,
+						className: css$25.punctuation,
 						children: rootOpen
 					})]
 				}),
 				jsx("div", {
 					"aria-label": label,
-					className: clsx(css$24.container, css$24.expandedTopLevelContainer),
+					className: clsx(css$25.container, css$25.expandedTopLevelContainer),
 					role: "tree",
 					children: rootEntries.map(([key, value], index) => jsx(JsonTreeNode, {
 						collapsedStringLines,
@@ -8062,16 +8595,16 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 					}, key))
 				}),
 				jsx("div", {
-					className: clsx(css$24.row, css$24.topLevelBracket),
+					className: clsx(css$25.row, css$25.topLevelBracket),
 					children: jsx("span", {
-						className: css$24.punctuation,
+						className: css$25.punctuation,
 						children: rootClose
 					})
 				})
 			]
 		}) : jsx("div", {
 			"aria-label": label,
-			className: css$24.container,
+			className: css$25.container,
 			role: "tree",
 			children: jsx(JsonTreeNode, {
 				collapsedStringLines,
@@ -8634,67 +9167,67 @@ function TerminalBlock({ command, cwd, home, output, exitCode, signal, running =
 	const { hidden, capped, headLines, tailLines } = headTailCap(lines.length, maxLines, expanded);
 	const body = !running || !empty;
 	return jsxs("div", {
-		className: clsx(css$25.block, className),
+		className: clsx(css$26.block, className),
 		"data-terminal": "",
 		"data-running": running ? "" : void 0,
 		"data-body": body ? "" : void 0,
 		children: [jsxs("div", {
-			className: css$25.header,
+			className: css$26.header,
 			children: [
 				jsxs("div", {
-					className: css$25.prompt,
+					className: css$26.prompt,
 					children: [runStateDot && jsx("span", {
-						className: css$25.runStateLabel,
+						className: css$26.runStateLabel,
 						children: state.label
 					}), commandLines.map((line, index) => jsxs("div", {
-						className: css$25.promptLine,
+						className: css$26.promptLine,
 						children: [
 							index === 0 && runStateDot && jsx(StateDot, {
 								state: state.state,
-								className: css$25.runState
+								className: css$26.runState
 							}),
 							jsx("span", {
-								className: css$25.cwd,
+								className: css$26.cwd,
 								children: index > 0 || cwd === void 0 ? "$" : promptLabel(cwd, home)
 							}),
 							jsx("span", {
-								className: css$25.command,
+								className: css$26.command,
 								children: line
 							})
 						]
 					}, index))]
 				}),
 				status !== void 0 && jsx(Pill, {
-					className: css$25.status,
+					className: css$26.status,
 					children: status
 				}),
 				(copyText !== void 0 || !running && !empty) && jsx("button", {
 					type: "button",
-					className: css$25.copyButton,
+					className: css$26.copyButton,
 					onClick: onCopy,
 					children: copied ? copy.copied : copy.copy
 				})
 			]
 		}), body && (empty ? jsx("div", {
-			className: css$25.empty,
+			className: css$26.empty,
 			children: copy.noOutput
 		}) : jsxs("div", {
-			className: css$25.output,
+			className: css$26.output,
 			children: [
 				(capped ? lines.slice(0, headLines) : lines).map((line, index) => jsx("div", {
-					className: css$25.line,
+					className: css$26.line,
 					children: renderLine$1(line)
 				}, index)),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$25.expand,
+					className: css$26.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? copy.collapseAria : copy.expandAria(hidden),
 					onClick: onToggle,
 					children: expanded ? copy.collapse : copy.expand(hidden)
 				}),
 				capped && lines.slice(lines.length - tailLines).map((line, index) => jsx("div", {
-					className: css$25.line,
+					className: css$26.line,
 					children: renderLine$1(line)
 				}, index))
 			]
@@ -8716,6 +9249,66 @@ function FoldToggle({ className, expanded, hidden, labels, onToggle }) {
 		"aria-label": expanded ? labels.collapseAria : labels.expandAria(hidden),
 		onClick: onToggle,
 		children: expanded ? labels.collapse : labels.expand(hidden)
+	});
+}
+//#endregion
+//#region lib/types/CodeToolbar.js
+/** Shared language, wrapping, and clipboard controls for code cards. */
+/**
+* Render a language label and keyboard-accessible icon actions with tooltips.
+* @param props - Localized labels, current state, and card-owned actions.
+* @returns The shared code-card header.
+*/
+function CodeToolbar({ lang, title, status, labels, copyLabel, copiedLabel, copied, wrapped, onCopy, onWrap }) {
+	const wrapLabel = wrapped ? labels.unwrapLabel : labels.wrapLabel;
+	const clipboardLabel = copied ? copiedLabel : copyLabel;
+	return jsxs("div", {
+		className: cardCss.header,
+		"data-code-block-banner": true,
+		children: [jsxs("div", {
+			className: cardCss.heading,
+			children: [jsx("span", {
+				className: cardCss.language,
+				children: supportsHighlighting(lang) ? lang : labels.codeLabel
+			}), title !== void 0 && jsx("span", {
+				className: cardCss.title,
+				title,
+				children: title
+			})]
+		}), jsxs("div", {
+			className: cardCss.actions,
+			children: [
+				status !== void 0 && jsx("span", {
+					className: cardCss.status,
+					children: status
+				}),
+				onWrap !== void 0 && jsx(Tooltip, {
+					label: wrapLabel,
+					side: "top",
+					portal: true,
+					children: jsx("button", {
+						type: "button",
+						className: cardCss.action,
+						"aria-label": labels.wrapLabel,
+						"aria-pressed": wrapped,
+						onClick: onWrap,
+						children: wrapped ? jsx(IconNowrapFillRegular, { size: 14 }) : jsx(IconWrapFillRegular, { size: 14 })
+					})
+				}),
+				onCopy !== void 0 && jsx(Tooltip, {
+					label: clipboardLabel,
+					side: "top",
+					portal: true,
+					children: jsx("button", {
+						type: "button",
+						className: cardCss.action,
+						"aria-label": clipboardLabel,
+						onClick: onCopy,
+						children: copied ? jsx(IconCheckOutlineRegular, { size: 14 }) : jsx(IconCopyOutlineRegular, { size: 14 })
+					})
+				})
+			]
+		})]
 	});
 }
 //#endregion
@@ -8817,6 +9410,7 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	]);
 	const [expanded, setExpanded] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [wrapped, setWrapped] = useState(false);
 	const onCopy = useCallback(() => {
 		if (copied) return;
 		writeClipboard(raw).then((ok) => {
@@ -8836,51 +9430,43 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	const tailLines = maxLines - headLines;
 	const windowed = lines.length < totalLines;
 	const rows = (slice) => slice.map(([line, spans]) => jsxs("div", {
-		className: css$26.line,
+		className: css$27.line,
 		children: [jsx("span", {
-			className: css$26.gutter,
+			className: css$27.gutter,
 			"aria-hidden": true,
 			children: line.number
 		}), jsx("span", {
-			className: css$26.content,
+			className: css$27.content,
 			children: spans === void 0 ? line.text : renderSpans(spans)
 		})]
 	}, line.number));
+	const gutterStyle = { "--dsl-read-gutter": `${lines.reduce((digits, line) => Math.max(digits, String(line.number).length), 3)}ch` };
 	const paired = lines.map((line, index) => [line, highlighted?.[index]]);
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(css$26.block, className),
+		className: clsx(cardCss.card, css$27.block, className),
 		"data-read": "",
-		children: [jsxs("div", {
-			className: css$26.banner,
-			children: [jsx("div", {
-				className: css$26.label,
-				children: label ?? ""
-			}), jsxs("div", {
-				className: css$26.action,
-				children: [
-					windowed && jsx("span", {
-						className: css$26.count,
-						children: labels.window(lines.length, totalLines)
-					}),
-					jsx("span", {
-						className: css$26.lang,
-						children: lang ?? ""
-					}),
-					lines.length > 0 && jsx("button", {
-						type: "button",
-						className: css$26.copyButton,
-						onClick: onCopy,
-						children: copied ? labels.copied : labels.copy
-					})
-				]
-			})]
+		"data-code-wrap": wrapped,
+		style: gutterStyle,
+		children: [jsx(CodeToolbar, {
+			lang,
+			title: label,
+			status: windowed ? labels.window(lines.length, totalLines) : void 0,
+			labels,
+			copyLabel: labels.copy,
+			copiedLabel: labels.copied,
+			copied,
+			wrapped,
+			onCopy: lines.length > 0 ? onCopy : void 0,
+			onWrap: () => {
+				setWrapped((value) => !value);
+			}
 		}), jsxs("div", {
-			className: css$26.body,
+			className: cardCss.body,
 			children: [
 				rows(capped ? paired.slice(0, headLines) : paired),
 				hidden > 0 && jsx(FoldToggle, {
-					className: css$26.expand,
+					className: css$27.expand,
 					expanded,
 					hidden,
 					labels,
@@ -8902,11 +9488,11 @@ function assertNever(value) {
 }
 /** The dim class per row kind (path/gap chrome vs the diff's own +/- colors). */
 const ROW_CLASS = {
-	path: css$27.path,
-	del: css$27.del,
-	add: css$27.add,
-	context: css$27.context,
-	gap: css$27.gap
+	path: css$28.path,
+	del: css$28.del,
+	add: css$28.add,
+	context: css$28.context,
+	gap: css$28.gap
 };
 /** Bound synchronous edit-graph search; one replacement consumes two edits. */
 const MAX_DIFF_EDIT_LENGTH = 256;
@@ -8925,7 +9511,7 @@ function localHunks(diff) {
 * comparisons exceeding the edit limit count both complete fragments as replaced.
 * Text follows {@link contentLines}'s terminator rule.
 * @param diffs - the hunks to count.
-* @returns the +/- totals for summaries and the card footer.
+* @returns the +/- totals for tool summaries.
 */
 function diffTotals(diffs) {
 	let added = 0;
@@ -8940,18 +9526,16 @@ function diffTotals(diffs) {
 	};
 }
 /**
-* Flatten local patches into rows and count only added and removed lines.
+* Flatten local patches into rows.
 * A path header opens each new file. A `⋯` gap separates consecutive same-file
-* fragments and distant patches within a fragment. File counts use distinct paths.
+* fragments and distant patches within a fragment.
 * @param diffs - the hunks to render.
-* @returns the body rows, the +/- totals, and the distinct-file count.
+* @returns the body rows.
 */
 function buildRows(diffs) {
 	const rows = [];
-	const paths = /* @__PURE__ */ new Set();
 	let prevPath;
 	for (const diff of diffs) {
-		paths.add(diff.path);
 		if (diff.path !== prevPath) rows.push({
 			kind: "path",
 			text: diff.path
@@ -8975,12 +9559,7 @@ function buildRows(diffs) {
 			}
 		}
 	}
-	return {
-		rows,
-		added: rows.filter((row) => row.kind === "add").length,
-		removed: rows.filter((row) => row.kind === "del").length,
-		files: paths.size
-	};
+	return rows;
 }
 /**
 * Split a side's text into its content lines. Empty text is zero lines (a full
@@ -9020,9 +9599,12 @@ function copyText$1(rows) {
 * @returns the diff block element.
 */
 function DiffBlock({ diffs, labels, maxLines = 16, className }) {
-	const { rows, added, removed, files } = useMemo(() => buildRows(diffs), [diffs]);
+	const rows = useMemo(() => buildRows(diffs), [diffs]);
 	const [expanded, setExpanded] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [wrapped, setWrapped] = useState(false);
+	const firstLanguage = diffs[0] === void 0 ? void 0 : languageForPath(diffs[0].path);
+	const language = diffs.every((diff) => languageForPath(diff.path) === firstLanguage) ? firstLanguage : void 0;
 	const onCopy = useCallback(() => {
 		if (copied) return;
 		writeClipboard(copyText$1(rows)).then((ok) => {
@@ -9044,47 +9626,40 @@ function DiffBlock({ diffs, labels, maxLines = 16, className }) {
 	const head = capped ? rows.slice(0, headLines) : rows;
 	const tail = capped ? rows.slice(rows.length - tailLines) : [];
 	return jsxs("div", {
-		className: clsx(css$27.block, className),
+		className: clsx(cardCss.card, css$28.block, className),
 		"data-diff": "",
-		children: [
-			jsx("button", {
-				type: "button",
-				className: css$27.copyButton,
-				onClick: onCopy,
-				children: copied ? labels.copied : labels.copy
-			}),
-			jsxs("div", {
-				className: css$27.body,
-				children: [
-					head.map((row, index) => jsx("div", {
-						className: clsx(css$27.line, ROW_CLASS[row.kind]),
-						children: row.text
-					}, index)),
-					hidden > 0 && jsx(FoldToggle, {
-						className: css$27.expand,
-						expanded,
-						hidden,
-						labels,
-						onToggle
-					}),
-					tail.map((row, index) => jsx("div", {
-						className: clsx(css$27.line, ROW_CLASS[row.kind]),
-						children: row.text
-					}, index))
-				]
-			}),
-			jsxs("div", {
-				className: css$27.footer,
-				children: [
-					"└ +",
-					added,
-					" -",
-					removed,
-					" · ",
-					labels.files(files)
-				]
-			})
-		]
+		"data-code-wrap": wrapped,
+		children: [jsx(CodeToolbar, {
+			lang: language,
+			labels,
+			copyLabel: labels.copy,
+			copiedLabel: labels.copied,
+			copied,
+			wrapped,
+			onCopy,
+			onWrap: () => {
+				setWrapped((value) => !value);
+			}
+		}), jsxs("div", {
+			className: css$28.body,
+			children: [
+				head.map((row, index) => jsx("div", {
+					className: clsx(css$28.line, ROW_CLASS[row.kind]),
+					children: row.text
+				}, index)),
+				hidden > 0 && jsx(FoldToggle, {
+					className: css$28.expand,
+					expanded,
+					hidden,
+					labels,
+					onToggle
+				}),
+				tail.map((row, index) => jsx("div", {
+					className: clsx(css$28.line, ROW_CLASS[row.kind]),
+					children: row.text
+				}, index))
+			]
+		})]
 	});
 }
 //#endregion
@@ -9210,56 +9785,56 @@ function SearchBlock(props) {
 	const tail = tailHeader === void 0 ? naturalTail : naturalTail.slice(1);
 	const renderRow = (row) => {
 		if (row.type === "path") return jsx("div", {
-			className: css$28.line,
+			className: css$29.line,
 			children: row.path
 		});
 		if (row.type === "match") return jsxs("div", {
-			className: css$28.line,
+			className: css$29.line,
 			children: [jsxs("span", {
-				className: css$28.lineNumber,
+				className: css$29.lineNumber,
 				children: [row.lineNumber, ": "]
 			}), row.line]
 		});
 		return jsxs("button", {
 			type: "button",
-			className: css$28.fileHeader,
+			className: css$29.fileHeader,
 			"aria-expanded": !row.collapsed,
 			onClick: () => {
 				toggleFile(row.index);
 			},
 			children: [jsx("span", {
-				className: css$28.filePath,
+				className: css$29.filePath,
 				children: row.path
 			}), jsx("span", {
-				className: css$28.fileCount,
+				className: css$29.fileCount,
 				children: row.count
 			})]
 		});
 	};
 	return jsxs("div", {
-		className: clsx(css$28.block, className),
+		className: clsx(css$29.block, className),
 		"data-search": props.kind,
 		children: [jsxs("div", {
-			className: css$28.header,
+			className: css$29.header,
 			children: [jsx("span", {
-				className: css$28.summary,
+				className: css$29.summary,
 				children: summaryText(props, shown, truncated, total)
 			}), !empty && jsx("button", {
 				type: "button",
-				className: css$28.copyButton,
+				className: css$29.copyButton,
 				onClick: onCopy,
 				children: copied ? props.labels.copied : props.labels.copy
 			})]
 		}), empty ? jsx("div", {
-			className: css$28.empty,
+			className: css$29.empty,
 			children: props.labels.noResults
 		}) : jsxs("div", {
-			className: css$28.body,
+			className: css$29.body,
 			children: [
 				head.map((row) => jsx("div", { children: renderRow(row) }, rowKey(row))),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$28.expand,
+					className: css$29.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? props.labels.collapseAria : props.labels.expandAria(hidden),
 					onClick: onToggle,
@@ -9569,6 +10144,32 @@ var IncrementalMarkdownParser = class {
 		return this.cached;
 	}
 };
+//#endregion
+//#region lib/types/markdown/local-image-syntax.js
+/**
+* Recover only unambiguous, unescaped image-only paragraphs containing a local path with spaces.
+* @param root - Parsed Markdown tree, modified in place.
+* @param source - Original source used to distinguish authored syntax from escaped examples.
+* @returns The same root with recovered image nodes.
+*/
+function recoverLocalImages(root, source) {
+	const visit = (node) => {
+		if (node.type === "paragraph" && node.children.length === 1) {
+			const [child] = node.children;
+			if (child.type === "text" && child.position !== void 0 && source.slice(child.position.start.offset, child.position.end.offset) === child.value) {
+				const match = /^!\[([^\]\n]*)\]\(((?:\/(?!\/)|\.{1,2}\/|[a-z]:[\\/])[^\n<>()[\]"']+\.[a-z\d]+)\)$/iu.exec(child.value);
+				if (match !== null && match[2].includes(" ") && classifyFileType(match[2]) === "image") node.children = [{
+					type: "image",
+					alt: match[1],
+					url: match[2],
+					position: child.position
+				}];
+			}
+		} else if ("children" in node) for (const child of node.children) visit(child);
+	};
+	visit(root);
+	return root;
+}
 //#endregion
 //#region lib/types/markdown/cjkFriendlyStrong.js
 /** Let asterisk strong emphasis close after punctuation when CJK prose continues without whitespace. */
@@ -9916,10 +10517,10 @@ function mathCompatibility() {
 * @returns The mdast root.
 */
 function parseGfm(text) {
-	return fromMarkdown(text, {
+	return recoverLocalImages(fromMarkdown(text, {
 		extensions: [gfm(), cjkFriendlyStrong()],
 		mdastExtensions: [gfmFromMarkdown()]
-	});
+	}), text);
 }
 /**
 * Parse GFM markdown plus TeX math with the compatibility delimiters
@@ -9928,7 +10529,7 @@ function parseGfm(text) {
 * @returns The mdast root.
 */
 function parseGfmWithMath(text) {
-	return fromMarkdown(text, {
+	return recoverLocalImages(fromMarkdown(text, {
 		extensions: [
 			gfm(),
 			cjkFriendlyStrong(),
@@ -9936,7 +10537,7 @@ function parseGfmWithMath(text) {
 			math()
 		],
 		mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()]
-	});
+	}), text);
 }
 //#endregion
 //#region lib/types/markdown/CodeBlock.js
@@ -9965,7 +10566,7 @@ function renderLine(line, index) {
 		}, spanIndex))
 	})] }, index);
 }
-function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers = false, showHeader = true, copyLabel, copiedLabel }) {
+function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers = false, showHeader = true, copyLabel, copiedLabel, toolbarLabels, wrap }) {
 	const trimmed = code.endsWith("\n") ? code.slice(0, -1) : code;
 	const sourceLines = lineNumbers ? trimmed.split("\n") : void 0;
 	const rootRef = useRef(null);
@@ -10050,6 +10651,8 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 		loaded
 	]);
 	const [copied, setCopied] = useState(false);
+	const [localWrapped, setWrapped] = useState(true);
+	const wrapped = wrap ?? localWrapped;
 	const onCopy = useCallback(() => {
 		if (copied) return;
 		writeClipboard(rootRef.current?.querySelector("pre")?.textContent ?? trimmed).then((ok) => {
@@ -10061,7 +10664,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 		});
 	}, [copied, trimmed]);
 	const body = streamedBody !== void 0 ? streamedBody : html === void 0 ? jsx("pre", {
-		className: css$29.plain,
+		className: css$30.plain,
 		children: jsx("code", { children: sourceLines === void 0 ? trimmed : sourceLines.map((line, index) => jsxs(Fragment$1, { children: [index > 0 && "\n", jsx("span", {
 			className: "line",
 			children: line
@@ -10069,22 +10672,34 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 	}) : jsx("div", { dangerouslySetInnerHTML: { __html: html } });
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(css$29.block, "md-code-block", lineNumbers && css$29.numbered, className),
+		className: clsx(css$30.block, "md-code-block", lineNumbers && css$30.numbered, toolbarLabels !== void 0 && css$30.card, className),
 		"data-line-numbers": lineNumbers || void 0,
+		"data-code-wrap": toolbarLabels === void 0 ? void 0 : wrapped,
 		style: sourceLines === void 0 ? void 0 : { "--dsl-code-block-line-number-width": `${Math.max(2, String(sourceLines.length).length)}ch` },
 		children: [showHeader && jsx("div", {
-			className: css$29.bannerWrap,
-			children: jsxs("div", {
-				className: css$29.banner,
+			className: css$30.bannerWrap,
+			children: toolbarLabels !== void 0 ? jsx(CodeToolbar, {
+				lang,
+				labels: toolbarLabels,
+				copyLabel,
+				copiedLabel,
+				copied,
+				wrapped,
+				onCopy,
+				onWrap: wrap === void 0 ? () => {
+					setWrapped((value) => !value);
+				} : void 0
+			}) : jsxs("div", {
+				className: css$30.banner,
 				"data-code-block-banner": true,
 				children: [jsx("div", {
-					className: css$29.infostring,
+					className: css$30.infostring,
 					children: lang ?? ""
 				}), jsx("div", {
-					className: css$29.action,
+					className: css$30.action,
 					children: jsx("button", {
 						type: "button",
-						className: css$29.copyButton,
+						className: css$30.copyButton,
 						onClick: onCopy,
 						children: copied ? copiedLabel : copyLabel
 					})
@@ -10092,7 +10707,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 			})
 		}), jsx("div", {
 			ref: contentRef,
-			className: css$29.content,
+			className: css$30.content,
 			"data-code-block-content": true,
 			children: body
 		})]
@@ -10222,11 +10837,16 @@ const MarkdownDelegateContext = createContext({});
 * @param props - Child tree and its file and HTTP(S) link handlers.
 * @returns the scoped child tree.
 */
-function MarkdownDelegateProvider({ children, openExternalLink, openFile }) {
+function MarkdownDelegateProvider({ children, openExternalLink, openFile, fileImages }) {
 	const delegate = useMemo(() => ({
 		openExternalLink,
-		openFile
-	}), [openExternalLink, openFile]);
+		openFile,
+		fileImages
+	}), [
+		openExternalLink,
+		openFile,
+		fileImages
+	]);
 	return jsx(MarkdownDelegateContext.Provider, {
 		value: delegate,
 		children
@@ -10238,6 +10858,111 @@ function MarkdownDelegateProvider({ children, openExternalLink, openFile }) {
 */
 function useMarkdownDelegate() {
 	return useContext(MarkdownDelegateContext);
+}
+//#endregion
+//#region lib/types/ImageLightbox.js
+/**
+* Document-level original-image preview opened by clicking a thumbnail.
+* Closes on Escape, backdrop press, or the close control, and restores focus
+* to the opener on unmount. Rendered through a body portal: an opener inside
+* a transformed or filtered ancestor would otherwise trap the fixed backdrop
+* in that ancestor's box instead of covering the viewport.
+*
+* @param props.src - the original image URL.
+* @param props.alt - the image's alt text.
+* @param props.labels - dialog and close-control strings.
+* @param props.onClose - dismiss callback owned by the opener.
+* @returns the modal preview dialog.
+*/
+function ImageLightbox({ src, alt, labels, onClose }) {
+	const closeRef = useRef(null);
+	const restoreRef = useRef(null);
+	useEffect(() => {
+		restoreRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		closeRef.current?.focus();
+		const onKeyDown = (event) => {
+			if (event.key === "Escape") {
+				event.stopPropagation();
+				onClose();
+			}
+			if (event.key === "Tab") {
+				event.preventDefault();
+				closeRef.current?.focus();
+			}
+		};
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown, true);
+			restoreRef.current?.focus();
+		};
+	}, [onClose]);
+	return createPortal(jsxs("div", {
+		className: css$31.backdrop,
+		role: "dialog",
+		"aria-modal": "true",
+		"aria-label": labels.dialog,
+		children: [
+			jsx("div", {
+				className: css$31.mask,
+				"aria-hidden": "true",
+				onMouseDown: onClose
+			}),
+			jsx("img", {
+				className: css$31.image,
+				src,
+				alt
+			}),
+			jsx("button", {
+				ref: closeRef,
+				type: "button",
+				className: css$31.close,
+				"aria-label": labels.close,
+				onClick: onClose,
+				children: jsx(IconCloseOutlineRegular, { size: 16 })
+			})
+		]
+	}), document.body);
+}
+//#endregion
+//#region lib/types/ImagePreview.js
+/** Passive, contained image preview for Markdown image links. */
+/**
+* Render an image without introducing a second activation target.
+* @param props - Source, accessible description, localized status.
+* @returns A contained preview with loading or failure status.
+*/
+function ImagePreview({ src, alt, loadingLabel, failedLabel }) {
+	return jsx(Preview, {
+		src,
+		alt,
+		loadingLabel,
+		failedLabel
+	}, src);
+}
+function Preview({ src, alt, loadingLabel, failedLabel }) {
+	const [state, setState] = useState("loading");
+	return jsxs("span", {
+		className: css$32.frame,
+		children: [state !== "failed" && jsx("img", {
+			src,
+			alt,
+			loading: "lazy",
+			decoding: "async",
+			referrerPolicy: "no-referrer",
+			className: css$32.image,
+			"data-ready": state === "ready" || void 0,
+			onLoad: () => {
+				setState("ready");
+			},
+			onError: () => {
+				setState("failed");
+			}
+		}), state !== "ready" && jsxs("span", {
+			className: css$32.status,
+			role: "status",
+			children: [state === "loading" && jsx(IconLoadingOutlineRegular, { size: 16 }), jsx("span", { children: state === "loading" ? loadingLabel : failedLabel })]
+		})]
+	});
 }
 //#endregion
 //#region lib/types/markdown/render.js
@@ -10278,11 +11003,11 @@ function remoteImageUrl(url) {
 		return;
 	}
 }
-/** Protocols a vocabulary-rewritten image destination may carry. */
+/** Rewritten images may use Web media protocols or the Desktop application's file route. */
 function vocabularyImageUrl(url) {
 	try {
 		const protocol = new URL(url).protocol;
-		return protocol === "http:" || protocol === "https:" || protocol === "blob:" || protocol === "data:" ? url : void 0;
+		return protocol === "http:" || protocol === "https:" || protocol === "blob:" || protocol === "data:" || url.startsWith("dsh-app://app/api/file?") ? url : void 0;
 	} catch {
 		return;
 	}
@@ -10434,7 +11159,8 @@ function renderCode(node, key, context) {
 		lang,
 		streaming: context.streaming,
 		copyLabel: context.labels.code.copyLabel,
-		copiedLabel: context.labels.code.copiedLabel
+		copiedLabel: context.labels.code.copiedLabel,
+		toolbarLabels: context.labels.code.toolbarLabels
 	}, key);
 }
 /** A list is loose when it or any of its items is spread; every item then keeps its paragraphs. */
@@ -10560,12 +11286,14 @@ function renderAnchor(url, children, key, glyph = true, streaming = false) {
 	return renderSafeLink(normalizeUri(url), children, key, glyph);
 }
 function MarkdownFileLink({ file, glyph, children }) {
-	const { openFile } = useMarkdownDelegate();
+	const { openFile, fileImages } = useMarkdownDelegate();
 	if (openFile === void 0) return jsx(Fragment, { children });
-	return jsxs("button", {
+	const preview = glyph && classifyLinkPath(file.path) === "image" ? fileImages : void 0;
+	const src = preview?.resolve(file.path);
+	const anchor = jsxs("button", {
 		type: "button",
 		className: clsx(markdownCss.fileMention, markdownCss.fileLink),
-		title: file.path,
+		title: src === void 0 ? file.path : void 0,
 		onClick: () => {
 			openFile(file.path, file.line === void 0 ? void 0 : { line: file.line });
 		},
@@ -10573,6 +11301,20 @@ function MarkdownFileLink({ file, glyph, children }) {
 			kind: classifyLinkPath(file.path),
 			className: markdownCss.linkIcon
 		}), children]
+	});
+	if (src === void 0 || preview === void 0) return anchor;
+	return jsx(HoverCard, {
+		inline: true,
+		anchor,
+		content: jsxs(Fragment, { children: [jsx(ImagePreview, {
+			src,
+			alt: file.path,
+			loadingLabel: preview.labels.loading,
+			failedLabel: preview.labels.failed
+		}), jsx("span", {
+			className: markdownCss.previewName,
+			children: file.path.split(/[\\/]/u).pop()
+		})] })
 	});
 }
 /**
@@ -10589,25 +11331,40 @@ function inlineCodeHttpUrl(value) {
 	}
 }
 function renderImage(url, alt, key, context) {
-	const imageSrc = imageSource(url, context.pathImages);
-	if (imageSrc === void 0) return jsx("span", {
+	return jsx(MarkdownImage, {
+		destination: url,
+		alt,
+		pathImages: context.pathImages,
+		streaming: context.streaming,
+		inLink: context.inLink === true
+	}, `${key}:${url}`);
+}
+function MarkdownImage({ destination, alt, pathImages, streaming, inLink }) {
+	const { fileImages } = useMarkdownDelegate();
+	const file = streaming ? void 0 : parseFileLink(destination);
+	const src = (file === void 0 ? void 0 : fileImages?.resolve(file.path)) ?? imageSource(destination, pathImages);
+	if (src === void 0) return jsx("span", {
 		className: markdownCss.imageAlt,
 		children: alt
-	}, key);
-	return jsx(MarkdownImage, {
-		src: imageSrc,
-		alt,
-		destination: url
-	}, `${key}:${imageSrc}`);
-}
-/** Failed loads retain the authored alt or destination; a new source remounts the image. */
-function MarkdownImage({ src, alt, destination }) {
-	const [failed, setFailed] = useState(false);
-	if (failed) return jsx("span", {
-		className: markdownCss.imageAlt,
-		children: alt || destination
 	});
-	return jsx("img", {
+	return jsx(LoadedMarkdownImage, {
+		src,
+		alt,
+		destination,
+		preview: inLink ? void 0 : fileImages
+	}, src);
+}
+function LoadedMarkdownImage({ src, alt, destination, preview }) {
+	const [failed, setFailed] = useState(false);
+	const [open, setOpen] = useState(false);
+	const close = useCallback(() => {
+		setOpen(false);
+	}, []);
+	if (failed) return jsxs("span", {
+		className: markdownCss.imageAlt,
+		children: [preview === void 0 ? "" : `${preview.labels.failed} · `, alt || destination]
+	});
+	const img = jsx("img", {
 		className: markdownCss.image,
 		src,
 		alt,
@@ -10618,6 +11375,22 @@ function MarkdownImage({ src, alt, destination }) {
 		decoding: "async",
 		referrerPolicy: "no-referrer"
 	});
+	if (preview === void 0) return img;
+	return jsxs(Fragment, { children: [jsx("button", {
+		type: "button",
+		className: markdownCss.imageButton,
+		title: preview.labels.open,
+		"aria-label": alt ? `${preview.labels.open}: ${alt}` : preview.labels.open,
+		onClick: () => {
+			setOpen(true);
+		},
+		children: img
+	}), open && jsx(ImageLightbox, {
+		src,
+		alt,
+		labels: preview.labels,
+		onClose: close
+	})] });
 }
 /** The bracketed source text a reference reverts to when its definition is missing. */
 function referenceSuffix(node) {
@@ -10924,7 +11697,7 @@ function SafeLink({ url, label, className }) {
 		children: [jsx(LinkIconMedium, {
 			kind: "url",
 			href,
-			className: css$30.linkIcon
+			className: css$33.linkIcon
 		}), label]
 	});
 }
@@ -10939,20 +11712,20 @@ function SafeLink({ url, label, className }) {
 */
 function SourceItem({ source, ordinal }) {
 	return jsxs("li", {
-		className: css$30.source,
+		className: css$33.source,
 		value: ordinal,
 		children: [
 			jsx(SafeLink, {
 				url: source.url,
 				label: linkLabel(source.url, source.title),
-				className: css$30.sourceLink
+				className: css$33.sourceLink
 			}),
 			source.snippet !== void 0 && source.snippet !== "" && jsx("div", {
-				className: css$30.snippet,
+				className: css$33.snippet,
 				children: source.snippet
 			}),
 			source.publishedAt !== void 0 && source.publishedAt !== "" && jsx("div", {
-				className: css$30.published,
+				className: css$33.published,
 				children: source.publishedAt
 			})
 		]
@@ -10967,28 +11740,28 @@ function SourceItem({ source, ordinal }) {
 function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 	const empty = (answer === void 0 || answer === "") && sources.length === 0;
 	return jsxs("div", {
-		className: clsx(css$30.block, className),
+		className: clsx(css$33.block, className),
 		"data-web": "search",
 		children: [
 			answer !== void 0 && answer !== "" && jsx("div", {
-				className: css$30.answer,
+				className: css$33.answer,
 				children: jsx(MarkdownText, {
 					text: answer,
 					labels: labels.markdown
 				})
 			}),
 			empty ? jsx("div", {
-				className: css$30.empty,
+				className: css$33.empty,
 				children: labels.noResults
 			}) : jsx("ol", {
-				className: css$30.sources,
+				className: css$33.sources,
 				children: sources.map((source, index) => jsx(SourceItem, {
 					source,
 					ordinal: index + 1
 				}, index))
 			}),
 			truncated && jsx("div", {
-				className: css$30.truncated,
+				className: css$33.truncated,
 				children: labels.sourcesTruncated
 			})
 		]
@@ -11001,23 +11774,23 @@ function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 */
 function WebFetchBlock({ url, statusCode, truncated, labels, className }) {
 	return jsxs("div", {
-		className: clsx(css$30.block, css$30.fetch, className),
+		className: clsx(css$33.block, css$33.fetch, className),
 		"data-web": "fetch",
 		children: [jsx(SafeLink, {
 			url,
 			label: url,
-			className: css$30.fetchUrl
+			className: css$33.fetchUrl
 		}), jsxs("div", {
-			className: css$30.fetchMeta,
+			className: css$33.fetchMeta,
 			children: [jsxs("span", {
-				className: css$30.status,
+				className: css$33.status,
 				children: [
 					labels.http,
 					" ",
 					statusCode
 				]
 			}), truncated && jsx("span", {
-				className: css$30.truncated,
+				className: css$33.truncated,
 				children: labels.contentTruncated
 			})]
 		})]
@@ -11051,10 +11824,10 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 		truncatedLabel
 	]);
 	return jsxs("div", {
-		className: css$31.root,
+		className: css$34.root,
 		children: [jsxs("button", {
 			type: "button",
-			className: css$31.toggle,
+			className: css$34.toggle,
 			onClick: () => {
 				setOpen((v) => !v);
 			},
@@ -11064,7 +11837,7 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 				label
 			]
 		}), open && jsx("pre", {
-			className: css$31.body,
+			className: css$34.body,
 			children: body
 		})]
 	});
@@ -11152,7 +11925,7 @@ function extractMarkdownPlainText(markdown, options = {}) {
 * and duplicate document ids would make every `url(#…)` resolve to the first instance.
 */
 const useArtworkId = () => `dsh_plugin_art_${useId().replaceAll(":", "")}`;
-/** Terminal plugin artwork (prompt chevron and cursor bar). */
+/** Light-blue terminal artwork shared by plugin cards and sidebar guide entries. */
 const PluginArtworkTerminal = ({ size = 36, className }) => jsxs("svg", {
 	width: size,
 	height: size,
@@ -11162,11 +11935,11 @@ const PluginArtworkTerminal = ({ size = 36, className }) => jsxs("svg", {
 	xmlns: "http://www.w3.org/2000/svg",
 	children: [jsx("path", {
 		d: "M10 11L16.606 17.606C16.6841 17.6841 16.6841 17.8107 16.606 17.8888L10 24.4948",
-		stroke: "#145AF3",
+		stroke: "#679EFE",
 		strokeWidth: "3.5"
 	}), jsx("path", {
 		d: "M20.1211 24.4946H26.8685",
-		stroke: "#145AF3",
+		stroke: "#679EFE",
 		strokeWidth: "3.5"
 	})]
 });
@@ -11340,6 +12113,71 @@ const PluginArtworkDefault = ({ size = 36, className }) => {
 	});
 };
 //#endregion
-export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, HoverCard, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuItemButton, Modal, OnboardingSurface, PathLabel, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, isDarwinDesktop, languageForPath, projectUserText, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, writeClipboard };
+//#region lib/types/guide-artwork.js
+/**
+* Render fixed-palette artwork for a sidebar guide entry.
+* @param props - canvas size and layout class supplied by the guide.
+* @returns an ornamental SVG hidden from assistive technology.
+*/
+function GuideArtworkBrowser({ size = 36, className }) {
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		"aria-hidden": "true",
+		viewBox: "0 0 36 36",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		children: [
+			jsx("path", {
+				d: "M17.9995 28.1465C23.6034 28.1465 28.1461 23.6038 28.1461 18C28.1461 12.3963 23.6034 7.85352 17.9995 7.85352C12.3958 7.85352 7.85303 12.3963 7.85303 18C7.85303 23.6038 12.3958 28.1465 17.9995 28.1465Z",
+				stroke: "#539CFA",
+				strokeWidth: "2"
+			}),
+			jsx("path", {
+				d: "M8.57764 18H27.4211",
+				stroke: "#539CFA",
+				strokeWidth: "2",
+				strokeLinecap: "square"
+			}),
+			jsx("path", {
+				d: "M17.999 28.1467C20.0576 28.1467 21.6228 23.6039 21.6228 18C21.6228 12.3963 20.0576 7.85352 17.999 7.85352",
+				stroke: "#539CFA",
+				strokeWidth: "2"
+			}),
+			jsx("path", {
+				d: "M17.9992 28.1467C15.9407 28.1467 14.3755 23.6039 14.3755 18C14.3755 12.3963 15.9407 7.85352 17.9992 7.85352",
+				stroke: "#539CFA",
+				strokeWidth: "2"
+			})
+		]
+	});
+}
+/**
+* Render fixed-palette artwork for a sidebar guide entry.
+* @param props - canvas size and layout class supplied by the guide.
+* @returns an ornamental SVG hidden from assistive technology.
+*/
+function GuideArtworkFiles({ size = 36, className }) {
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		"aria-hidden": "true",
+		viewBox: "0 0 36 36",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		children: [jsx("path", {
+			d: "M10.7603 27.922H24.6817C26.3441 27.922 27.1753 27.922 27.8102 27.5984C28.3687 27.3139 28.8228 26.8598 29.1074 26.3012C29.4309 25.6663 29.4309 24.8351 29.4309 23.1727V15.4936",
+			stroke: "#FFCD78",
+			strokeWidth: "1.97886"
+		}), jsx("path", {
+			d: "M13.1597 8.07812C13.4182 8.07818 13.6727 8.14336 13.8989 8.26855L16.7554 9.84961C16.9817 9.97485 17.2369 10.041 17.4956 10.041H26.106C26.9492 10.0412 27.6323 10.7251 27.6323 11.5684V24.5371C27.6323 25.3805 26.9483 26.0645 26.105 26.0645H8.09619C7.25281 26.0645 6.56884 25.3805 6.56885 24.5371V9.60449C6.56909 8.76133 7.25297 8.07812 8.09619 8.07812H13.1597ZM9.81592 14.5508V16.5293H24.3999V14.5508H9.81592Z",
+			fill: "#FFBC4D"
+		})]
+	});
+}
+//#endregion
+export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, projectUserText, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
 
 //# sourceMappingURL=index.js.map

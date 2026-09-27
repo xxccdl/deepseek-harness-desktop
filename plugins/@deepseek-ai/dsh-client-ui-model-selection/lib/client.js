@@ -84,6 +84,15 @@ window.__ModuleLoader__.load({
 				status: "idle",
 				error: null
 			});
+			reasoning = /* @__PURE__ */ new Map();
+			/**
+			* Read the last advertised reasoning metadata, including unavailable models.
+			* @param selection - provider and model whose effort is displayed.
+			* @returns reasoning metadata observed during this Host generation.
+			*/
+			reasoningFor(selection) {
+				return this.reasoning.get(JSON.stringify([selection.provider, selection.model]));
+			}
 			generation = 0;
 			inflight;
 			/**
@@ -108,11 +117,14 @@ window.__ModuleLoader__.load({
 				});
 				const operation = this.ctx.remote.session.modelCatalog().then((response) => {
 					if (!response.ok) throw new Error(`${response.error.code}: ${response.error.message}`);
-					if (generation === this.generation) this.store.set({
-						value: response.value,
-						status: "ready",
-						error: null
-					});
+					if (generation === this.generation) {
+						for (const group of response.value.groups) for (const model of group.models) this.reasoning.set(JSON.stringify([group.id, model.id]), model.reasoning);
+						this.store.set({
+							value: response.value,
+							status: "ready",
+							error: null
+						});
+					}
 					return response.value;
 				}).catch((error) => {
 					if (generation === this.generation) this.store.update((draft) => {
@@ -147,6 +159,7 @@ window.__ModuleLoader__.load({
 			}
 			/** Clear Host-specific values and load the replacement Host generation. */
 			resetGeneration() {
+				this.reasoning.clear();
 				this.invalidate(true);
 				this.load().catch(() => {});
 			}
@@ -167,12 +180,12 @@ window.__ModuleLoader__.load({
 				groups: [],
 				failures: [],
 				status: "idle",
+				pending: null,
 				error: null
 			});
 			/** Latest selection operation wins; an older response never overwrites a newer one. */
 			generation = 0;
 			disposed = false;
-			resolved = false;
 			unsubscribeCatalog;
 			unsubscribeSelection;
 			/**
@@ -197,7 +210,7 @@ window.__ModuleLoader__.load({
 				this.syncInputs();
 			}
 			/**
-			* Ensure the Host generation's shared advisory catalog is loaded.
+			* Ensure the Host generation's shared available catalog is loaded.
 			* @returns the fresh directory value.
 			*/
 			async load() {
@@ -218,6 +231,7 @@ window.__ModuleLoader__.load({
 				const generation = ++this.generation;
 				this.store.update((s) => {
 					s.status = "selecting";
+					s.pending = selection;
 					s.error = null;
 				});
 				const result = await this.sessions.selectModel({
@@ -233,12 +247,14 @@ window.__ModuleLoader__.load({
 				if (!result.ok) {
 					this.store.update((s) => {
 						s.status = "error";
+						s.pending = null;
 						s.error = `${result.error.code}: ${result.error.message}`;
 					});
 					return result;
 				}
 				this.store.update((s) => {
 					s.status = "ready";
+					s.pending = null;
 					s.error = null;
 				});
 				this.syncInputs();
@@ -255,6 +271,7 @@ window.__ModuleLoader__.load({
 				++this.generation;
 				this.store.update((state) => {
 					if (state.status === "selecting") state.status = "idle";
+					state.pending = null;
 					state.error = null;
 				});
 				this.syncInputs();
@@ -272,32 +289,33 @@ window.__ModuleLoader__.load({
 				if (this.disposed) return;
 				const catalog = this.catalog.store.getSnapshot();
 				const projected = modelSelectionProjection(this.projected.getSnapshot());
+				const intended = projected?.next ?? catalog.value?.default;
+				const reasoning = intended === void 0 ? void 0 : this.catalog.reasoningFor(intended);
+				const effort = intended?.reasoningEffort ?? reasoning?.defaultEffort;
+				const retainedEffort = effort === void 0 ? void 0 : reasoning?.efforts.find((level) => level.id === effort)?.name ?? effort;
 				if (catalog.status !== "ready" || catalog.value === null || projected === void 0) {
-					if (this.resolved) {
-						if (catalog.status === "error") this.store.update((state) => {
-							state.status = "error";
-							state.error = catalog.error;
-						});
-						return;
-					}
 					this.store.set({
-						current: null,
+						current: catalog.value === null ? null : this.store.getSnapshot().current,
+						...retainedEffort === void 0 ? {} : { retainedEffort },
 						routable: null,
-						groups: [],
-						failures: [],
+						groups: catalog.value?.groups ?? [],
+						failures: catalog.value?.failures ?? [],
 						status: catalog.status === "error" ? "error" : "loading",
+						pending: this.store.getSnapshot().pending,
 						error: catalog.error
 					});
 					return;
 				}
-				const current = projected.next ?? catalog.value.default;
-				this.resolved = true;
+				const selection = projected.next ?? catalog.value.default;
+				const routable = catalog.value.groups.some((group) => group.id === selection.provider && group.models.some((model) => model.id === selection.model));
 				this.store.set({
-					current,
-					routable: catalog.value.routableProviders.includes(current.provider),
+					current: selection,
+					...retainedEffort === void 0 ? {} : { retainedEffort },
+					routable,
 					groups: catalog.value.groups,
 					failures: catalog.value.failures,
 					status: this.store.getSnapshot().status === "selecting" ? "selecting" : "ready",
+					pending: this.store.getSnapshot().pending,
 					error: null
 				});
 			}
@@ -330,15 +348,11 @@ window.__ModuleLoader__.load({
 			];
 			live = { directories: new WeakMapWithValues() };
 			catalog;
-			/** Localized composer-block copy; this plugin owns the string it raises. */
-			blockReason;
 			/**
 			* @param ctx - owning root context (the service registers itself as `models`).
-			* @param config - the bound translator for this plugin's own dictionary.
 			*/
-			constructor(ctx, config) {
+			constructor(ctx) {
 				super(ctx, "modelDirectories");
-				this.blockReason = config.blockReason;
 				this.catalog = new ModelCatalogDirectory(ctx);
 				this.catalog.load().catch(() => {});
 				ctx.on("connection/reset", () => {
@@ -349,6 +363,9 @@ window.__ModuleLoader__.load({
 					this.catalog.refresh();
 				});
 				ctx.remote.$on("settings/document-updated", () => {
+					this.catalog.refresh();
+				});
+				ctx.remote.$on("credentials/record-updated", () => {
 					this.catalog.refresh();
 				});
 				ctx.remote.$on("credentials/reference-updated", () => {
@@ -372,23 +389,6 @@ window.__ModuleLoader__.load({
 				if (existing !== void 0) return existing;
 				const directory = new ModelDirectory(this.ctx.remote.session, sessionId, () => sessions.subagentAddress(sessionId) === void 0, this.catalog, binding.session.projections.faceOf("modelSelection"));
 				live.directories.set(binding, directory);
-				const conversation = this.ctx.get("conversation");
-				if (conversation !== void 0) {
-					const publish = () => {
-						if (sessions.binding(sessionId) !== binding) return;
-						conversation.blocks.set(sessionId, directory.store.getSnapshot().routable === false ? { reason: this.blockReason() } : void 0);
-					};
-					publish();
-					actx.effect(() => {
-						const stop = directory.store.subscribe(publish);
-						return () => {
-							stop();
-							const current = sessions.binding(sessionId);
-							if (current !== void 0 && current !== binding && live.directories.get(current) !== void 0) return;
-							conversation.blocks.set(sessionId, void 0);
-						};
-					}, "ui-model-selection: composer block");
-				}
 				actx.effect(() => () => {
 					directory.dispose();
 					live.directories.delete(binding);
@@ -413,7 +413,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-model-selection/src/client/ModelSelect.module.css.mjs
-		const css = "._7KE1Ra_root{min-width:0;position:relative}._7KE1Ra_trigger{min-width:0;max-width:min(360px,45cqw);height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:24px;outline:none;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:13px;font-weight:500;line-height:20px;display:flex}._7KE1Ra_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-border-l3)}._7KE1Ra_trigger:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_triggerLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._7KE1Ra_triggerEffort{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-caption);flex-shrink:1000;overflow:hidden}._7KE1Ra_triggerIcon{display:var(--dsh-composer-model-icon-display,none);flex:none}._7KE1Ra_triggerLabel,._7KE1Ra_triggerEffort{display:var(--dsh-composer-model-text-display,block)}._7KE1Ra_chevron{color:var(--dsw-alias-label-caption);flex:none;transition:transform .12s}._7KE1Ra_chevronOpen{transform:rotate(180deg)}._7KE1Ra_menu{z-index:1100;background:var(--dsw-specific-menu);width:max-content;min-width:min(240px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(360px,100vh - 96px);backdrop-filter:var(--dsw-menu-backdrop-filter);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;border-radius:16px;flex-direction:column;padding:3px;display:flex;position:fixed;overflow:hidden}._7KE1Ra_status,._7KE1Ra_empty{color:var(--dsw-alias-label-tertiary);padding:8px;font-size:12px;line-height:18px}._7KE1Ra_error,._7KE1Ra_warning{background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);border-radius:7px;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;padding:6px 7px;font-size:11px;line-height:16px;display:flex}._7KE1Ra_warning{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-warn-label)}._7KE1Ra_retry{color:inherit;font:inherit;cursor:pointer;background:0 0;border:none;flex:none;padding:0;font-weight:600}._7KE1Ra_groups{min-height:0;overflow-y:auto}._7KE1Ra_group+._7KE1Ra_group{margin-top:3px}._7KE1Ra_groupTitle{z-index:1;background:var(--dsw-specific-menu);color:var(--dsw-alias-label-tertiary);padding:4px 7px 2px;font-size:11px;font-weight:500;line-height:16px;position:sticky;top:0}._7KE1Ra_option{box-sizing:border-box;width:auto;min-width:100%;min-height:34px;color:inherit;text-align:left;cursor:pointer;background:0 0;border:none;border-radius:8px;outline:none;align-items:center;gap:6px;padding:5px 7px;display:flex}._7KE1Ra_option:hover:not(:disabled),._7KE1Ra_option:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_selected{background:0 0}._7KE1Ra_option:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_optionCopy{flex-direction:column;flex:1;min-width:0;display:flex}._7KE1Ra_modelName{color:inherit;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}._7KE1Ra_check{color:var(--dsw-alias-label-primary);flex:0 0 14px;place-items:center;display:grid}._7KE1Ra_check svg{width:14px;height:14px}._7KE1Ra_cell{box-sizing:border-box;width:auto;min-width:100%;height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;border-radius:8px;align-items:center;gap:6px;padding:0 8px;font-size:13px;line-height:20px;display:flex}._7KE1Ra_cell:hover{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_cellLabel{white-space:nowrap;flex:none}._7KE1Ra_cellValue{text-overflow:ellipsis;white-space:nowrap;text-align:right;min-width:0;color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}._7KE1Ra_cellChevron{width:12px;height:12px;color:var(--dsw-alias-label-tertiary);flex:none}";
+		const css = "._7KE1Ra_root{min-width:0;position:relative}._7KE1Ra_trigger{border-radius:var(--dsw-radius-sm);min-width:0;max-width:min(360px,45cqw);height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;outline:none;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:13px;font-weight:400;line-height:20px;display:flex}._7KE1Ra_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}._7KE1Ra_trigger:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_triggerLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._7KE1Ra_triggerEffort{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-caption);flex-shrink:1000;overflow:hidden}._7KE1Ra_triggerIcon{display:var(--dsh-composer-model-icon-display,none);flex:none}._7KE1Ra_triggerLabel,._7KE1Ra_triggerEffort{display:var(--dsh-composer-model-text-display,block)}._7KE1Ra_chevron{color:var(--dsw-alias-label-caption);flex:none;transition:transform .12s}._7KE1Ra_chevronOpen{transform:rotate(180deg)}._7KE1Ra_menu{z-index:1100;--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);width:max-content;min-width:min(240px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(360px,100vh - 96px);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;flex-direction:column;padding:4px;display:flex;position:fixed;overflow:hidden}._7KE1Ra_status,._7KE1Ra_empty{color:var(--dsw-alias-label-tertiary);padding:8px;font-size:12px;line-height:18px}._7KE1Ra_error,._7KE1Ra_warning{border-radius:var(--dsw-radius-md);background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;padding:6px 7px;font-size:11px;line-height:16px;display:flex}._7KE1Ra_warning{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-warn-label)}._7KE1Ra_retry{color:inherit;font:inherit;cursor:pointer;background:0 0;border:none;flex:none;padding:0;font-weight:600}._7KE1Ra_groups{min-height:0;overflow-y:auto}._7KE1Ra_group+._7KE1Ra_group{margin-top:3px}._7KE1Ra_groupTitle{z-index:1;background:var(--dsw-specific-menu);color:var(--dsw-alias-label-tertiary);padding:4px 7px 2px;font-size:11px;font-weight:500;line-height:16px;position:sticky;top:0}._7KE1Ra_option{box-sizing:border-box;border-radius:var(--dsw-radius-md);width:auto;min-width:100%;min-height:34px;color:inherit;text-align:left;cursor:pointer;background:0 0;border:none;outline:none;align-items:center;gap:6px;padding:5px 7px;display:flex}._7KE1Ra_option:hover:not(:disabled),._7KE1Ra_option:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_selected{background:0 0}._7KE1Ra_option:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_optionCopy{flex-direction:column;flex:1;min-width:0;display:flex}._7KE1Ra_modelName{color:inherit;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}._7KE1Ra_check{color:var(--dsw-alias-label-primary);flex:0 0 14px;place-items:center;display:grid}._7KE1Ra_check svg{width:14px;height:14px}._7KE1Ra_cell{box-sizing:border-box;border-radius:var(--dsw-radius-md);width:auto;min-width:100%;height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;align-items:center;gap:6px;padding:0 8px;font-size:13px;line-height:20px;display:flex}._7KE1Ra_cell:hover{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_cellLabel{white-space:nowrap;flex:none}._7KE1Ra_cellValue{text-overflow:ellipsis;white-space:nowrap;text-align:right;min-width:0;color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}._7KE1Ra_cellChevron{width:12px;height:12px;color:var(--dsw-alias-menu-icon);flex:none}";
 		const tagId = "@deepseek-ai/dsh-client-ui-model-selection/ModelSelect.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -563,7 +563,9 @@ window.__ModuleLoader__.load({
 		* selected effort come from the Host rather than a client-owned vocabulary. A
 		* rejected selection announces through the shared transient Toast anchored to
 		* the composer card; the in-menu strip with Retry remains the catalog-load
-		* surface.
+		* surface. While the directory's pending selection is unsettled, the trigger
+		* shows a spinner in place of its chevron, and each row whose value that
+		* selection carries shows one in place of its check mark.
 		*/
 		/**
 		* Reasoning-effort picker built as a real slider, the way Codex asks for a
@@ -766,7 +768,8 @@ window.__ModuleLoader__.load({
 			const [menuPos, setMenuPos] = (0, react.useState)(null);
 			const itemRefs = (0, react.useRef)([]);
 			const id = (0, react.useId)();
-			const choices = (0, react.useMemo)(() => state.groups.flatMap((group) => group.models.map((model) => ({
+			const groups = (0, react.useMemo)(() => state.groups.toSorted((left, right) => (left.id === "deepseek-account" ? 0 : left.id === "deepseek-official" ? 1 : 2) - (right.id === "deepseek-account" ? 0 : right.id === "deepseek-official" ? 1 : 2)), [state.groups]);
+			const choices = (0, react.useMemo)(() => groups.flatMap((group) => group.models.map((model) => ({
 				group,
 				model,
 				selection: {
@@ -774,11 +777,11 @@ window.__ModuleLoader__.load({
 					model: model.id,
 					...model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort }
 				}
-			}))), [state.groups]);
+			}))), [groups]);
 			const currentChoice = choices[state.current === null ? -1 : choices.findIndex((c) => c.selection.provider === state.current?.provider && c.selection.model === state.current.model)];
 			const reasoning = currentChoice?.model.reasoning;
 			const effectiveEffort = state.current?.reasoningEffort ?? reasoning?.defaultEffort;
-			const effortLabel = reasoning === void 0 ? void 0 : effectiveEffort === void 0 ? t("effort.providerDefault") : localized(t, `effort.${effectiveEffort}`, reasoning.efforts.find((level) => level.id === effectiveEffort)?.name ?? effectiveEffort);
+			const effortLabel = reasoning === void 0 ? state.retainedEffort : effectiveEffort === void 0 ? t("effort.providerDefault") : localized(t, `effort.${effectiveEffort}`, reasoning.efforts.find((level) => level.id === effectiveEffort)?.name ?? effectiveEffort);
 			const effortChoices = (0, react.useMemo)(() => reasoning === void 0 ? [] : [...reasoning.defaultEffort === void 0 ? [{
 				key: "provider-default",
 				effort: void 0,
@@ -788,7 +791,8 @@ window.__ModuleLoader__.load({
 				effort: effort.id,
 				label: localized(t, `effort.${effort.id}`, effort.name)
 			}))], [reasoning, t]);
-			const busy = state.status === "selecting";
+			const { pending } = state;
+			const busy = pending !== null;
 			const reload = () => {
 				lastActionRef.current = "load";
 				load();
@@ -852,8 +856,10 @@ window.__ModuleLoader__.load({
 			]);
 			if (!available) return null;
 			const show = () => {
+				triggerRef.current?.focus();
+				if (state.current === null) paneFocus.current = "drill";
 				setDir(null);
-				setPane("root");
+				setPane(state.current === null ? "model" : "root");
 				setOpen(true);
 				reload();
 			};
@@ -885,7 +891,7 @@ window.__ModuleLoader__.load({
 			const onRootKeyDown = (event) => {
 				if (event.key === "Escape" && open) {
 					event.preventDefault();
-					if (pane !== "root") back(pane);
+					if (pane !== "root" && state.current !== null) back(pane);
 					else close(true);
 					return;
 				}
@@ -893,7 +899,7 @@ window.__ModuleLoader__.load({
 				if (event.key === "Tab") {
 					if (event.shiftKey) {
 						event.preventDefault();
-						if (pane !== "root") back(pane);
+						if (pane !== "root" && state.current !== null) back(pane);
 						else close(true);
 						return;
 					}
@@ -940,26 +946,28 @@ window.__ModuleLoader__.load({
 			const settleEffort = (result) => {
 				settleSelection(result, true);
 			};
+			const submit = (selection, settle = settleSelection) => {
+				lastActionRef.current = "select";
+				triggerRef.current?.focus();
+				select(selection).then(settle);
+			};
 			const choose = (selection) => {
 				if (state.current?.provider === selection.provider && state.current.model === selection.model) {
 					close(true);
 					return;
 				}
-				lastActionRef.current = "select";
-				select(selection).then(settleSelection);
+				submit(selection);
 			};
 			const chooseEffort = (effort) => {
 				if (state.current === null) return;
 				// Landing on the level already in effect is not a change: stay where
 				// the user is instead of folding the pane away under the pointer.
 				if (effectiveEffort === effort) return;
-				const selection = {
+				submit({
 					provider: state.current.provider,
 					model: state.current.model,
 					...effort === void 0 ? {} : { reasoningEffort: effort }
-				};
-				lastActionRef.current = "select";
-				select(selection).then(settleEffort);
+				}, settleEffort);
 			};
 			const waiting = state.current === null && state.status === "loading";
 			const modelLabel = waiting ? t("trigger.loading") : currentChoice?.model.name ?? (state.current === null ? t("trigger.fallback") : `${state.current.provider}/${state.current.model}`);
@@ -981,6 +989,9 @@ window.__ModuleLoader__.load({
 				className: ModelSelect_module_css_default.root,
 				onKeyDown: onRootKeyDown,
 				onBlur,
+				onMouseDown: (event) => {
+					if (event.target instanceof Element && event.target.closest("button") !== null) event.preventDefault();
+				},
 				children: [
 					(0, react_jsx_runtime.jsxs)("button", {
 						ref: triggerRef,
@@ -991,9 +1002,10 @@ window.__ModuleLoader__.load({
 						"aria-expanded": open,
 						"aria-controls": open ? `${id}-menu` : void 0,
 						title: triggerLabel,
+						"aria-busy": busy,
 						disabled: locked,
 						onClick: () => {
-							if (open) close();
+							if (open) close(true);
 							else show();
 						},
 						children: [
@@ -1010,10 +1022,10 @@ window.__ModuleLoader__.load({
 								key: effortLabel,
 								children: effortLabel
 							}),
-							(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: clsx(ModelSelect_module_css_default.chevron, open && ModelSelect_module_css_default.chevronOpen) })
+							busy ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "ongoing" }) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: clsx(ModelSelect_module_css_default.chevron, open && ModelSelect_module_css_default.chevronOpen) })
 						]
 					}),
-					open && (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)("div", {
+					open && (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.MenuSurface, {
 						ref: menuRef,
 						id: `${id}-menu`,
 						className: clsx(ModelSelect_module_css_default.menu, "dsms-menu"),
@@ -1081,7 +1093,7 @@ window.__ModuleLoader__.load({
 								state.failures.map((failure) => (0, react_jsx_runtime.jsxs)("div", {
 									className: ModelSelect_module_css_default.warning,
 									children: [(0, react_jsx_runtime.jsx)("span", { children: t("warning.groupLoad", {
-										name: failure.name,
+										name: failure.id === "deepseek-account" ? t("provider.account") : failure.name,
 										message: failure.message
 									}) }), (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -1092,7 +1104,7 @@ window.__ModuleLoader__.load({
 								}, failure.id)),
 								(0, react_jsx_runtime.jsx)("div", {
 									className: clsx(ModelSelect_module_css_default.groups, "scrollable"),
-									children: state.groups.map((group) => {
+									children: groups.map((group) => {
 										const headingId = `${id}-${group.id}`;
 										return (0, react_jsx_runtime.jsxs)("section", {
 											role: "group",
@@ -1101,7 +1113,7 @@ window.__ModuleLoader__.load({
 											children: [(0, react_jsx_runtime.jsx)("div", {
 												className: ModelSelect_module_css_default.groupTitle,
 												id: headingId,
-												children: group.name
+												children: group.id === "deepseek-account" ? t("provider.account") : group.name
 											}), group.models.map((model) => {
 												const selected = state.current?.provider === group.id && state.current.model === model.id;
 												return (0, react_jsx_runtime.jsxs)("button", {
@@ -1126,7 +1138,7 @@ window.__ModuleLoader__.load({
 														})
 													}), (0, react_jsx_runtime.jsx)("span", {
 														className: ModelSelect_module_css_default.check,
-														children: selected ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineRegular, {}) : null
+														children: pending?.provider === group.id && pending.model === model.id ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "ongoing" }) : selected ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineRegular, {}) : null
 													})]
 												}, model.id);
 											})]
@@ -1201,14 +1213,15 @@ window.__ModuleLoader__.load({
 		*/
 		/** Simplified Chinese dictionary (the key-set source of truth). */
 		const zh = {
+			"provider.account": "DeepSeek 账号",
 			"command.label": "模型",
 			"command.description": "选择本会话使用的模型",
 			"option.loadError": "目录加载失败：{message}",
 			"option.deepseekV4Flash.description": "快速、高效且经济；适合目标明确、常规或并行任务。",
 			"option.deepseekV4Pro.description": "更强的自主编码、知识与复杂推理能力；适合复杂或质量优先的任务，但成本更高。",
-			"trigger.fallback": "选择模型",
+			"trigger.fallback": "请选择模型",
 			"trigger.loading": "正在加载模型…",
-			"trigger.selectAria": "选择模型",
+			"trigger.selectAria": "请选择模型",
 			"trigger.aria": "选择模型，当前 {model}",
 			"trigger.ariaEffort": "选择模型，当前 {model}，推理等级 {effort}",
 			"menu.aria": "模型与推理等级",
@@ -1229,11 +1242,11 @@ window.__ModuleLoader__.load({
 			"action.reload": "重新加载",
 			"warning.groupLoad": "{name} 加载失败：{message}",
 			"empty.models": "没有可用的模型。",
-			"blocked.composer": "当前模型不可用，请先选择模型",
 			"empty.efforts": "当前模型未提供推理等级。"
 		};
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
+			"provider.account": "DeepSeek Account",
 			"command.label": "Model",
 			"command.description": "Select the model for this conversation",
 			"option.loadError": "Catalog failed to load: {message}",
@@ -1262,7 +1275,6 @@ window.__ModuleLoader__.load({
 			"action.reload": "Reload",
 			"warning.groupLoad": "{name} failed to load: {message}",
 			"empty.models": "No models available.",
-			"blocked.composer": "This model is unavailable — select one to continue",
 			"empty.efforts": "This model provides no reasoning effort levels."
 		};
 		//#endregion
@@ -1272,6 +1284,8 @@ window.__ModuleLoader__.load({
 			return `${providerId}/${modelId}`;
 		}
 		const BUILTIN_DESCRIPTION_KEYS = {
+			"deepseek-account/deepseek-v4-flash": "option.deepseekV4Flash.description",
+			"deepseek-account/deepseek-v4-pro": "option.deepseekV4Pro.description",
 			"deepseek-official/deepseek-v4-flash": "option.deepseekV4Flash.description",
 			"deepseek-official/deepseek-v4-pro": "option.deepseekV4Pro.description"
 		};
@@ -1282,18 +1296,21 @@ window.__ModuleLoader__.load({
 		/** Flatten the directory into popup rows; failure rows are listed for visibility but never selectable. */
 		function optionsOf(directory, t) {
 			const rows = [];
-			for (const group of directory.groups) for (const model of group.models) {
-				const description = descriptionOf(group.id, model, t);
-				rows.push({
-					id: rowId(group.id, model.id),
-					label: model.name,
-					detail: description !== void 0 ? `${group.name} · ${description}` : group.name,
-					...directory.current !== null && directory.current.provider === group.id && directory.current.model === model.id ? { active: true } : {}
-				});
+			for (const group of directory.groups) {
+				const name = group.id === "deepseek-account" ? t("provider.account") : group.name;
+				for (const model of group.models) {
+					const description = descriptionOf(group.id, model, t);
+					rows.push({
+						id: rowId(group.id, model.id),
+						label: model.name,
+						detail: description !== void 0 ? `${name} · ${description}` : name,
+						...directory.current !== null && directory.current.provider === group.id && directory.current.model === model.id ? { active: true } : {}
+					});
+				}
 			}
 			for (const failure of directory.failures) rows.push({
 				id: `failure/${failure.id}`,
-				label: failure.name,
+				label: failure.id === "deepseek-account" ? t("provider.account") : failure.name,
 				detail: t("option.loadError", { message: failure.message })
 			});
 			return rows;
@@ -1339,7 +1356,7 @@ window.__ModuleLoader__.load({
 				en
 			}), "ui-model-selection: dictionaries");
 			const t = ctx.locale.bind(NS);
-			ctx.plugin(ModelDirectoryResolver, { blockReason: () => t("blocked.composer") });
+			ctx.plugin(ModelDirectoryResolver);
 			ctx.inject(["commandUi", "modelDirectories"], (scope) => {
 				const command = scope.get("commandUi");
 				const models = scope.modelDirectories;

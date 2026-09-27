@@ -1,6 +1,7 @@
 /**
  * Cordis-free React primitives styled only through `--dsw-*` tokens.
  */
+export type { CodeToolbarLabels } from './CodeToolbar.tsx';
 export { StateDot } from './StateDot.tsx';
 export type { StateDotState } from './StateDot.tsx';
 export { DisclosureRow } from './DisclosureRow.tsx';
@@ -21,14 +22,19 @@ export type { SegmentedControlOption } from './SegmentedControl.tsx';
 export { Checkbox } from './Checkbox.tsx';
 export { Input } from './Input.tsx';
 export { Menu, MenuItemButton } from './Menu.tsx';
+export { MenuSurface } from './MenuSurface.tsx';
+export type { MenuSurfaceProps } from './MenuSurface.tsx';
 export type { MenuItemButtonProps, MenuEntry, MenuItem, MenuSeparator, MenuLabel } from './Menu.tsx';
 export { useAnchoredMaxHeight } from './useAnchoredMaxHeight.ts';
 export { useAnchoredPosition } from './useAnchoredPosition.ts';
 export type { AnchoredPositionOptions } from './useAnchoredPosition.ts';
 export { useDismissOnOutsidePointer } from './useDismissOnOutsidePointer.ts';
 export { HoverCard } from './HoverCard.tsx';
+export { ShortcutKeys } from './ShortcutKeys.tsx';
+export { observeComposition } from './keyboard-composition.ts';
+export { focusWithoutRing } from './focus.ts';
+export { closeTopModal, isBehindModal, modalSelector, useModalLayer } from './useModalLayer.ts';
 export { Modal } from './Modal.tsx';
-export { OnboardingSurface } from './OnboardingSurface.tsx';
 export { RiskConfirmation } from './RiskConfirmation.tsx';
 export type { RiskConfirmationProps } from './RiskConfirmation.tsx';
 export { ConnectionIndicator } from './ConnectionIndicator.tsx';
@@ -84,4 +90,7 @@ export { extractMarkdownPlainText } from './markdown/plain-text.ts';
 export type { MarkdownPlainTextMode, MarkdownPlainTextOptions } from './markdown/plain-text.ts';
 export * from './icons/index.tsx';
 export { PluginArtworkTerminal, PluginArtworkLoop, PluginArtworkSubagent, PluginArtworkSearch, PluginArtworkDefault, } from './plugin-artwork.tsx';
+export { GuideArtworkBrowser, GuideArtworkFiles } from './guide-artwork.tsx';
+export { ImageLightbox } from './ImageLightbox.tsx';
+export type { ImageLightboxLabels } from './ImageLightbox.tsx';
 //# sourceMappingURL=index.d.ts.map

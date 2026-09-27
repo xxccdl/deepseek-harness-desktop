@@ -11,5 +11,5 @@ export type HeaderLeadingControlsProps = PropsRuntime<'shell.leading'> & InjectF
  * @param props - Injected sidebar actions plus the sidebar locale seat.
  * @returns the two window-chrome controls.
  */
-export declare function HeaderLeadingControls({ toggleSidebar, startSession, t }: HeaderLeadingControlsProps): import("react").JSX.Element;
+export declare function HeaderLeadingControls({ toggleSidebar, startSession, useShortcuts, t }: HeaderLeadingControlsProps): import("react").JSX.Element;
 //# sourceMappingURL=HeaderLeadingControls.d.ts.map

@@ -7,7 +7,7 @@
  */
 import { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
-import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmImageRequestPricing, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, ModelModality, StreamChunk, SystemPromptUpdate } from './types.ts';
+import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmImageRequestPricing, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, ModelModality, StreamChunk, SystemPromptUpdate, ToolUpdate } from './types.ts';
 import type { ResolvedRetryPolicy } from './retry-policy.ts';
 import type { ProviderRequestId } from './brand.ts';
 import type { LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
@@ -101,6 +101,8 @@ export interface PreparedLlmCall {
     readonly inputModalities?: readonly ModelModality[];
     /** Exact model system prompt update mode captured with the adapter dispatch generation. */
     readonly systemPromptUpdate?: SystemPromptUpdate;
+    /** Exact model tool update mode captured with the adapter dispatch generation. */
+    readonly toolUpdate?: ToolUpdate;
     /** Config fields materialized by the captured adapter rather than proposed by the caller. */
     readonly adapterDefaults: LlmCallConfigAdapterDefaults;
     /**
@@ -150,8 +152,9 @@ export declare abstract class LlmAdapter {
     imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;
     /**
      * List models this adapter can currently advertise for one owned provider.
-     * The result is advisory: an adapter may accept unlisted model ids, and
-     * consumers must not turn absence into request rejection.
+     * Core routing accepts unlisted model ids; catalog-driven entry points such
+     * as the GUI may require membership. Adapters used there must advertise
+     * their available models; the base empty catalog offers no GUI selection.
      * @param _provider - one provider route owned by this adapter.
      * @returns discoverable models in adapter-preferred order.
      */
@@ -339,7 +342,8 @@ export declare class LlmRuntime extends TypertRemoteService {
     private detachedModalities;
     /**
      * Discover models advertised by one registered provider. Catalog membership
-     * is advisory and never changes routing or request validation.
+     * does not constrain core routing. Catalog-driven entry points may restrict
+     * selection and submission to the advertised models.
      * @param provider - registered provider route to inspect.
      * @returns detached model metadata in adapter-preferred order.
      */

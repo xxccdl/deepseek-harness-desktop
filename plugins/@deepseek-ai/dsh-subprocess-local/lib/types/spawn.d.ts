@@ -10,6 +10,7 @@
 import { type ChildProcess, type SpawnOptions } from 'node:child_process';
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess';
 import type { ManagedProcessLaunch } from './managed-owner.ts';
+import { type SpillFailureReporter } from './output.ts';
 type SpawnProcess = (program: string, args: readonly string[], options: SpawnOptions) => ChildProcess;
 /**
  * Build a child environment: explicit caller entries override the scrubbed
@@ -26,6 +27,8 @@ export interface SpawnInternals {
     spawn?: SpawnProcess;
     /** Directory for spill files (defaults to the OS temp dir). */
     spillDir?: string;
+    /** Receives spill open/write failures; the runtime supplies its plugin logger, bare callers get a stderr line. */
+    onSpillFailure?: SpillFailureReporter;
     /** Windows tree-termination runner (defaults to `taskkill /PID <pid> /T /F`). */
     taskkill?: (pid: number) => void;
     /** Host platform override for signalling decisions. */
@@ -68,10 +71,10 @@ export declare function validateSubprocessSpec(spec: SubprocessSpawnSpec): void;
  * Bind platform launch facts to the existing stdio, outcome, abort, and termination lifecycle.
  * @param spec - fully resolved argv, cwd, stdio, grace, cancellation, environment.
  * @param launch - platform streams, direct outcome, and managed-range owner.
- * @param internals - test-only spill-directory override.
+ * @param internals - spill-directory override and spill failure reporter.
  * @returns live subprocess handle.
  */
-export declare function bindManagedProcess(spec: SubprocessSpawnSpec, launch: ManagedProcessLaunch, internals?: Pick<SpawnInternals, 'spillDir'>): LocalSubprocessHandle;
+export declare function bindManagedProcess(spec: SubprocessSpawnSpec, launch: ManagedProcessLaunch, internals?: Pick<SpawnInternals, 'spillDir' | 'onSpillFailure'>): LocalSubprocessHandle;
 /**
  * Spawn one detached PGID/taskkill fallback and bind the common lifecycle.
  * @param spec - fully resolved argv, cwd, stdio, grace, cancellation, environment.

@@ -47,19 +47,17 @@ export declare class DeepSeekFilesError extends LlmError {
 export declare function isFilesQuotaError(error: unknown): error is DeepSeekFilesError;
 interface FilesApiOptions {
     baseURL: string;
-    apiKey: string;
-    /** Use the DSH account header; omitted for ordinary API keys. */
-    accountCredential?: boolean;
+    /** Provider-resolved authentication headers for this endpoint. */
+    headers: Readonly<Record<string, string>>;
     fetch?: typeof fetch;
 }
 /** Direct Files client retaining the configured URL root and refusing redirects before credentials can leave its origin. */
 export declare class DeepSeekFilesClient {
     private readonly baseURL;
-    private readonly accountCredential;
-    private readonly apiKey;
+    private readonly authHeaders;
     private readonly fetchImpl;
     /**
-     * @param options - endpoint, API-key snapshot, and optional test transport.
+     * @param options - endpoint, authentication headers, and optional test transport.
      */
     constructor(options: FilesApiOptions);
     private request;

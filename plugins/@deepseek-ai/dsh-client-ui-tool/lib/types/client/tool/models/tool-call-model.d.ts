@@ -11,13 +11,13 @@ export type { ToolCallBlock } from '@deepseek-ai/dsh-client-ui-chat/client';
 /** Tool-call row variants selected by the generic atomic renderer. */
 export type ToolRowVariant = 'search' | 'read' | 'bash' | 'write' | 'edit' | 'code' | 'others';
 /** Row lifecycle state used by summary styling and accessible status text. */
-export type ToolRowState = 'running' | 'ok' | 'error' | 'stopped';
+export type ToolRowState = 'preparing' | 'running' | 'ok' | 'error' | 'stopped';
 /** Locale-neutral structured fact consumed only by the user-facing Tool row. */
 export interface AutoReviewDenial {
     /** Raw persisted reviewer reason; display normalization happens at render time. */
     reason: string | null;
 }
-type ToolTitleKey = Extract<LocaleKeysOf<'conversation'>, `tool.title.${string}`>;
+type ToolTitleKey = Extract<LocaleKeysOf<'conversation'>, `tool.title.${string}` | 'ask.rowTitle' | 'todo.rowTitle'>;
 /** Locale key per generic row variant. */
 export declare const VARIANT_TITLE_KEYS: {
     readonly search: "tool.title.search";
@@ -34,10 +34,17 @@ export declare const VARIANT_TITLE_KEYS: {
  * @returns matching variant, others when unknown.
  */
 export declare function classifyTool(toolName: string): ToolRowVariant;
+/**
+ * Select a tool-owned or generic title without reading arguments.
+ * @param toolName - wire tool name.
+ * @returns the localized title key.
+ */
+export declare function toolTitleKey(toolName: string): ToolTitleKey;
 /** Everything ToolRow needs, derived once from the frozen slice. */
 export interface ToolRowModel {
     variant: ToolRowVariant;
     titleKey: ToolTitleKey;
+    /** Generic rows retain the wire tool name; available arguments append their summary. */
     summary: string;
     /**
      * Filesystem path from args (`path` / `file_path`) when the row is a file
@@ -73,7 +80,7 @@ export declare function formatToolBody(variant: ToolRowVariant, argsRaw: string)
 /**
  * Derive the full row model from a frozen call slice.
  * @param toolName - wire tool name (dispatch-supplied; survives windowless results).
- * @param block - RunningToolCall or ToolResultNode off the snapshot caches.
+ * @param block - preparing call, dispatched call, or result from the snapshot.
  * @param cwd - session workspace root; workspace-rooted path summaries display relative to it.
  * @param home - host account home; a leftover POSIX home path displays as `~`.
  * @returns the row model.

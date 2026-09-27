@@ -4,7 +4,7 @@ import type { RenameSessionInjected, SessionMenuItemProps, SessionRenameDialogPr
  * @param props - owner share, menu open state, and the rename share.
  * @returns the row.
  */
-export declare function RenameSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, requestSessionRename, t, }: SessionMenuItemProps<RenameSessionInjected>): import("react").JSX.Element;
+export declare function RenameSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, useShortcuts, requestSessionRename, t, }: SessionMenuItemProps<RenameSessionInjected>): import("react").JSX.Element;
 /**
  * The `shell.overlay` entry: nothing while no rename is requested, otherwise
  * one dialog per request (keyed by the Session, so a new request starts a

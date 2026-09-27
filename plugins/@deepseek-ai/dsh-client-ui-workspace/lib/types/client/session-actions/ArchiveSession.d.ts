@@ -4,7 +4,7 @@ import type { ArchiveSessionInjected, SessionArchiveConfirmProps, SessionMenuIte
  * @param props - owner share, the archive share, and the menu open state.
  * @returns the row.
  */
-export declare function ArchiveSessionMenuItem({ sessionId, useArchived, useMenuOpenState, archiveSession, unarchiveSession, t, }: SessionMenuItemProps<ArchiveSessionInjected>): import("react").JSX.Element;
+export declare function ArchiveSessionMenuItem({ sessionId, useArchived, useMenuOpenState, useShortcuts, archiveSession, unarchiveSession, t, }: SessionMenuItemProps<ArchiveSessionInjected>): import("react").JSX.Element;
 /**
  * Hover button (order 100): archive, or restore an archived row.
  * @param props - owner share and the archive share.

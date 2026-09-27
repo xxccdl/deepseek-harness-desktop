@@ -7,7 +7,7 @@ type BashRowProps = ToolCallViewProps & PropsLocale<'conversation'>;
  * @param props - tool call, Session sources, locale, and inspection callback.
  * @returns the Bash output row.
  */
-export declare const BashRow: import("react").MemoExoticComponent<({ toolName, block, sessionId, useSessions, inspect, useDisclosure, t }: BashRowProps) => import("react").JSX.Element>;
+export declare const BashRow: import("react").MemoExoticComponent<(props: BashRowProps) => import("react").JSX.Element>;
 /** Registers the standalone Bash conversation-row sample. */
 export declare const bashToolviewSample: {
     name: string;

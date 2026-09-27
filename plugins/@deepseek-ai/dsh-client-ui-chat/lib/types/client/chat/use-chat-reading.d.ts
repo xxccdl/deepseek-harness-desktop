@@ -1,5 +1,6 @@
 import type { ChatScrollPosition, ChatViewSlotProps } from '../contract/slots.ts';
 import type { ChatViewport, ViewportLanding, ViewportScroll } from './use-chat-viewport.ts';
+import { type ScrollFollow } from './use-scroll-follow.ts';
 /** Reading facts that affect Chat chrome and initial rail placement. */
 export interface ChatReadingState {
     readonly initialized: boolean;
@@ -19,10 +20,11 @@ export declare class ChatReading {
     private store;
     private state;
     private readonly onChange;
+    private readonly follow;
     private sampleTimer;
     private probeFrame;
     private sampled;
-    constructor(viewport: ChatViewport, store: PositionStore, state: ChatReadingState, onChange: (state: ChatReadingState) => void);
+    constructor(viewport: ChatViewport, store: PositionStore, state: ChatReadingState, onChange: (state: ChatReadingState) => void, follow: ScrollFollow);
     /**
      * Expose pending reader ownership to navigation and resize handlers.
      * @returns whether reader input still awaits interval or scrollend sampling.
@@ -73,7 +75,6 @@ export declare class ChatReading {
     onResize(): void;
     /** Resolve the active turn from tail ownership or a coalesced reading-line probe. */
     refreshActiveTurn(): void;
-    private nearBottom;
     private commit;
     private publish;
     private cancelPending;

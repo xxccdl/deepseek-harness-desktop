@@ -47,7 +47,7 @@ import { callConfigEquals } from "./call-config.js";
 import { HarnessError, INVALID_CREDENTIAL_CODE } from "./error.js";
 import { normalizeLlmFailure } from "./adapter-failure.js";
 import { normalizeApiKey } from "./api-key.js";
-import { contentHasFile, contentHasImage, fileHandleText, projectFilesToText, projectImagesForTextModel, } from "./content.js";
+import { contentHasFile, contentHasImage, fileHandleText, projectFilesToText, projectImagesForTextModel, projectToolUpdates, } from "./content.js";
 export * from "./attribution.js";
 export * from "./brand.js";
 export * from "./error.js";
@@ -169,8 +169,9 @@ export class LlmAdapter {
     }
     /**
      * List models this adapter can currently advertise for one owned provider.
-     * The result is advisory: an adapter may accept unlisted model ids, and
-     * consumers must not turn absence into request rejection.
+     * Core routing accepts unlisted model ids; catalog-driven entry points such
+     * as the GUI may require membership. Adapters used there must advertise
+     * their available models; the base empty catalog offers no GUI selection.
      * @param _provider - one provider route owned by this adapter.
      * @returns discoverable models in adapter-preferred order.
      */
@@ -547,7 +548,8 @@ let LlmRuntime = (() => {
         }
         /**
          * Discover models advertised by one registered provider. Catalog membership
-         * is advisory and never changes routing or request validation.
+         * does not constrain core routing. Catalog-driven entry points may restrict
+         * selection and submission to the advertised models.
          * @param provider - registered provider route to inspect.
          * @returns detached model metadata in adapter-preferred order.
          */
@@ -617,6 +619,11 @@ let LlmRuntime = (() => {
             if (systemPromptUpdate !== undefined && systemPromptUpdate !== 'in-history') {
                 throw new LlmError(`adapter returned invalid system prompt update mode for provider "${provider}" model "${model}"`, 'INVALID_MODEL_INFO');
             }
+            // Widened for the same reason: catalog config supplies the tool update mode as text.
+            const toolUpdate = resolved.toolUpdate;
+            if (toolUpdate !== undefined && toolUpdate !== 'in-history' && toolUpdate !== 'addition-only') {
+                throw new LlmError(`adapter returned invalid tool update mode for provider "${provider}" model "${model}"`, 'INVALID_MODEL_INFO');
+            }
             const defaultMaxTokens = resolved.defaultMaxTokens;
             if (defaultMaxTokens !== undefined
                 && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) {
@@ -631,6 +638,7 @@ let LlmRuntime = (() => {
                 ...context === undefined ? {} : { context: { contextWindow: context.contextWindow } },
                 ...defaultMaxTokens === undefined ? {} : { defaultMaxTokens },
                 ...resolved.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },
+                ...resolved.toolUpdate === undefined ? {} : { toolUpdate: resolved.toolUpdate },
             };
             const reasoning = resolved.reasoning;
             if (reasoning === undefined)
@@ -747,6 +755,7 @@ let LlmRuntime = (() => {
                     ? {}
                     : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },
                 ...modelInfo.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: modelInfo.systemPromptUpdate },
+                ...modelInfo.toolUpdate === undefined ? {} : { toolUpdate: modelInfo.toolUpdate },
                 stream: (options) => {
                     if (dispatched) {
                         throw new LlmError('a prepared LLM call can only be dispatched once', 'INVALID_PREPARED_CALL');
@@ -853,11 +862,19 @@ let LlmRuntime = (() => {
                     && projectedMessages.some(message => contentHasImage(message.content))) {
                     projectedMessages = projectImagesForTextModel(projectedMessages);
                 }
-                const projectedOptions = projectedMessages === resolvedOptions.messages
-                    ? resolvedOptions
-                    : Object.isFrozen(resolvedOptions)
-                        ? deepFreeze({ ...resolvedOptions, messages: projectedMessages })
-                        : { ...resolvedOptions, messages: projectedMessages };
+                // Tool changes are logged on every route; the route's declared mode selects what it receives.
+                const projectedTools = projectToolUpdates(projectedMessages, resolvedOptions.tools, modelInfo.toolUpdate, resolvedOptions.toolHistory);
+                projectedMessages = projectedTools.messages;
+                let projectedOptions = resolvedOptions;
+                if (projectedMessages !== resolvedOptions.messages || projectedTools.tools !== resolvedOptions.tools) {
+                    projectedOptions = {
+                        ...resolvedOptions,
+                        messages: projectedMessages,
+                        ...projectedTools.tools === undefined ? {} : { tools: projectedTools.tools },
+                    };
+                    if (Object.isFrozen(resolvedOptions))
+                        deepFreeze(projectedOptions);
+                }
                 const stream = dispatch(this.forAdapter(projectedOptions, adapter));
                 iterator = stream[Symbol.asyncIterator]();
             }

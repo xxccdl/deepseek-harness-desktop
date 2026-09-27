@@ -2,6 +2,7 @@
 /** English strings (the key-set source of truth for this pair). */
 export declare const en: {
     nav: string;
+    deepSeekAccount: string;
     title: string;
     intro: string;
     edit: string;

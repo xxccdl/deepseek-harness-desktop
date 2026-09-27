@@ -1,4 +1,5 @@
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots';
+import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client';
 import type { WorkspaceBrowserProps } from '../contract/slots.ts';
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts';
 /** The standard locale seat, prop-passed from the browser root. */
@@ -38,8 +39,9 @@ interface WorkspaceRowDragProps {
  * @param props.t - the browser root's locale seat.
  * @returns the row element.
  */
-export declare function ProjectRowItem({ group, containsCurrentDescendant, onToggle, onCreate, actions, drag, home, t }: {
+export declare function ProjectRowItem({ group, containsCurrentDescendant, onToggle, onCreate, actions, drag, home, newShortcut, t }: {
     group: GroupNode;
+    newShortcut?: ShortcutCatalogEntry | undefined;
     containsCurrentDescendant?: boolean;
     onToggle: () => void;
     onCreate: () => void;
@@ -74,22 +76,26 @@ export declare function SearchResultItem({ result, currentId, onOpen, onUnarchiv
     t: RowTranslate;
 }): import("react").JSX.Element;
 /**
- * One top-level 34px session row: status dot (pending user interaction outranks
- * own or descendant activity), title, relative time or compact pending label,
- * and the row actions menu.
+ * One top-level 32px session row: leading 16px cell (status dot, or the
+ * leading seat while the row's primary state is idle), title, relative time or
+ * compact pending label, and the row actions menu. A row that owns a state dot
+ * keeps that cell and renders no seat, so an ambient automation mark never
+ * appears beside the row's own state dot. An archived row keeps the cell blank:
+ * neither marker renders there, and its live status stays on the hover card.
  * @param props.node - derived session node.
  * @param props.currentId - selected session id (row highlight).
  * @param props.now - epoch ms for relative-time formatting.
  * @param props.onOpen - open a session by id.
  * @param props.onRenameRequest - open the rename dialog from a title double-click (id + current title).
- * @param props.renderSlot - render the row's `sidebar.workspaces.session.menu.item` and `sidebar.workspaces.session.row.action` lists.
+ * @param props.renderSlot - child-seat renderer for the row's action lists
+ * (`sidebar.workspaces.session.menu.item` / `sidebar.workspaces.session.row.action`),
+ * its leading decoration, and its hover-card section.
  * @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
  * @param props.drag - optional row-drag target wiring; blank rows cannot start a drag.
- * @param props.flat - omit the empty status slot in the hierarchy-free flat list.
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-export declare function SessionNodeItem({ node, currentId, now, onOpen, onRenameRequest, renderSlot, onReveal, drag, flat, t, }: {
+export declare function SessionNodeItem({ node, currentId, now, onOpen, onRenameRequest, renderSlot, onReveal, drag, t, }: {
     node: SessionNode;
     currentId: string | undefined;
     now: number;
@@ -100,9 +106,7 @@ export declare function SessionNodeItem({ node, currentId, now, onOpen, onRename
     onReveal?: (() => void) | undefined;
     /** Present on reorderable-list rows so every row can remain a drop target. */
     drag?: RowDragProps | undefined;
-    /** The row is rendered without a parent Workspace header. */
-    flat?: boolean | undefined;
     t: RowTranslate;
-} & PropsRenderSlots<'sidebar.workspaces.session.menu.item' | 'sidebar.workspaces.session.row.action'>): import("react").JSX.Element;
+} & PropsRenderSlots<'sidebar.workspaces.session.menu.item' | 'sidebar.workspaces.session.row.action' | 'sidebar.session.row.leading' | 'sidebar.session.row.hover'>): import("react").JSX.Element;
 export {};
 //# sourceMappingURL=Rows.d.ts.map

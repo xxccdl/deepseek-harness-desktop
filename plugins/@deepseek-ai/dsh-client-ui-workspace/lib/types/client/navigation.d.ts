@@ -16,7 +16,8 @@ export interface UiWorkspace {
     /**
      * Connect a Workspace and open its Session unless a later navigation supersedes it.
      * @param workspaceId - target Workspace.
-     * @param beforeOpen - optional synchronous preparation for the selected Session, skipped after supersession.
+     * @param beforeOpen - optional synchronous preparation for the selected Session,
+     * skipped after supersession; a throw aborts the open and releases the retained reference.
      * @returns completion; a superseded request may create a Session but does not open it.
      * @throws on failure; a refused creation is also shown through the Workspace
      * notice unless a later navigation or disposal superseded the request.

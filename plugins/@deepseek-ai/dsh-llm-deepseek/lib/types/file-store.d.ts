@@ -14,9 +14,8 @@ export interface DeepSeekFilePolicy {
 /** Connection facts needed by file operations. */
 export interface DeepSeekFileConnection {
     baseURL: string;
-    apiKey: string;
-    /** Use the DSH account header; omitted for ordinary API keys. */
-    accountCredential?: boolean;
+    /** Provider-resolved authentication headers for this endpoint. */
+    headers: Readonly<Record<string, string>>;
 }
 /** Result of one file-id resolution. */
 export interface DeepSeekFileReference {

@@ -1,4 +1,5 @@
 import type { Ref } from 'react';
+import { type CodeToolbarLabels } from '../CodeToolbar.tsx';
 export interface CodeBlockProps {
     /** The source text, rendered verbatim (trailing newline trimmed for display). */
     code: string;
@@ -25,6 +26,10 @@ export interface CodeBlockProps {
     copyLabel: string;
     /** Copy-button label during the post-copy confirmation window. */
     copiedLabel: string;
+    /** Enable the shared card toolbar and spacing; omit for custom toolbar layouts. */
+    toolbarLabels?: CodeToolbarLabels | undefined;
+    /** With toolbarLabels, use the owner's wrapping preference and omit the toolbar's local wrap action. */
+    wrap?: boolean | undefined;
 }
-export declare function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers, showHeader, copyLabel, copiedLabel, }: CodeBlockProps): import("react").JSX.Element;
+export declare function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers, showHeader, copyLabel, copiedLabel, toolbarLabels, wrap, }: CodeBlockProps): import("react").JSX.Element;
 //# sourceMappingURL=CodeBlock.d.ts.map

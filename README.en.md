@@ -38,6 +38,7 @@ scheduled tasks, quick chat, a plugin market, a desktop pet and more.
 - [Reproduce / build](#reproduce--build)
 - [Repository layout](#repository-layout)
 - [How it works (why the front end needs no changes)](#how-it-works-why-the-front-end-needs-no-changes)
+- [Star History](#star-history)
 
 ---
 
@@ -471,3 +472,15 @@ build reuses the same composition, only differing in that it:
   resolves `$DSH_HOME/profiles/node_modules` junctions to real directories, and a junction
   pointing into the asar virtual filesystem cannot be resolved by native modules (which
   would yield an empty `__DSH_BOOT__` manifest and a UI error, “Failed to load plugins”)
+
+---
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=xxccdl%2Fdeepseek-harness-desktop&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=xxccdl/deepseek-harness-desktop&type=date&legend=top-left&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=xxccdl/deepseek-harness-desktop&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=xxccdl/deepseek-harness-desktop&type=date&legend=top-left" />
+  </picture>
+</a>

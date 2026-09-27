@@ -4136,6 +4136,89 @@ function projectImagesForTextModel(messages) {
 		};
 	});
 }
+function withoutDeveloperMessages(messages) {
+	const retained = messages.filter((message) => message.role !== "developer");
+	return retained.length === messages.length ? messages : retained;
+}
+function toolDeclarations(tools, mode, history) {
+	const declarations = new Map(history.tools.map((tool) => [tool.name, tool]));
+	for (const update of history.updates) for (const tool of update.additions) if (!declarations.has(tool.name)) declarations.set(tool.name, {
+		...tool,
+		deferLoading: true
+	});
+	switch (mode) {
+		case "in-history": return declarations;
+		case "addition-only": {
+			const activeNames = new Set(tools?.map((tool) => tool.name));
+			for (const name of declarations.keys()) if (!activeNames.has(name)) declarations.delete(name);
+			return declarations;
+		}
+		/* v8 ignore next 2 -- closed-union exhaustiveness guard */
+		default: return assertNever(mode);
+	}
+}
+/**
+* Construct provider declarations from session-folded history without changing logged active tools.
+* Unsupported routes and incomplete history use current declarations without developer updates.
+* Explicitly deferred baseline tools become available only after their first retained addition.
+* @param messages - complete request inputs, or the prefix selected for an auxiliary call.
+* @param tools - currently active tool schemas.
+* @param toolUpdate - the resolved route's update mode.
+* @param history - immutable state folded from committed headers and developer messages.
+* @returns provider declarations and the corresponding filtered history.
+*/
+function projectToolUpdates(messages, tools, toolUpdate, history) {
+	if (toolUpdate === void 0) {
+		let immediateTools = tools;
+		if (tools?.some((tool) => tool.deferLoading === true)) immediateTools = tools.map(({ deferLoading: _loading, ...tool }) => tool);
+		return {
+			messages: withoutDeveloperMessages(messages),
+			tools: immediateTools
+		};
+	}
+	if (history === void 0) return {
+		messages: withoutDeveloperMessages(messages),
+		tools
+	};
+	const messageIds = new Set(messages.flatMap((message) => message.role === "developer" ? [message.id] : []));
+	if (history.updates.some((update) => !messageIds.has(update.messageId))) return {
+		messages: withoutDeveloperMessages(messages),
+		tools
+	};
+	const declarations = toolDeclarations(tools, toolUpdate, history);
+	const updateIds = new Set(history.updates.map((update) => update.messageId));
+	const offered = new Set(history.tools.filter((tool) => !tool.deferLoading).map((tool) => tool.name));
+	const projectedMessages = [];
+	for (const message of messages) {
+		if (message.role !== "developer") {
+			projectedMessages.push(message);
+			continue;
+		}
+		if (!updateIds.has(message.id)) continue;
+		const content = message.content.filter((block) => {
+			switch (block.type) {
+				case "tool-addition":
+					if (!declarations.has(block.toolName) || offered.has(block.toolName)) return false;
+					offered.add(block.toolName);
+					return true;
+				case "tool-removal":
+					if (toolUpdate !== "in-history") return false;
+					return offered.delete(block.toolName);
+				default: return true;
+			}
+		});
+		if (content.length === 0) continue;
+		if (content.length === message.content.length) projectedMessages.push(message);
+		else projectedMessages.push({
+			...message,
+			content
+		});
+	}
+	return {
+		messages: projectedMessages.length === messages.length && projectedMessages.every((message, index) => message === messages[index]) ? messages : projectedMessages,
+		tools: [...declarations.values()]
+	};
+}
 //#endregion
 //#region ../../llm/llm/src/attribution.ts
 /**
@@ -4995,7 +5078,8 @@ var LlmError = class extends HarnessError {
 		}
 		/**
 		* Discover models advertised by one registered provider. Catalog membership
-		* is advisory and never changes routing or request validation.
+		* does not constrain core routing. Catalog-driven entry points may restrict
+		* selection and submission to the advertised models.
 		* @param provider - registered provider route to inspect.
 		* @returns detached model metadata in adapter-preferred order.
 		*/
@@ -5040,6 +5124,8 @@ var LlmError = class extends HarnessError {
 			const inputModalities = this.detachedModalities(resolved.inputModalities);
 			const systemPromptUpdate = resolved.systemPromptUpdate;
 			if (systemPromptUpdate !== void 0 && systemPromptUpdate !== "in-history") throw new LlmError(`adapter returned invalid system prompt update mode for provider "${provider}" model "${model}"`, "INVALID_MODEL_INFO");
+			const toolUpdate = resolved.toolUpdate;
+			if (toolUpdate !== void 0 && toolUpdate !== "in-history" && toolUpdate !== "addition-only") throw new LlmError(`adapter returned invalid tool update mode for provider "${provider}" model "${model}"`, "INVALID_MODEL_INFO");
 			const defaultMaxTokens = resolved.defaultMaxTokens;
 			if (defaultMaxTokens !== void 0 && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) throw new LlmError(`adapter returned invalid default maxTokens for provider "${provider}" model "${model}"`, "INVALID_MODEL_MAX_TOKENS");
 			const info = {
@@ -5050,7 +5136,8 @@ var LlmError = class extends HarnessError {
 				...inputModalities === void 0 ? {} : { inputModalities },
 				...context === void 0 ? {} : { context: { contextWindow: context.contextWindow } },
 				...defaultMaxTokens === void 0 ? {} : { defaultMaxTokens },
-				...resolved.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: resolved.systemPromptUpdate }
+				...resolved.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },
+				...resolved.toolUpdate === void 0 ? {} : { toolUpdate: resolved.toolUpdate }
 			};
 			const reasoning = resolved.reasoning;
 			if (reasoning === void 0) return info;
@@ -5145,6 +5232,7 @@ var LlmError = class extends HarnessError {
 				...context === void 0 ? {} : { context },
 				...modelInfo.inputModalities === void 0 ? {} : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },
 				...modelInfo.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: modelInfo.systemPromptUpdate },
+				...modelInfo.toolUpdate === void 0 ? {} : { toolUpdate: modelInfo.toolUpdate },
 				stream: (options) => {
 					if (dispatched) throw new LlmError("a prepared LLM call can only be dispatched once", "INVALID_PREPARED_CALL");
 					if (!callConfigEquals(options, resolvedConfig)) throw new LlmError("prepared LLM call config changed before adapter dispatch", "INVALID_PREPARED_CALL");
@@ -5234,13 +5322,17 @@ var LlmError = class extends HarnessError {
 				let projectedMessages = resolvedOptions.messages;
 				if (projectedMessages.some((message) => contentHasFile(message.content))) projectedMessages = projectFilesToText(projectedMessages, (ref) => this.fileReadPath(ref));
 				if (modelInfo.inputModalities !== void 0 && !modelInfo.inputModalities.includes("image") && projectedMessages.some((message) => contentHasImage(message.content))) projectedMessages = projectImagesForTextModel(projectedMessages);
-				const projectedOptions = projectedMessages === resolvedOptions.messages ? resolvedOptions : Object.isFrozen(resolvedOptions) ? deepFreeze({
-					...resolvedOptions,
-					messages: projectedMessages
-				}) : {
-					...resolvedOptions,
-					messages: projectedMessages
-				};
+				const projectedTools = projectToolUpdates(projectedMessages, resolvedOptions.tools, modelInfo.toolUpdate, resolvedOptions.toolHistory);
+				projectedMessages = projectedTools.messages;
+				let projectedOptions = resolvedOptions;
+				if (projectedMessages !== resolvedOptions.messages || projectedTools.tools !== resolvedOptions.tools) {
+					projectedOptions = {
+						...resolvedOptions,
+						messages: projectedMessages,
+						...projectedTools.tools === void 0 ? {} : { tools: projectedTools.tools }
+					};
+					if (Object.isFrozen(resolvedOptions)) deepFreeze(projectedOptions);
+				}
 				iterator = dispatch(this.forAdapter(projectedOptions, adapter))[Symbol.asyncIterator]();
 			} catch (error) {
 				yield adapterFailureChunk(error, options.signal);
@@ -5338,6 +5430,80 @@ function foldRequestHeader(events, from) {
 	for (const event of events) if (event.type === "request/header") state = canonicalHeader(event.data.header);
 	return state;
 }
+//#endregion
+//#region ../../core/session/src/tool-history.ts
+/** Folds committed headers and developer messages independently of model capability. */
+var ToolHistoryProjection = class {
+	/** Historical declarations indexed by the header sequence referenced by additions. */
+	headers = /* @__PURE__ */ new Map();
+	/** Definitions retained in the current declaration series, including removed tools. */
+	declared = /* @__PURE__ */ new Map();
+	/** Active definitions from the latest request header. */
+	active = [];
+	/** Active names reconstructed from the baseline and recorded updates. */
+	available = /* @__PURE__ */ new Set();
+	/** Header that starts the current declaration series; absent before the first header. */
+	baselineSeq;
+	/** Immutable request snapshot of the current baseline and resolved updates. */
+	history = deepFreeze({
+		tools: [],
+		updates: []
+	});
+	/**
+	* Consume the next committed event in log order.
+	* @param event - a session event, including inherited events during restoration.
+	*/
+	apply(event) {
+		if (event.type === "request/header") {
+			const tools = event.data.header.tools ?? [];
+			this.headers.set(event.seq, tools);
+			const redeclared = tools.some((tool) => {
+				const before = this.declared.get(tool.name);
+				return before !== void 0 && JSON.stringify(before) !== JSON.stringify(tool);
+			});
+			if (this.baselineSeq === void 0 || event.data.reason === "series" || event.data.startsSeries || redeclared) {
+				this.baselineSeq = event.seq;
+				this.declared = new Map(tools.map((tool) => [tool.name, tool]));
+				this.history = deepFreeze({
+					tools,
+					updates: []
+				});
+				this.available = new Set(tools.map((tool) => tool.name));
+			}
+			this.active = tools;
+		} else if (event.type === "developer/message") {
+			const { message, headerSeq } = event.data;
+			const definitions = headerSeq === void 0 ? [] : this.headers.get(headerSeq);
+			const additions = message.content.flatMap((block) => {
+				if (block.type !== "tool-addition") return [];
+				const tool = definitions?.find((tool) => tool.name === block.toolName);
+				if (tool === void 0) throw new Error(`tool history: missing definition for ${block.toolName}`);
+				return [tool];
+			});
+			for (const tool of additions) this.declared.set(tool.name, tool);
+			for (const block of message.content) if (block.type === "tool-addition") this.available.add(block.toolName);
+			else if (block.type === "tool-removal") this.available.delete(block.toolName);
+			this.history = deepFreeze({
+				tools: this.history.tools,
+				updates: [...this.history.updates, {
+					messageId: message.id,
+					additions
+				}]
+			});
+		}
+	}
+	/**
+	* Read an immutable snapshot; subsequent events do not mutate it.
+	* @returns initial declarations and historically resolved additions for the current series.
+	*/
+	snapshot() {
+		if (this.active.length !== this.available.size || this.active.some((tool) => !this.available.has(tool.name))) return deepFreeze({
+			tools: this.active,
+			updates: []
+		});
+		return this.history;
+	}
+};
 //#endregion
 //#region ../../core/session/src/index.ts
 /** Validate and freeze one detached creation header in place. */
@@ -5811,6 +5977,20 @@ var Session = class Session {
 			this.contextFoldSeq = this.log.length;
 		}
 		return this.contextFold;
+	}
+	/** Cached historical tool definitions and updates for request projection. */
+	toolHistoryProjection = new ToolHistoryProjection();
+	/** Index of the next committed event not yet consumed by the tool-history fold. */
+	toolHistorySeq = 0;
+	/**
+	* Fold unseen committed events into capability-independent tool history.
+	* Initial access reconstructs inherited history; later reads consume only new events.
+	* @returns an immutable snapshot for LLM request projection, including historical addition definitions.
+	*/
+	toolHistory() {
+		for (const event of this.log.slice(this.toolHistorySeq)) this.toolHistoryProjection.apply(event);
+		this.toolHistorySeq = this.log.length;
+		return this.toolHistoryProjection.snapshot();
 	}
 	/** The derived-message cache: frozen projections, extended per unseen node. */
 	derived = [];

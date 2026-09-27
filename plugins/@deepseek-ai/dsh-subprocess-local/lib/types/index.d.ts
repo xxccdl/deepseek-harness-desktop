@@ -35,6 +35,8 @@ export declare class LocalSubprocessRuntime extends SubprocessRuntime {
     /** Test hook for platform process inspection; production resolves lazily on terminal spawn. */
     terminalInspector: ProcessInspector | undefined;
     constructor(ctx: Context);
+    /** Spill failures reach the plugin logger; the log line is the only trace of why a result has no spill path. */
+    private readonly reportSpillFailure;
     private terminateForHostExit;
     private disposeManagedProcesses;
     resolveExecutable(command: string, env?: Readonly<Record<string, string>>, signal?: AbortSignal): Promise<string>;

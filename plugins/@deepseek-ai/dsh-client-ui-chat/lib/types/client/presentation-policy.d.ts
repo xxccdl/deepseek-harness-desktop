@@ -11,8 +11,8 @@ export interface ChatPresentationPolicy {
     readonly mode: TranscriptViewMode;
     /** Whether a normally completed Turn folds its process rows behind the whole-Turn control. */
     readonly foldCompletedTurns: boolean;
-    /** Whether running Turns' secondary groups expose a collapsible header; historical groups always do. */
-    readonly stepGrouping: 'collapsed' | 'none';
+    /** Collapsible group headers for all Turns, historical Turns only, or no Turns. */
+    readonly stepGrouping: 'collapsed' | 'history' | 'none';
     /** Show the running command, path, query, or reasoning detail in group titles. */
     readonly liveProcessDetail: boolean;
     /** Whether a settled reasoning row previews its first line beside the Think title. */

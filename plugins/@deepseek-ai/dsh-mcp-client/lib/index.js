@@ -185,7 +185,7 @@ function createMcpToolDefinition(ctx, options) {
 		parameters: inputSchema,
 		output: createOutput(rawName, supportedOutputSchema(options.outputSchema)),
 		execute: createExecutor(ctx, options, projections),
-		finalizeContent(exec, result) {
+		projectContent(exec, result) {
 			const projection = projections.get(exec);
 			if (projection === void 0) return void 0;
 			projections.delete(exec);

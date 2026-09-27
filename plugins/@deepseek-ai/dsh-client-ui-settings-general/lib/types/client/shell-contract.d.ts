@@ -8,6 +8,9 @@
  */
 import type { ConnectionState } from '@deepseek-ai/dsh-client-connection/client';
 import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
+import type { PropsStore } from '@deepseek-ai/dsh-client-store';
+import type { createSettingsShellStore } from './shell-store.ts';
+import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client';
 import type { DesktopUpdateView } from '../types.ts';
 /** One nav row projected from a settings.section registration's options. */
 export interface SettingsSectionRow {
@@ -31,6 +34,8 @@ export type SettingsRootInjected = {
     /** Request a fresh logical generation and physical WebSocket immediately. */
     reconnect: () => void;
     hooks: {
+        /** Effective command presentation, shared with the reference. */
+        shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>;
         /** Shared Electron status for both sidebar locations. */
         desktopUpdate: HostObservable<DesktopUpdateView>;
         /** Connection-owned state for the current Host connection. */
@@ -44,8 +49,8 @@ export type SettingsRootInjected = {
 /**
  * Full component props of the settings shell root: the sidebar owner share
  * (wide/rail state) plus the declared render shares and the injected face
- * (hooks compartment bound to useSections). No store is registered — modal
- * open state and active section id are component-local viewing state.
+ * (hooks compartment bound to useSections). The declared store shares modal
+ * visibility and section selection with application commands.
  */
-export type SettingsRootComponentProps = PropsRuntime<'sidebar.settings'> & PropsRenderSlots<'settings.launcher' | 'settings.trigger' | 'settings.header' | 'settings.action' | 'settings.close' | 'settings.section' | 'settings.onboarding'> & InjectFace<SettingsRootInjected> & PropsLocale<'settings'>;
+export type SettingsRootComponentProps = PropsRuntime<'sidebar.settings'> & PropsRenderSlots<'settings.launcher' | 'settings.trigger' | 'settings.header' | 'settings.action' | 'settings.close' | 'settings.section' | 'settings.onboarding'> & InjectFace<SettingsRootInjected> & PropsLocale<'settings'> & PropsStore<ReturnType<typeof createSettingsShellStore>>;
 //# sourceMappingURL=shell-contract.d.ts.map

@@ -57,6 +57,7 @@ export declare function SettingsValueField(props: Omit<SettingsFieldProps, 'hint
  * A write-only credential control. The value never rides a response, so the
  * control reports only whether one is configured and starts blank; a blank
  * draft writes nothing, which keeps the stored key rather than clearing it.
+ * The control asks browsers not to autofill saved login passwords.
  * @param props - the field's copy, its staged text, and the configured state.
  * @returns the labelled control.
  */

@@ -170,7 +170,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/session-query/session-log-export/src/client/HeaderAction.module.css.mjs
-		const css = ".nL4_yW_moreButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:28px;flex:none;justify-content:center;align-items:center;padding:6px;display:inline-flex}.nL4_yW_moreButton svg{width:15px;height:15px}.nL4_yW_moreButton:hover{background:var(--dsw-alias-interactive-bg-hover)}";
+		const css = ".nL4_yW_moreButton{width:28px;color:var(--dsw-alias-label-secondary);flex:none;padding:0}.nL4_yW_moreButton svg{width:15px;height:15px}";
 		const tagId = "@deepseek-ai/dsh-session-log-export/HeaderAction.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -214,8 +214,8 @@ window.__ModuleLoader__.load({
 					if (id === "feedback") openFeedback(sessionId);
 					else request(sessionId);
 				},
-				anchor: (0, react_jsx_runtime.jsx)("button", {
-					type: "button",
+				anchor: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					size: "sm",
 					className: HeaderAction_module_css_default.moreButton,
 					"aria-label": t("header.more"),
 					"aria-haspopup": "menu",

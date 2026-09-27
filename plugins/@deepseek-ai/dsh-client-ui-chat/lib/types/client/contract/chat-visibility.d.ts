@@ -2,6 +2,7 @@
 import type { ChatNode } from './chat-nodes.ts';
 /**
  * Exclude system prompts, ordinary Context, and permission commands from visible Chat rows.
+ * Context containing tool changes retains its notice row.
  * @param node - projected Chat node.
  * @returns whether the node contributes a visible Chat row.
  */

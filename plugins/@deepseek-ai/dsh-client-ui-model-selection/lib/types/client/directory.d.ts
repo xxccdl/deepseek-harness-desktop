@@ -11,15 +11,11 @@ import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-
 import type { ModelCatalogDirectory } from './catalog.ts';
 /** Directory snapshot both entries render from. */
 export interface ModelDirectoryState {
-    /** Effective selection: durable next-request projection, then Host default. */
+    /** Saved selection, retained even when its provider or model leaves the catalog. */
     current: ModelSelection | null;
-    /**
-     * Whether an adapter serves the current selection's provider, as the host reports
-     * it — null before the first load, which is NOT the same as blocked. Read
-     * this rather than "current matches no group": catalog membership is
-     * advisory, so a route serving a model it stopped advertising is missing
-     * from the groups yet perfectly usable.
-     */
+    /** Saved effort caption retained when the selected model is unavailable. */
+    retainedEffort?: string;
+    /** Whether the current selection is present in the available catalog; null while unresolved. */
     routable: boolean | null;
     /** Successfully loaded provider groups (last good load). */
     groups: readonly ModelProviderGroup[];
@@ -27,6 +23,8 @@ export interface ModelDirectoryState {
     failures: readonly ModelCatalogFailure[];
     /** Lifecycle of the in-flight operation. */
     status: 'idle' | 'loading' | 'ready' | 'selecting' | 'error';
+    /** Selection submitted by the latest `select` until it settles; null otherwise. */
+    pending: ModelSelection | null;
     /** Whole-request or selection failure text; null when none. */
     error: string | null;
 }
@@ -42,7 +40,6 @@ export declare class ModelDirectory {
     /** Latest selection operation wins; an older response never overwrites a newer one. */
     private generation;
     private disposed;
-    private resolved;
     private readonly unsubscribeCatalog;
     private readonly unsubscribeSelection;
     /**
@@ -54,7 +51,7 @@ export declare class ModelDirectory {
      */
     constructor(sessions: Pick<TypertClientRemote['session'], 'selectModel'>, sessionId: SessionId, available: () => boolean, catalog: ModelCatalogDirectory, projected: ObservableSnapshot<unknown>);
     /**
-     * Ensure the Host generation's shared advisory catalog is loaded.
+     * Ensure the Host generation's shared available catalog is loaded.
      * @returns the fresh directory value.
      */
     load(): Promise<ModelDirectoryState>;

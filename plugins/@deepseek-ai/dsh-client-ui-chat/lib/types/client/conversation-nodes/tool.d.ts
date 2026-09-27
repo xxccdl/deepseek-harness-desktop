@@ -11,7 +11,7 @@ interface ToolState {
     readonly children: ReadonlyMap<string, readonly ToolCallBlock[]>;
     readonly parents: ReadonlyMap<string, string>;
 }
-/** Root Tool lifecycle and nested PTC dispatch Definition. */
+/** Root Tool preparation, dispatch, result, and nested PTC calls. */
 export declare const toolDefinition: ConversationNodeDefinition<ToolState>;
 /**
  * Register the root Tool lifecycle and nested-subcall contribution.

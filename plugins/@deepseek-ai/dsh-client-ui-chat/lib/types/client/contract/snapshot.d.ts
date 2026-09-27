@@ -2,7 +2,7 @@ import type { ConversationNode, ConversationTimelineSnapshot, PartialAssistant, 
 import type { ChatConversationViewNode, ChatNodeDataMap, ChatNodeKind } from './chat-nodes.ts';
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store';
 import type { TurnProcessSpec } from './turn-process.ts';
-export type { AssistantBlock, AssistantMessageNode, AssistantProviderMetadataView, AssistantRequestConfig, AssistantTiming, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode, ModelRetryNode, PartialAssistant, RunningToolCall, SteeringMessageNode, TodoItem, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UnknownSurfaceNode, UserMessageNode, } from '@deepseek-ai/dsh-client-ui-conversation/client';
+export type { AssistantBlock, AssistantMessageNode, AssistantProviderMetadataView, AssistantRequestConfig, AssistantTiming, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode, ModelRetryNode, PartialAssistant, PreparingToolCall, RunningToolCall, StartedToolCall, SteeringMessageNode, TodoItem, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UnknownSurfaceNode, UserMessageNode, } from '@deepseek-ai/dsh-client-ui-conversation/client';
 /** Per-key observable used by one mounted Chat Node Seat. */
 export interface ChatNodeSource {
     /** @returns the current Node for this source's stable key. */

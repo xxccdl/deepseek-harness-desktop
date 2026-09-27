@@ -18,7 +18,15 @@ export type WireInput = {
     };
 };
 /** Content serialized into one Messages conversation turn. */
-export type WireBlock = WireInput | {
+export type WireBlock = WireInput
+/** Activates or removes a declared tool by name in conversation order. */
+ | {
+    type: 'tool_addition' | 'tool_removal';
+    tool: {
+        type: 'tool_reference';
+        name: string;
+    };
+} | {
     type: 'thinking';
     thinking: string;
     signature?: string;
@@ -57,6 +65,8 @@ export type WireRequest = {
         name: string;
         description: string;
         input_schema: Record<string, unknown>;
+        /** Delays tool availability until a tool_addition block activates it. */
+        defer_loading?: true;
     }[];
 };
 //# sourceMappingURL=wire-types.d.ts.map

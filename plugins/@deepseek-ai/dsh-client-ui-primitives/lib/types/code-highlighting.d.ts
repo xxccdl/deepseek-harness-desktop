@@ -1,12 +1,5 @@
 import { type HighlightSpan } from './markdown/highlight.ts';
-/** Recognized filename suffixes whose source can use the shared syntax highlighter. */
-export declare const CODE_HIGHLIGHT_EXTENSIONS: readonly string[];
-/**
- * Select the shared syntax highlighter's grammar from a filename.
- * @param path - decoded source filename or path.
- * @returns a supported grammar hint, or `undefined` for other suffixes.
- */
-export declare function languageForPath(path: string): string | undefined;
+export { CODE_HIGHLIGHT_EXTENSIONS, languageForPath } from '@deepseek-ai/dsh-util-code-language';
 /** Highlight one source fragment into one token list per line. */
 export type CodeHighlighter = (code: string) => HighlightSpan[][] | undefined;
 /**

@@ -31,12 +31,20 @@
  * face and reading its own Host state through hooks that face injects, so a
  * client plugin's action lands beside them by `order` and needs nothing from
  * the browser beyond the row identity.
+ *
+ * The browser entry additionally declares two `list` seats per Session row
+ * (`sidebar.session.row.leading` / `sidebar.session.row.hover`) for ambient
+ * row decorations. Both take the row's Session identity and nothing else: a
+ * session-scoped seat would force a Session binding, which would activate and
+ * retain every listed Session.
  */
 import type { HostObservable, InjectFace, PropsHooks, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore, SlotHookFactory } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SessionSearchResultItem } from '@deepseek-ai/dsh-api-session-controller/client';
 import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client';
 import type { SessionActivity, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client';
 import type { SessionId } from '@deepseek-ai/dsh-session/types';
+import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client';
+import type { WorkspaceShortcutState } from '../shortcuts.ts';
 import type { createWorkspaceViewStore } from '../stores.ts';
 /**
  * Owner share of the directory-flow holes: the complete conversation between
@@ -79,6 +87,15 @@ export type UseMenuOpenState = () => MenuOpenState;
  * @returns the hook the entry calls.
  */
 export declare const menuOpenStateFactory: SlotHookFactory<'sidebar.workspaces.session.menu.item', UseMenuOpenState>;
+/**
+ * Owner share of the two Session-row schedule seats. Both receive only the
+ * row's Session identity: the occupant reads that Session's own scheduled
+ * tasks, and reading them activates nothing.
+ */
+export interface SessionRowScheduleOwnerProps {
+    /** Session this row shows; the occupant addresses its own data by this id. */
+    readonly sessionId: SessionId;
+}
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface SlotMap {
         /** Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry). */
@@ -92,6 +109,29 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
             kind: 'single';
             scope: 'root';
             owner: DirectoryFlowOwnerProps;
+        };
+        /**
+         * Leading decoration of one Session row, in the 16px cell before the title
+         * that the row's own state dot otherwise occupies. A higher-priority state
+         * (a pending interaction, a new message, live activity) replaces the seat
+         * with that dot for the same row, so an occupant here never renders beside
+         * a status dot and is mounted only by a row whose primary state is idle.
+         * An archived row keeps that cell blank — neither its status dot nor this
+         * seat renders there, and its live status appears on the hover card only.
+         */
+        'sidebar.session.row.leading': {
+            kind: 'list';
+            scope: 'root';
+            owner: SessionRowScheduleOwnerProps;
+        };
+        /**
+         * Section of the Session row's hover card between its relative time and
+         * its trailing status line. Mounted only while that card is open.
+         */
+        'sidebar.session.row.hover': {
+            kind: 'list';
+            scope: 'root';
+            owner: SessionRowScheduleOwnerProps;
         };
         /**
          * The rows of one Session's "..." menu, in ascending `order`. ui-workspace
@@ -132,6 +172,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
             inject: {
                 hooks: {
                     menuOpenState: SlotHookFactory<'sidebar.workspaces.session.menu.item', UseMenuOpenState>;
+                    shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>;
                 };
             };
         };
@@ -181,7 +222,19 @@ export type WorkspaceBrowserInjected = {
          * saw. Select the field the surface needs (`info => info.home`).
          */
         hostInfo: HostObservable<RemoteHostFacts>;
+        workspaceShortcuts: HostObservable<WorkspaceShortcutState>;
+        shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>;
     };
+    /** Open the browser search and focus its input. */
+    requestSearch: () => void;
+    /** Request the existing directory picker. */
+    requestAddWorkspace: () => void;
+    /** Consume the directory-picker opening request. */
+    closeAddWorkspace: () => void;
+    /** Publish directory interaction occupancy for command availability. */
+    setDirectoryBusy: (busy: boolean) => void;
+    /** Dismiss the shortcut's fork-failure notification. */
+    dismissForkError: () => void;
     /**
      * Start a New Session in a Workspace: reuse-or-create its blank session and
      * open it; without an explicit workspace, inherit the current Session
@@ -370,10 +423,14 @@ export interface RowToastInjected {
 export type SessionRenameDialogProps = PropsRuntime<'shell.overlay'> & PropsLocale<'workspace'> & Omit<SessionRenameDialogInjected, 'hooks'> & PropsHooks<SessionRenameDialogInjected['hooks']>;
 /** Props of the stop-and-archive dialog entry in `shell.overlay`. */
 export type SessionArchiveConfirmProps = PropsRuntime<'shell.overlay'> & PropsLocale<'workspace'> & Omit<SessionArchiveConfirmInjected, 'hooks'> & PropsHooks<SessionArchiveConfirmInjected['hooks']>;
-/** Props of the row toast entry in `shell.overlay`. */
-export type RowToastProps = PropsRuntime<'shell.overlay'> & PropsLocale<'workspace'> & Omit<RowToastInjected, 'hooks'> & PropsHooks<RowToastInjected['hooks']>;
+/**
+ * Props of the row toast entry in `shell.overlay`. The declared viewing store
+ * carries the archived filter; the archived notice omits its filter action
+ * when archived rows are already visible.
+ */
+export type RowToastProps = PropsRuntime<'shell.overlay'> & PropsLocale<'workspace'> & PropsStore<WorkspaceViewStoreHandle> & Omit<RowToastInjected, 'hooks'> & PropsHooks<RowToastInjected['hooks']>;
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */
-export type WorkspaceBrowserProps = PropsRuntime<'sidebar.workspaces'> & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'sidebar.workspaces.session.menu.item' | 'sidebar.workspaces.session.row.action'> & PropsStore<WorkspaceViewStoreHandle> & Omit<WorkspaceBrowserInjected, 'hooks'> & PropsHooks<WorkspaceBrowserInjected['hooks']> & PropsLocale<'workspace'>;
+export type WorkspaceBrowserProps = PropsRuntime<'sidebar.workspaces'> & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'sidebar.workspaces.session.menu.item' | 'sidebar.workspaces.session.row.action' | 'sidebar.session.row.leading' | 'sidebar.session.row.hover'> & PropsStore<WorkspaceViewStoreHandle> & Omit<WorkspaceBrowserInjected, 'hooks'> & PropsHooks<WorkspaceBrowserInjected['hooks']> & PropsLocale<'workspace'>;
 /**
  * Picker-private injected share. Pick semantics remain in the owner's onPick
  * callback; this callback creates only the real Host Workspace. A type alias

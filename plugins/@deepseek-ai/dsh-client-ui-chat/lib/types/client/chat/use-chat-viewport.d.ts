@@ -2,12 +2,8 @@
 import { type RefObject } from 'react';
 import type { ChatScrollPosition } from '../contract/slots.ts';
 import type { ChatSnapshot } from '../contract/snapshot.ts';
-/** Scroll position, maximum top, and viewport height from one geometry read. */
-export interface ViewportMetrics {
-    readonly top: number;
-    readonly floor: number;
-    readonly height: number;
-}
+import { ScrollFollow, type ViewportMetrics } from './use-scroll-follow.ts';
+export type { ViewportMetrics } from './use-scroll-follow.ts';
 /** Scroll geometry attributed against the last acknowledged position. */
 export interface ViewportScroll {
     readonly metrics: ViewportMetrics;
@@ -120,14 +116,16 @@ export declare class ChatViewport {
     get preserving(): boolean;
     /**
      * Compensate inner scrolling first, then the outer scrollport, within their actual scroll ranges.
+     * An inner write pauses its bound follow controller so the reading anchor takes priority.
      * @returns the actual landing, or null when no visible retained row remains.
      */
     preserve(): ViewportLanding | null;
     /**
      * Align the scrollport with its current floor.
+     * @param follow - independent follow intent and scrolling controller.
      * @returns the actual floor landing, or null while detached.
      */
-    scrollToBottom(): ViewportLanding | null;
+    scrollToBottom(follow: ScrollFollow): ViewportLanding | null;
     private align;
     private write;
     private readonly onScroll;
@@ -143,5 +141,4 @@ export declare function useChatViewport(): {
     listRef: RefObject<HTMLDivElement>;
     columnRef: RefObject<HTMLDivElement>;
 };
-export {};
 //# sourceMappingURL=use-chat-viewport.d.ts.map

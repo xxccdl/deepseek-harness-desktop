@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.7.0";
+const tag = process.argv[2] ?? "v1.8.0";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,6 +19,17 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
+  "## 1.8.0",
+  "",
+  "本次把 fork 重基到上游 **dsh 0.1.7-rc.2**（上一版停在 0.1.7-alpha.1）。上游这一版带来定时任务与提醒、桌面端首次使用引导、快捷键查看与自定义、对话中即时启用刚开启的工具、关窗后任务继续在后台运行等改动（完整清单见上游 `dsh-v0.1.7-rc.2`）；其中与桌面端直接相关的两条已随本次重基生效：**修复部分桌面安装包启动失败**，以及**不兼容插件的跳过提示每次启动只显示一次**。覆盖层包随之重新对齐，像 `dsh-host-apiproxy` 这类在新一代组合里已不需要的覆盖层也一并移除。下面是本次与本 fork 直接相关的改动。",
+  "- **修复：语音模型下载反复连接超时**。内置 `fetch` 把一次 TCP+TLS 连接压在 10 秒内，而镜像源对钉住的 `resolve` 路径会重定向到它自己的缓存源——取一个资产要连两次，慢线路上每次连接实测 2.5~10.7 秒，第二跳就顶穿上限，于是同一个文件时而成功、时而报 `UND_ERR_CONNECT_TIMEOUT`，即便镜像完全可达。现在下载与探测统一走连接超时 12 万毫秒的 undici agent，传输本身仍由插件自己的取消信号与 `prepareTimeoutMs` 兜底",
+  "- **修复：Node 侧不再只信内置根证书**。桌面端的 Node 进程此前只加载 Node 内置的根证书表，凡是需要补中间证书的站点（huggingface.co、github.com）一律 `UNABLE_TO_VERIFY_LEAF_SIGNATURE`，语音模型下载与插件安装因此失败，而同一台机器上的浏览器一切正常。现在启动时把 Node 内置信任库与操作系统信任库合并后设为默认（本机实测 145 + 136 张），并单独验过下载器真正走的 undici 路径",
+  "- **新增：麦克风权限自动授予**。语音输入此前只能看到「Microphone access is disabled」：渲染进程的权限处理器只放行通知、剪贴板与全屏，`media` 请求一律直接拒绝。现在按 `details.mediaTypes` 放行纯音频请求（摄像头仍被拒绝），实测 `getUserMedia` 拿到设备、三个音频输入可见",
+  "- **修复：Windows 上终端类工具仍然全线失败（`PTY shell exited during startup`）**。1.7.0 卸掉的是沙箱授权那一层，这一层更靠下、且与沙箱无关：ConPTY 只会把控制台交给**控制台子系统**映像，而 Electron 是 **GUI 子系统**二进制，作为 ConPTY 的直接子进程拿不到可用的标准句柄，随后运行的进程以 127 退出且没有任何输出，就绪握手永远等不到标记。逐项隔离确认（`cmd /c echo` 正常、`electron -e` 零输出、经由 electron 运行器即 127 退出）后，Windows + Electron 下改为用 `cmd.exe /d /c <原命令>` 启动 PTY，给 ConPTY 一个挂得上的控制台子进程；参数逐个引用，含空格与 `&` 的路径仍然安全",
+  "- **修复：输入框时不时上窜**。逐帧测得统计胶囊与上下文表（`.uV2eYG_dock`）渲染在输入卡片**下方**，而卡片钉在座位底边，于是卡片顶端恒等于「座位底边 − 状态行高度」——状态行一出现卡片就整体上移、一消失就回落，实测 28px，且双向。状态行又跟着数据出现（第一轮的用量统计、上下文表的第一个百分比），所以看起来像输入框自己在动。现在非 hero 布局下为这一行预留其自身高度，输入框位置恒定",
+  "- **动效补齐此前没有动画的界面**。弹窗、菜单、气泡此前是「直接出现」。现在按 shell 已发布的 role 与 portal 钩子统一接入进入动画（面板 `dsmRise`、遮罩 `dsmFade`，遮罩与面板同帧淡入，避免「面板淡入而遮罩硬切」），对话/轨迹页签补上颜色与下划线过渡，并把全部新选择器一并纳入 reduced-motion 收敛",
+  "- **新增：插件加载失败自动停用，并交给 AI 去修**。此前某个插件 import 失败只会得到一句警告（0.1.7 起已不再致命），但**每次启动都会再失败一次**，界面上就是一块「Failed to load plugins」错误页。现在启动时读一遍加载器里真正失败的行（`disabled` 表达式报错、fiber 缺失、fiber 处于 failed 状态，并取回原始 rejection），把原因写进 `$DSH_HOME/plugin-quarantine.json`，下次启动用 id 定向的 overlay 关掉它们——**回退是无条件的**，坏插件只付出一次警告的代价；同时用与快捷输入面板相同的认证通道开一个新会话，把失败清单、包名与记录文件路径交给 agent 去修（每个插件最多两次，避免无谓重试），并发一条系统通知。插件修好后，删掉记录里对应的那一条 id，下次启动即自动恢复",
+  "",
   "## 1.7.0",
   "",
   "本次把 fork 重基到上游 **dsh 0.1.7-alpha.1**。上游这一版带来侧边栏会话置顶与归档、工作过程展示与性能用量设置、后台任务列表、文件预览与改动审阅、Team 任务看板、内置浏览器在 Electron 默认开启等大量改动（完整清单见上游 `dsh-v0.1.7-alpha.1`）。重基的改动面很大：65 个覆盖层包全部重新对齐，下面是本次与桌面端直接相关的修复。",

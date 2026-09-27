@@ -6,18 +6,24 @@
  * dark blocks), never here — the repo's tokens-only styling rule.
  *
  * Only the three markdown-fence and `run_code` grammars (TypeScript, shell,
- * JSON) load into the singleton at boot — the set every session renders. The
- * read card's wider extension set (the file-extension language hints the read
- * tool's `langFromPath` emits — `packages/fs/tool-fs`: python, rust, yaml,
- * markup, …) is imported lazily and registered the first time such a language
- * is requested, so a session that never opens a read card in one of those
- * languages pays neither the ~1.6 MB of grammar modules nor their synchronous
- * init. The first render of a lazy language falls back to plain text while its
- * grammar loads, then {@link onGrammarLoaded} notifies subscribers to re-render
- * with highlighting. An unknown or absent language falls back to plain text (no
- * highlighting, still monospace) — never an error.
+ * JSON) load into the singleton at boot — the set every session renders. Every
+ * other language in the shared extension table
+ * (`@deepseek-ai/dsh-util-code-language`: python, rust, yaml, markup, …) is
+ * imported lazily and registered the first time such a language is requested,
+ * so a session that never opens a code surface in one of those languages pays
+ * neither the grammar modules nor their synchronous init. The first render of a
+ * lazy language falls back to plain text while its grammar loads, then
+ * {@link onGrammarLoaded} notifies subscribers to re-render with highlighting.
+ * An unknown or absent language falls back to plain text (no highlighting, still
+ * monospace) — never an error.
  */
 import type { CSSProperties } from 'react';
+/**
+ * Resolve a language hint to the grammar id {@link LANG_ALIASES} selects.
+ * @param lang - Language hint from a code surface: a canonical grammar id or the read card's persisted short id.
+ * @returns The resolved grammar id, or `undefined` when the table aliases no grammar.
+ */
+export declare function grammarForHint(lang: string | undefined): string | undefined;
 /**
  * Whether a language hint can use the shared syntax highlighter.
  * @param lang - Language hint from a code surface.

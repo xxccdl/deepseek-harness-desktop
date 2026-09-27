@@ -34,6 +34,8 @@ export interface WorkspacePickFlowProps {
     onPick: (workspaceId: WorkspaceId) => void;
     /** Close the popover (outside click / Escape / post-pick). */
     onClose: () => void;
+    /** Report the picking interaction and adoption occupancy. */
+    onBusyChange?: (busy: boolean) => void;
     /** Only offer the add action, hide existing workspaces. */
     addOnly?: boolean;
     /** Menu opening direction relative to the anchor. */
@@ -46,7 +48,7 @@ export interface WorkspacePickFlowProps {
  * @param props - owner-controlled flow props.
  * @returns menu + dialog elements.
  */
-export declare function WorkspacePickFlow({ t, open, anchorRef, useWorkspaces, createWorkspace, useDirectoryFlow, renderDirectoryFlow, onPick, onClose, addOnly, side, selectedId, }: WorkspacePickFlowProps): import("react").JSX.Element;
+export declare function WorkspacePickFlow({ t, open, anchorRef, useWorkspaces, createWorkspace, useDirectoryFlow, renderDirectoryFlow, onPick, onClose, addOnly, onBusyChange, side, selectedId, }: WorkspacePickFlowProps): import("react").JSX.Element;
 /**
  * The conversation empty-state registration: adapts the owner share to the
  * core flow (all state and semantics live in the flow / the owner).

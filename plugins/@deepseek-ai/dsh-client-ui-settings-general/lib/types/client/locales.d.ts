@@ -2,6 +2,7 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export declare const zh: {
     trigger: string;
+    'shortcut.open': string;
     'desktop.update.available': string;
     'desktop.update.checking': string;
     'desktop.update.progress': string;
@@ -40,6 +41,7 @@ export type SettingsKey = keyof typeof zh;
 /** English dictionary, checked complete against the zh key set. */
 export declare const en: {
     trigger: string;
+    'shortcut.open': string;
     'desktop.update.available': string;
     'desktop.update.checking': string;
     'desktop.update.progress': string;

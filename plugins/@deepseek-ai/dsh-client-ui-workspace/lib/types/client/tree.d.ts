@@ -33,8 +33,6 @@ export interface SessionNode {
     runningSubagentCount: number;
     /** Finished running while not selected and not yet opened (the green "done" reminder dot). */
     completed: boolean;
-    /** The current list projection contains at least one active Schedule record. */
-    hasActiveSchedule: boolean;
     /** In the registry-global pin set: leads its section, reorderable only among pinned rows. */
     pinned: boolean;
     /** In the registry-global archive set: shown grayed in place and not openable. */
@@ -73,8 +71,6 @@ export interface SearchResultNode {
     runningSubagentCount: number;
     /** Finished running while not selected and not yet opened (the green "done" reminder dot). */
     completed: boolean;
-    /** The current list projection contains at least one active Schedule record. */
-    hasActiveSchedule: boolean;
     /** In the registry-global archive set: shown grayed and not openable. */
     archived: boolean;
     snippet?: string;
@@ -139,8 +135,9 @@ export interface SessionRowState {
 /**
  * Derive the workspace browser groups with every session as a top-level row.
  *
- * Every group shows; sessions populate under expanded groups with pinned rows
- * leading in the selected local order. Blank sessions are
+ * Every group shows, except that the archived-only filter drops groups
+ * without visible members; sessions populate under expanded groups with
+ * pinned rows leading in the selected local order. Blank sessions are
  * excluded except for the selected provisional New Session row; archived
  * sessions keep their slots and appear per the archived filter. Content
  * search lives outside this derivation (see {@link deriveSearchResults}).

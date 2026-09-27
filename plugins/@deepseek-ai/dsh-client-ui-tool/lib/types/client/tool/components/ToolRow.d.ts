@@ -70,6 +70,8 @@ export interface ToolRowProps {
     filePathLine?: number | undefined;
     /** Open the path (already cwd-resolved), landing on `filePathLine` when given. */
     onOpenFile?: ((path: string, options?: OpenFileOptions) => void) | undefined;
+    /** Safe http(s) URL from tool args; when set, the summary renders as a link that opens it in a new tab. */
+    href?: string | undefined;
     /**
      * Jump to this call in the trajectory view: a hover-revealed Inspect pill
      * over the expanded body. Absent = no affordance.
@@ -78,8 +80,9 @@ export interface ToolRowProps {
 }
 /**
  * Render one localized tool summary and lazily mounted result card.
+ * Preparation retains the icon, title, and optional tool-name summary without disclosure.
  * @param props - tool state, summary, output, and navigation callbacks.
  * @returns the tool disclosure.
  */
-export declare const ToolRow: import("react").MemoExoticComponent<({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, details, state, filePath, filePathLine, onOpenFile, inspect, useDisclosure, }: ToolRowProps) => import("react").JSX.Element>;
+export declare const ToolRow: import("react").MemoExoticComponent<({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, details, state, filePath, filePathLine, onOpenFile, href, inspect, useDisclosure, }: ToolRowProps) => import("react").JSX.Element>;
 //# sourceMappingURL=ToolRow.d.ts.map

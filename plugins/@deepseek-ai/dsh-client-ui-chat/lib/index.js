@@ -8,18 +8,25 @@ const TRANSCRIPT_VIEW_FIELD = "transcriptView";
 /** Work-details presentation modes a user can choose. */
 const TRANSCRIPT_VIEW_MODES = [
 	"compact",
+	"standard",
 	"detailed",
-	"expanded"
+	"verbose"
 ];
 /**
-* Saved value from the two-mode generation of this setting. Read as `detailed`;
+* Saved value from the two-mode generation of this setting. Read as `standard`;
 * never offered as a choice and never written back.
 */
 const LEGACY_TRANSCRIPT_VIEW_MODE = "normal";
-/** Every value the durable field accepts: current modes plus the legacy saved value. */
-const TRANSCRIPT_VIEW_SETTING_VALUES = [...TRANSCRIPT_VIEW_MODES, LEGACY_TRANSCRIPT_VIEW_MODE];
-/** Default preserves the compact process disclosure introduced by Chat. */
-const DEFAULT_TRANSCRIPT_VIEW_MODE = "compact";
+/** Saved `expanded` values read as `detailed`, without being offered or written back. */
+const LEGACY_EXPANDED_TRANSCRIPT_VIEW_MODE = "expanded";
+/** Every value the durable field accepts: current modes plus legacy saved values. */
+const TRANSCRIPT_VIEW_SETTING_VALUES = [
+	...TRANSCRIPT_VIEW_MODES,
+	LEGACY_TRANSCRIPT_VIEW_MODE,
+	LEGACY_EXPANDED_TRANSCRIPT_VIEW_MODE
+];
+/** Standard process summaries for users without an explicit preference. */
+const DEFAULT_TRANSCRIPT_VIEW_MODE = "standard";
 /** Performance and usage detail levels accepted by user settings. */
 const PERFORMANCE_USAGE_MODES = ["compact", "detailed"];
 /** Preserve detailed accounting for users without an explicit preference. */
@@ -28,7 +35,7 @@ const DEFAULT_PERFORMANCE_USAGE = "detailed";
 const ChatSettingsFields = {
 	linkOpening: z.union(["sidebar", "new-tab"]).default("sidebar"),
 	performanceUsage: z.union([...PERFORMANCE_USAGE_MODES]).default(DEFAULT_PERFORMANCE_USAGE),
-	[TRANSCRIPT_VIEW_FIELD]: z.union([...TRANSCRIPT_VIEW_SETTING_VALUES]).default(DEFAULT_TRANSCRIPT_VIEW_MODE)
+	[TRANSCRIPT_VIEW_FIELD]: z.union([...TRANSCRIPT_VIEW_SETTING_VALUES]).default(DEFAULT_TRANSCRIPT_VIEW_MODE).loose()
 };
 z.object(ChatSettingsFields);
 //#endregion
@@ -48,4 +55,4 @@ function apply(ctx) {
 	});
 }
 //#endregion
-export { CHAT_SETTINGS_NAMESPACE, Config, DEFAULT_TRANSCRIPT_VIEW_MODE, LEGACY_TRANSCRIPT_VIEW_MODE, TRANSCRIPT_VIEW_FIELD, TRANSCRIPT_VIEW_MODES, apply };
+export { CHAT_SETTINGS_NAMESPACE, Config, DEFAULT_TRANSCRIPT_VIEW_MODE, LEGACY_EXPANDED_TRANSCRIPT_VIEW_MODE, LEGACY_TRANSCRIPT_VIEW_MODE, TRANSCRIPT_VIEW_FIELD, TRANSCRIPT_VIEW_MODES, apply };

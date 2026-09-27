@@ -106,7 +106,46 @@ window.__ModuleLoader__.load({
 			cordis_stop: "tool.title.stopCordis",
 			cordis_undefine: "tool.title.removeCordis",
 			pwsh: "tool.title.pwsh",
-			read_image: "tool.title.readImage"
+			read_image: "tool.title.readImage",
+			todo_write: "todo.rowTitle",
+			ask_user_question: "ask.rowTitle",
+			create_goal: "tool.title.createGoal",
+			get_goal: "tool.title.getGoal",
+			update_goal: "tool.title.updateGoal",
+			schedule_create: "tool.title.createSchedule",
+			schedule_list: "tool.title.listSchedules",
+			schedule_delete: "tool.title.deleteSchedule",
+			schedule_update: "tool.title.updateSchedule",
+			cordis_inspect_list: "tool.title.inspectProviders",
+			cordis_inspect_query: "tool.title.queryRuntime",
+			cordis_inspect_self: "tool.title.inspectPlugins",
+			workflow: "tool.title.workflow",
+			ralph: "tool.title.ralph",
+			session_event_read: "tool.title.readEvent",
+			session_event_search: "tool.title.searchEvents",
+			session_event_trace: "tool.title.traceEvent",
+			session_search: "tool.title.searchSessions",
+			session_trace: "tool.title.traceSession",
+			list_subagent_models: "tool.title.listModels",
+			subagent: "tool.title.subagent",
+			list_agents: "tool.title.listAgents",
+			send_message: "tool.title.sendMessage",
+			interrupt_agent: "tool.title.interruptAgent",
+			job_list: "tool.title.listJobs",
+			job_output: "tool.title.readJob",
+			job_kill: "tool.title.killJob",
+			terminal_open: "tool.title.openTerminal",
+			terminal_read: "tool.title.readTerminal",
+			terminal_list: "tool.title.listTerminals",
+			terminal_signal: "tool.title.signalTerminal",
+			terminal_close: "tool.title.closeTerminal",
+			lsp: "tool.title.lsp",
+			spawn_teammate: "tool.title.spawnTeammate",
+			team_task_create: "tool.title.createTeamTask",
+			team_task_get: "tool.title.getTeamTask",
+			team_task_update: "tool.title.updateTeamTask",
+			team_task_list: "tool.title.listTeamTasks",
+			wait_agent: "tool.title.waitAgent"
 		};
 		/**
 		* Classify a tool name into its row variant.
@@ -115,6 +154,14 @@ window.__ModuleLoader__.load({
 		*/
 		function classifyTool(toolName) {
 			return TOOL_VARIANTS[toolName] ?? "others";
+		}
+		/**
+		* Select a tool-owned or generic title without reading arguments.
+		* @param toolName - wire tool name.
+		* @returns the localized title key.
+		*/
+		function toolTitleKey(toolName) {
+			return TOOL_TITLE_KEYS[toolName] ?? VARIANT_TITLE_KEYS[classifyTool(toolName)];
 		}
 		function deriveAutoReviewDenial(block) {
 			if (!("kind" in block) || !block.isError) return null;
@@ -218,27 +265,27 @@ window.__ModuleLoader__.load({
 		/**
 		* Derive the full row model from a frozen call slice.
 		* @param toolName - wire tool name (dispatch-supplied; survives windowless results).
-		* @param block - RunningToolCall or ToolResultNode off the snapshot caches.
+		* @param block - preparing call, dispatched call, or result from the snapshot.
 		* @param cwd - session workspace root; workspace-rooted path summaries display relative to it.
 		* @param home - host account home; a leftover POSIX home path displays as `~`.
 		* @returns the row model.
 		*/
 		function toolRowModel(toolName, block, cwd, home) {
 			const variant = classifyTool(toolName);
+			const titleKey = toolTitleKey(toolName);
 			const done = "kind" in block;
-			const argsRaw = (done ? block.call?.argsRaw : block.argsRaw) ?? "";
-			const state = !done ? "running" : block.error?.code === "interrupted" ? "stopped" : block.isError ? "error" : "ok";
-			const base = argsRaw === "" ? block.callId : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home);
-			const toolTitleKey = TOOL_TITLE_KEYS[toolName];
-			const summary = variant === "others" && toolName !== "" && toolTitleKey === void 0 ? `${toolName} · ${base}` : base;
+			const argsRaw = done ? block.call?.argsRaw ?? "" : block.phase === "start" ? block.argsRaw : null;
+			const state = !done ? block.phase === "preparing" ? "preparing" : "running" : block.error?.code === "interrupted" ? "stopped" : block.isError ? "error" : "ok";
+			const base = argsRaw === null ? "" : argsRaw === "" ? block.callId : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home);
+			const summary = [titleKey === "tool.title.generic" ? toolName : "", base].filter(Boolean).join(" · ");
 			const output = done ? resultText(block) || null : null;
 			const errorSummary = state === "error" && output !== null ? firstLine(output) : null;
 			const bodyRaw = argsRaw === "" ? null : argsRaw;
 			return {
 				variant,
-				titleKey: toolTitleKey ?? VARIANT_TITLE_KEYS[variant],
+				titleKey,
 				summary,
-				filePath: deriveFilePath(variant, argsRaw),
+				filePath: argsRaw === null ? void 0 : deriveFilePath(variant, argsRaw),
 				bodyRaw,
 				output,
 				errorSummary,
@@ -251,10 +298,11 @@ window.__ModuleLoader__.load({
 		const parsedCalls = /* @__PURE__ */ new WeakMap();
 		/**
 		* Parse the call head paired with one immutable Tool block.
-		* @param block - running or settled Tool block.
-		* @returns the Tool name and object arguments, or null when the call head or valid JSON object is unavailable.
+		* @param block - preparing, dispatched, or settled Tool block.
+		* @returns the Tool name and object arguments, or null during preparation or when valid arguments are unavailable.
 		*/
 		function parsedToolCall(block) {
+			if (!("kind" in block) && block.phase === "preparing") return null;
 			const cached = parsedCalls.get(block);
 			if (cached !== void 0 || parsedCalls.has(block)) return cached ?? null;
 			const call = "kind" in block ? block.call : block;
@@ -623,6 +671,11 @@ window.__ModuleLoader__.load({
 		const COUNT_OFFSET = EXACT_OMISSION.indexOf("0");
 		const COUNT_SUFFIX = EXACT_OMISSION.slice(COUNT_OFFSET + 1);
 		function isOmission(text) {
+			const imageNotice = / Omitted ([1-9][0-9]*) images\.$/.exec(text);
+			if (imageNotice !== null) {
+				if (!Number.isSafeInteger(Number(imageNotice[1]))) return false;
+				text = text.slice(0, imageNotice.index);
+			}
 			if (text === describeOmitted({ kind: "none" }, "bytes") || text === describeOmitted({ kind: "unknown" }, "bytes")) return true;
 			const count = Number(text.slice(COUNT_OFFSET, text.length - COUNT_SUFFIX.length));
 			return Number.isSafeInteger(count) && count >= 0 && text === describeOmitted({
@@ -978,6 +1031,22 @@ window.__ModuleLoader__.load({
 				truncated: meta.truncated
 			};
 		}
+		/**
+		* Read the openable URL of a web_fetch call from its arguments.
+		* @param block - running or settled Tool block.
+		* @returns the http(s) URL, or undefined for another tool, protocol, or unparsable argument.
+		*/
+		function webFetchHref(block) {
+			const call = parsedToolCall(block);
+			if (call?.name !== "web_fetch" || typeof call.args.url !== "string") return void 0;
+			const { url } = call.args;
+			try {
+				const { protocol } = new URL(url);
+				return protocol === "http:" || protocol === "https:" ? url : void 0;
+			} catch {
+				return;
+			}
+		}
 		//#endregion
 		//#region lib/types/client/tool/models/auto-review-denial.js
 		/**
@@ -1022,6 +1091,18 @@ window.__ModuleLoader__.load({
 		//#region lib/types/client/tool/models/primitive-labels.js
 		/** Localized copy adapters for Cordis-free UI primitives used by Tool cards. */
 		/**
+		* Localize the shared code-card toolbar.
+		* @param t - Conversation locale seat.
+		* @returns Language fallback and wrapping actions.
+		*/
+		function codeToolbarLabels(t) {
+			return {
+				codeLabel: t("codeBlock.title"),
+				wrapLabel: t("codeBlock.wrap"),
+				unwrapLabel: t("codeBlock.unwrap")
+			};
+		}
+		/**
 		* Build localized Markdown chrome labels.
 		* @param t - Conversation locale seat.
 		* @returns Markdown chrome labels.
@@ -1030,7 +1111,8 @@ window.__ModuleLoader__.load({
 			return {
 				code: {
 					copyLabel: t("copy"),
-					copiedLabel: t("copied")
+					copiedLabel: t("copied"),
+					toolbarLabels: codeToolbarLabels(t)
 				},
 				footnotes: t("markdown.footnotes")
 			};
@@ -1042,13 +1124,13 @@ window.__ModuleLoader__.load({
 		*/
 		function diffBlockLabels(t) {
 			return {
+				...codeToolbarLabels(t),
 				copy: t("copy"),
 				copied: t("copied"),
 				collapseAria: t("diff.collapseAria"),
 				expandAria: (count) => t("diff.expandAria", { count }),
 				collapse: t("collapse"),
-				expand: (count) => t("diff.expandRest", { count }),
-				files: (count) => t(count === 1 ? "diff.files.one" : "diff.files.other", { count })
+				expand: (count) => t("diff.expandRest", { count })
 			};
 		}
 		/**
@@ -1058,6 +1140,7 @@ window.__ModuleLoader__.load({
 		*/
 		function readBlockLabels(t) {
 			return {
+				...codeToolbarLabels(t),
 				window: (shown, total) => t("read.window", {
 					shown,
 					total
@@ -1111,7 +1194,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/AskQuestionCard.module.css.mjs
-		const css$4 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);border-radius:12px;flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
+		const css$4 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-base);flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
 		const tagId$4 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1174,7 +1257,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolDetails.module.css.mjs
-		const css$3 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);border-radius:12px;margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_root .DXqwVW_group .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_code [data-code-block-banner]{padding:4px 10px}.DXqwVW_root .DXqwVW_code pre{padding:6px 10px 8px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}";
+		const css$3 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:0}.DXqwVW_root .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:3px}";
 		const tagId$3 = "@deepseek-ai/dsh-client-ui-tool/ToolDetails.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1282,6 +1365,7 @@ window.__ModuleLoader__.load({
 						})
 					}),
 					item.code !== void 0 && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.CodeBlock, {
+						toolbarLabels: codeToolbarLabels(t),
 						className: ToolDetails_module_css_default.code,
 						code: item.code.text,
 						lang: item.code.language,
@@ -1347,7 +1431,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolRow.module.css.mjs
-		const css$2 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_leading,.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{color:var(--dsw-alias-state-business-primary)}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_sep{background:var(--dsw-alias-state-business-primary)}.o3BgMG_chevron{color:var(--dsw-alias-label-secondary)}.o3BgMG_title{font-weight:400;transition:color .1s}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;margin-left:4px;transition:color .1s}.o3BgMG_row:hover .o3BgMG_title,.o3BgMG_row:hover .o3BgMG_summary:not(.o3BgMG_errorSummary):not(.o3BgMG_stoppedSummary),.o3BgMG_row:hover .o3BgMG_summarySuffix{color:var(--dsw-alias-label-primary)}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);color:var(--dsw-alias-label-caption);margin-left:10px;transform:translateY(.5px)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);text-decoration:underline dotted;text-decoration-color:var(--dsw-alias-label-tertiary);text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration-thickness:1px;transition:color .1s;overflow:hidden}.o3BgMG_row:hover .o3BgMG_fileLink,.o3BgMG_fileLink:hover{color:var(--dsw-alias-label-primary);text-decoration-color:currentColor}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);border-radius:12px;flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{background-clip:padding-box;border:2px solid #0000;border-radius:6px}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_codeBody{--dsl-code-block-content-font:var(--dsw-font-markdown-code-block-small)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css$2 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_leading,.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{color:var(--dsw-alias-state-business-primary)}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_sep{background:var(--dsw-alias-state-business-primary)}.o3BgMG_chevron{color:var(--dsw-alias-label-secondary)}.o3BgMG_title{font-weight:400;transition:color .1s}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;margin-left:4px;transition:color .1s}.o3BgMG_row:hover .o3BgMG_title,.o3BgMG_row:hover .o3BgMG_summary:not(.o3BgMG_errorSummary):not(.o3BgMG_stoppedSummary),.o3BgMG_row:hover .o3BgMG_summarySuffix{color:var(--dsw-alias-label-primary)}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);color:var(--dsw-alias-label-caption);margin-left:10px;transform:translateY(.5px)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);text-decoration:underline dotted;text-decoration-color:var(--dsw-alias-label-tertiary);text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration-thickness:1px;transition:color .1s;overflow:hidden}.o3BgMG_row:hover .o3BgMG_fileLink,.o3BgMG_fileLink:hover{color:var(--dsw-alias-label-primary);text-decoration-color:currentColor}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId$2 = "@deepseek-ai/dsh-client-ui-tool/ToolRow.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1392,9 +1476,14 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/tool/components/ToolRow.js
+		/** Keep a summary link click from toggling the row; the browser still follows the link. */
+		function stopLinkClick(event) {
+			event.stopPropagation();
+		}
 		/** Visually hidden run-state label for color-only running and settlement cues. */
 		function stateStatus$1(state, t) {
 			switch (state) {
+				case "preparing": return t("row.preparing");
 				case "running": return t("row.running");
 				case "error": return t("row.failed");
 				case "stopped": return t("row.stopped");
@@ -1403,10 +1492,11 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Render one localized tool summary and lazily mounted result card.
+		* Preparation retains the icon, title, and optional tool-name summary without disclosure.
 		* @param props - tool state, summary, output, and navigation callbacks.
 		* @returns the tool disclosure.
 		*/
-		const ToolRow = (0, react.memo)(function ToolRow({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, details, state, filePath, filePathLine, onOpenFile, inspect, useDisclosure }) {
+		const ToolRow = (0, react.memo)(function ToolRow({ t, variant, toolName, icon, title, summary, summarySuffix, bodyRaw, output, askQuestion, errorSummary, terminal, diff, read, image, renderSlot, loadImage, search, web, details, state, filePath, filePathLine, onOpenFile, href, inspect, useDisclosure }) {
 			const { expanded, toggle: toggleExpand } = useDisclosure();
 			const terminalLabels = (0, react.useMemo)(() => terminalBlockLabels(t), [t]);
 			const diffLabels = (0, react.useMemo)(() => diffBlockLabels(t), [t]);
@@ -1424,7 +1514,7 @@ window.__ModuleLoader__.load({
 			const inputRaw = bodyRaw ?? null;
 			const outputText = output ?? null;
 			const card = askQuestionBody ?? terminalBody ?? diffBody ?? readBody ?? imageBody ?? searchBody ?? webBody ?? detailsBody;
-			const expandable = inputRaw !== null || outputText !== null || card !== null;
+			const expandable = state !== "preparing" && (inputRaw !== null || outputText !== null || card !== null);
 			const open = expanded && expandable;
 			const bodyText = (0, react.useMemo)(() => open && card === null && inputRaw !== null ? formatToolBody(variant, inputRaw) : null, [
 				card,
@@ -1433,7 +1523,7 @@ window.__ModuleLoader__.load({
 				variant
 			]);
 			const status = stateStatus$1(state, t);
-			const running = state === "running";
+			const running = state === "running" || state === "preparing";
 			const normalSummary = terminalBody?.description ?? (open ? detailsBody?.expandedSummary ?? summary : summary);
 			const summaryText = (state === "error" ? errorSummary ?? normalSummary : null) ?? normalSummary;
 			const diffStat = (0, react.useMemo)(() => {
@@ -1453,7 +1543,8 @@ window.__ModuleLoader__.load({
 				onOpenFile,
 				settledWithCue
 			]);
-			const fileLinkKeyDown = (0, react.useCallback)((event) => {
+			const linkHref = settledWithCue ? void 0 : href;
+			const summaryLinkKeyDown = (0, react.useCallback)((event) => {
 				if (event.key === "Enter" || event.key === " ") event.stopPropagation();
 			}, []);
 			const cardBody = variant === "code" ? null : bodyText;
@@ -1466,7 +1557,18 @@ window.__ModuleLoader__.load({
 					type: "button",
 					className: ToolRow_module_css_default.fileLink,
 					onClick: openFile,
-					onKeyDown: fileLinkKeyDown,
+					onKeyDown: summaryLinkKeyDown,
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+						active: running,
+						children: summaryText
+					})
+				}) : linkHref !== void 0 ? (0, react_jsx_runtime.jsx)("a", {
+					className: ToolRow_module_css_default.fileLink,
+					href: linkHref,
+					target: "_blank",
+					rel: "noopener noreferrer",
+					onClick: stopLinkClick,
+					onKeyDown: summaryLinkKeyDown,
 					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
 						active: running,
 						children: summaryText
@@ -1485,7 +1587,8 @@ window.__ModuleLoader__.load({
 				})
 			] }), [
 				diffStat,
-				fileLinkKeyDown,
+				summaryLinkKeyDown,
+				linkHref,
 				openFile,
 				running,
 				state,
@@ -1550,6 +1653,7 @@ window.__ModuleLoader__.load({
 						lang: "typescript",
 						copyLabel: t("copy"),
 						copiedLabel: t("copied"),
+						toolbarLabels: codeToolbarLabels(t),
 						className: ToolRow_module_css_default.codeBody
 					})
 				}), (cardBody !== null || outputText !== null) && (0, react_jsx_runtime.jsxs)("div", {
@@ -1651,6 +1755,7 @@ window.__ModuleLoader__.load({
 			code: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 }),
 			others: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSparkleRegular, { size: 14 })
 		};
+		/** @param props - current tool stage and locale. @returns its preparation or dispatched card. */
 		function GenericToolCard({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block, cwd, home);
 			const autoReview = model.autoReviewDenial === null ? null : localizeAutoReviewDenial(model.autoReviewDenial, t);
@@ -1685,7 +1790,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/ToolCallTree.module.css.mjs
-		const css$1 = ".ztWv_q_callRow{border-radius:6px}.ztWv_q_subCalls{border-left:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:4px;margin:4px 0 2px 22px;padding-left:8px;display:flex}";
+		const css$1 = ".ztWv_q_callRow{border-radius:var(--dsw-radius-sm)}.ztWv_q_subCalls{border-left:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:4px;margin:4px 0 2px 22px;padding-left:8px;display:flex}";
 		const tagId$1 = "@deepseek-ai/dsh-client-ui-tool/ToolCallTree.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1701,16 +1806,38 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/tool/ToolCallTree.js
 		/** Root/subcall Tool composition with one keyed atomic dispatch path. */
-		/** Resolve a Tool call's wire name from either lifecycle form. */
-		function callName(node) {
-			return "kind" in node ? node.call?.name ?? "" : node.name;
+		function toolCallPhase(block) {
+			if ("kind" in block) return {
+				phase: "result",
+				block
+			};
+			return block.phase === "preparing" ? {
+				phase: "preparing",
+				block
+			} : {
+				phase: "start",
+				block
+			};
+		}
+		/** Resolve a Tool call's wire name from its current stage. */
+		function callName(call) {
+			return call.phase === "result" ? call.block.call?.name ?? "" : call.block.name;
 		}
 		/** One atomic call dispatched through the Tool-owned keyed slot. */
-		const ToolCall = (0, react.memo)(function ToolCall({ renderSlot, callId, toolName, block, openFile, cwd, home, inspectCall, loadImage, useDisclosure, t, children }) {
+		const ToolCall = (0, react.memo)(function ToolCall({ renderSlot, callId, toolName, call, assistant, openFile, cwd, home, inspectCall, loadImage, useDisclosure, t, children }) {
+			const preparing = call.phase === "preparing";
+			const hookContext = (0, react.useMemo)(() => ({
+				callId,
+				assistant: preparing ? assistant : void 0
+			}), [
+				assistant,
+				callId,
+				preparing
+			]);
 			const owner = (0, react.useMemo)(() => ({
 				callId,
 				toolName,
-				block,
+				...call,
 				openFile,
 				cwd,
 				home,
@@ -1722,7 +1849,7 @@ window.__ModuleLoader__.load({
 			}), [
 				callId,
 				toolName,
-				block,
+				call,
 				openFile,
 				cwd,
 				home,
@@ -1730,7 +1857,7 @@ window.__ModuleLoader__.load({
 				inspectCall,
 				useDisclosure
 			]);
-			const autoReviewDenied = (0, react.useMemo)(() => toolRowModel(toolName, block).autoReviewDenial !== null, [toolName, block]);
+			const autoReviewDenied = (0, react.useMemo)(() => call.phase === "result" && toolRowModel(toolName, call.block).autoReviewDenial !== null, [toolName, call]);
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: ToolCallTree_module_css_default.callRow,
 				"data-chat-anchor-key": `call:${callId}`,
@@ -1740,6 +1867,7 @@ window.__ModuleLoader__.load({
 					t
 				}) : renderSlot("tool.call.toolview", owner, {
 					entryKey: toolName,
+					hookContext,
 					fallback: (0, react_jsx_runtime.jsx)(GenericToolCard, {
 						...owner,
 						t
@@ -1747,12 +1875,14 @@ window.__ModuleLoader__.load({
 				}), children]
 			});
 		});
-		const ToolCallBranch = (0, react.memo)(function ToolCallBranch({ renderSlot, block, cwd, home, openFile, inspectCall, loadImage, useDisclosure, t }) {
+		const ToolCallBranch = (0, react.memo)(function ToolCallBranch({ renderSlot, block, assistant, cwd, home, openFile, inspectCall, loadImage, useDisclosure, t }) {
+			const call = (0, react.useMemo)(() => toolCallPhase(block), [block]);
 			return (0, react_jsx_runtime.jsx)(ToolCall, {
 				renderSlot,
-				callId: block.callId,
-				toolName: callName(block),
-				block,
+				callId: call.block.callId,
+				toolName: callName(call),
+				call,
+				assistant,
 				openFile,
 				cwd,
 				home,
@@ -1760,12 +1890,13 @@ window.__ModuleLoader__.load({
 				useDisclosure,
 				loadImage,
 				t,
-				children: block.subCalls.length > 0 ? (0, react_jsx_runtime.jsx)("div", {
+				children: call.phase !== "preparing" && call.block.subCalls.length > 0 ? (0, react_jsx_runtime.jsx)("div", {
 					className: ToolCallTree_module_css_default.subCalls,
 					"data-subcalls": true,
-					children: block.subCalls.map((child) => (0, react_jsx_runtime.jsx)(ToolCallBranch, {
+					children: call.block.subCalls.map((child) => (0, react_jsx_runtime.jsx)(ToolCallBranch, {
 						renderSlot,
 						block: child,
+						assistant,
 						cwd,
 						home,
 						openFile,
@@ -1785,10 +1916,11 @@ window.__ModuleLoader__.load({
 		*/
 		function ToolCallTree({ renderSlot, node, cwd, openFile, inspectCall, loadImage, useDisclosure, useHostInfo, t }) {
 			const home = useHostInfo((info) => info.home);
-			const block = node.data.root;
+			const assistant = node.location.kind === "step" ? node.location.step.data.source("assistant-step") : void 0;
 			return (0, react_jsx_runtime.jsx)(ToolCallBranch, {
 				renderSlot,
-				block,
+				block: node.data.root,
+				assistant,
 				cwd,
 				home,
 				openFile,
@@ -1798,6 +1930,27 @@ window.__ModuleLoader__.load({
 				t
 			});
 		}
+		//#endregion
+		//#region lib/types/client/tool/tool-call-arguments-partial.js
+		/** Call-local argument subscription bound by the atomic Tool slot. */
+		const subscribeEmpty = () => () => {};
+		/**
+		* Bind one call without subscribing until its component invokes the Hook.
+		* @param _standard - framework-provided scope props.
+		* @param context - the preparing call's Step source and identity.
+		* @returns a Hook that reads only this call's raw argument prefix.
+		*/
+		const bindToolCallArgumentsPartial = (_standard, context) => {
+			const { assistant, callId } = context;
+			const subscribe = assistant === void 0 ? subscribeEmpty : (listener) => assistant.subscribe(listener);
+			const getSnapshot = () => {
+				const block = assistant?.getSnapshot()?.blocks.find((candidate) => candidate.kind === "tool-call" && candidate.callId === callId);
+				return block?.kind === "tool-call" ? block.argsRaw : "";
+			};
+			return function useToolCallArgumentsPartial() {
+				return (0, react.useSyncExternalStore)(subscribe, getSnapshot);
+			};
+		};
 		//#endregion
 		//#region lib/types/client/locale.js
 		/** Locale namespace supplied by the conversation owner to Tool renderers. */
@@ -1896,7 +2049,7 @@ window.__ModuleLoader__.load({
 		function AskQuestionRow({ toolName, block, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block);
 			const code = "kind" in block ? block.error?.code : void 0;
-			const argsRaw = ("kind" in block ? block.call?.argsRaw : block.argsRaw) ?? "";
+			const argsRaw = model.bodyRaw ?? "";
 			let summary = model.summary;
 			let state = model.state;
 			let transcript = null;
@@ -1937,7 +2090,7 @@ window.__ModuleLoader__.load({
 				variant: model.variant,
 				toolName,
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQuestionOutlineRegular, {}),
-				title: t("ask.rowTitle"),
+				title: t(model.titleKey),
 				summary,
 				bodyRaw: transcript === null ? model.bodyRaw : null,
 				output: transcript === null ? model.output : null,
@@ -1959,8 +2112,27 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
+		//#region lib/types/client/tool/components/PreparingToolRow.js
+		/**
+		* Render a non-expandable tool prefix with an optional preparation summary.
+		* @param props - tool prefix and locale.
+		* @returns the preparation row.
+		*/
+		function PreparingToolRow({ toolName, useDisclosure, icon, title, summary = "", t }) {
+			return (0, react_jsx_runtime.jsx)(ToolRow, {
+				useDisclosure,
+				t,
+				variant: classifyTool(toolName),
+				toolName,
+				icon,
+				title,
+				summary,
+				state: "preparing"
+			});
+		}
+		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/toolviews/bash-sample.module.css.mjs
-		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);border-radius:12px;flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{background-clip:padding-box;border:2px solid #0000;border-radius:6px}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));align-items:center;min-width:0;display:flex}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:var(--dsw-alias-label-secondary)}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none;transition:color .1s}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.CY-8Ka_root:hover .CY-8Ka_title,.CY-8Ka_root:hover .CY-8Ka_summary:not(.CY-8Ka_errorSummary):not(.CY-8Ka_stoppedSummary){color:var(--dsw-alias-label-primary)}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));align-items:center;min-width:0;display:flex}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:var(--dsw-alias-label-secondary)}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none;transition:color .1s}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.CY-8Ka_root:hover .CY-8Ka_title,.CY-8Ka_root:hover .CY-8Ka_summary:not(.CY-8Ka_errorSummary):not(.CY-8Ka_stoppedSummary){color:var(--dsw-alias-label-primary)}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId = "@deepseek-ai/dsh-client-ui-tool/bash-sample.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -2008,7 +2180,15 @@ window.__ModuleLoader__.load({
 		* @param props - tool call, Session sources, locale, and inspection callback.
 		* @returns the Bash output row.
 		*/
-		const BashRow = (0, react.memo)(function BashRow({ toolName, block, sessionId, useSessions, inspect, useDisclosure, t }) {
+		const BashRow = (0, react.memo)(function BashRow(props) {
+			if (props.phase === "preparing") return (0, react_jsx_runtime.jsx)(PreparingToolRow, {
+				...props,
+				icon: BASH_ICON,
+				title: props.t(toolTitleKey(props.toolName))
+			});
+			return (0, react_jsx_runtime.jsx)(StartedBashRow, { ...props });
+		});
+		const StartedBashRow = (0, react.memo)(function StartedBashRow({ toolName, block, sessionId, useSessions, inspect, useDisclosure, t }) {
 			const model = (0, react.useMemo)(() => toolRowModel(toolName, block), [toolName, block]);
 			const cwd = useSessions((list) => list.byId[sessionId]?.cwd);
 			const terminalModel = (0, react.useMemo)(() => terminalCardModel(block, cwd), [block, cwd]);
@@ -2136,10 +2316,25 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region lib/types/client/tool/toolviews/file-mutation-row.js
+		const FILE_MUTATION_ICON = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 });
 		/**
 		* Lets users expand an applied file diff and open the reported path.
 		*/
-		function FileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
+		function FileMutationRow(props) {
+			return props.phase === "preparing" ? (0, react_jsx_runtime.jsx)(PreparingFileMutationRow, { ...props }) : (0, react_jsx_runtime.jsx)(StartedFileMutationRow, { ...props });
+		}
+		function PreparingFileMutationRow({ toolName, useDisclosure, useToolCallArgumentsPartial, t }) {
+			const raw = useToolCallArgumentsPartial();
+			return (0, react_jsx_runtime.jsx)(PreparingToolRow, {
+				toolName,
+				useDisclosure,
+				icon: FILE_MUTATION_ICON,
+				title: t(toolTitleKey(toolName)),
+				t,
+				summary: t("tool.preparing.content", { kilobytes: Math.ceil(raw.length / 1024) })
+			});
+		}
+		function StartedFileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block, cwd, home);
 			const diff = diffCardModel(block);
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
@@ -2147,7 +2342,7 @@ window.__ModuleLoader__.load({
 				t,
 				variant: model.variant,
 				toolName,
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 }),
+				icon: FILE_MUTATION_ICON,
 				title: t(model.titleKey),
 				summary: model.summary,
 				output: model.output,
@@ -3387,14 +3582,40 @@ window.__ModuleLoader__.load({
 				fields
 			}] };
 		}
+		/** ISO-weekday keys, Monday first: a stored weekly rule names days 1 through 7. */
+		const WEEKDAY_KEYS = [
+			"detail.weekday.1",
+			"detail.weekday.2",
+			"detail.weekday.3",
+			"detail.weekday.4",
+			"detail.weekday.5",
+			"detail.weekday.6",
+			"detail.weekday.7"
+		];
 		function interval(seconds, t) {
 			if (seconds % 86400 === 0) return t("detail.days", { count: seconds / 86400 });
 			if (seconds % 3600 === 0) return t("detail.hours", { count: seconds / 3600 });
 			if (seconds % 60 === 0) return t("detail.minutes", { count: seconds / 60 });
 			return t("detail.seconds", { count: seconds });
 		}
+		/** A stored wall clock without its zero seconds, the figure the schedule surfaces state. */
+		function shortTime(time) {
+			return time.replace(/:00\.000$/, "").replace(/\.000$/, "");
+		}
+		/** Localized weekday list of a stored weekly rule, or undefined when the set is empty or out of range. */
+		function weekdayText(days, t) {
+			if (!Array.isArray(days) || days.length === 0) return void 0;
+			const labels = [];
+			for (const day of days) {
+				if (typeof day !== "number" || !Number.isInteger(day)) return void 0;
+				const key = WEEKDAY_KEYS[day - 1];
+				if (key === void 0) return void 0;
+				labels.push(t(key));
+			}
+			return labels.join(t("detail.weekday.join"));
+		}
 		function scheduleItem(value, t, locale) {
-			if (!detailRecord(value) || !nonempty(value.id) || !nonempty(value.prompt) || typeof value.scheduledAt !== "string" || value.deliveryMode !== "session-local" || value.state !== "scheduled" && value.state !== "overdue") return null;
+			if (!detailRecord(value) || !nonempty(value.id) || !nonempty(value.prompt) || typeof value.scheduledAt !== "string" || value.deliveryMode !== "host" && value.deliveryMode !== "session-local" || value.state !== "scheduled" && value.state !== "overdue") return null;
 			const date = new Date(value.scheduledAt);
 			if (!Number.isFinite(date.getTime()) || date.toISOString() !== value.scheduledAt) return null;
 			let frequency;
@@ -3410,11 +3631,35 @@ window.__ModuleLoader__.load({
 					if (!count(value.everySeconds) || value.everySeconds === 0) return null;
 					frequency = t("detail.schedule.every", { interval: interval(value.everySeconds, t) });
 					break;
+				case "daily":
+					if (!nonempty(value.time) || !nonempty(value.timeZone)) return null;
+					frequency = t("detail.schedule.daily", {
+						time: shortTime(value.time),
+						zone: value.timeZone
+					});
+					break;
+				case "weekly": {
+					const days = weekdayText(value.weekdays, t);
+					if (!nonempty(value.time) || !nonempty(value.timeZone) || days === void 0) return null;
+					frequency = t("detail.schedule.weekly", {
+						days,
+						time: shortTime(value.time),
+						zone: value.timeZone
+					});
+					break;
+				}
+				case "cron":
+					if (!nonempty(value.expression) || !nonempty(value.timeZone)) return null;
+					frequency = t("detail.schedule.cron", {
+						expression: value.expression,
+						zone: value.timeZone
+					});
+					break;
 				default: return null;
 			}
 			const dateText = formatDate(date, locale, value.scheduledAt);
 			return {
-				title: value.prompt,
+				title: nonempty(value.title) ? value.title : value.prompt,
 				fields: [
 					{
 						label: t("detail.schedule.when"),
@@ -3452,7 +3697,8 @@ window.__ModuleLoader__.load({
 				case "create_goal":
 				case "get_goal":
 				case "update_goal": return goalDetail(value, t);
-				case "schedule_create": {
+				case "schedule_create":
+				case "schedule_update": {
 					const item = scheduleItem(value, t, locale);
 					return item === null ? null : { items: [item] };
 				}
@@ -3485,51 +3731,22 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/tool/toolviews/details-row.js
 		/** Keyed recorded-result rows sharing the compact detail body. */
-		const TITLE_KEYS = {
-			create_goal: "tool.title.createGoal",
-			get_goal: "tool.title.getGoal",
-			update_goal: "tool.title.updateGoal",
-			schedule_create: "tool.title.createSchedule",
-			schedule_list: "tool.title.listSchedules",
-			schedule_delete: "tool.title.deleteSchedule",
-			cordis_inspect_list: "tool.title.inspectProviders",
-			cordis_inspect_query: "tool.title.queryRuntime",
-			cordis_inspect_self: "tool.title.inspectPlugins",
-			workflow: "tool.title.workflow",
-			ralph: "tool.title.ralph",
-			session_event_read: "tool.title.readEvent",
-			session_event_search: "tool.title.searchEvents",
-			session_event_trace: "tool.title.traceEvent",
-			session_search: "tool.title.searchSessions",
-			session_trace: "tool.title.traceSession",
-			list_subagent_models: "tool.title.listModels",
-			subagent: "tool.title.subagent",
-			list_agents: "tool.title.listAgents",
-			send_message: "tool.title.sendMessage",
-			interrupt_agent: "tool.title.interruptAgent",
-			job_list: "tool.title.listJobs",
-			job_output: "tool.title.readJob",
-			job_kill: "tool.title.killJob",
-			terminal_open: "tool.title.openTerminal",
-			terminal_read: "tool.title.readTerminal",
-			terminal_list: "tool.title.listTerminals",
-			terminal_signal: "tool.title.signalTerminal",
-			terminal_close: "tool.title.closeTerminal",
-			lsp: "tool.title.lsp",
-			spawn_teammate: "tool.title.spawnTeammate",
-			team_task_create: "tool.title.createTeamTask",
-			team_task_get: "tool.title.getTeamTask",
-			team_task_update: "tool.title.updateTeamTask",
-			team_task_list: "tool.title.listTeamTasks",
-			wait_agent: "tool.title.waitAgent"
-		};
 		const LSP_TITLE_KEYS = {
 			goToDefinition: "tool.title.findDefinition",
 			findReferences: "tool.title.findReferences",
 			goToImplementation: "tool.title.findImplementation",
 			hover: "tool.title.hoverSymbol"
 		};
+		/** Teammate-coordination tools presented with the two-person team icon. */
+		const TEAMMATE_TOOLS = new Set([
+			"spawn_teammate",
+			"list_agents",
+			"send_message",
+			"interrupt_agent",
+			"wait_agent"
+		]);
 		function detailIcon(toolName) {
+			if (TEAMMATE_TOOLS.has(toolName)) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconUsersOutlineRegular, { size: 14 });
 			if (toolName.startsWith("schedule_")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconClockOutlineRegular, { size: 14 });
 			if (toolName.endsWith("_goal")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconGoalOutlineRegular, { size: 14 });
 			if (toolName.startsWith("cordis_")) return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCordisPluginOutlineRegular, {});
@@ -3553,7 +3770,7 @@ window.__ModuleLoader__.load({
 				locale
 			]);
 			const operation = toolName === "lsp" ? parsedToolCall(block)?.args.operation : void 0;
-			const titleKey = typeof operation === "string" && Object.hasOwn(LSP_TITLE_KEYS, operation) ? LSP_TITLE_KEYS[operation] : Object.hasOwn(TITLE_KEYS, toolName) ? TITLE_KEYS[toolName] : model.titleKey;
+			const titleKey = typeof operation === "string" && Object.hasOwn(LSP_TITLE_KEYS, operation) ? LSP_TITLE_KEYS[operation] : model.titleKey;
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
 				useDisclosure,
 				t,
@@ -3605,6 +3822,11 @@ window.__ModuleLoader__.load({
 					yield ctx.slots.register({
 						name: "tool.call.toolview",
 						key: "schedule_delete",
+						locale: CONVERSATION_NS
+					}, DetailsRow);
+					yield ctx.slots.register({
+						name: "tool.call.toolview",
+						key: "schedule_update",
 						locale: CONVERSATION_NS
 					}, DetailsRow);
 					yield ctx.slots.register({
@@ -3960,6 +4182,7 @@ window.__ModuleLoader__.load({
 			return typeof value === "object" && value !== null;
 		}
 		function summarize(argsRaw, t) {
+			if (argsRaw === null) return null;
 			let parsed;
 			try {
 				parsed = JSON.parse(argsRaw);
@@ -3990,7 +4213,7 @@ window.__ModuleLoader__.load({
 				t
 			]);
 			const model = toolRowModel(toolName, block);
-			const summary = summarize(("kind" in block ? block.call?.argsRaw : block.argsRaw) ?? "", t) ?? {
+			const summary = summarize(model.bodyRaw, t) ?? {
 				text: model.summary,
 				extra: 0
 			};
@@ -4000,7 +4223,7 @@ window.__ModuleLoader__.load({
 				variant: model.variant,
 				toolName,
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChecklistOutlineRegular, {}),
-				title: t("todo.rowTitle"),
+				title: t(model.titleKey),
 				summary: summary.text,
 				summarySuffix: [diff?.summary, summary.extra > 0 ? `+${summary.extra}` : null].filter((part) => part !== null && part !== void 0).join(" · ") || null,
 				bodyRaw: model.bodyRaw,
@@ -4047,6 +4270,7 @@ window.__ModuleLoader__.load({
 				output: model.output,
 				errorSummary: model.errorSummary,
 				web,
+				href: webFetchHref(block),
 				state: model.state,
 				inspect
 			});
@@ -4090,7 +4314,8 @@ window.__ModuleLoader__.load({
 				locale: CONVERSATION_NS,
 				children: { "tool.call.toolview": {
 					kind: "keyed",
-					scope: "session"
+					scope: "session",
+					inject: { hooks: { toolCallArgumentsPartial: bindToolCallArgumentsPartial } }
 				} },
 				inject: toolInject
 			}, ToolCallTree));

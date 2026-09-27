@@ -10,6 +10,7 @@
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store';
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client';
+import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client';
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface SlotMap {
@@ -146,6 +147,7 @@ export type SidebarRootInjected = {
     /** Private reactive sources bound to framework selector hooks. */
     hooks: {
         panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>;
+        shortcuts: ObservableSnapshot<readonly ShortcutCatalogEntry[]>;
     };
 };
 /**

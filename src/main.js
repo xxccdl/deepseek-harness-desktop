@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
+import tls from "node:tls";
 import {
   PROFILE_PATCH_FILENAME,
   PluginPackages,
@@ -29,6 +30,24 @@ import { provideCmdline } from "@deepseek-ai/dsh-cmdline";
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from "@deepseek-ai/dsh-launch-environment";
 import { downloadWithThreads } from "./update-downloader.mjs";
 
+// Trust what the operating system trusts, not just Node's bundled store.
+//
+// Networks that inspect TLS (a captive gateway, an antivirus proxy, a corporate
+// root) re-sign HTTPS with an issuer installed in the OS store, and the bundled
+// Mozilla list has no reason to know it. Every Node-side request to such a host
+// then fails first with UNABLE_TO_VERIFY_LEAF_SIGNATURE — seen here on
+// huggingface.co and github.com, which is what the voice model download and the
+// plugin market report as a "certificate" failure — while the same hosts load
+// fine in the Chromium side of this app, because Chromium reads the OS store.
+// Node 24 exposes the two calls below; a runtime without them keeps the bundled
+// store, and a failure inside them must not stop the boot.
+if (typeof tls.getCACertificates === "function" && typeof tls.setDefaultCACertificates === "function") {
+  try {
+    tls.setDefaultCACertificates([...tls.getCACertificates("bundled"), ...tls.getCACertificates("system")]);
+  } catch {
+    // Leave Node's default store in force.
+  }
+}
 const BIN_NAME = "dsh";
 const PROFILE_NAME = "web";
 const PROFILE_ROOT_FILENAME = "cordis.yml";
@@ -41,6 +60,23 @@ const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tre
 const TELEMETRY_ROW_ID = "session-telemetry-otel";
 /** Id prefix the plugin market gives the rows it owns in the patch layers. */
 const MARKET_ROW_PREFIX = "market-";
+/**
+ * The Harness-home file listing plugins this deployment could not load.
+ *
+ * A plugin that fails to import is a warning at boot, not a fatal error: the
+ * tree comes up without it. What the record adds is what a warning cannot give —
+ * the broken entry is skipped by id on the next boot instead of failing again,
+ * it carries the original failure so the reason survives the process, and it is
+ * what turns the failure into a repair the agent can run. It is deliberately a
+ * plain JSON file in `$DSH_HOME` beside `plugin-market.json`: a person can read
+ * what this deployment turned off on their behalf, and clearing one entry is the
+ * whole re-enable procedure.
+ */
+const QUARANTINE_FILENAME = "plugin-quarantine.json";
+/** Repair sessions opened per quarantined plugin before the fallback is the only remedy left. */
+const REPAIR_ATTEMPT_LIMIT = 2;
+/** How much of a plugin's failure travels into the record and the repair prompt. */
+const FAILURE_DETAIL_LIMIT = 600;
 
 /**
  * The two plugin trees THIS deployment resolves out of, matching the roots the
@@ -86,6 +122,243 @@ function sanitizeMarketRows(patches, dirs) {
       !(typeof row?.id === "string" && row.id.startsWith(MARKET_ROW_PREFIX)) || marketRowUsable(row, dirs));
   }
   return patches;
+}
+
+/**
+ * The Harness-home quarantine file's absolute path.
+ * @returns the path the record is read from and written to.
+ */
+function quarantinePath() {
+  return join(resolveDshHome(), QUARANTINE_FILENAME);
+}
+
+/**
+ * Read the plugin quarantine.
+ *
+ * An absent, unreadable, or malformed file means "nothing is quarantined". The
+ * record only ever adds to a boot that already tolerates the failure it
+ * describes, so losing it must never cost the app its start.
+ * @returns map of entry id to `{ name, detail, quarantinedAt, attempts, sessionId }`.
+ */
+function readQuarantine() {
+  try {
+    const parsed = JSON.parse(readFileSync(quarantinePath(), "utf8"));
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Persist the plugin quarantine.
+ * @param record - the map {@link readQuarantine} returned, after editing.
+ */
+function writeQuarantine(record) {
+  try {
+    writeFileSync(quarantinePath(), JSON.stringify(record, null, 2), "utf8");
+  } catch (error) {
+    console.error("dsh-desktop: could not record the plugin quarantine", error);
+  }
+}
+
+/**
+ * Render a plugin's failure as the single line the record and the prompt carry.
+ * @param error - the rejection a Loader entry settled with.
+ * @returns its first non-blank message line, bounded by {@link FAILURE_DETAIL_LIMIT}.
+ */
+function failureDetail(error) {
+  const text = error instanceof Error ? error.message : String(error);
+  const first = text.split("\n").find((line) => line.trim() !== "") ?? text;
+  return first.trim().slice(0, FAILURE_DETAIL_LIMIT);
+}
+
+/**
+ * Plugin entries the settled tree could not activate.
+ *
+ * Read through the Loader's public `entries()` rather than its diagnostics: an
+ * entry with no fiber failed to import, a fiber in the failed state carries the
+ * original rejection, and an entry whose `disabled` expression throws is a
+ * failure rather than a disabled entry. Pending entries are deliberately left
+ * alone — a service that never arrived is a tree-shape problem, and disabling
+ * the plugin that waited for it would hide the cause instead of reporting it.
+ * @param root - the booted context.
+ * @returns `{ id, name, detail }` per failed entry, in Loader order.
+ */
+async function inactivePlugins(root) {
+  const loader = root.get("loader");
+  if (loader === undefined) return [];
+  const inactive = [];
+  for (const entry of loader.entries()) {
+    let disabled = false;
+    try {
+      disabled = entry.disabled;
+    } catch (error) {
+      inactive.push({ id: entry.options.id, name: entry.options.name, detail: `disabled expression failed: ${failureDetail(error)}` });
+      continue;
+    }
+    if (disabled) continue;
+    const fiber = entry.fiber;
+    if (fiber === undefined) {
+      inactive.push({ id: entry.options.id, name: entry.options.name, detail: "failed to import" });
+      continue;
+    }
+    // Fiber states, mirroring the Loader: 2 is active, 3 is failed.
+    if (fiber.state !== 3) continue;
+    let detail = "activation failed";
+    try {
+      await fiber.await();
+    } catch (error) {
+      detail = failureDetail(error);
+    }
+    inactive.push({ id: entry.options.id, name: entry.options.name, detail });
+  }
+  return inactive;
+}
+
+/**
+ * Call a harness Remote method over the loopback origin.
+ *
+ * The same authenticated path the quick-chat pill uses: `net.fetch` runs in the
+ * default session, which carries the cookie the app page minted from its
+ * launch-token URL, so the bare origin authenticates where a Node fetch could not.
+ * @param method - the `<namespace>/<method>` Remote name.
+ * @param args - the method's wire arguments.
+ * @returns the Remote call's value.
+ */
+async function harnessRpc(method, args) {
+  if (serverOrigin === undefined) throw new Error("the harness origin is unknown");
+  const response = await net.fetch(serverOrigin + "api/" + method, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "client-request", rpcId: "plugin-repair-" + String(++rpcSeq), method, payload: { args } })
+  });
+  if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+  const envelope = await response.json();
+  if (envelope?.result?.ok !== true) throw new Error(envelope?.result?.error?.message ?? `${method} failed`);
+  return envelope.result.value;
+}
+
+/**
+ * The repair brief the agent receives for one boot's failed plugins.
+ * @param plugins - the inactive entries being quarantined.
+ * @returns the prompt text.
+ */
+function repairPrompt(plugins) {
+  return [
+    "以下插件在启动时加载失败，应用已自动停用它们（回退启动）。请修复。",
+    "",
+    ...plugins.flatMap((plugin) => [`- 插件行 id：${plugin.id}`, `  包名：${plugin.name}`, `  失败信息：${plugin.detail}`]),
+    "",
+    `停用记录（JSON）：${quarantinePath()}`,
+    "",
+    "请按这个顺序做：",
+    "1. 定位每个插件的包目录：profile 的 package.json 里指向它的 `link:`/路径依赖，或 $DSH_HOME/profiles/node_modules 下的同名目录。",
+    "2. 复现并修掉加载失败的原因（缺依赖、语法/导出错误、引用了不存在的包等）。只改这些插件自己的文件，不要改 dsh 本体或别的插件。",
+    `3. 修好后，从上面那个停用记录里删掉对应 id 的条目——插件会在下次启动时自动恢复。`,
+    "4. 判断修不了就说明原因，并保留停用记录；不要为了绕过报错去改动无关的东西。"
+  ].join("\n");
+}
+
+/**
+ * Wait until the served app has loaded once, so the RPC below can authenticate.
+ *
+ * The launch-token URL mints the session cookie when the document loads, and
+ * {@link harnessRpc} rides that cookie — the same contract the quick-chat pill
+ * relies on. A repair that runs before the first document load has no cookie and
+ * is rejected with 401, so this waits it out. The wait is bounded: a page that
+ * never loads must cost the repair, never the fallback that already happened.
+ */
+async function waitForAppPage() {
+  const main = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed() && window !== quickChatWindow);
+  if (main === undefined || serverOrigin === undefined) return;
+  if (!main.webContents.isLoading() && main.webContents.getURL().startsWith(serverOrigin)) return;
+  await new Promise((done) => {
+    const timer = setTimeout(done, 30000);
+    main.webContents.once("did-finish-load", () => {
+      clearTimeout(timer);
+      done();
+    });
+  });
+}
+
+/**
+ * Turn this boot's plugin failures into a quarantine plus one repair attempt.
+ *
+ * The fallback is unconditional and comes first: every failed entry is recorded,
+ * and {@link composeWebProfile} switches those ids off on the next boot, so a
+ * broken plugin costs one warning once instead of failing at every start. The
+ * repair is the second half and is deliberately bounded — at most
+ * {@link REPAIR_ATTEMPT_LIMIT} conversations per plugin, recorded in the same
+ * file — because a repair that cannot start (no account, no model, a tree still
+ * settling) must degrade to the fallback rather than retry in a loop.
+ * @param root - the booted context.
+ */
+async function quarantineAndRepair(root) {
+  const inactive = await inactivePlugins(root);
+  if (inactive.length === 0) return;
+  const record = readQuarantine();
+  const repairable = [];
+  for (const plugin of inactive) {
+    const previous = record[plugin.id];
+    const entry = {
+      name: plugin.name,
+      detail: plugin.detail,
+      quarantinedAt: typeof previous?.quarantinedAt === "string" ? previous.quarantinedAt : new Date().toISOString(),
+      attempts: typeof previous?.attempts === "number" ? previous.attempts : 0
+    };
+    if (typeof previous?.sessionId === "string") entry.sessionId = previous.sessionId;
+    record[plugin.id] = entry;
+    if (entry.attempts < REPAIR_ATTEMPT_LIMIT) repairable.push(plugin);
+  }
+  writeQuarantine(record);
+  // One line naming the file: clearing an entry there is the whole re-enable.
+  console.warn(`dsh-desktop: ${String(inactive.length)} plugin(s) failed to load and are now disabled; ${quarantinePath()} records why`);
+  if (repairable.length === 0) return;
+  try {
+    await waitForAppPage();
+    const created = await harnessRpc("session/create", { request: {} });
+    const sessionId = created?.sessionId;
+    if (typeof sessionId !== "string") throw new Error("session/create returned no session");
+    await harnessRpc("session/prompt", {
+      request: {
+        requestId: randomUUID(),
+        sessionId,
+        mode: "queue",
+        content: [{ type: "text", text: repairPrompt(repairable) }]
+      }
+    });
+    for (const plugin of repairable) {
+      record[plugin.id].attempts += 1;
+      record[plugin.id].sessionId = sessionId;
+    }
+    writeQuarantine(record);
+    console.warn(`dsh-desktop: opened a repair conversation for the disabled plugin(s): ${sessionId}`);
+    notifyRepairStarted(repairable);
+    // The turn does not wait for this — admission wakes the driver on its own —
+    // but a repair the person cannot see is a repair they will not trust, so the
+    // window follows the conversation the way the quick-chat pill does.
+    const main = appWindow();
+    if (main !== undefined) await selectSession(main, sessionId);
+  } catch (error) {
+    console.warn("dsh-desktop: could not start the plugin repair conversation", error);
+  }
+}
+
+/**
+ * Tell the person that a repair is running, since it starts without being asked.
+ * @param plugins - the entries the repair conversation covers.
+ */
+function notifyRepairStarted(plugins) {
+  if (!Notification.isSupported()) return;
+  try {
+    const names = plugins.map((plugin) => plugin.name).join("、");
+    new Notification({
+      title: "插件加载失败，已自动停用并开始修复",
+      body: `${names} 无法加载。应用已回退启动，并在新对话里让 AI 尝试修复；修好后会在下次启动自动恢复。`
+    }).show();
+  } catch (error) {
+    console.warn("dsh-desktop: could not show the repair notification", error);
+  }
 }
 
 /**
@@ -225,6 +498,14 @@ async function composeWebProfile() {
   }
   const telemetryDisabled = (process.env.DSH_TELEMETRY_DISABLED ?? "") !== "";
   if (telemetryDisabled && rows.has(TELEMETRY_ROW_ID)) overlays.push({ id: TELEMETRY_ROW_ID, disabled: true });
+  // Quarantined plugins are switched off by an id-targeted overlay rather than
+  // edited out of the profile: the market keeps owning its row, the record stays
+  // the single source of truth for why the plugin is off, and re-enabling one is
+  // clearing a line in that record instead of repairing a patch layer. Gated on
+  // the composed rows so a stale id never emits an overlay of its own.
+  for (const id of Object.keys(readQuarantine())) {
+    if (rows.has(id)) overlays.push({ id, disabled: true });
+  }
   // Launcher-owned profile locations, the same shape the CLI provides: the
   // plugin manager writes bundle rows through it, and rows that differ by
   // surface read it (the built-in sidebar browser is a Web-vs-Electron switch).
@@ -476,6 +757,35 @@ function toggleQuickChatPanel() {
   });
 }
 
+/** The window that hosts the served app — never the quick-chat pill. */
+function appWindow() {
+  return BrowserWindow.getAllWindows().find((window) => !window.isDestroyed() && window !== quickChatWindow);
+}
+
+/**
+ * Point a window at one session.
+ *
+ * The SPA restores its selection from this localStorage key on load, so the key
+ * has to be written before the page that reads it — a write into an already
+ * loaded page would only take effect at its next load, which is why this reloads.
+ * @param win - the window to move.
+ * @param sessionId - the session it should show.
+ */
+async function selectSession(win, sessionId) {
+  const script =
+    `localStorage.setItem("dsh.sessions.current", ${JSON.stringify(JSON.stringify({ sessionId }))}); ` +
+    `if (!location.pathname.startsWith("/")) location.href = "/"; "ok"`;
+  if (win.webContents.isLoading()) {
+    win.webContents.once("did-finish-load", () => {
+      void win.webContents.executeJavaScript(script).catch(() => {});
+      win.webContents.reload();
+    });
+    return;
+  }
+  await win.webContents.executeJavaScript(script).catch(() => {});
+  win.webContents.reload();
+}
+
 /**
  * Expand the pill into the main dsh conversation page showing `sessionId`.
  * Sends the request to the harness SPA (which loads the persisted session
@@ -486,7 +796,7 @@ function toggleQuickChatPanel() {
 async function expandPillToSession(sessionId) {
   // The pill goes away; the main window takes over the space.
   hidePillWindow();
-  const main = BrowserWindow.getAllWindows().find((w) => w !== quickChatWindow && !w.isDestroyed());
+  const main = appWindow();
   if (main === undefined || main.isDestroyed()) return;
   const start = quickChatWindow !== undefined && !quickChatWindow.isDestroyed()
     ? quickChatWindow.getBounds()
@@ -495,18 +805,7 @@ async function expandPillToSession(sessionId) {
 
   // Persist the target session so the SPA restores it on boot. If the page is
   // still loading, apply the selection right after it finishes (then reload).
-  const applySession = () => {
-    const script =
-      `localStorage.setItem("dsh.sessions.current", ${JSON.stringify(JSON.stringify({ sessionId }))}); ` +
-      `if (!location.pathname.startsWith("/")) location.href = "/"; "ok"`;
-    return main.webContents.executeJavaScript(script).catch(() => {});
-  };
-  if (main.webContents.isLoading()) {
-    main.webContents.once("did-finish-load", () => { void applySession(); void main.webContents.reload(); });
-  } else {
-    await applySession();
-    main.webContents.reload();
-  }
+  await selectSession(main, sessionId);
 
   // Seed the window at the pill's location/size so the growth animation reads.
   const from = start ?? {
@@ -1258,9 +1557,22 @@ if (!gotLock) {
   app.setAppUserModelId("ai.deepseek.harness.desktop");
   registerIpc();
 
-  // Renderer permissions: notifications and clipboard for the served GUI.
+  // Renderer permissions: notifications and clipboard for the served GUI, plus
+  // the microphone the voice input records from.
+  //
+  // Chromium asks this handler before it opens any capture device, so a
+  // permission missing from the list is refused outright and the renderer only
+  // ever sees NotAllowedError — which is what the voice input reports as
+  // "Microphone access is disabled. Allow it in browser and system settings."
+  // The microphone carries that recording; the camera has no use here, so video
+  // requests stay denied.
   app.whenReady().then(async () => {
-    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+      if (permission === "media") {
+        const types = details?.mediaTypes ?? [];
+        callback(types.length > 0 && types.every((type) => type === "audio"));
+        return;
+      }
       callback(["notifications", "clipboard-sanitized-write", "clipboard-read", "fullscreen"].includes(permission));
     });
 
@@ -1282,6 +1594,12 @@ if (!gotLock) {
       stopAccountSignInWatch = watchAccountSignIn();
       if (startHidden) void win.loadURL(serverUrl);
       else revealApp(win, serverUrl);
+      // A plugin that failed to load is a warning, not a stop — the app is up and
+      // usable without it. This is what turns that warning into the two things it
+      // cannot do by itself: a record that keeps the broken entry out of the next
+      // boot, and a repair conversation for the agent. It runs after the app is
+      // revealed, on the same authenticated RPC path the quick-chat pill uses.
+      if (ctx !== undefined) void quarantineAndRepair(ctx);
     } catch (error) {
       console.error("dsh-desktop: boot failed", error);
       await disposeHarness();

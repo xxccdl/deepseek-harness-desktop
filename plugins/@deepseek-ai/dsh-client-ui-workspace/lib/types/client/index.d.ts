@@ -9,7 +9,10 @@
  * action lists, and this apply registers the shipped actions — pin, rename,
  * fork, archive — into them the way any client plugin would, each with its
  * own behavior, plus the rename dialog and the row-action notice into
- * `shell.overlay` (see the contract module doc). Export discipline:
+ * `shell.overlay` (see the contract module doc). It also declares two
+ * Session-row seats: the leading decoration a row renders only while its own
+ * primary state is idle, and the section the row's hover card renders between
+ * its relative time and its trailing status line. Export discipline:
  * packages/client/AGENTS.md.
  */
 import type { Context } from '@deepseek-ai/cordis';
@@ -17,7 +20,7 @@ import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controlle
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots';
 import { type WorkspaceKey } from './locales.ts';
 export type { UiWorkspace } from './navigation.ts';
-export type { DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected, MenuOpenState, RowToast, SessionRenameTarget, SessionRowOwnerProps, UseMenuOpenState, WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps, } from './contract/slots.ts';
+export type { DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected, MenuOpenState, RowToast, SessionRenameTarget, SessionRowOwnerProps, UseMenuOpenState, WorkspaceBrowserInjected, SessionRowScheduleOwnerProps, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps, } from './contract/slots.ts';
 export type { WorkspaceKey } from './locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface GlobalStandardProps {

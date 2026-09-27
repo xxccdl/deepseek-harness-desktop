@@ -36,6 +36,7 @@
 - [复现 / 构建](#复现--构建)
 - [仓库结构](#仓库结构)
 - [工作原理](#工作原理为什么不需要改前端)
+- [Star History](#star-history)
 
 ---
 
@@ -415,3 +416,15 @@ bundle 的 patch 层，由 `dsh-host-webserver` 监听 `127.0.0.1`，由
 - 打包时 `node_modules` 全部 `asarUnpack`：harness 的模块回退机制会把
   `$DSH_HOME/profiles/node_modules` 的 junction 指向真实目录——指向 asar 虚拟文件系统的
   junction 无法被原生模块解析（会导致 `__DSH_BOOT__` 空清单，UI 报 “Failed to load plugins”）
+
+---
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=xxccdl%2Fdeepseek-harness-desktop&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=xxccdl/deepseek-harness-desktop&type=date&legend=top-left&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=xxccdl/deepseek-harness-desktop&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=xxccdl/deepseek-harness-desktop&type=date&legend=top-left" />
+  </picture>
+</a>

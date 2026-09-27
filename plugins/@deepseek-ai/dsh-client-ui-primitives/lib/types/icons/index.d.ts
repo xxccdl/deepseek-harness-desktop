@@ -1,7 +1,3 @@
-/**
- * Shared current-color product icons. Names identify the glyph and weight;
- * rendered size remains a prop instead of part of the component name.
- */
 import type { IconProps } from './props.ts';
 export type { IconProps } from './props.ts';
 /** Shared shield contour used by composite icons outside this module. */
@@ -162,6 +158,10 @@ export declare const IconWarningTriangleOutlineMedium: (props: IconProps) => imp
 export declare const IconUserOutlineRegular: (props: IconProps) => import("react").JSX.Element;
 /** Medium IconUserOutline artwork with a 1.3px stroke. */
 export declare const IconUserOutlineMedium: (props: IconProps) => import("react").JSX.Element;
+/** Regular one-pixel IconUsersOutline artwork: a front person with a second person behind. */
+export declare const IconUsersOutlineRegular: (props: IconProps) => import("react").JSX.Element;
+/** Medium IconUsersOutline artwork with a 1.3px stroke. */
+export declare const IconUsersOutlineMedium: (props: IconProps) => import("react").JSX.Element;
 /** Regular one-pixel IconPaperPlaneOutline artwork. */
 export declare const IconPaperPlaneOutlineRegular: (props: IconProps) => import("react").JSX.Element;
 /** Medium IconPaperPlaneOutline artwork with a 1.3px stroke. */
@@ -366,6 +366,10 @@ export declare const IconWorkspaceTreeOutlineMedium: (props: IconProps) => impor
 export declare const IconChevronsUpDownOutlineRegular: (props: IconProps) => import("react").JSX.Element;
 /** Medium IconChevronsUpDownOutline artwork with a 1.3px stroke. */
 export declare const IconChevronsUpDownOutlineMedium: (props: IconProps) => import("react").JSX.Element;
+/** Regular one-pixel IconArchiveOffOutline artwork. */
+export declare const IconArchiveOffOutlineRegular: (props: IconProps) => import("react").JSX.Element;
+/** Medium IconArchiveOffOutline artwork with a 1.3px stroke. */
+export declare const IconArchiveOffOutlineMedium: (props: IconProps) => import("react").JSX.Element;
 /** Regular one-pixel IconArchiveCheckOutline artwork. */
 export declare const IconArchiveCheckOutlineRegular: (props: IconProps) => import("react").JSX.Element;
 /** Medium IconArchiveCheckOutline artwork with a 1.3px stroke. */

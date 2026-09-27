@@ -71,7 +71,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/discoverModels:result',
         create: _deepseek_ai_dsh_llm_llm_discoverModels_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":633,"column":9},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":638,"column":9},
     },
     {
       id: '@deepseek-ai/dsh-llm#llm/listConfigurableProviders',
@@ -86,7 +86,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/listConfigurableProviders:result',
         create: _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":545,"column":3},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":550,"column":3},
     },
     {
       id: '@deepseek-ai/dsh-llm#llm/listProviders',
@@ -101,7 +101,7 @@ export const TYPERT_REMOTE = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/listProviders:result',
         create: _deepseek_ai_dsh_llm_llm_listProviders_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":473,"column":3},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":478,"column":3},
     },
   ],
 }

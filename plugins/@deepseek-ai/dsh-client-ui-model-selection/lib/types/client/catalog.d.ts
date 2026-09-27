@@ -1,6 +1,6 @@
 /** One Host-generation model catalog shared by every Session selector. */
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
-import type { ModelCatalog } from '@deepseek-ai/dsh-api-remotes/client';
+import type { ModelCatalog, ModelSelection, ModelProviderGroup } from '@deepseek-ai/dsh-api-remotes/client';
 import { type SnapshotStore } from '@deepseek-ai/dsh-client-store';
 /** Observable lifecycle of the shared model catalog. */
 export interface ModelCatalogState {
@@ -13,6 +13,13 @@ export declare class ModelCatalogDirectory {
     private readonly ctx;
     /** Current shared catalog value and load lifecycle. */
     readonly store: SnapshotStore<ModelCatalogState>;
+    private readonly reasoning;
+    /**
+     * Read the last advertised reasoning metadata, including unavailable models.
+     * @param selection - provider and model whose effort is displayed.
+     * @returns reasoning metadata observed during this Host generation.
+     */
+    reasoningFor(selection: ModelSelection): ModelProviderGroup['models'][number]['reasoning'];
     private generation;
     private inflight;
     /**

@@ -136,6 +136,8 @@ var HarnessError = class extends Error {
 const CONTEXT_WINDOW_EXCEEDED_CODE = "CONTEXT_WINDOW_EXCEEDED";
 /** Canonical provider-neutral code for an exhausted account quota or balance. */
 const QUOTA_EXCEEDED_CODE = "QUOTA";
+/** Account-token quota that can be replenished through the first-party billing page. */
+const ACCOUNT_QUOTA_EXCEEDED_CODE = "ACCOUNT_QUOTA";
 /**
 * Canonical provider-neutral code for a response that completed normally but
 * carried no content blocks at all. Providers occasionally emit a degenerate
@@ -749,6 +751,89 @@ function projectImagesForTextModel(messages) {
 			content
 		};
 	});
+}
+function withoutDeveloperMessages(messages) {
+	const retained = messages.filter((message) => message.role !== "developer");
+	return retained.length === messages.length ? messages : retained;
+}
+function toolDeclarations(tools, mode, history) {
+	const declarations = new Map(history.tools.map((tool) => [tool.name, tool]));
+	for (const update of history.updates) for (const tool of update.additions) if (!declarations.has(tool.name)) declarations.set(tool.name, {
+		...tool,
+		deferLoading: true
+	});
+	switch (mode) {
+		case "in-history": return declarations;
+		case "addition-only": {
+			const activeNames = new Set(tools?.map((tool) => tool.name));
+			for (const name of declarations.keys()) if (!activeNames.has(name)) declarations.delete(name);
+			return declarations;
+		}
+		/* v8 ignore next 2 -- closed-union exhaustiveness guard */
+		default: return assertNever(mode);
+	}
+}
+/**
+* Construct provider declarations from session-folded history without changing logged active tools.
+* Unsupported routes and incomplete history use current declarations without developer updates.
+* Explicitly deferred baseline tools become available only after their first retained addition.
+* @param messages - complete request inputs, or the prefix selected for an auxiliary call.
+* @param tools - currently active tool schemas.
+* @param toolUpdate - the resolved route's update mode.
+* @param history - immutable state folded from committed headers and developer messages.
+* @returns provider declarations and the corresponding filtered history.
+*/
+function projectToolUpdates(messages, tools, toolUpdate, history) {
+	if (toolUpdate === void 0) {
+		let immediateTools = tools;
+		if (tools?.some((tool) => tool.deferLoading === true)) immediateTools = tools.map(({ deferLoading: _loading, ...tool }) => tool);
+		return {
+			messages: withoutDeveloperMessages(messages),
+			tools: immediateTools
+		};
+	}
+	if (history === void 0) return {
+		messages: withoutDeveloperMessages(messages),
+		tools
+	};
+	const messageIds = new Set(messages.flatMap((message) => message.role === "developer" ? [message.id] : []));
+	if (history.updates.some((update) => !messageIds.has(update.messageId))) return {
+		messages: withoutDeveloperMessages(messages),
+		tools
+	};
+	const declarations = toolDeclarations(tools, toolUpdate, history);
+	const updateIds = new Set(history.updates.map((update) => update.messageId));
+	const offered = new Set(history.tools.filter((tool) => !tool.deferLoading).map((tool) => tool.name));
+	const projectedMessages = [];
+	for (const message of messages) {
+		if (message.role !== "developer") {
+			projectedMessages.push(message);
+			continue;
+		}
+		if (!updateIds.has(message.id)) continue;
+		const content = message.content.filter((block) => {
+			switch (block.type) {
+				case "tool-addition":
+					if (!declarations.has(block.toolName) || offered.has(block.toolName)) return false;
+					offered.add(block.toolName);
+					return true;
+				case "tool-removal":
+					if (toolUpdate !== "in-history") return false;
+					return offered.delete(block.toolName);
+				default: return true;
+			}
+		});
+		if (content.length === 0) continue;
+		if (content.length === message.content.length) projectedMessages.push(message);
+		else projectedMessages.push({
+			...message,
+			content
+		});
+	}
+	return {
+		messages: projectedMessages.length === messages.length && projectedMessages.every((message, index) => message === messages[index]) ? messages : projectedMessages,
+		tools: [...declarations.values()]
+	};
 }
 //#endregion
 //#region lib/types/attribution.js
@@ -1612,8 +1697,9 @@ var LlmAdapter = class {
 	imageRequestPricing(_provider, _model) {}
 	/**
 	* List models this adapter can currently advertise for one owned provider.
-	* The result is advisory: an adapter may accept unlisted model ids, and
-	* consumers must not turn absence into request rejection.
+	* Core routing accepts unlisted model ids; catalog-driven entry points such
+	* as the GUI may require membership. Adapters used there must advertise
+	* their available models; the base empty catalog offers no GUI selection.
 	* @param _provider - one provider route owned by this adapter.
 	* @returns discoverable models in adapter-preferred order.
 	*/
@@ -1979,7 +2065,8 @@ let LlmRuntime = (() => {
 		}
 		/**
 		* Discover models advertised by one registered provider. Catalog membership
-		* is advisory and never changes routing or request validation.
+		* does not constrain core routing. Catalog-driven entry points may restrict
+		* selection and submission to the advertised models.
 		* @param provider - registered provider route to inspect.
 		* @returns detached model metadata in adapter-preferred order.
 		*/
@@ -2024,6 +2111,8 @@ let LlmRuntime = (() => {
 			const inputModalities = this.detachedModalities(resolved.inputModalities);
 			const systemPromptUpdate = resolved.systemPromptUpdate;
 			if (systemPromptUpdate !== void 0 && systemPromptUpdate !== "in-history") throw new LlmError(`adapter returned invalid system prompt update mode for provider "${provider}" model "${model}"`, "INVALID_MODEL_INFO");
+			const toolUpdate = resolved.toolUpdate;
+			if (toolUpdate !== void 0 && toolUpdate !== "in-history" && toolUpdate !== "addition-only") throw new LlmError(`adapter returned invalid tool update mode for provider "${provider}" model "${model}"`, "INVALID_MODEL_INFO");
 			const defaultMaxTokens = resolved.defaultMaxTokens;
 			if (defaultMaxTokens !== void 0 && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) throw new LlmError(`adapter returned invalid default maxTokens for provider "${provider}" model "${model}"`, "INVALID_MODEL_MAX_TOKENS");
 			const info = {
@@ -2034,7 +2123,8 @@ let LlmRuntime = (() => {
 				...inputModalities === void 0 ? {} : { inputModalities },
 				...context === void 0 ? {} : { context: { contextWindow: context.contextWindow } },
 				...defaultMaxTokens === void 0 ? {} : { defaultMaxTokens },
-				...resolved.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: resolved.systemPromptUpdate }
+				...resolved.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },
+				...resolved.toolUpdate === void 0 ? {} : { toolUpdate: resolved.toolUpdate }
 			};
 			const reasoning = resolved.reasoning;
 			if (reasoning === void 0) return info;
@@ -2129,6 +2219,7 @@ let LlmRuntime = (() => {
 				...context === void 0 ? {} : { context },
 				...modelInfo.inputModalities === void 0 ? {} : { inputModalities: Object.freeze([...modelInfo.inputModalities]) },
 				...modelInfo.systemPromptUpdate === void 0 ? {} : { systemPromptUpdate: modelInfo.systemPromptUpdate },
+				...modelInfo.toolUpdate === void 0 ? {} : { toolUpdate: modelInfo.toolUpdate },
 				stream: (options) => {
 					if (dispatched) throw new LlmError("a prepared LLM call can only be dispatched once", "INVALID_PREPARED_CALL");
 					if (!callConfigEquals(options, resolvedConfig)) throw new LlmError("prepared LLM call config changed before adapter dispatch", "INVALID_PREPARED_CALL");
@@ -2218,13 +2309,17 @@ let LlmRuntime = (() => {
 				let projectedMessages = resolvedOptions.messages;
 				if (projectedMessages.some((message) => contentHasFile(message.content))) projectedMessages = projectFilesToText(projectedMessages, (ref) => this.fileReadPath(ref));
 				if (modelInfo.inputModalities !== void 0 && !modelInfo.inputModalities.includes("image") && projectedMessages.some((message) => contentHasImage(message.content))) projectedMessages = projectImagesForTextModel(projectedMessages);
-				const projectedOptions = projectedMessages === resolvedOptions.messages ? resolvedOptions : Object.isFrozen(resolvedOptions) ? deepFreeze({
-					...resolvedOptions,
-					messages: projectedMessages
-				}) : {
-					...resolvedOptions,
-					messages: projectedMessages
-				};
+				const projectedTools = projectToolUpdates(projectedMessages, resolvedOptions.tools, modelInfo.toolUpdate, resolvedOptions.toolHistory);
+				projectedMessages = projectedTools.messages;
+				let projectedOptions = resolvedOptions;
+				if (projectedMessages !== resolvedOptions.messages || projectedTools.tools !== resolvedOptions.tools) {
+					projectedOptions = {
+						...resolvedOptions,
+						messages: projectedMessages,
+						...projectedTools.tools === void 0 ? {} : { tools: projectedTools.tools }
+					};
+					if (Object.isFrozen(resolvedOptions)) deepFreeze(projectedOptions);
+				}
 				iterator = dispatch(this.forAdapter(projectedOptions, adapter))[Symbol.asyncIterator]();
 			} catch (error) {
 				yield adapterFailureChunk(error, options.signal);
@@ -2292,4 +2387,4 @@ function adapterFailureChunk(error, signal) {
 	};
 }
 //#endregion
-export { APP_IDENTITY, AssistantStreamAccumulator, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, IMAGE_OFFLOAD_REQUIRED_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmAttemptId, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assembleAssistantStream, assertUsableApiKey, assistantStreamChunks, assistantStreamFirstTokenTime, assistantStreamHasVisibleContent, assistantStreamHasVisibleText, attributionHeaders, boundContextSummary, callConfigEquals, chunkHasVisibleText, contentHasFile, contentHasImage, createAssistantMessage, createDeveloperMessage, createMessage, createSystemMessage, createToolResultMessage, createUserMessage, errorChain, expandAssistantStream, fileHandleText, freezeMessage, isAgentLoopRequest, isContextWindowExceededError, isHarnessError, isQuotaExceededError, isTokenDelta, isVisibleChunk, joinAssistantStreamText, lastAssistantStreamChunk, markAgentLoopRequest, normalizeApiKey, offloadedImageText, projectFilesToText, projectImagesForTextModel, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, runFirstTokenTime, runFirstVisibleTime, textOnlyImageText, userAgent };
+export { ACCOUNT_QUOTA_EXCEEDED_CODE, APP_IDENTITY, AssistantStreamAccumulator, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, IMAGE_OFFLOAD_REQUIRED_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmAttemptId, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assembleAssistantStream, assertUsableApiKey, assistantStreamChunks, assistantStreamFirstTokenTime, assistantStreamHasVisibleContent, assistantStreamHasVisibleText, attributionHeaders, boundContextSummary, callConfigEquals, chunkHasVisibleText, contentHasFile, contentHasImage, createAssistantMessage, createDeveloperMessage, createMessage, createSystemMessage, createToolResultMessage, createUserMessage, errorChain, expandAssistantStream, fileHandleText, freezeMessage, isAgentLoopRequest, isContextWindowExceededError, isHarnessError, isQuotaExceededError, isTokenDelta, isVisibleChunk, joinAssistantStreamText, lastAssistantStreamChunk, markAgentLoopRequest, normalizeApiKey, offloadedImageText, projectFilesToText, projectImagesForTextModel, projectOffloadedImages, projectToolUpdates, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, runFirstTokenTime, runFirstVisibleTime, textOnlyImageText, userAgent };

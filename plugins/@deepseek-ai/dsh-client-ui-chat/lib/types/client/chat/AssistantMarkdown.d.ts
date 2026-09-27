@@ -2,10 +2,13 @@ import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives
 import type { ChatNodeOwnerProps, ChatViewSlotProps, UseDisclosure, UsePresentation } from '../contract/slots.ts';
 import type { AssistantBlock } from '../contract/snapshot.ts';
 /**
- * Resolve an authored POSIX image path against the document's file API.
+ * Standalone fallback for image destinations (query/fragment suffixes are ignored).
+ * Chat fileImages resolves decoded file references against cwd; pathImages also
+ * serves this component outside that provider and accepts legacy image URL suffixes.
+ * Resolve an authored absolute image path against the document's file API.
  * @param base - canonical `document.baseURI` at render time.
- * @param value - authored markdown destination.
- * @returns an absolute HTTP(S) file-API URL, or undefined for unsupported
+ * @param value - authored Markdown destination; URL escapes are decoded once.
+ * @returns an absolute Web or Desktop file-API URL, or undefined for unsupported
  * protocols and non-local paths.
  */
 export declare function localPathMediaUrl(base: string, value: string): string | undefined;

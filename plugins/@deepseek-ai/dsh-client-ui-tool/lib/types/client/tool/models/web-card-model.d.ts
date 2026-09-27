@@ -10,5 +10,11 @@ export type WebCardModelProps = DistributiveOmit<WebBlockProps, 'labels' | 'clas
  * @returns web-card props, or null for the generic path.
  */
 export declare function webCardModel(block: ToolCallBlock): WebCardModelProps | null;
+/**
+ * Read the openable URL of a web_fetch call from its arguments.
+ * @param block - running or settled Tool block.
+ * @returns the http(s) URL, or undefined for another tool, protocol, or unparsable argument.
+ */
+export declare function webFetchHref(block: ToolCallBlock): string | undefined;
 export {};
 //# sourceMappingURL=web-card-model.d.ts.map

@@ -20,228 +20,188 @@ window.__ModuleLoader__.load({
 		*/
 		const menuOpenStateFactory = (_standard, state) => () => state;
 		//#endregion
-		//#region lib/types/client/locales.js
+		//#region lib/types/client/shortcuts.js
 		/**
-		* `workspace` namespace dictionaries: the browsing region (section header,
-		* search, tree rows, dialogs) and the pick/add flow. Runtime failure
-		* messages (wire error strings) pass through untranslated by policy.
+		* Create the private browser request source shared by commands and controls.
+		* @returns observable state and its complete mutation callbacks.
 		*/
-		/** Simplified Chinese dictionary (the key-set source of truth). */
-		const zh = {
-			"defaultWorkspace.failed": "无法创建默认工作区，请通过“选择工作区”选择文件夹",
-			"defaultWorkspace.title": "默认工作区",
-			"group.ungrouped": "未分组",
-			"session.new": "新会话",
-			"section.workspaces": "工作区",
-			"section.sessions": "会话",
-			"viewOptions.label": "视图选项",
-			"groupBy.label": "分组方式",
-			"groupBy.workspace": "按工作区",
-			"groupBy.workspaceTree": "按工作区树",
-			"groupBy.flat": "单列表",
-			"orderBy.label": "排序方式",
-			"orderBy.manual": "手动排序",
-			"orderBy.updated": "最近更新",
-			"filterBy.label": "筛选会话",
-			"viewOptions.showArchived": "显示已归档",
-			"viewOptions.onlyArchived": "仅显示已归档",
-			"sessions.expand": "展开其余 {n} 个会话",
-			"sessions.collapse": "收起",
-			"empty.none": "暂无会话",
-			"empty.noMatches": "无匹配结果",
-			"workspace.add": "添加工作区",
-			"search.sessions.aria": "搜索会话",
-			"search.placeholder": "搜索会话名称",
-			"search.clear": "清除搜索",
-			"search.results.aria": "搜索结果",
-			"search.pending": "正在搜索会话历史…",
-			"search.noMatches": "无匹配会话",
-			"search.hasMore": "仅显示前 {n} 条结果，请缩小搜索范围。",
-			"menu.addWorkspace": "添加工作区…",
-			"picker.loading": "正在加载工作区…",
-			"conflict.named": "已存在名为“{name}”的工作区。",
-			"folderError.title": "无法打开文件夹",
-			"folderError.retry": "重新选择",
-			"rename": "重命名",
-			"rename.workspace.title": "重命名工作区",
-			"rename.session.title": "重命名会话",
-			"field.workspaceName": "工作区名称",
-			"field.sessionName": "会话名称",
-			"delete.workspace": "删除工作区",
-			"delete.desc": "将把“{name}”从工作区列表中移除。文件夹与会话记录会保留，其会话将显示在“未分组”下。",
-			"delete.pending": "正在删除工作区…",
-			"menu.fork": "分叉会话",
-			"menu.archiveSession": "归档会话",
-			"menu.unarchiveSession": "取消归档",
-			"menu.pinSession": "置顶会话",
-			"menu.unpinSession": "取消置顶",
-			"row.archived": "已归档",
-			"row.pinned": "已置顶",
-			"toast.archivedNotOpenable": "已归档对话暂时无法查看，请取消归档后查看",
-			"toast.archived": "会话已归档，可",
-			"toast.stoppedAndArchived": "已停止并归档，可",
-			"archive.confirm.title": "停止并归档此会话？",
-			"archive.confirm.desc": "“{title}”仍有正在进行的工作。归档会先停止这些工作；之后可在侧栏“显示已归档”中恢复会话，被停止的工作不会自动继续。",
-			"archive.confirm.activity": "将被停止的工作",
-			"archive.confirm.turn": "进行中的回合",
-			"archive.confirm.subagents.one": "{n} 个运行中的子代理：{names}",
-			"archive.confirm.subagents.other": "{n} 个运行中的子代理：{names}",
-			"archive.confirm.jobs.one": "{n} 个后台任务：{names}",
-			"archive.confirm.jobs.other": "{n} 个后台任务：{names}",
-			"archive.confirm.schedules.one": "{n} 条定时提醒：{names}",
-			"archive.confirm.schedules.other": "{n} 条定时提醒：{names}",
-			"archive.confirm.other.one": "{n} 项其他工作（{kind}）",
-			"archive.confirm.other.other": "{n} 项其他工作（{kind}）",
-			"archive.confirm.listSeparator": "、",
-			"archive.confirm.action": "停止并归档",
-			"archive.confirm.pending": "正在停止并归档…",
-			"toast.archivedUndo": "撤销",
-			"toast.archivedOr": "或",
-			"toast.archivedFilter": "筛选已归档会话",
-			"toast.pinFailed": "置顶失败，请稍后重试",
-			"toast.unpinFailed": "取消置顶失败，请稍后重试",
-			"toast.createFailed": "新建会话失败：{message}",
-			"sessions.count.one": "{n} 个会话",
-			"sessions.count.other": "{n} 个会话",
-			"actions.workspace.aria": "工作区“{name}”的操作",
-			"actions.session.aria": "会话“{name}”的操作",
-			"actions.archive": "归档会话",
-			"actions.unarchive": "取消归档",
-			"actions.pin": "置顶会话",
-			"actions.unpin": "取消置顶",
-			"actions.newSession": "新会话",
-			"actions.newSession.aria": "在“{name}”中新建会话",
-			"status.running": "进行中",
-			"status.subagentsRunning.one": "{n} 个子代理运行中",
-			"status.subagentsRunning.other": "{n} 个子代理运行中",
-			"status.idle": "空闲",
-			"status.waitingApproval": "等待审批",
-			"status.planReview": "计划待审",
-			"status.waitingAnswer": "等待回答",
-			"status.compact.approval": "待审批",
-			"status.compact.planReview": "计划待审",
-			"status.compact.answer": "待回答",
-			"status.completed": "已完成",
-			"schedule.active": "有活动定时任务",
-			"hover.created": "创建于 {time}",
-			"hover.copied": "已复制",
-			"date.ymd": "{y}年{m}月{d}日",
-			"time.now": "刚刚",
-			"time.minutes": "{n}分钟",
-			"time.hours": "{n}小时",
-			"time.days": "{n}天",
-			"time.months": "{n}个月",
-			"time.years": "{n}年",
-			"time.ago": "{t}前"
-		};
-		/** English dictionary, checked complete against the zh key set. */
-		const en = {
-			"defaultWorkspace.failed": "Unable to create default workspace. Use Choose workspace to select a folder.",
-			"defaultWorkspace.title": "Default workspace",
-			"group.ungrouped": "Ungrouped",
-			"session.new": "New Session",
-			"section.workspaces": "Workspaces",
-			"section.sessions": "Sessions",
-			"viewOptions.label": "View options",
-			"groupBy.label": "Group by",
-			"groupBy.workspace": "WorkSpace",
-			"groupBy.workspaceTree": "Workspace Tree",
-			"groupBy.flat": "In one list",
-			"orderBy.label": "Order by",
-			"orderBy.manual": "Manual",
-			"orderBy.updated": "Last updated",
-			"filterBy.label": "Filter sessions",
-			"viewOptions.showArchived": "Show archived",
-			"viewOptions.onlyArchived": "Archived only",
-			"sessions.expand": "Show {n} more sessions",
-			"sessions.collapse": "Show less",
-			"empty.none": "No sessions yet",
-			"empty.noMatches": "No matches",
-			"workspace.add": "Add workspace",
-			"search.sessions.aria": "Search sessions",
-			"search.placeholder": "Search session names",
-			"search.clear": "Clear search",
-			"search.results.aria": "Search results",
-			"search.pending": "Searching session history…",
-			"search.noMatches": "No matching sessions",
-			"search.hasMore": "Showing the first {n} results. Narrow your search.",
-			"menu.addWorkspace": "Add workspace…",
-			"picker.loading": "Loading workspaces…",
-			"conflict.named": "A workspace named “{name}” already exists.",
-			"folderError.title": "Couldn’t open folder",
-			"folderError.retry": "Choose again",
-			"rename": "Rename",
-			"rename.workspace.title": "Rename workspace",
-			"rename.session.title": "Rename session",
-			"field.workspaceName": "Workspace name",
-			"field.sessionName": "Session name",
-			"delete.workspace": "Delete workspace",
-			"delete.desc": "This removes “{name}” from the workspace list. The folder and session logs will be kept. Its sessions will appear under Ungrouped.",
-			"delete.pending": "Deleting workspace…",
-			"menu.fork": "Fork session",
-			"menu.archiveSession": "Archive session",
-			"menu.unarchiveSession": "Unarchive session",
-			"menu.pinSession": "Pin session",
-			"menu.unpinSession": "Unpin session",
-			"row.archived": "Archived",
-			"row.pinned": "Pinned",
-			"toast.archivedNotOpenable": "Archived sessions cannot be opened. Unarchive it to view.",
-			"toast.archived": "Session archived. You can ",
-			"toast.stoppedAndArchived": "Session stopped and archived. You can ",
-			"archive.confirm.title": "Stop and archive this session?",
-			"archive.confirm.desc": "“{title}” still has work in progress. Archiving stops it first; you can restore the session later from “Show archived” in the sidebar, and the stopped work will not resume on its own.",
-			"archive.confirm.activity": "Work that will be stopped",
-			"archive.confirm.turn": "The turn in progress",
-			"archive.confirm.subagents.one": "{n} running subagent: {names}",
-			"archive.confirm.subagents.other": "{n} running subagents: {names}",
-			"archive.confirm.jobs.one": "{n} background job: {names}",
-			"archive.confirm.jobs.other": "{n} background jobs: {names}",
-			"archive.confirm.schedules.one": "{n} scheduled reminder: {names}",
-			"archive.confirm.schedules.other": "{n} scheduled reminders: {names}",
-			"archive.confirm.other.one": "{n} other item of work ({kind})",
-			"archive.confirm.other.other": "{n} other items of work ({kind})",
-			"archive.confirm.listSeparator": ", ",
-			"archive.confirm.action": "Stop and archive",
-			"archive.confirm.pending": "Stopping and archiving…",
-			"toast.archivedUndo": "undo",
-			"toast.archivedOr": " or ",
-			"toast.archivedFilter": "filter archived sessions",
-			"toast.pinFailed": "Pin failed. Try again later.",
-			"toast.unpinFailed": "Unpin failed. Try again later.",
-			"toast.createFailed": "New session failed: {message}",
-			"sessions.count.one": "{n} session",
-			"sessions.count.other": "{n} sessions",
-			"actions.workspace.aria": "Workspace actions for {name}",
-			"actions.session.aria": "Session actions for {name}",
-			"actions.archive": "Archive",
-			"actions.unarchive": "Unarchive",
-			"actions.pin": "Pin",
-			"actions.unpin": "Unpin",
-			"actions.newSession": "New session",
-			"actions.newSession.aria": "New session in {name}",
-			"status.running": "Running",
-			"status.subagentsRunning.one": "{n} subagent running",
-			"status.subagentsRunning.other": "{n} subagents running",
-			"status.idle": "Idle",
-			"status.waitingApproval": "Waiting for approval",
-			"status.planReview": "Plan awaiting review",
-			"status.waitingAnswer": "Waiting for answer",
-			"status.compact.approval": "Approval",
-			"status.compact.planReview": "Plan review",
-			"status.compact.answer": "Answer",
-			"status.completed": "Completed",
-			"schedule.active": "Has active scheduled task",
-			"hover.created": "Created {time}",
-			"hover.copied": "Copied",
-			"date.ymd": "{y}-{m}-{d}",
-			"time.now": "now",
-			"time.minutes": "{n}min",
-			"time.hours": "{n}h",
-			"time.days": "{n}d",
-			"time.months": "{n}mo",
-			"time.years": "{n}y",
-			"time.ago": "{t} ago"
-		};
+		function createWorkspaceShortcutControls() {
+			const state = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)({
+				searchRequest: 0,
+				addRequested: false,
+				directoryBusy: false,
+				renameTarget: null,
+				forkError: null
+			});
+			let forkErrorSeq = 0;
+			return {
+				state,
+				search: () => {
+					state.set({
+						...state.getSnapshot(),
+						searchRequest: state.getSnapshot().searchRequest + 1
+					});
+				},
+				add: () => {
+					state.set(state.getSnapshot().directoryBusy ? state.getSnapshot() : {
+						...state.getSnapshot(),
+						addRequested: true
+					});
+				},
+				closeAdd: () => {
+					state.set({
+						...state.getSnapshot(),
+						addRequested: false
+					});
+				},
+				directoryBusy: (busy) => {
+					state.set({
+						...state.getSnapshot(),
+						directoryBusy: busy
+					});
+				},
+				rename: (sessionId, currentTitle) => {
+					state.set({
+						...state.getSnapshot(),
+						renameTarget: {
+							sessionId,
+							currentTitle
+						}
+					});
+				},
+				closeRename: () => {
+					state.set({
+						...state.getSnapshot(),
+						renameTarget: null
+					});
+				},
+				forkFailed: (reason) => {
+					forkErrorSeq += 1;
+					state.set({
+						...state.getSnapshot(),
+						forkError: {
+							reason,
+							seq: forkErrorSeq
+						}
+					});
+				},
+				dismissForkError: () => {
+					state.set({
+						...state.getSnapshot(),
+						forkError: null
+					});
+				}
+			};
+		}
+		/**
+		* Register navigation commands against the existing workspace owner.
+		* @param ctx - plugin context with the shortcut, locale, and model services.
+		* @param navigation - session creation and forking from the pointer controls' navigation service.
+		* @param controls - browser-owned opening requests.
+		* @param archiveSession - shared archive action, including running-work confirmation and notices.
+		*/
+		function installWorkspaceShortcuts(ctx, navigation, controls, archiveSession) {
+			const t = ctx.locale.bind("workspace");
+			const current = () => Object.values(ctx.sessions.list.getSnapshot().byId).find((row) => (row.retainedBy.mainView ?? 0) > 0);
+			const addReason = () => ctx.slots.entries("sidebar.workspaces.directoryFlow").length === 0 ? t("shortcut.noPicker") : controls.state.getSnapshot().directoryBusy ? t("shortcut.directoryBusy") : null;
+			const register = (id, label, aliases, code, modifiers, webModifiers, resolve) => {
+				ctx.effect(() => ctx.shortcuts.register({
+					id,
+					label,
+					aliases,
+					defaults: {
+						"desktop:macos": {
+							code,
+							modifiers
+						},
+						"desktop:windows": {
+							code,
+							modifiers
+						},
+						"desktop:linux": {
+							code,
+							modifiers
+						},
+						"web:macos": {
+							code,
+							modifiers: webModifiers
+						},
+						"web:windows": {
+							code,
+							modifiers: webModifiers
+						}
+					},
+					regions: ["page", "editable"],
+					modals: [],
+					resolve
+				}), `ui-workspace: ${id}`);
+			};
+			register("session.new", () => t("session.new"), ["new session", "new chat"], "KeyN", ["primary"], ["primary", "alt"], () => ({
+				status: "handled",
+				run: () => {
+					navigation.startSession();
+				}
+			}));
+			register("session.search", () => t("search.sessions.aria"), ["search sessions"], "KeyK", ["primary"], ["primary", "alt"], () => ({
+				status: "handled",
+				run: controls.search
+			}));
+			register("workspace.add", () => t("workspace.add"), ["add workspace", "open folder"], "KeyO", ["primary"], ["primary", "alt"], () => {
+				const reason = addReason();
+				return reason === null ? {
+					status: "handled",
+					run: controls.add
+				} : {
+					status: "blocked",
+					reason
+				};
+			});
+			register("session.rename", () => t("rename.session.title"), ["rename session"], "KeyR", ["primary", "alt"], ["primary", "shift"], () => {
+				const target = current();
+				return target === void 0 ? {
+					status: "blocked",
+					reason: t("shortcut.noSession")
+				} : {
+					status: "handled",
+					run: () => {
+						controls.rename(target.id, target.displayTitle);
+					}
+				};
+			});
+			register("session.fork", () => t("menu.fork"), ["fork session"], "KeyF", ["primary", "alt"], ["primary", "shift"], () => {
+				const target = current();
+				if (target === void 0) return {
+					status: "blocked",
+					reason: t("shortcut.noSession")
+				};
+				if (target.blank) return {
+					status: "blocked",
+					reason: t("shortcut.noCompletedTurn")
+				};
+				return {
+					status: "handled",
+					run: () => {
+						navigation.forkSession(target.id).catch((error) => {
+							const unavailable = error instanceof Error && error.name === "SessionForkError" && error.rpcError.code === "session/fork-unavailable";
+							controls.forkFailed(unavailable ? "unavailable" : "failed");
+							if (!unavailable) console.warn("session fork rejected:", error);
+						});
+					}
+				};
+			});
+			register("session.archive", () => t("menu.archiveSession"), ["archive session"], "KeyA", ["primary", "shift"], ["primary", "alt"], () => {
+				const target = current();
+				return target === void 0 ? {
+					status: "blocked",
+					reason: t("shortcut.noSession")
+				} : {
+					status: "handled",
+					run: () => {
+						archiveSession(target.id);
+					}
+				};
+			});
+		}
 		//#endregion
 		//#region ../../util/values/src/index.ts
 		/**
@@ -429,10 +389,6 @@ window.__ModuleLoader__.load({
 		function sessionTitle(session) {
 			return session.blank ? "" : session.displayTitle;
 		}
-		/** The list projection alone owns the best-effort active-Schedule indicator. */
-		function hasActiveSchedule(session) {
-			return (session.projectionValues?.schedule?.length ?? 0) > 0;
-		}
 		/** Build one group without projecting session lineage into presentation. */
 		function buildGroup(key, workspaceId, cwd, createdAt, label, members) {
 			return {
@@ -472,6 +428,7 @@ window.__ModuleLoader__.load({
 					if (!sessionVisible(summary, current, archived, archivedFilter)) continue;
 					members.push(summary);
 				}
+				if (archivedFilter === "only" && members.length === 0) continue;
 				groups.push(buildGroup(workspace.workspaceId, workspace.workspaceId, workspace.path, Date.parse(workspace.createdAt), workspace.title, members));
 			}
 			const stray = list.ids.map((id) => list.byId[id]).filter((s) => s !== void 0 && !accounted.has(s.id) && sessionVisible(s, current, archived, archivedFilter));
@@ -500,7 +457,6 @@ window.__ModuleLoader__.load({
 				running: status?.running ?? s.running,
 				runningSubagentCount: runningChildCount(list, s.id, statuses),
 				completed: status?.completionUnread === true,
-				hasActiveSchedule: hasActiveSchedule(s),
 				pinned: !archived.has(s.id) && pinned.has(s.id),
 				archived: archived.has(s.id),
 				updatedAt: s.updatedAt,
@@ -510,8 +466,9 @@ window.__ModuleLoader__.load({
 		/**
 		* Derive the workspace browser groups with every session as a top-level row.
 		*
-		* Every group shows; sessions populate under expanded groups with pinned rows
-		* leading in the selected local order. Blank sessions are
+		* Every group shows, except that the archived-only filter drops groups
+		* without visible members; sessions populate under expanded groups with
+		* pinned rows leading in the selected local order. Blank sessions are
 		* excluded except for the selected provisional New Session row; archived
 		* sessions keep their slots and appear per the archived filter. Content
 		* search lives outside this derivation (see {@link deriveSearchResults}).
@@ -646,7 +603,6 @@ window.__ModuleLoader__.load({
 						runningSubagentCount: runningChildCount(list, summary.id, statuses),
 						...pendingInteraction === void 0 ? {} : { pendingInteraction },
 						completed: status?.completionUnread === true,
-						hasActiveSchedule: hasActiveSchedule(summary),
 						archived: archived.has(summary.id),
 						...match === void 0 ? {} : { snippet: match.snippet }
 					};
@@ -988,13 +944,8 @@ window.__ModuleLoader__.load({
 				if (sessionId !== void 0 && !navigation.aborted) this.replaceMain(sessionId, navigation, "preserve");
 			}
 			async initializeDefaultWorkspace(signal) {
-				const language = this.ctx.locale.getSnapshot().active.toLowerCase().split("-")[0];
-				const title = (language === "zh" ? zh : en)["defaultWorkspace.title"];
 				try {
-					return await this.workspaces.initializeDefault({
-						directoryName: language === "zh" || language === "en" ? title : "default-workspace",
-						title
-					}, signal);
+					return await this.workspaces.initializeDefault(signal);
 				} catch (_error) {
 					if (!signal.aborted) this.notify({ kind: "defaultWorkspaceFailed" });
 					return;
@@ -1089,9 +1040,22 @@ window.__ModuleLoader__.load({
 			for (var e, t, f = 0, n = "", o = arguments.length; f < o; f++) (e = arguments[f]) && (t = r(e)) && (n && (n += " "), n += t);
 			return n;
 		}
+		/**
+		* The text one Workspace is labeled with. A Workspace still carrying the
+		* automatic first-use title reads as the caller's localized default name; every
+		* other title reads verbatim in every language. A title the user typed as
+		* exactly {@link DEFAULT_WORKSPACE_DIRECTORY} is labeled as the default too;
+		* nothing else depends on the distinction.
+		* @param title - stored Workspace title.
+		* @param localizedDefault - the default Workspace name in the active language.
+		* @returns the title to display.
+		*/
+		function workspaceDisplayTitle(title, localizedDefault) {
+			return title === "default-workspace" ? localizedDefault : title;
+		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-workspace/src/client/rows/Rows.module.css.mjs
-		const css$3 = ".YDXeBa_projectRow,.YDXeBa_sessionRow{padding:0 8px;cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary);border-radius:8px;align-items:center;gap:6px;padding-inline-start:calc(8px + var(--dsh-workspace-indent,0px));display:flex}.YDXeBa_projectRow:hover,.YDXeBa_sessionRow:hover,.YDXeBa_sessionRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultRow{box-sizing:border-box;cursor:pointer;text-align:left;width:100%;min-height:48px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:8px;flex-direction:column;align-items:stretch;padding:4px 8px;display:flex}.YDXeBa_searchResultRow:hover,.YDXeBa_searchResultRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultHeading{align-items:center;min-width:0;display:flex}.YDXeBa_searchResultTitle{text-overflow:ellipsis;white-space:nowrap;flex:0 auto;min-width:0;margin-left:4px;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_searchResultMeta{align-items:center;gap:6px;min-width:0;margin-left:20px;display:flex}.YDXeBa_searchResultWorkspace,.YDXeBa_searchResultSnippet{text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:17px;overflow:hidden}.YDXeBa_searchResultWorkspace{max-width:40%;color:var(--dsw-alias-label-tertiary);flex:none}.YDXeBa_searchResultSnippet{min-width:0;color:var(--dsw-alias-label-secondary);flex:1}.YDXeBa_projectRow{box-sizing:border-box;align-items:center;height:34px}.YDXeBa_projectRow .YDXeBa_rowActions{height:20px}.YDXeBa_sessionRow{gap:0;height:32px}.YDXeBa_sessionRow .YDXeBa_title{margin:0 6px 0 4px}.YDXeBa_flatSessionRowWithoutStatus .YDXeBa_title{margin-left:0}.YDXeBa_slot{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.YDXeBa_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.YDXeBa_folderActive{color:var(--dsw-alias-state-business-primary)}.YDXeBa_projectRow .YDXeBa_chevron{display:none}.YDXeBa_projectRow:hover .YDXeBa_chevron{display:inline-flex}.YDXeBa_projectRow:hover .YDXeBa_folder{display:none}.YDXeBa_arrow{transition:transform .15s var(--ds-ease-in-out)}.YDXeBa_arrowOpen{transform:rotate(90deg)}.YDXeBa_projectText{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.YDXeBa_title{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_renameInput{border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-button-elevated-fill);min-width:0;color:inherit;border-radius:4px;outline:none;padding:0 2px;font-size:14px;line-height:20px}.YDXeBa_sessionRow .YDXeBa_title{flex:1}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled]{mask-image:linear-gradient(90deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-clipped]{mask-image:linear-gradient(270deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled][data-clipped]{mask-image:linear-gradient(90deg,#0000,#000 12px calc(100% - 12px),#0000)}.YDXeBa_meta{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow:hidden}.YDXeBa_time{color:var(--dsw-alias-label-caption);flex:none;font-size:10px;line-height:16px}.YDXeBa_scheduleIndicator{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex}.YDXeBa_searchScheduleIndicator{margin-left:4px;margin-right:0}.YDXeBa_pinIndicator{width:16px;height:20px;color:var(--dsw-alias-label-caption);flex:none;justify-content:center;align-items:center;margin-left:6px;display:inline-flex}.YDXeBa_sessionRow.YDXeBa_archived .YDXeBa_title,.YDXeBa_sessionRow.YDXeBa_archived .YDXeBa_time,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultTitle,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultWorkspace,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultSnippet{color:var(--dsw-alias-label-caption)}.YDXeBa_dot{flex:none}.YDXeBa_rowActions{flex:none;align-items:center;gap:10px;display:none}.YDXeBa_projectRow:hover .YDXeBa_rowActions,.YDXeBa_sessionRow:hover .YDXeBa_rowActions,.YDXeBa_searchResultRow:hover .YDXeBa_rowActions,.YDXeBa_projectRow.YDXeBa_menuOpen .YDXeBa_rowActions,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_rowActions{display:inline-flex}.YDXeBa_searchResultHeading .YDXeBa_rowActions{margin-left:auto}.YDXeBa_sessionRow:hover .YDXeBa_time,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_time,.YDXeBa_sessionRow:hover .YDXeBa_pinIndicator,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_pinIndicator{display:none}@media (hover:hover){.YDXeBa_sessionRow:hover .YDXeBa_title,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_title{text-overflow:clip}}.YDXeBa_projectRow.YDXeBa_menuOpen,.YDXeBa_sessionRow.YDXeBa_menuOpen{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_sessionRow.YDXeBa_dropBefore,.YDXeBa_sessionRow.YDXeBa_dropAfter{position:relative}.YDXeBa_sessionRow.YDXeBa_dropBefore:before,.YDXeBa_sessionRow.YDXeBa_dropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:4px}.YDXeBa_sessionRow.YDXeBa_dropBefore:before{top:-7px}.YDXeBa_sessionRow.YDXeBa_dropAfter:after{bottom:-7px}.YDXeBa_hoverContent{flex-direction:column;gap:8px;display:flex}.YDXeBa_hoverTitle{color:#fff;overflow-wrap:break-word;font-size:14px;line-height:20px}.YDXeBa_hoverPath{color:#cfd3d6;word-break:break-all;font-size:12px;line-height:16px}.YDXeBa_hoverTime{color:#cfd3d6;font-size:12px;line-height:16px}.YDXeBa_hoverStatus{color:#adb2b8;align-items:center;gap:8px;font-size:12px;line-height:20px;display:flex}.YDXeBa_hoverArchived svg{flex-shrink:0;margin:0 -4px}.YDXeBa_iconButton{cursor:pointer;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.YDXeBa_iconButton:hover{color:var(--dsw-alias-label-primary)}.YDXeBa_chevron{color:var(--dsw-alias-label-caption)}@media (prefers-reduced-motion:reduce){.YDXeBa_arrow{transition:none;animation:none}}";
+		const css$3 = ".YDXeBa_projectRow,.YDXeBa_sessionRow{border-radius:var(--dsw-radius-md);padding:0 8px;cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary);align-items:center;gap:6px;padding-inline-start:calc(8px + var(--dsh-workspace-indent,0px));display:flex}.YDXeBa_projectRow:hover,.YDXeBa_sessionRow:hover,.YDXeBa_sessionRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultRow{box-sizing:border-box;border-radius:var(--dsw-radius-lg);cursor:pointer;text-align:left;width:100%;min-height:48px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex-direction:column;align-items:stretch;padding:4px 8px;display:flex}.YDXeBa_searchResultRow:hover,.YDXeBa_searchResultRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultHeading{align-items:center;min-width:0;display:flex}.YDXeBa_searchResultTitle{text-overflow:ellipsis;white-space:nowrap;flex:0 auto;min-width:0;margin-left:4px;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_searchResultMeta{align-items:center;gap:6px;min-width:0;margin-left:20px;display:flex}.YDXeBa_searchResultWorkspace,.YDXeBa_searchResultSnippet{text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:17px;overflow:hidden}.YDXeBa_searchResultWorkspace{max-width:40%;color:var(--dsw-alias-label-tertiary);flex:none}.YDXeBa_searchResultWorkspace:only-child{max-width:100%}.YDXeBa_searchResultSnippet{min-width:0;color:var(--dsw-alias-label-secondary);flex:1}.YDXeBa_projectRow{box-sizing:border-box;align-items:center;height:34px}.YDXeBa_projectRow .YDXeBa_rowActions{height:20px}.YDXeBa_sessionRow{gap:0;height:32px}.YDXeBa_sessionRow .YDXeBa_title{margin:0 6px 0 4px}.YDXeBa_slot{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.YDXeBa_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.YDXeBa_folderActive{color:var(--dsw-alias-state-business-primary)}.YDXeBa_projectRow .YDXeBa_chevron{display:none}.YDXeBa_projectRow:hover .YDXeBa_chevron{display:inline-flex}.YDXeBa_projectRow:hover .YDXeBa_folder{display:none}.YDXeBa_arrow{transition:transform .15s var(--ds-ease-in-out)}.YDXeBa_arrowOpen{transform:rotate(90deg)}.YDXeBa_projectText{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.YDXeBa_title{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_renameInput{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-button-elevated-fill);min-width:0;color:inherit;outline:none;padding:0 2px;font-size:14px;line-height:20px}.YDXeBa_sessionRow .YDXeBa_title{flex:1}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled]{mask-image:linear-gradient(90deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-clipped]{mask-image:linear-gradient(270deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled][data-clipped]{mask-image:linear-gradient(90deg,#0000,#000 12px calc(100% - 12px),#0000)}.YDXeBa_meta{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow:hidden}.YDXeBa_time{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px;line-height:16px}.YDXeBa_pinIndicator{width:16px;height:20px;color:var(--dsw-alias-label-caption);flex:none;justify-content:center;align-items:center;margin-left:6px;display:inline-flex}.YDXeBa_sessionRow.YDXeBa_archived .YDXeBa_title,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultTitle,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultWorkspace,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultSnippet{color:var(--dsw-alias-label-caption)}.YDXeBa_dot{flex:none}.YDXeBa_rowActions{flex:none;align-items:center;gap:10px;display:none}.YDXeBa_projectRow:hover .YDXeBa_rowActions,.YDXeBa_sessionRow:hover .YDXeBa_rowActions,.YDXeBa_searchResultRow:hover .YDXeBa_rowActions,.YDXeBa_projectRow.YDXeBa_menuOpen .YDXeBa_rowActions,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_rowActions{display:inline-flex}.YDXeBa_searchResultHeading .YDXeBa_rowActions{margin-left:auto}.YDXeBa_sessionRow:hover .YDXeBa_time,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_time,.YDXeBa_sessionRow:hover .YDXeBa_pinIndicator,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_pinIndicator{display:none}@media (hover:hover){.YDXeBa_sessionRow:hover .YDXeBa_title,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_title{text-overflow:clip}}.YDXeBa_projectRow.YDXeBa_menuOpen,.YDXeBa_sessionRow.YDXeBa_menuOpen{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_sessionRow.YDXeBa_dropBefore,.YDXeBa_sessionRow.YDXeBa_dropAfter{position:relative}.YDXeBa_sessionRow.YDXeBa_dropBefore:before,.YDXeBa_sessionRow.YDXeBa_dropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:4px}.YDXeBa_sessionRow.YDXeBa_dropBefore:before{top:-7px}.YDXeBa_sessionRow.YDXeBa_dropAfter:after{bottom:-7px}.YDXeBa_hoverContent{flex-direction:column;gap:8px;display:flex}.YDXeBa_hoverTitle{color:#fff;overflow-wrap:break-word;font-size:14px;line-height:20px}.YDXeBa_hoverPath{color:#cfd3d6;word-break:break-all;font-size:12px;line-height:16px}.YDXeBa_hoverTime{color:#cfd3d6;font-size:12px;line-height:16px}.YDXeBa_hoverStatus{color:#adb2b8;align-items:center;gap:8px;font-size:12px;line-height:20px;display:flex}.YDXeBa_hoverArchived svg{flex-shrink:0;margin:0 -4px}.YDXeBa_iconButton{border-radius:var(--dsw-radius-xs);cursor:pointer;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.YDXeBa_iconButton:hover{color:var(--dsw-alias-label-primary)}.YDXeBa_chevron{color:var(--dsw-alias-label-caption)}@media (prefers-reduced-motion:reduce){.YDXeBa_arrow{transition:none;animation:none}}";
 		const tagId$3 = "@deepseek-ai/dsh-client-ui-workspace/Rows.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1108,7 +1072,6 @@ window.__ModuleLoader__.load({
 			"dot": "YDXeBa_dot",
 			"dropAfter": "YDXeBa_dropAfter",
 			"dropBefore": "YDXeBa_dropBefore",
-			"flatSessionRowWithoutStatus": "YDXeBa_flatSessionRowWithoutStatus",
 			"folder": "YDXeBa_folder",
 			"folderActive": "YDXeBa_folderActive",
 			"hoverArchived": "YDXeBa_hoverArchived",
@@ -1125,14 +1088,12 @@ window.__ModuleLoader__.load({
 			"projectText": "YDXeBa_projectText",
 			"renameInput": "YDXeBa_renameInput",
 			"rowActions": "YDXeBa_rowActions",
-			"scheduleIndicator": "YDXeBa_scheduleIndicator",
 			"searchResultHeading": "YDXeBa_searchResultHeading",
 			"searchResultMeta": "YDXeBa_searchResultMeta",
 			"searchResultRow": "YDXeBa_searchResultRow",
 			"searchResultSnippet": "YDXeBa_searchResultSnippet",
 			"searchResultTitle": "YDXeBa_searchResultTitle",
 			"searchResultWorkspace": "YDXeBa_searchResultWorkspace",
-			"searchScheduleIndicator": "YDXeBa_searchScheduleIndicator",
 			"selected": "YDXeBa_selected",
 			"sessionRow": "YDXeBa_sessionRow",
 			"slot": "YDXeBa_slot",
@@ -1303,7 +1264,7 @@ window.__ModuleLoader__.load({
 		* @param props.t - the browser root's locale seat.
 		* @returns the row element.
 		*/
-		function ProjectRowItem({ group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag, home, t }) {
+		function ProjectRowItem({ group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag, home, newShortcut, t }) {
 			const row = group;
 			const label = row.workspaceId === void 0 ? t("group.ungrouped") : row.label;
 			const active = containsCurrentDescendant || group.expanded && group.containsCurrent;
@@ -1376,12 +1337,14 @@ window.__ModuleLoader__.load({
 							})
 						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 							label: t("actions.newSession"),
+							shortcutKeys: newShortcut?.keys,
 							side: "bottom",
 							align: "end",
 							delayMs: 500,
 							children: (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: Rows_module_css_default.iconButton,
+								"aria-keyshortcuts": newShortcut?.aria,
 								"aria-label": t("actions.newSession.aria", { name: label }),
 								onClick: (e) => {
 									e.stopPropagation();
@@ -1474,17 +1437,6 @@ window.__ModuleLoader__.load({
 				children: status.label
 			}, status.label))] });
 		}
-		/** Non-interactive active-Schedule marker; the enclosing row remains the only action. */
-		function ActiveScheduleIndicator({ t, search = false }) {
-			const label = t("schedule.active");
-			return (0, react_jsx_runtime.jsx)("span", {
-				className: clsx(Rows_module_css_default.scheduleIndicator, search && Rows_module_css_default.searchScheduleIndicator),
-				role: "img",
-				"aria-label": label,
-				title: label,
-				children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconAlarmClockOutlineRegular, {})
-			});
-		}
 		/** Non-interactive pinned-row marker; the enclosing row remains the only action. */
 		function PinnedIndicator({ t }) {
 			const label = t("row.pinned");
@@ -1496,8 +1448,12 @@ window.__ModuleLoader__.load({
 				children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPinFillRegular, { size: 14 })
 			});
 		}
-		/** Hover-card body: full title, relative time, and every relevant live status. */
-		function SessionHoverContent({ node, now, t }) {
+		/**
+		* Hover-card body: full title, relative time, the Session's own scheduled-task
+		* section, and every relevant live status. The task section sits above the
+		* status lines so they stay the card's trailing status line.
+		*/
+		function SessionHoverContent({ node, now, renderSlot, t }) {
 			const statuses = sessionStatuses(node, t).filter((status) => !(node.archived && (status.state === "done" || status.state === "idle")));
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: Rows_module_css_default.hoverContent,
@@ -1510,6 +1466,7 @@ window.__ModuleLoader__.load({
 						className: Rows_module_css_default.hoverTime,
 						children: hoverTimeLabel(node.updatedAt, now, t)
 					}),
+					renderSlot("sidebar.session.row.hover", { sessionId: node.id }),
 					statuses.map((status) => (0, react_jsx_runtime.jsxs)("div", {
 						className: Rows_module_css_default.hoverStatus,
 						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: status.state }), (0, react_jsx_runtime.jsx)("span", { children: status.label })]
@@ -1556,10 +1513,6 @@ window.__ModuleLoader__.load({
 							className: Rows_module_css_default.searchResultTitle,
 							children: result.title
 						}),
-						result.hasActiveSchedule && (0, react_jsx_runtime.jsx)(ActiveScheduleIndicator, {
-							t,
-							search: true
-						}),
 						result.archived && (0, react_jsx_runtime.jsx)("span", {
 							className: Rows_module_css_default.rowActions,
 							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
@@ -1593,22 +1546,26 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/**
-		* One top-level 34px session row: status dot (pending user interaction outranks
-		* own or descendant activity), title, relative time or compact pending label,
-		* and the row actions menu.
+		* One top-level 32px session row: leading 16px cell (status dot, or the
+		* leading seat while the row's primary state is idle), title, relative time or
+		* compact pending label, and the row actions menu. A row that owns a state dot
+		* keeps that cell and renders no seat, so an ambient automation mark never
+		* appears beside the row's own state dot. An archived row keeps the cell blank:
+		* neither marker renders there, and its live status stays on the hover card.
 		* @param props.node - derived session node.
 		* @param props.currentId - selected session id (row highlight).
 		* @param props.now - epoch ms for relative-time formatting.
 		* @param props.onOpen - open a session by id.
 		* @param props.onRenameRequest - open the rename dialog from a title double-click (id + current title).
-		* @param props.renderSlot - render the row's `sidebar.workspaces.session.menu.item` and `sidebar.workspaces.session.row.action` lists.
+		* @param props.renderSlot - child-seat renderer for the row's action lists
+		* (`sidebar.workspaces.session.menu.item` / `sidebar.workspaces.session.row.action`),
+		* its leading decoration, and its hover-card section.
 		* @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
 		* @param props.drag - optional row-drag target wiring; blank rows cannot start a drag.
-		* @param props.flat - omit the empty status slot in the hierarchy-free flat list.
 		* @param props.t - the browser root's locale seat.
 		* @returns the session row.
 		*/
-		function SessionNodeItem({ node, currentId, now, onOpen, onRenameRequest, renderSlot, onReveal, drag, flat = false, t }) {
+		function SessionNodeItem({ node, currentId, now, onOpen, onRenameRequest, renderSlot, onReveal, drag, t }) {
 			const row = node;
 			const title = displayTitle(node, t);
 			const selected = node.id === currentId;
@@ -1630,7 +1587,7 @@ window.__ModuleLoader__.load({
 				anchor: (0, react_jsx_runtime.jsxs)("div", {
 					ref: rowRef,
 					"data-row-key": `session:${node.id}`,
-					className: clsx(Rows_module_css_default.sessionRow, selected && Rows_module_css_default.selected, menuOpen && Rows_module_css_default.menuOpen, row.archived && Rows_module_css_default.archived, flat && !showStatus && Rows_module_css_default.flatSessionRowWithoutStatus, drag?.marker === "before" && Rows_module_css_default.dropBefore, drag?.marker === "after" && Rows_module_css_default.dropAfter),
+					className: clsx(Rows_module_css_default.sessionRow, selected && Rows_module_css_default.selected, menuOpen && Rows_module_css_default.menuOpen, row.archived && Rows_module_css_default.archived, drag?.marker === "before" && Rows_module_css_default.dropBefore, drag?.marker === "after" && Rows_module_css_default.dropAfter),
 					role: "treeitem",
 					"aria-selected": selected,
 					"aria-description": row.archived ? t("toast.archivedNotOpenable") : void 0,
@@ -1658,9 +1615,9 @@ window.__ModuleLoader__.load({
 						drag.drop(rowHalf(e));
 					},
 					children: [
-						(!flat || showStatus) && (0, react_jsx_runtime.jsx)("span", {
+						(0, react_jsx_runtime.jsx)("span", {
 							className: Rows_module_css_default.slot,
-							children: !row.archived && showStatus && (0, react_jsx_runtime.jsx)(SessionStatusDots, { statuses })
+							children: !row.archived && !row.blank && (showStatus ? (0, react_jsx_runtime.jsx)(SessionStatusDots, { statuses }) : renderSlot("sidebar.session.row.leading", { sessionId: node.id }))
 						}),
 						(0, react_jsx_runtime.jsx)("span", {
 							ref: titleRef,
@@ -1671,7 +1628,6 @@ window.__ModuleLoader__.load({
 							},
 							children: title
 						}),
-						row.hasActiveSchedule && (0, react_jsx_runtime.jsx)(ActiveScheduleIndicator, { t }),
 						!row.blank && (0, react_jsx_runtime.jsx)("span", {
 							className: Rows_module_css_default.time,
 							"aria-hidden": primaryStatus.trailingLabel === void 0 ? void 0 : true,
@@ -1713,6 +1669,7 @@ window.__ModuleLoader__.load({
 				content: (0, react_jsx_runtime.jsx)(SessionHoverContent, {
 					node,
 					now,
+					renderSlot,
 					t
 				}),
 				openDelayMs: 800,
@@ -1922,7 +1879,7 @@ window.__ModuleLoader__.load({
 		* @param props - owner-controlled flow props.
 		* @returns menu + dialog elements.
 		*/
-		function WorkspacePickFlow({ t, open, anchorRef, useWorkspaces, createWorkspace, useDirectoryFlow, renderDirectoryFlow, onPick, onClose, addOnly = false, side = "bottom", selectedId }) {
+		function WorkspacePickFlow({ t, open, anchorRef, useWorkspaces, createWorkspace, useDirectoryFlow, renderDirectoryFlow, onPick, onClose, addOnly = false, onBusyChange, side = "bottom", selectedId }) {
 			const workspaceSnapshot = useWorkspaces((state) => state);
 			const workspaces = workspaceSnapshot.items;
 			const getAnchorRect = (0, react.useCallback)(() => anchorRef?.current?.getBoundingClientRect() ?? null, [anchorRef]);
@@ -1931,6 +1888,9 @@ window.__ModuleLoader__.load({
 			const [flowOpen, setFlowOpen] = (0, react.useState)(false);
 			const [pickingFolder, setPickingFolder] = (0, react.useState)(false);
 			const flowBusy = flowOpen || pickingFolder;
+			(0, react.useEffect)(() => {
+				onBusyChange?.(flowBusy);
+			}, [flowBusy, onBusyChange]);
 			const flowAvailable = useDirectoryFlow((occupied) => occupied);
 			(0, react.useEffect)(() => {
 				if (flowOpen && !flowAvailable) setFlowOpen(false);
@@ -1944,7 +1904,7 @@ window.__ModuleLoader__.load({
 			const pinAdd = !addOnly && workspaces.length > 0;
 			const items = pinAdd ? workspaces.map((workspace) => ({
 				id: workspace.workspaceId,
-				label: workspace.title,
+				label: workspaceDisplayTitle(workspace.title, t("workspace.defaultName")),
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderCloseRegular, { size: 16 }),
 				disabled: flowBusy
 			})) : addEntries;
@@ -2070,7 +2030,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css.mjs
-		const css = ".bhn1Oq_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:5px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}.bhn1Oq_root.bhn1Oq_rail{padding-right:0}.bhn1Oq_iconButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_viewOptionsMenu{min-width:200px}.bhn1Oq_sectionHeader{box-sizing:border-box;height:36px;color:var(--dsw-alias-label-tertiary);border-radius:12px;flex:none;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:4px;padding-left:4px;display:flex;overflow:hidden}.bhn1Oq_root:not(.bhn1Oq_rail) .bhn1Oq_sectionHeader{margin-top:2px;margin-right:-4px}.bhn1Oq_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%;transition:max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;line-height:20px;overflow:hidden}.bhn1Oq_sectionLabelHidden{opacity:0;visibility:hidden;max-width:0;margin-right:-4px;transition-delay:0s,0s,0s,0s,.18s;transform:translate(-4px)}.bhn1Oq_searchSlot{box-sizing:border-box;min-width:0;max-width:28px;transition:max-width .18s var(--ds-ease-in-out), padding-left .18s var(--ds-ease-in-out);flex:1;align-items:center;margin-left:auto;padding-left:0;display:flex}.bhn1Oq_searchSlotExpanded{max-width:100%;padding-left:0}.bhn1Oq_headerActions{opacity:1;visibility:visible;max-width:60px;transition:max-width .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;align-items:center;gap:4px;display:flex;overflow:hidden}.bhn1Oq_headerActionsHidden{opacity:0;visibility:hidden;pointer-events:none;max-width:0;transition-delay:0s,0s,0s,.18s;transform:translate(4px)}.bhn1Oq_search{box-sizing:border-box;corner-shape:round;cursor:text;width:100%;height:28px;color:var(--dsw-alias-label-secondary);transition:width .18s var(--ds-ease-in-out), padding .18s var(--ds-ease-in-out), border-color .18s var(--ds-ease-in-out), background-color .18s var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;flex:none;align-items:center;gap:0;margin:0;padding:0;display:flex;overflow:hidden}.bhn1Oq_searchExpanded{border:.5px solid var(--dsw-alias-border-l4);width:calc(100% + 4px);height:30px;color:var(--dsw-alias-label-caption);background:0 0;border-radius:10px;margin-inline:-2px;padding:0 4px 0 0}.bhn1Oq_searchButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:inherit;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_searchExpanded .bhn1Oq_searchButton{width:28px;height:30px}.bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_searchExpanded .bhn1Oq_searchButton:hover{background:0 0}.bhn1Oq_searchInput{opacity:0;pointer-events:none;width:0;min-width:0;color:var(--dsw-alias-label-primary);transition:opacity .12s var(--ds-ease-in-out);background:0 0;border:none;outline:none;flex:1;font-size:13px;line-height:18px}.bhn1Oq_searchExpanded .bhn1Oq_searchInput{opacity:1;pointer-events:auto;margin-left:-2px}.bhn1Oq_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}.bhn1Oq_clearButton{corner-shape:round;cursor:pointer;width:24px;height:24px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_clearButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_rail .bhn1Oq_sectionHeader{justify-content:flex-start;gap:0;margin-bottom:12px;padding-left:0}.bhn1Oq_rail .bhn1Oq_headerActions{max-width:none}.bhn1Oq_rail .bhn1Oq_iconButton{width:36px;height:36px;color:var(--dsw-alias-label-primary);border-radius:12px}.bhn1Oq_rail .bhn1Oq_search{background:0 0;border-color:#0000;border-radius:12px;gap:0;width:36px;height:36px;margin:0 0 12px;padding:0}.bhn1Oq_rail .bhn1Oq_searchButton{width:36px;height:36px;color:var(--dsw-alias-label-primary);border-radius:12px}.bhn1Oq_rail .bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}.bhn1Oq_rail .bhn1Oq_listArea{margin-left:0;margin-right:0;padding-left:0}.bhn1Oq_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.bhn1Oq_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}[data-platform=darwin] .bhn1Oq_fade{display:none}.bhn1Oq_wide{animation:bhn1Oq_wide-in .2s var(--ds-ease-in-out)}@keyframes bhn1Oq_wide-in{0%{opacity:0}}.bhn1Oq_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}.bhn1Oq_flatList>*+*,.bhn1Oq_searchTree>[role=treeitem]+[role=treeitem],.bhn1Oq_groupSection>*+*{margin-top:2px}.bhn1Oq_searchStatus{color:var(--dsw-alias-label-tertiary);padding:10px 12px;font-size:12px;line-height:18px}.bhn1Oq_skeletonRow{box-sizing:border-box;align-items:flex-start;gap:8px;min-height:48px;padding:6px 8px 7px;display:flex}.bhn1Oq_skeletonDot{corner-shape:round;border-radius:50%;flex:none;width:16px;height:16px}.bhn1Oq_skeletonBars{flex-direction:column;flex:1;gap:6px;min-width:0;display:flex}.bhn1Oq_skeletonDot,.bhn1Oq_skeletonBar{background:var(--dsw-alias-bg-skeleton);animation:2s cubic-bezier(.36,0,.64,1) infinite bhn1Oq_search-skeleton}.bhn1Oq_skeletonBar{border-radius:4px;width:65%;height:16px}.bhn1Oq_skeletonBarWide{width:90%;height:13px}@keyframes bhn1Oq_search-skeleton{0%{opacity:1}40%{opacity:.6}80%,to{opacity:1}}.bhn1Oq_groupSection{position:relative}.bhn1Oq_groupSection+.bhn1Oq_groupSection{margin-top:4px}.bhn1Oq_listTopDropIndicator,.bhn1Oq_workspaceDropBefore:before,.bhn1Oq_workspaceDropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:0}.bhn1Oq_listTopDropIndicator{top:-8px;left:0;right:var(--dsh-session-list-edge-inset)}.bhn1Oq_listTopDropActive>.bhn1Oq_workspaceDropBefore:first-child:before{display:none}.bhn1Oq_workspaceDropBefore:before{top:-8px}.bhn1Oq_workspaceDropAfter:after{bottom:-8px}.bhn1Oq_sessionOverflowButton{width:100%;height:28px;padding:0 12px 0 calc(28px + var(--dsh-workspace-indent,0px));cursor:pointer;text-align:left;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:8px;font-size:12px}.bhn1Oq_groupSection>.bhn1Oq_sessionOverflowButton{margin-top:0}.bhn1Oq_sessionOverflowButton:hover{color:var(--dsw-alias-label-secondary);background:0 0}.bhn1Oq_empty{color:var(--dsw-alias-label-tertiary);padding:16px 12px;font-size:13px}.bhn1Oq_renameInput{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);width:100%;height:44px;color:var(--dsw-alias-label-primary);background:0 0;border-radius:22px;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}.bhn1Oq_renameInput:disabled{color:var(--dsw-alias-label-dimmed)}.bhn1Oq_renameError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px;line-height:18px}.bhn1Oq_deleteAction:not(:disabled){color:var(--dsw-alias-state-error-primary)}.bhn1Oq_deleteStatus{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}.bhn1Oq_archiveActivity{color:var(--dsw-alias-label-primary);margin:0 0 8px;padding-left:18px;font-size:13px;line-height:20px}.bhn1Oq_archiveActivity li{overflow-wrap:anywhere}@media (prefers-reduced-motion:reduce){.bhn1Oq_wide,.bhn1Oq_skeletonDot,.bhn1Oq_skeletonBar{animation:none}.bhn1Oq_search,.bhn1Oq_sectionLabel,.bhn1Oq_searchSlot,.bhn1Oq_searchInput,.bhn1Oq_headerActions{transition:none}}";
+		const css = ".bhn1Oq_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:5px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}.bhn1Oq_root.bhn1Oq_rail{padding-right:0}.bhn1Oq_iconButton{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_iconButton:focus-visible,.bhn1Oq_searchButton:focus-visible,.bhn1Oq_clearButton:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}.bhn1Oq_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_viewOptionsMenu{min-width:200px}.bhn1Oq_sectionHeader{box-sizing:border-box;border-radius:var(--dsw-radius-md);height:36px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:4px;padding-left:4px;display:flex;overflow:hidden}.bhn1Oq_root:not(.bhn1Oq_rail) .bhn1Oq_sectionHeader{margin-top:2px;margin-right:-4px}.bhn1Oq_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%;transition:max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;line-height:20px;overflow:hidden}.bhn1Oq_sectionLabelHidden{opacity:0;visibility:hidden;max-width:0;margin-right:-4px;transition-delay:0s,0s,0s,0s,.18s;transform:translate(-4px)}.bhn1Oq_searchSlot{box-sizing:border-box;min-width:0;max-width:28px;transition:max-width .18s var(--ds-ease-in-out), padding-left .18s var(--ds-ease-in-out);flex:1;align-items:center;margin-left:auto;padding-left:0;display:flex}.bhn1Oq_searchSlotExpanded{max-width:100%;padding-left:0}.bhn1Oq_headerActions{opacity:1;visibility:visible;max-width:60px;transition:max-width .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;align-items:center;gap:4px;display:flex;overflow:hidden}.bhn1Oq_headerActionsHidden{opacity:0;visibility:hidden;pointer-events:none;max-width:0;transition-delay:0s,0s,0s,.18s;transform:translate(4px)}.bhn1Oq_search{box-sizing:border-box;border-radius:var(--dsw-radius-sm);cursor:text;width:100%;height:28px;color:var(--dsw-alias-label-secondary);transition:width .18s var(--ds-ease-in-out), padding .18s var(--ds-ease-in-out), border-color .18s var(--ds-ease-in-out), background-color .18s var(--ds-ease-in-out);background:0 0;border:none;flex:none;align-items:center;gap:0;margin:0;padding:0;display:flex;overflow:hidden}.bhn1Oq_searchExpanded{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);width:calc(100% + 4px);height:30px;color:var(--dsw-alias-label-caption);background:0 0;margin-inline:-2px;padding:0 4px 0 0}.bhn1Oq_searchButton{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:inherit;background:0 0;border:none;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_searchExpanded .bhn1Oq_searchButton{width:28px;height:30px}.bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_searchExpanded .bhn1Oq_searchButton:hover{background:0 0}.bhn1Oq_searchInput{opacity:0;pointer-events:none;width:0;min-width:0;color:var(--dsw-alias-label-primary);transition:opacity .12s var(--ds-ease-in-out);background:0 0;border:none;outline:none;flex:1;font-size:13px;line-height:18px}.bhn1Oq_searchExpanded .bhn1Oq_searchInput{opacity:1;pointer-events:auto;margin-left:-2px}.bhn1Oq_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}.bhn1Oq_clearButton{border-radius:var(--dsw-radius-sm);cursor:pointer;width:24px;height:24px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_clearButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_rail .bhn1Oq_sectionHeader{justify-content:flex-start;gap:0;margin-bottom:12px;padding-left:0}.bhn1Oq_rail .bhn1Oq_headerActions{max-width:none}.bhn1Oq_rail .bhn1Oq_iconButton{border-radius:var(--dsw-radius-md);width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_search{border-radius:var(--dsw-radius-md);background:0 0;border-color:#0000;gap:0;width:36px;height:36px;margin:0 0 12px;padding:0}.bhn1Oq_rail .bhn1Oq_searchButton{border-radius:var(--dsw-radius-md);width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}.bhn1Oq_rail .bhn1Oq_listArea{margin-left:0;margin-right:0;padding-left:0}.bhn1Oq_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.bhn1Oq_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}[data-platform=darwin] .bhn1Oq_fade{display:none}.bhn1Oq_wide{animation:bhn1Oq_wide-in .2s var(--ds-ease-in-out)}@keyframes bhn1Oq_wide-in{0%{opacity:0}}.bhn1Oq_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}.bhn1Oq_flatList>*+*,.bhn1Oq_searchTree>[role=treeitem]+[role=treeitem],.bhn1Oq_groupSection>*+*{margin-top:2px}.bhn1Oq_searchStatus{color:var(--dsw-alias-label-tertiary);padding:10px 12px;font-size:12px;line-height:18px}.bhn1Oq_skeletonRow{box-sizing:border-box;align-items:flex-start;gap:8px;min-height:48px;padding:6px 8px 7px;display:flex}.bhn1Oq_skeletonDot{corner-shape:round;border-radius:50%;flex:none;width:16px;height:16px}.bhn1Oq_skeletonBars{flex-direction:column;flex:1;gap:6px;min-width:0;display:flex}.bhn1Oq_skeletonDot,.bhn1Oq_skeletonBar{background:var(--dsw-alias-bg-skeleton);animation:2s cubic-bezier(.36,0,.64,1) infinite bhn1Oq_search-skeleton}.bhn1Oq_skeletonBar{border-radius:var(--dsw-radius-xs);width:65%;height:16px}.bhn1Oq_skeletonBarWide{width:90%;height:13px}@keyframes bhn1Oq_search-skeleton{0%{opacity:1}40%{opacity:.6}80%,to{opacity:1}}.bhn1Oq_groupSection{position:relative}.bhn1Oq_groupSection+.bhn1Oq_groupSection{margin-top:4px}.bhn1Oq_listTopDropIndicator,.bhn1Oq_workspaceDropBefore:before,.bhn1Oq_workspaceDropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:0}.bhn1Oq_listTopDropIndicator{top:-8px;left:0;right:var(--dsh-session-list-edge-inset)}.bhn1Oq_listTopDropActive>.bhn1Oq_workspaceDropBefore:first-child:before{display:none}.bhn1Oq_workspaceDropBefore:before{top:-8px}.bhn1Oq_workspaceDropAfter:after{bottom:-8px}.bhn1Oq_sessionOverflowButton{border-radius:var(--dsw-radius-sm);width:100%;height:28px;padding:0 12px 0 calc(28px + var(--dsh-workspace-indent,0px));cursor:pointer;text-align:left;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;font-size:12px}.bhn1Oq_groupSection>.bhn1Oq_sessionOverflowButton{margin-top:0}.bhn1Oq_sessionOverflowButton:hover{color:var(--dsw-alias-label-secondary);background:0 0}.bhn1Oq_empty{color:var(--dsw-alias-label-tertiary);padding:16px 12px;font-size:13px}.bhn1Oq_emptyState{color:var(--dsw-alias-label-tertiary);flex-direction:column;align-items:center;gap:8px;margin-top:80px;padding:0 12px;font-size:13px;line-height:20px;display:flex}.bhn1Oq_emptyState>svg{color:var(--dsw-alias-label-caption);margin-bottom:4px}.bhn1Oq_emptyAction{cursor:pointer;color:var(--dsw-alias-link);background:0 0;border:none;padding:0;font-size:13px;line-height:20px}.bhn1Oq_renameInput{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg);width:100%;height:44px;color:var(--dsw-alias-label-primary);background:0 0;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}.bhn1Oq_renameInput:disabled{color:var(--dsw-alias-label-dimmed)}.bhn1Oq_renameError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px;line-height:18px}.bhn1Oq_deleteAction:not(:disabled){color:var(--dsw-alias-state-error-primary)}.bhn1Oq_deleteStatus{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}.bhn1Oq_archiveActivity{color:var(--dsw-alias-label-primary);margin:0 0 8px;padding-left:18px;font-size:13px;line-height:20px}.bhn1Oq_archiveActivity li{overflow-wrap:anywhere}@media (prefers-reduced-motion:reduce){.bhn1Oq_wide,.bhn1Oq_skeletonDot,.bhn1Oq_skeletonBar{animation:none}.bhn1Oq_search,.bhn1Oq_sectionLabel,.bhn1Oq_searchSlot,.bhn1Oq_searchInput,.bhn1Oq_headerActions{transition:none}}";
 		const tagId = "@deepseek-ai/dsh-client-ui-workspace/WorkspaceBrowser.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -2085,6 +2045,8 @@ window.__ModuleLoader__.load({
 			"deleteAction": "bhn1Oq_deleteAction",
 			"deleteStatus": "bhn1Oq_deleteStatus",
 			"empty": "bhn1Oq_empty",
+			"emptyAction": "bhn1Oq_emptyAction",
+			"emptyState": "bhn1Oq_emptyState",
 			"fade": "bhn1Oq_fade",
 			"flatList": "bhn1Oq_flatList",
 			"groupSection": "bhn1Oq_groupSection",
@@ -2258,9 +2220,14 @@ window.__ModuleLoader__.load({
 						text: t("filterBy.label")
 					},
 					{
+						id: "hide-archived",
+						label: t("viewOptions.hideArchived"),
+						icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOffOutlineRegular, {})
+					},
+					{
 						id: "show-archived",
 						label: t("viewOptions.showArchived"),
-						icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineRegular, {})
+						icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQueueOutlineRegular, {})
 					},
 					{
 						id: "only-archived",
@@ -2271,14 +2238,18 @@ window.__ModuleLoader__.load({
 				selectedIds: [
 					groupBy,
 					orderBy,
-					...archivedFilter === "show" ? ["show-archived"] : [],
-					...archivedFilter === "only" ? ["only-archived"] : []
+					{
+						default: "hide-archived",
+						show: "show-archived",
+						only: "only-archived"
+					}[archivedFilter]
 				],
 				onSelect: (id) => {
 					if (id === "workspace" || id === "workspace-tree" || id === "flat") onGroupPick(id);
 					else if (id === "manual" || id === "updated") onOrderPick(id);
-					else if (id === "show-archived") onArchivedFilterPick(archivedFilter === "show" ? "default" : "show");
-					else if (id === "only-archived") onArchivedFilterPick(archivedFilter === "only" ? "default" : "only");
+					else if (id === "hide-archived") onArchivedFilterPick("default");
+					else if (id === "show-archived") onArchivedFilterPick("show");
+					else if (id === "only-archived") onArchivedFilterPick("only");
 					setOpen(false);
 				},
 				align: "end",
@@ -2320,8 +2291,26 @@ window.__ModuleLoader__.load({
 			const rect = e.currentTarget.getBoundingClientRect();
 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
 		}
+		/** The list-empty placeholder — a glyph over the text; the archived-only view names its filter and offers the way back. */
+		function EmptySessions({ rowState, onLeaveArchivedOnly, t }) {
+			const archivedOnly = rowState.archivedFilter === "only";
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: WorkspaceBrowser_module_css_default.emptyState,
+				"data-row-key": "empty",
+				children: [
+					archivedOnly ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineRegular, { size: 24 }) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQueueOutlineRegular, { size: 24 }),
+					(0, react_jsx_runtime.jsx)("div", { children: archivedOnly ? t("empty.noneArchived") : t("empty.none") }),
+					archivedOnly && (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						className: WorkspaceBrowser_module_css_default.emptyAction,
+						onClick: onLeaveArchivedOnly,
+						children: t("empty.viewOthers")
+					})
+				]
+			});
+		}
 		/** The scrolling session tree; unmounting drops the sessions subscription and local row limits. */
-		function SessionTree({ list, useSessionStatus, startSession, open, workspaces, ungroupedSessionIds, rowState, workspaceReady, animationResetKey, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRenameRequest, renderSlot, insertWorkspaceBefore, nestWorkspaces, groupExpansion, setGroupExpanded, setSessionOrder, home, t, revealSessionId, onSessionRevealed }) {
+		function SessionTree({ list, useSessionStatus, startSession, open, workspaces, ungroupedSessionIds, rowState, onLeaveArchivedOnly, workspaceReady, animationResetKey, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRenameRequest, renderSlot, insertWorkspaceBefore, nestWorkspaces, groupExpansion, setGroupExpanded, setSessionOrder, home, t, revealSessionId, onSessionRevealed, shortcuts }) {
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const statuses = useSessionStatus((s) => s);
 			const current = panelActive ? void 0 : Object.values(list.byId).find((session) => (session.retainedBy.mainView ?? 0) > 0)?.id;
@@ -2430,9 +2419,11 @@ window.__ModuleLoader__.load({
 				});
 			};
 			const childrenByParent = (0, react.useMemo)(() => {
+				const rendered = new Set(groups.map((group) => group.key));
 				const children = /* @__PURE__ */ new Map();
 				for (const group of groups) {
-					const parent = parents.get(group.key);
+					let parent = parents.get(group.key);
+					while (parent !== void 0 && !rendered.has(parent)) parent = parents.get(parent);
 					const siblings = children.get(parent);
 					if (siblings === void 0) children.set(parent, [group]);
 					else siblings.push(group);
@@ -2513,6 +2504,7 @@ window.__ModuleLoader__.load({
 					},
 					children: [
 						(0, react_jsx_runtime.jsx)(ProjectRowItem, {
+							newShortcut: shortcuts.find((row) => row.id === "session.new"),
 							group,
 							containsCurrentDescendant: currentAncestors.has(group.key),
 							home,
@@ -2630,10 +2622,10 @@ window.__ModuleLoader__.load({
 						rowKeys,
 						ready: list.phase === "ready" && workspaceReady && !nativeDragActive,
 						resetKey: JSON.stringify([animationResetKey, sessionLimits]),
-						children: [groups.length === 0 && (0, react_jsx_runtime.jsx)("div", {
-							className: WorkspaceBrowser_module_css_default.empty,
-							"data-row-key": "empty",
-							children: t("empty.none")
+						children: [groups.length === 0 && (0, react_jsx_runtime.jsx)(EmptySessions, {
+							rowState,
+							onLeaveArchivedOnly,
+							t
 						}), groupRows]
 					}),
 					(0, react_jsx_runtime.jsx)("span", { className: WorkspaceBrowser_module_css_default.fade })
@@ -2641,7 +2633,7 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** The flat "In one list" body: every session is one draggable top-level row. */
-		function FlatList({ list, sessionIds, rowState, useSessionStatus, open, onSessionRenameRequest, renderSlot, usePanelInfo, setSessionOrder, workspaceReady, animationResetKey, revealSessionId, onSessionRevealed, t }) {
+		function FlatList({ list, sessionIds, rowState, onLeaveArchivedOnly, useSessionStatus, open, onSessionRenameRequest, usePanelInfo, setSessionOrder, workspaceReady, animationResetKey, revealSessionId, onSessionRevealed, renderSlot, t }) {
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const statuses = useSessionStatus((s) => s);
 			const rows = (0, react.useMemo)(() => deriveFlat(list, sessionIds, rowState, statuses), [
@@ -2670,10 +2662,10 @@ window.__ModuleLoader__.load({
 					rowKeys: rows.length === 0 ? ["empty"] : rows.map((row) => `session:${row.id}`),
 					ready: list.phase === "ready" && workspaceReady && drag === null,
 					resetKey: animationResetKey,
-					children: [rows.length === 0 && (0, react_jsx_runtime.jsx)("div", {
-						className: WorkspaceBrowser_module_css_default.empty,
-						"data-row-key": "empty",
-						children: t("empty.none")
+					children: [rows.length === 0 && (0, react_jsx_runtime.jsx)(EmptySessions, {
+						rowState,
+						onLeaveArchivedOnly,
+						t
 					}), rows.map((node) => {
 						const active = drag !== null && drag.pinned === node.pinned;
 						const normalizeHalf = (half) => node.blank ? "after" : half;
@@ -2687,7 +2679,6 @@ window.__ModuleLoader__.load({
 							onReveal: node.id === revealSessionId ? () => {
 								onSessionRevealed(node.id);
 							} : void 0,
-							flat: true,
 							drag: {
 								start: () => {
 									dropCommitted.current = false;
@@ -2796,10 +2787,19 @@ window.__ModuleLoader__.load({
 		* @param props - composed slot props (shell owner share + store + injected actions).
 		* @returns the region element tree.
 		*/
-		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionStatus, useWorkspaces, useStore, actions, startSession, open, requestSessionRename, notifyArchivedNotOpenable, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, unarchiveSession, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, renderSlot, t }) {
+		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionStatus, useWorkspaces, useStore, actions, startSession, open, requestSessionRename, notifyArchivedNotOpenable, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, unarchiveSession, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, useShortcuts, useWorkspaceShortcuts, requestSearch, requestAddWorkspace, closeAddWorkspace, setDirectoryBusy, dismissForkError, renderSlot, t }) {
 			const home = useHostInfo((info) => info.home);
+			const shortcuts = useShortcuts((rows) => rows);
+			const searchShortcut = shortcuts.find((row) => row.id === "session.search");
+			const addShortcut = shortcuts.find((row) => row.id === "workspace.add");
+			const shortcutState = useWorkspaceShortcuts((state) => state);
 			const list = useSessions((state) => state);
-			const workspaces = useWorkspaces((state) => state.items);
+			const storedWorkspaces = useWorkspaces((state) => state.items);
+			const defaultWorkspaceName = t("workspace.defaultName");
+			const workspaces = (0, react.useMemo)(() => storedWorkspaces.map((workspace) => ({
+				...workspace,
+				title: workspaceDisplayTitle(workspace.title, defaultWorkspaceName)
+			})), [storedWorkspaces, defaultWorkspaceName]);
 			const workspacePhase = useWorkspaces((state) => state.phase);
 			const workspaceStreamState = useWorkspaces((state) => state.state);
 			const archivedSessionIds = useWorkspaces((state) => state.archivedSessionIds);
@@ -2816,6 +2816,9 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				open(sessionId);
+			};
+			const leaveArchivedOnly = () => {
+				actions.setArchivedFilter("default");
 			};
 			const workspaceReady = workspacePhase === "ready" && workspaceStreamState !== "loading";
 			const mainSessionId = Object.values(list.byId).find((session) => (session.retainedBy.mainView ?? 0) > 0)?.id;
@@ -2936,7 +2939,7 @@ window.__ModuleLoader__.load({
 			});
 			const searchRoot = (0, react.useRef)(null);
 			const searchInput = (0, react.useRef)(null);
-			const [wsPickerOpen, setWsPickerOpen] = (0, react.useState)(false);
+			const wsPickerOpen = shortcutState.addRequested;
 			const wsPlusRef = (0, react.useRef)(null);
 			const composingRef = (0, react.useRef)(false);
 			const openSearchResult = (sessionId) => {
@@ -2967,6 +2970,15 @@ window.__ModuleLoader__.load({
 					};
 				}
 			}, [wide, searchOnExpand]);
+			(0, react.useEffect)(() => {
+				if (shortcutState.searchRequest === 0) return;
+				closeAddWorkspace();
+				setSearchExpanded(true);
+				if (!wide) {
+					setSearchOnExpand(true);
+					expandSidebar();
+				} else searchInput.current?.focus({ preventScroll: true });
+			}, [shortcutState.searchRequest]);
 			(0, react.useEffect)(() => {
 				if (!wide || !searchExpanded || searchOnExpand) return;
 				searchInput.current?.focus({ preventScroll: true });
@@ -3039,8 +3051,8 @@ window.__ModuleLoader__.load({
 			const [renaming, setRenaming] = (0, react.useState)(false);
 			const [renameError, setRenameError] = (0, react.useState)(null);
 			const renameTrimmed = renameDraft.trim();
-			const renameDuplicate = renameTarget !== null && renameTrimmed !== "" && renameTrimmed !== renameTarget.currentTitle && workspaces.some((w) => w.title === renameTrimmed);
-			const renameBlocked = renaming || renameTrimmed === "" || renameTarget === null || renameTrimmed === renameTarget.currentTitle || renameDuplicate;
+			const renameDuplicate = renameTarget !== null && renameTrimmed !== "" && workspaces.some((w) => w.workspaceId !== renameTarget.workspaceId && w.title === renameTrimmed);
+			const renameBlocked = renaming || renameTrimmed === "" || renameTarget === null || renameTrimmed === renameTarget.storedTitle || renameDuplicate;
 			const closeRename = () => {
 				if (renaming) return;
 				setRenameTarget(null);
@@ -3107,13 +3119,14 @@ window.__ModuleLoader__.load({
 									ref: searchRoot,
 									className: clsx(WorkspaceBrowser_module_css_default.search, searchExpanded && WorkspaceBrowser_module_css_default.searchExpanded),
 									onClick: () => {
-										setWsPickerOpen(false);
+										closeAddWorkspace();
 										setSearchExpanded(true);
 										searchInput.current?.focus();
 									},
 									children: [
 										(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 											label: t("search"),
+											shortcutKeys: searchShortcut?.keys,
 											side: "bottom",
 											delayMs: 500,
 											disabled: searchExpanded,
@@ -3121,10 +3134,10 @@ window.__ModuleLoader__.load({
 												type: "button",
 												className: WorkspaceBrowser_module_css_default.searchButton,
 												"aria-label": t("search.sessions.aria"),
+												"aria-keyshortcuts": searchShortcut?.aria,
 												"aria-expanded": searchExpanded,
 												onClick: () => {
-													setWsPickerOpen(false);
-													setSearchExpanded(true);
+													requestSearch();
 												},
 												children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: searchExpanded ? 11 : 14 })
 											})
@@ -3174,6 +3187,7 @@ window.__ModuleLoader__.load({
 									t
 								}), directoryFlowAvailable && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 									label: t("workspace.add"),
+									shortcutKeys: addShortcut?.keys,
 									side: "bottom",
 									delayMs: 500,
 									children: (0, react_jsx_runtime.jsx)("button", {
@@ -3181,8 +3195,9 @@ window.__ModuleLoader__.load({
 										type: "button",
 										className: WorkspaceBrowser_module_css_default.iconButton,
 										"aria-label": t("workspace.add"),
+										"aria-keyshortcuts": addShortcut?.aria,
 										onClick: () => {
-											setWsPickerOpen((v) => !v);
+											requestAddWorkspace();
 										},
 										children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconProjectAddOutlineRegular, { size: wide ? 16 : 18 })
 									})
@@ -3197,13 +3212,14 @@ window.__ModuleLoader__.load({
 								useDirectoryFlow,
 								renderDirectoryFlow: (owner) => renderSlot("sidebar.workspaces.directoryFlow", owner),
 								addOnly: true,
+								onBusyChange: setDirectoryBusy,
 								side: "right",
 								onPick: (workspaceId) => {
-									setWsPickerOpen(false);
+									closeAddWorkspace();
 									startSession(workspaceId);
 								},
 								onClose: () => {
-									setWsPickerOpen(false);
+									closeAddWorkspace();
 								}
 							})
 						]
@@ -3212,14 +3228,14 @@ window.__ModuleLoader__.load({
 						className: WorkspaceBrowser_module_css_default.search,
 						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 							label: t("search"),
+							shortcutKeys: searchShortcut?.keys,
 							children: (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: WorkspaceBrowser_module_css_default.searchButton,
 								"aria-label": t("search.sessions.aria"),
+								"aria-keyshortcuts": searchShortcut?.aria,
 								onClick: () => {
-									setSearchExpanded(true);
-									setSearchOnExpand(true);
-									expandSidebar();
+									requestSearch();
 								},
 								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: 18 })
 							})
@@ -3245,6 +3261,7 @@ window.__ModuleLoader__.load({
 							list,
 							sessionIds: orderedFlatSessionIds,
 							rowState,
+							onLeaveArchivedOnly: leaveArchivedOnly,
 							workspaceReady,
 							animationResetKey: `${groupBy}/${orderBy}/${archivedFilter}`,
 							useSessionStatus,
@@ -3258,6 +3275,7 @@ window.__ModuleLoader__.load({
 						}) : (0, react_jsx_runtime.jsx)(SessionTree, {
 							usePanelInfo,
 							list,
+							shortcuts,
 							useSessionStatus,
 							onSessionRenameRequest: requestSessionRename,
 							renderSlot,
@@ -3270,6 +3288,7 @@ window.__ModuleLoader__.load({
 							setGroupExpanded: actions.setGroupExpanded,
 							setSessionOrder: saveSessionOrder,
 							rowState,
+							onLeaveArchivedOnly: leaveArchivedOnly,
 							startSession,
 							open: guardedOpen,
 							insertWorkspaceBefore,
@@ -3277,12 +3296,12 @@ window.__ModuleLoader__.load({
 							onSessionRevealed: acknowledgeSessionReveal,
 							home,
 							t,
-							onRenameRequest: (workspaceId, currentTitle) => {
+							onRenameRequest: (workspaceId, displayTitle) => {
 								setRenameTarget({
 									workspaceId,
-									currentTitle
+									storedTitle: storedWorkspaces.find((w) => w.workspaceId === workspaceId)?.title ?? displayTitle
 								});
-								setRenameDraft(currentTitle);
+								setRenameDraft(displayTitle);
 								setRenameError(null);
 							},
 							onDeleteRequest: (workspaceId, title) => {
@@ -3315,7 +3334,7 @@ window.__ModuleLoader__.load({
 								className: WorkspaceBrowser_module_css_default.renameInput,
 								value: renameDraft,
 								"aria-label": t("field.workspaceName"),
-								autoFocus: true,
+								"data-modal-autofocus": true,
 								disabled: renaming,
 								onFocus: (e) => {
 									e.target.select();
@@ -3376,7 +3395,11 @@ window.__ModuleLoader__.load({
 							role: "alert",
 							children: deleteError
 						})]
-					})
+					}),
+					shortcutState.forkError !== null && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
+						text: t(shortcutState.forkError.reason === "unavailable" ? "shortcut.noCompletedTurn" : "shortcut.forkFailed"),
+						onDone: dismissForkError
+					}, shortcutState.forkError.seq)
 				]
 			});
 		}
@@ -3395,10 +3418,12 @@ window.__ModuleLoader__.load({
 		* @param props - owner share, the archive share, and the menu open state.
 		* @returns the row.
 		*/
-		function ArchiveSessionMenuItem({ sessionId, useArchived, useMenuOpenState, archiveSession, unarchiveSession, t }) {
+		function ArchiveSessionMenuItem({ sessionId, useArchived, useMenuOpenState, useShortcuts, archiveSession, unarchiveSession, t }) {
 			const [, setMenuOpen] = useMenuOpenState();
+			const shortcut = useShortcuts((rows) => rows.find((row) => row.id === "session.archive"));
 			const archived = useArchived((set) => set.has(sessionId));
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {
+				shortcut: archived ? void 0 : shortcut,
 				icon: archived ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconUnarchiveOutlineRegular, { size: 14 }) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconArchiveOutlineRegular, { size: 14 }),
 				onSelect: () => {
 					setMenuOpen(false);
@@ -3568,9 +3593,10 @@ window.__ModuleLoader__.load({
 		* @param props - owner share, menu open state, and the fork share.
 		* @returns the row.
 		*/
-		function ForkSessionMenuItem({ sessionId, useMenuOpenState, forkSession, t }) {
+		function ForkSessionMenuItem({ sessionId, useMenuOpenState, useShortcuts, forkSession, t }) {
 			const [, setMenuOpen] = useMenuOpenState();
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {
+				shortcut: useShortcuts((rows) => rows.find((row) => row.id === "session.fork")),
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutlineRegular, {}),
 				onSelect: () => {
 					setMenuOpen(false);
@@ -3653,9 +3679,10 @@ window.__ModuleLoader__.load({
 		* @param props - owner share, menu open state, and the rename share.
 		* @returns the row.
 		*/
-		function RenameSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, requestSessionRename, t }) {
+		function RenameSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, useShortcuts, requestSessionRename, t }) {
 			const [, setMenuOpen] = useMenuOpenState();
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {
+				shortcut: useShortcuts((rows) => rows.find((row) => row.id === "session.rename")),
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, {}),
 				onSelect: () => {
 					setMenuOpen(false);
@@ -3727,7 +3754,7 @@ window.__ModuleLoader__.load({
 					className: WorkspaceBrowser_module_css_default.renameInput,
 					value: draft,
 					"aria-label": t("field.sessionName"),
-					autoFocus: true,
+					"data-modal-autofocus": true,
 					disabled: renaming,
 					onFocus: (e) => {
 						e.target.select();
@@ -3769,14 +3796,16 @@ window.__ModuleLoader__.load({
 		const LONG_TOAST_HOLD_MS = 6e3;
 		/**
 		* Render the current notice: the archived and stopped-and-archived notices
-		* with their undo and show-archived actions on a 6 s hold, a refused Session
-		* creation with the Host's reason on the same hold, or a plain warning for a
-		* failed pin, an archived row that was clicked, or default Workspace creation.
-		* @param props - the notice hook, its dismissal, the two archived-notice actions, and the locale seat.
+		* with their undo action — plus the show-archived action while archived rows
+		* are hidden — on a 6 s hold, a refused Session creation with the Host's
+		* reason on the same hold, or a plain warning for a failed pin, an archived
+		* row that was clicked, or default Workspace creation.
+		* @param props - the notice hook, the shared viewing store, the notice dismissal, the two archived-notice actions, and the locale seat.
 		* @returns the notice on display, or null.
 		*/
-		function RowActionToast({ useToast, dismissToast, undoArchive, showArchived, t }) {
+		function RowActionToast({ useToast, useStore, dismissToast, undoArchive, showArchived, t }) {
 			const toast = useToast((current) => current);
+			const archivedRowsVisible = useStore((state) => (state.archivedFilter ?? "default") !== "default");
 			if (toast === null) return null;
 			if (toast.kind === "archived" || toast.kind === "stoppedAndArchived") {
 				const { sessionId } = toast;
@@ -3790,14 +3819,14 @@ window.__ModuleLoader__.load({
 							dismissToast();
 							undoArchive(sessionId);
 						}
-					}, {
+					}, ...archivedRowsVisible ? [] : [{
 						prefix: t("toast.archivedOr"),
 						label: t("toast.archivedFilter"),
 						onClick: () => {
 							dismissToast();
 							showArchived();
 						}
-					}],
+					}]],
 					onDone: dismissToast
 				}, `toast-${String(toast.seq)}`);
 			}
@@ -3825,6 +3854,241 @@ window.__ModuleLoader__.load({
 			}
 		}
 		//#endregion
+		//#region lib/types/client/locales.js
+		/**
+		* `workspace` namespace dictionaries: the browsing region (section header,
+		* search, tree rows, dialogs) and the pick/add flow. Runtime failure
+		* messages (wire error strings) pass through untranslated by policy.
+		*/
+		/** Simplified Chinese dictionary (the key-set source of truth). */
+		const zh = {
+			"defaultWorkspace.failed": "无法创建默认工作区，请通过“选择工作区”选择文件夹",
+			"group.ungrouped": "未分组",
+			"session.new": "新会话",
+			"shortcut.noSession": "请先选择一个会话",
+			"shortcut.noPicker": "目录选择器不可用",
+			"shortcut.directoryBusy": "正在选择或添加工作区",
+			"shortcut.noCompletedTurn": "当前会话没有已结束的轮次",
+			"shortcut.forkFailed": "无法分叉会话，请重试",
+			"section.workspaces": "工作区",
+			"section.sessions": "会话",
+			"viewOptions.label": "视图选项",
+			"groupBy.label": "分组方式",
+			"groupBy.workspace": "按工作区",
+			"groupBy.workspaceTree": "按工作区树",
+			"groupBy.flat": "单列表",
+			"orderBy.label": "排序方式",
+			"orderBy.manual": "手动排序",
+			"orderBy.updated": "最近更新",
+			"filterBy.label": "筛选会话",
+			"viewOptions.hideArchived": "隐藏已归档",
+			"viewOptions.showArchived": "全部对话（显示已归档）",
+			"viewOptions.onlyArchived": "仅显示已归档",
+			"sessions.expand": "展开其余 {n} 个会话",
+			"sessions.collapse": "收起",
+			"empty.none": "暂无会话",
+			"empty.noneArchived": "暂无已归档会话",
+			"empty.viewOthers": "查看其他会话",
+			"empty.noMatches": "无匹配结果",
+			"workspace.add": "添加工作区",
+			"search.sessions.aria": "搜索会话",
+			"search.placeholder": "搜索会话名称",
+			"search.clear": "清除搜索",
+			"search.results.aria": "搜索结果",
+			"search.pending": "正在搜索会话历史…",
+			"search.noMatches": "无匹配会话",
+			"search.hasMore": "仅显示前 {n} 条结果，请缩小搜索范围。",
+			"menu.addWorkspace": "添加工作区…",
+			"picker.loading": "正在加载工作区…",
+			"conflict.named": "已存在名为“{name}”的工作区。",
+			"folderError.title": "无法打开文件夹",
+			"folderError.retry": "重新选择",
+			"rename": "重命名",
+			"rename.workspace.title": "重命名工作区",
+			"rename.session.title": "重命名会话",
+			"field.workspaceName": "工作区名称",
+			"field.sessionName": "会话名称",
+			"delete.workspace": "删除工作区",
+			"delete.desc": "将把“{name}”从工作区列表中移除。文件夹与会话记录会保留，其会话将显示在“未分组”下。",
+			"delete.pending": "正在删除工作区…",
+			"menu.fork": "分叉会话",
+			"menu.archiveSession": "归档会话",
+			"menu.unarchiveSession": "取消归档",
+			"menu.pinSession": "置顶会话",
+			"menu.unpinSession": "取消置顶",
+			"row.archived": "已归档",
+			"row.pinned": "已置顶",
+			"toast.archivedNotOpenable": "已归档对话暂时无法查看，请取消归档后查看",
+			"toast.archived": "会话已归档，可",
+			"toast.stoppedAndArchived": "已停止并归档，可",
+			"archive.confirm.title": "停止并归档此会话？",
+			"archive.confirm.desc": "“{title}”仍有正在进行的工作。归档会先停止这些工作；之后可在侧栏筛选“全部对话（显示已归档）”中恢复会话，被停止的工作不会自动继续。",
+			"archive.confirm.activity": "将被停止的工作",
+			"archive.confirm.turn": "进行中的回合",
+			"archive.confirm.subagents.one": "{n} 个运行中的子智能体：{names}",
+			"archive.confirm.subagents.other": "{n} 个运行中的子智能体：{names}",
+			"archive.confirm.jobs.one": "{n} 个后台任务：{names}",
+			"archive.confirm.jobs.other": "{n} 个后台任务：{names}",
+			"archive.confirm.schedules.one": "{n} 条定时提醒：{names}",
+			"archive.confirm.schedules.other": "{n} 条定时提醒：{names}",
+			"archive.confirm.other.one": "{n} 项其他工作（{kind}）",
+			"archive.confirm.other.other": "{n} 项其他工作（{kind}）",
+			"archive.confirm.listSeparator": "、",
+			"archive.confirm.action": "停止并归档",
+			"archive.confirm.pending": "正在停止并归档…",
+			"toast.archivedUndo": "撤销",
+			"toast.archivedOr": "或",
+			"toast.archivedFilter": "筛选已归档会话",
+			"toast.pinFailed": "置顶失败，请稍后重试",
+			"toast.unpinFailed": "取消置顶失败，请稍后重试",
+			"toast.createFailed": "新建会话失败：{message}",
+			"sessions.count.one": "{n} 个会话",
+			"sessions.count.other": "{n} 个会话",
+			"actions.workspace.aria": "工作区“{name}”的操作",
+			"actions.session.aria": "会话“{name}”的操作",
+			"actions.archive": "归档会话",
+			"actions.unarchive": "取消归档",
+			"actions.pin": "置顶会话",
+			"actions.unpin": "取消置顶",
+			"actions.newSession": "新会话",
+			"actions.newSession.aria": "在“{name}”中新建会话",
+			"status.running": "进行中",
+			"status.subagentsRunning.one": "{n} 个子智能体运行中",
+			"status.subagentsRunning.other": "{n} 个子智能体运行中",
+			"status.idle": "空闲",
+			"status.waitingApproval": "等待审批",
+			"status.planReview": "计划待审",
+			"status.waitingAnswer": "等待回答",
+			"status.compact.approval": "待审批",
+			"status.compact.planReview": "计划待审",
+			"status.compact.answer": "待回答",
+			"status.completed": "已完成",
+			"hover.created": "创建于 {time}",
+			"hover.copied": "已复制",
+			"date.ymd": "{y}年{m}月{d}日",
+			"time.now": "刚刚",
+			"time.minutes": "{n}分钟",
+			"time.hours": "{n}小时",
+			"time.days": "{n}天",
+			"time.months": "{n}个月",
+			"time.years": "{n}年",
+			"time.ago": "{t}前"
+		};
+		/** English dictionary, checked complete against the zh key set. */
+		const en = {
+			"defaultWorkspace.failed": "Unable to create default workspace. Use Choose workspace to select a folder.",
+			"group.ungrouped": "Ungrouped",
+			"session.new": "New Session",
+			"shortcut.noSession": "Select a session first",
+			"shortcut.noPicker": "Directory picker unavailable",
+			"shortcut.directoryBusy": "Selecting or adding a workspace",
+			"shortcut.noCompletedTurn": "This session has no completed turn",
+			"shortcut.forkFailed": "Could not fork the session. Try again.",
+			"section.workspaces": "Workspaces",
+			"section.sessions": "Sessions",
+			"viewOptions.label": "View options",
+			"groupBy.label": "Group by",
+			"groupBy.workspace": "WorkSpace",
+			"groupBy.workspaceTree": "Workspace Tree",
+			"groupBy.flat": "In one list",
+			"orderBy.label": "Order by",
+			"orderBy.manual": "Manual",
+			"orderBy.updated": "Last updated",
+			"filterBy.label": "Filter sessions",
+			"viewOptions.hideArchived": "Hide archived",
+			"viewOptions.showArchived": "All conversations (show archived)",
+			"viewOptions.onlyArchived": "Archived only",
+			"sessions.expand": "Show {n} more sessions",
+			"sessions.collapse": "Show less",
+			"empty.none": "No sessions yet",
+			"empty.noneArchived": "No archived sessions yet",
+			"empty.viewOthers": "View other sessions",
+			"empty.noMatches": "No matches",
+			"workspace.add": "Add workspace",
+			"search.sessions.aria": "Search sessions",
+			"search.placeholder": "Search session names",
+			"search.clear": "Clear search",
+			"search.results.aria": "Search results",
+			"search.pending": "Searching session history…",
+			"search.noMatches": "No matching sessions",
+			"search.hasMore": "Showing the first {n} results. Narrow your search.",
+			"menu.addWorkspace": "Add workspace…",
+			"picker.loading": "Loading workspaces…",
+			"conflict.named": "A workspace named “{name}” already exists.",
+			"folderError.title": "Couldn’t open folder",
+			"folderError.retry": "Choose again",
+			"rename": "Rename",
+			"rename.workspace.title": "Rename workspace",
+			"rename.session.title": "Rename session",
+			"field.workspaceName": "Workspace name",
+			"field.sessionName": "Session name",
+			"delete.workspace": "Delete workspace",
+			"delete.desc": "This removes “{name}” from the workspace list. The folder and session logs will be kept. Its sessions will appear under Ungrouped.",
+			"delete.pending": "Deleting workspace…",
+			"menu.fork": "Fork session",
+			"menu.archiveSession": "Archive session",
+			"menu.unarchiveSession": "Unarchive session",
+			"menu.pinSession": "Pin session",
+			"menu.unpinSession": "Unpin session",
+			"row.archived": "Archived",
+			"row.pinned": "Pinned",
+			"toast.archivedNotOpenable": "Archived sessions cannot be opened. Unarchive it to view.",
+			"toast.archived": "Session archived. You can ",
+			"toast.stoppedAndArchived": "Session stopped and archived. You can ",
+			"archive.confirm.title": "Stop and archive this session?",
+			"archive.confirm.desc": "“{title}” still has work in progress. Archiving stops it first; you can restore the session later from the “All conversations (show archived)” filter in the sidebar, and the stopped work will not resume on its own.",
+			"archive.confirm.activity": "Work that will be stopped",
+			"archive.confirm.turn": "The turn in progress",
+			"archive.confirm.subagents.one": "{n} running subagent: {names}",
+			"archive.confirm.subagents.other": "{n} running subagents: {names}",
+			"archive.confirm.jobs.one": "{n} background job: {names}",
+			"archive.confirm.jobs.other": "{n} background jobs: {names}",
+			"archive.confirm.schedules.one": "{n} scheduled reminder: {names}",
+			"archive.confirm.schedules.other": "{n} scheduled reminders: {names}",
+			"archive.confirm.other.one": "{n} other item of work ({kind})",
+			"archive.confirm.other.other": "{n} other items of work ({kind})",
+			"archive.confirm.listSeparator": ", ",
+			"archive.confirm.action": "Stop and archive",
+			"archive.confirm.pending": "Stopping and archiving…",
+			"toast.archivedUndo": "undo",
+			"toast.archivedOr": " or ",
+			"toast.archivedFilter": "filter archived sessions",
+			"toast.pinFailed": "Pin failed. Try again later.",
+			"toast.unpinFailed": "Unpin failed. Try again later.",
+			"toast.createFailed": "New session failed: {message}",
+			"sessions.count.one": "{n} session",
+			"sessions.count.other": "{n} sessions",
+			"actions.workspace.aria": "Workspace actions for {name}",
+			"actions.session.aria": "Session actions for {name}",
+			"actions.archive": "Archive",
+			"actions.unarchive": "Unarchive",
+			"actions.pin": "Pin",
+			"actions.unpin": "Unpin",
+			"actions.newSession": "New session",
+			"actions.newSession.aria": "New session in {name}",
+			"status.running": "Running",
+			"status.subagentsRunning.one": "{n} subagent running",
+			"status.subagentsRunning.other": "{n} subagents running",
+			"status.idle": "Idle",
+			"status.waitingApproval": "Waiting for approval",
+			"status.planReview": "Plan awaiting review",
+			"status.waitingAnswer": "Waiting for answer",
+			"status.compact.approval": "Approval",
+			"status.compact.planReview": "Plan review",
+			"status.compact.answer": "Answer",
+			"status.completed": "Completed",
+			"hover.created": "Created {time}",
+			"hover.copied": "Copied",
+			"date.ymd": "{y}-{m}-{d}",
+			"time.now": "now",
+			"time.minutes": "{n}min",
+			"time.hours": "{n}h",
+			"time.days": "{n}d",
+			"time.months": "{n}mo",
+			"time.years": "{n}y",
+			"time.ago": "{t} ago"
+		};
+		//#endregion
 		//#region lib/types/client/index.js
 		/** Dictionary namespace owned by this plugin. */
 		const NS = "workspace";
@@ -3843,7 +4107,8 @@ window.__ModuleLoader__.load({
 			"locale",
 			"remote",
 			"remote.directoryPicker",
-			"layout"
+			"layout",
+			"shortcuts"
 		];
 		/**
 		* Register the browser and picker once their slot declarations are on the
@@ -3874,6 +4139,7 @@ window.__ModuleLoader__.load({
 				zh,
 				en
 			}), "ui-workspace: dictionaries");
+			const shortcutControls = createWorkspaceShortcutControls();
 			const searchSessions = async (query, signal) => {
 				const result = await sessions.search(query, signal);
 				if (!result.ok) throw new Error(result.error.message);
@@ -3894,14 +4160,9 @@ window.__ModuleLoader__.load({
 			};
 			const pinnedSet = derive(workspaces.list, (snapshot) => new Set(snapshot.pinnedSessionIds));
 			const archivedSet = derive(workspaces.list, (snapshot) => new Set(snapshot.archivedSessionIds));
-			const renameRequest = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)(null);
+			const renameRequest = derive(shortcutControls.state, (state) => state.renameTarget);
 			const archiveRequest = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)(null);
-			const requestSessionRename = (sessionId, currentTitle) => {
-				renameRequest.set({
-					sessionId,
-					currentTitle
-				});
-			};
+			const requestSessionRename = shortcutControls.rename;
 			const unarchiveSession = (sessionId) => {
 				uiWorkspace.unarchiveSession(sessionId).catch((reason) => {
 					console.warn("session unarchive rejected:", reason);
@@ -3951,6 +4212,7 @@ window.__ModuleLoader__.load({
 				},
 				unarchiveSession
 			});
+			installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession);
 			const archiveConfirmInjected = () => ({
 				hooks: { archiveRequest },
 				settleSessionArchive: () => {
@@ -3970,9 +4232,7 @@ window.__ModuleLoader__.load({
 			const renameInjected = () => ({ requestSessionRename });
 			const renameDialogInjected = () => ({
 				hooks: { renameRequest },
-				settleSessionRename: () => {
-					renameRequest.set(null);
-				},
+				settleSessionRename: shortcutControls.closeRename,
 				renameSession
 			});
 			const rowToastInjected = () => ({
@@ -4009,9 +4269,16 @@ window.__ModuleLoader__.load({
 					await uiWorkspace.unarchiveSession(sessionId);
 				},
 				createWorkspace: (input) => workspaces.create(input),
+				requestSearch: shortcutControls.search,
+				requestAddWorkspace: shortcutControls.add,
+				closeAddWorkspace: shortcutControls.closeAdd,
+				setDirectoryBusy: shortcutControls.directoryBusy,
+				dismissForkError: shortcutControls.dismissForkError,
 				hooks: {
 					directoryFlow: browserFlowSource,
-					hostInfo
+					hostInfo,
+					workspaceShortcuts: shortcutControls.state,
+					shortcuts: ctx.shortcuts.catalog
 				}
 			});
 			const pickerInjected = () => ({
@@ -4028,9 +4295,20 @@ window.__ModuleLoader__.load({
 					"sidebar.workspaces.session.menu.item": {
 						kind: "list",
 						scope: "root",
-						inject: { hooks: { menuOpenState: menuOpenStateFactory } }
+						inject: { hooks: {
+							menuOpenState: menuOpenStateFactory,
+							shortcuts: ctx.shortcuts.catalog
+						} }
 					},
 					"sidebar.workspaces.session.row.action": {
+						kind: "list",
+						scope: "root"
+					},
+					"sidebar.session.row.leading": {
+						kind: "list",
+						scope: "root"
+					},
+					"sidebar.session.row.hover": {
 						kind: "list",
 						scope: "root"
 					}
@@ -4102,6 +4380,7 @@ window.__ModuleLoader__.load({
 					name: "shell.overlay",
 					id: "workspace.row-toast",
 					locale: NS,
+					store: viewStore,
 					inject: rowToastInjected
 				}, RowActionToast);
 			});

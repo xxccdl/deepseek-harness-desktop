@@ -4,17 +4,8 @@ import z from '@deepseek-ai/schemastery';
 import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm';
 import type { LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment';
 import type { DeepSeekCatalogModel, DeepSeekConnectionOptions } from './types.ts';
-/**
- * Plugin config, validated by the same-named schemastery schema and doubling
- * as the `llm-deepseek` settings-section shape. Every field is optional in
- * yml: a missing API key resolves through {@link Config.apiKeyEnv} at each
- * request (a request without any key fails with `MISSING_CREDENTIAL`, not at
- * plugin load), omitted thinking mode uses the provider default, and omitted
- * reasoning effort resolves to `high`.
- */
+/** Shared Messages request configuration, without provider credential selection. */
 export interface Config {
-    /** Credential reference (environment-variable name) resolved per request; defaults to `DEEPSEEK_API_KEY`. */
-    apiKeyEnv: Volatile<string>;
     /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
     baseURL: Volatile<string | undefined>;
     /** Deployment thinking policy; `disabled` limits every conversation request to `off`. */
@@ -61,8 +52,28 @@ export type Options = {
  * @returns Plain options for the resolver.
  */
 export declare function plainOptions(config: Config): Options;
+/** Shared schema fields for Messages protocol options. */
+export declare const deepSeekConfigFields: {
+    baseURL: z<string, string, "volatile">;
+    thinking: z<"enabled" | "disabled", "enabled" | "disabled", "volatile">;
+    reasoningEffort: z<"low" | "off" | "high" | "max", "low" | "off" | "high" | "max", "volatile">;
+    maxTokens: z<number, number, "volatile-defined">;
+    defaultContextWindow: z<number, number, "volatile-defined">;
+    models: z<NoInfer<DeepSeekCatalogModel[]>, NoInfer<DeepSeekCatalogModel[]>, "volatile-defined">;
+    streamIdleTimeoutMs: z<number, number, "volatile-defined">;
+    maxRequestFilesBytes: z<number, number, "volatile-defined">;
+    maxInlineRequestImageBytes: z<number, number, "volatile-defined">;
+    maxImagesPerRequest: z<number, number, "volatile-defined">;
+    imageOffloadByteQuantum: z<number, number, "volatile-defined">;
+    inlineImageOffloadByteQuantum: z<number, number, "volatile-defined">;
+    imageOffloadCountQuantum: z<number, number, "volatile-defined">;
+    filesApiTimeoutMs: z<number, number, "volatile-defined">;
+    fileExpiresAfterSeconds: z<number, number, "volatile-defined">;
+    fileRefreshMarginSeconds: z<number, number, "volatile-defined">;
+    fileQuotaCleanupBatch: z<number, number, "volatile-defined">;
+    retryPolicy: z<NoInfer<RetryPolicyConfig>, NoInfer<RetryPolicyConfig>, "volatile">;
+};
 export declare const Config: z<Schemastery.ObjectS<NoInfer<{
-    apiKeyEnv: z<string, string, "volatile-defined">;
     baseURL: z<string, string, "volatile">;
     thinking: z<"enabled" | "disabled", "enabled" | "disabled", "volatile">;
     reasoningEffort: z<"low" | "off" | "high" | "max", "low" | "off" | "high" | "max", "volatile">;
@@ -82,7 +93,6 @@ export declare const Config: z<Schemastery.ObjectS<NoInfer<{
     fileQuotaCleanupBatch: z<number, number, "volatile-defined">;
     retryPolicy: z<NoInfer<RetryPolicyConfig>, NoInfer<RetryPolicyConfig>, "volatile">;
 }>>, Schemastery.ObjectT<NoInfer<{
-    apiKeyEnv: z<string, string, "volatile-defined">;
     baseURL: z<string, string, "volatile">;
     thinking: z<"enabled" | "disabled", "enabled" | "disabled", "volatile">;
     reasoningEffort: z<"low" | "off" | "high" | "max", "low" | "off" | "high" | "max", "volatile">;
@@ -104,16 +114,11 @@ export declare const Config: z<Schemastery.ObjectS<NoInfer<{
 }>>, "plain">;
 /** Public API default; the internal endpoint comes from $DEEPSEEK_BASE_URL. */
 export declare const PUBLIC_BASE_URL = "https://api.deepseek.com/anthropic";
-/**
- * One resolution's complete request facts. Connection and credential facts
- * are one value on purpose: a snapshot the resolver rejects keeps the whole
- * previous generation, so a request can never pair a stale endpoint with a
- * newer key.
- */
+/** Complete protocol settings captured for one request operation. */
 export type ResolvedDeepSeekOptions = DeepSeekConnectionOptions;
 /**
- * The one explicit resolve step from raw config to validated connection
- * facts. Programmatic construction may bypass Schemastery normalization, so
+ * The one explicit resolve step from raw config to validated protocol
+ * settings. Programmatic construction may bypass Schemastery normalization, so
  * every default and bound is re-judged here — for the composition entry at
  * load (fail loud) and for each settings snapshot at its first use.
  * @param config - raw plugin config or resolved settings snapshot.
@@ -121,7 +126,7 @@ export type ResolvedDeepSeekOptions = DeepSeekConnectionOptions;
  * the product CLI. Every layer may supply an endpoint: the product trusts the
  * project it is launched in, so a checkout can point its own agent at the
  * gateway that checkout is meant to use.
- * @returns validated connection facts plus the credential reference.
+ * @returns validated protocol settings.
  */
 export declare function resolveAdapterOptions(config: Options, environment?: LaunchEnvironmentSnapshot): ResolvedDeepSeekOptions;
 //# sourceMappingURL=config.d.ts.map

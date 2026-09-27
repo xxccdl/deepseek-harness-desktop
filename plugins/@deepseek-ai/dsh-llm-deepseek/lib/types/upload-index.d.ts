@@ -19,12 +19,12 @@ export interface UploadIndexCommit {
     accepted: boolean;
 }
 /**
- * Derive a non-secret stable index namespace without persisting or logging the API key.
+ * Derive a non-secret stable index namespace without persisting or logging authentication headers.
  * @param baseURL - normalized provider endpoint namespace.
- * @param apiKey - resolved credential used only as hash input.
+ * @param credentials - serialized authentication headers used only as hash input.
  * @returns branded SHA-256 namespace digest.
  */
-export declare function deepSeekFileScope(baseURL: string, apiKey: string): DeepSeekFileScopeType;
+export declare function deepSeekFileScope(baseURL: string, credentials: string): DeepSeekFileScopeType;
 /** Atomic local index shared by every DeepSeek session in this DSH home. */
 export declare class DeepSeekUploadIndex {
     /** Absolute owner-private JSON index path. */

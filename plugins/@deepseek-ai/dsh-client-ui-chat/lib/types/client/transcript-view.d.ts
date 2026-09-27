@@ -6,7 +6,7 @@ import { type ChatSettings, type TranscriptViewMode } from '../chat-settings.ts'
 export declare class TranscriptViewPolicy {
     private readonly host;
     private readonly unsubscribe;
-    /** Reactive current mode; defaults to Compact before Host settings arrive. */
+    /** Reactive current mode; defaults to Standard before Host settings arrive. */
     readonly mode: SnapshotStore<TranscriptViewMode>;
     /**
      * @param host - durable Chat settings scope.
@@ -16,7 +16,7 @@ export declare class TranscriptViewPolicy {
     dispose(): void;
     /**
      * Publish and persist one explicit user choice.
-     * @param mode - Compact, Detailed, or Expanded work details.
+     * @param mode - Compact, Standard, Detailed, or Verbose work details.
      */
     setMode(mode: TranscriptViewMode): void;
     /** Adopt the latest accepted Host section without writing it back. */

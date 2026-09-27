@@ -74,7 +74,7 @@ export const TYPERT = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/discoverModels:result',
         create: _deepseek_ai_dsh_llm_llm_discoverModels_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":633,"column":9},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":638,"column":9},
     },
     {
       id: '@deepseek-ai/dsh-llm#llm/listConfigurableProviders',
@@ -89,7 +89,7 @@ export const TYPERT = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/listConfigurableProviders:result',
         create: _deepseek_ai_dsh_llm_llm_listConfigurableProviders_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":545,"column":3},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":550,"column":3},
     },
     {
       id: '@deepseek-ai/dsh-llm#llm/listProviders',
@@ -104,7 +104,7 @@ export const TYPERT = {
         typeSymbol: '@deepseek-ai/dsh-llm#llm/listProviders:result',
         create: _deepseek_ai_dsh_llm_llm_listProviders_result$schema,
       },
-      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":473,"column":3},
+      sourceLocation: {"file":"packages/llm/llm/src/index.ts","line":478,"column":3},
     },
   ],
   model: {
@@ -192,7 +192,7 @@ export const TYPERT = {
             "name": "listModels",
             "signature": "async listModels(provider: string): Promise<LlmModelInfo[]>",
             "summary": "Discover models advertised by one registered provider.",
-            "jsDoc": "/**\n * Discover models advertised by one registered provider. Catalog membership\n * is advisory and never changes routing or request validation.\n * @param provider - registered provider route to inspect.\n * @returns detached model metadata in adapter-preferred order.\n */"
+            "jsDoc": "/**\n * Discover models advertised by one registered provider. Catalog membership\n * does not constrain core routing. Catalog-driven entry points may restrict\n * selection and submission to the advertised models.\n * @param provider - registered provider route to inspect.\n * @returns detached model metadata in adapter-preferred order.\n */"
           },
           {
             "kind": "method",
@@ -310,7 +310,7 @@ export const TYPERT = {
           },
           {
             "name": "GenerateOptions",
-            "declaration": "export interface GenerateOptions {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: RequestMessage[];\n    system?: string;\n    tools?: ToolSchema[];\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<'SessionId'>;\n    purpose?: 'compaction' | 'session-title';\n}"
+            "declaration": "export interface GenerateOptions {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: RequestMessage[];\n    system?: string;\n    tools?: ToolSchema[];\n    toolHistory?: ToolHistory;\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<'SessionId'>;\n    purpose?: 'compaction' | 'session-title';\n}"
           },
           {
             "name": "GoalId",
@@ -390,7 +390,7 @@ export const TYPERT = {
           },
           {
             "name": "LlmResolvedModelInfo",
-            "declaration": "export interface LlmResolvedModelInfo extends LlmModelInfo {\n    context?: LlmModelContext;\n    defaultMaxTokens?: number;\n    reasoning?: LlmModelReasoningInfo;\n    systemPromptUpdate?: SystemPromptUpdate;\n}"
+            "declaration": "export interface LlmResolvedModelInfo extends LlmModelInfo {\n    context?: LlmModelContext;\n    defaultMaxTokens?: number;\n    reasoning?: LlmModelReasoningInfo;\n    systemPromptUpdate?: SystemPromptUpdate;\n    toolUpdate?: ToolUpdate;\n}"
           },
           {
             "name": "Message",
@@ -414,7 +414,7 @@ export const TYPERT = {
           },
           {
             "name": "MessageSourceMap",
-            "declaration": "export interface MessageSourceMap {\n    user: { kind: 'user'; };\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n    'system-prompt': SystemPromptMessageSource;\n    'model-selection': { kind: 'model-selection'; } & ContextFormed;\n    'user-approval': { kind: 'user-approval'; } & ContextFormed;\n    'ptc-mode': { kind: 'ptc-mode'; };\n    'tool-registry': { kind: 'tool-registry'; };\n    'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string; };\n    'agent-message': AgentMessageSource;\n    'subagent-settled': SubagentSettledMessageSource;\n    'skill-invocation': SkillInvocationSource;\n    'cordis-host-runner': { kind: 'cordis-host-runner'; };\n    'team-message': TeamMessageSource;\n    goal: GoalMessageSource;\n    'compact-checkpoint': CompactionCheckpointSource;\n    'session-reference': SessionReferenceSource;\n}"
+            "declaration": "export interface MessageSourceMap {\n    user: { kind: 'user'; };\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n    'system-prompt': SystemPromptMessageSource;\n    'model-selection': { kind: 'model-selection'; } & ContextFormed;\n    'user-approval': { kind: 'user-approval'; } & ContextFormed;\n    'ptc-mode': { kind: 'ptc-mode'; };\n    'tool-registry': { kind: 'tool-registry'; };\n    'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string; };\n    'agent-message': AgentMessageSource;\n    'subagent-settled': SubagentSettledMessageSource;\n    'skill-invocation': SkillInvocationSource;\n    'cordis-host-runner': { kind: 'cordis-host-runner'; };\n    goal: GoalMessageSource;\n    schedule: { kind: 'schedule'; } & ContextFormed;\n    'compact-checkpoint': CompactionCheckpointSource;\n    'session-reference': SessionReferenceSource;\n}"
           },
           {
             "name": "ModelMessageSource",
@@ -438,7 +438,7 @@ export const TYPERT = {
           },
           {
             "name": "PreparedLlmCall",
-            "declaration": "export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly systemPromptUpdate?: SystemPromptUpdate;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
+            "declaration": "export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly inputModalities?: readonly ModelModality[];\n    readonly systemPromptUpdate?: SystemPromptUpdate;\n    readonly toolUpdate?: ToolUpdate;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}"
           },
           {
             "name": "ProviderRequestId",
@@ -521,18 +521,6 @@ export const TYPERT = {
             "declaration": "export type SystemPromptUpdate = 'in-history';"
           },
           {
-            "name": "TeamId",
-            "declaration": "export type TeamId = Branded<'TeamId'>;"
-          },
-          {
-            "name": "TeamMessageId",
-            "declaration": "export type TeamMessageId = Branded<'TeamMessageId'>;"
-          },
-          {
-            "name": "TeamMessageSource",
-            "declaration": "export interface TeamMessageSource {\n    readonly kind: 'team-message';\n    readonly teamId: TeamId;\n    readonly messageId: TeamMessageId;\n    readonly senderId: SessionId;\n    readonly senderName: string;\n}"
-          },
-          {
             "name": "TextBlock",
             "declaration": "export interface TextBlock {\n    type: 'text';\n    text: string;\n}"
           },
@@ -553,6 +541,10 @@ export const TYPERT = {
             "declaration": "export type ToolCallId = Branded<'ToolCallId'>;"
           },
           {
+            "name": "ToolHistory",
+            "declaration": "export interface ToolHistory {\n    readonly tools: readonly ToolSchema[];\n    readonly updates: readonly { readonly messageId: MessageId; readonly additions: readonly ToolSchema[]; }[];\n}"
+          },
+          {
             "name": "ToolMessageSource",
             "declaration": "export interface ToolMessageSource {\n    kind: 'tool';\n    callId: ToolCallId;\n}"
           },
@@ -567,6 +559,10 @@ export const TYPERT = {
           {
             "name": "ToolSchema",
             "declaration": "export interface ToolSchema {\n    deferLoading?: true;\n    name: string;\n    description: string;\n    parameters: Record<string, unknown>;\n}"
+          },
+          {
+            "name": "ToolUpdate",
+            "declaration": "export type ToolUpdate = 'in-history' | 'addition-only';"
           },
           {
             "name": "UserMessage",

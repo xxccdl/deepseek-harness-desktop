@@ -5,5 +5,5 @@ import type { ForkSessionInjected, SessionMenuItemProps } from '../contract/slot
  * @param props - owner share, menu open state, and the fork share.
  * @returns the row.
  */
-export declare function ForkSessionMenuItem({ sessionId, useMenuOpenState, forkSession, t }: SessionMenuItemProps<ForkSessionInjected>): import("react").JSX.Element;
+export declare function ForkSessionMenuItem({ sessionId, useMenuOpenState, useShortcuts, forkSession, t, }: SessionMenuItemProps<ForkSessionInjected>): import("react").JSX.Element;
 //# sourceMappingURL=ForkSession.d.ts.map

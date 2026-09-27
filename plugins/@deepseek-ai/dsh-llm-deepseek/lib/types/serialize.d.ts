@@ -1,4 +1,4 @@
-/** Map system snapshots and conversation turns to Messages using the configured route capability. */
+/** Map system snapshots, tool changes, and conversation turns to Messages using the configured route capability. */
 import type { GenerateOptions, ImageAttachmentAccessResolver, RequestMessage } from '@deepseek-ai/dsh-llm';
 import type { ImageAttachmentRef, RequestImageAttachment } from '@deepseek-ai/dsh-attachment';
 import type { DeepSeekConnectionOptions as Connection } from './types.ts';
@@ -7,6 +7,9 @@ import type { WireRequest } from './wire-types.ts';
 /** Serialize one complete request using already prepared image bytes.
  * User and tool-result content omits reasoning and tool-call blocks.
  * Empty user messages are skipped; empty tool results retain their call ids.
+ * Developer messages, already projected for this route by `LlmRuntime`, become
+ * system-role updates after the preceding user turn, with tool changes as
+ * `tool_addition` and `tool_removal` references to the declared tool.
  * @param options - provider-neutral request.
  * @param connection - validated defaults and thinking policy.
  * @param history - image-projected history with complete system snapshots; durable messages remain unchanged.

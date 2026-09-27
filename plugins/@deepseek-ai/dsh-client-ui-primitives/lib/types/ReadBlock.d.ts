@@ -1,3 +1,4 @@
+import { type CodeToolbarLabels } from './CodeToolbar.tsx';
 /**
  * Content lines shown before the height cap collapses the middle. Matches
  * TerminalBlock's default so a long read and a long command output cut at the
@@ -28,7 +29,7 @@ export interface ReadBlockProps {
     className?: string | undefined;
 }
 /** Localized chrome for {@link ReadBlock}. */
-export interface ReadBlockLabels {
+export interface ReadBlockLabels extends CodeToolbarLabels {
     window: (shown: number, total: number) => string;
     copy: string;
     copied: string;
