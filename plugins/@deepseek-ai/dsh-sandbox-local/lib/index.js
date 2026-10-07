@@ -415,15 +415,21 @@ var LocalSandboxProvider = class extends SandboxProvider {
 	*/
 	windowsAclRunnerArgv(policy) {
 		const sessionId = policy.sessionId;
-		if (sessionId === void 0 || policy.mode === "read-only") return [
-			...this.windowsAclRunnerInvocation(),
-			"--workspace",
-			policy.workspaceRoot,
-			"--temp",
-			tmpdir(),
-			"--mode",
-			policy.mode
-		];
+		if (sessionId === void 0 || policy.mode === "read-only") {
+			// The runner grants write itself on this path, so a workspace Windows
+			// refuses to label used to kill the child instead of degrading here.
+			// Claim the standing grant first so the refusal reaches {@link confine}.
+			if (policy.mode !== "read-only") this.materializeWorkspaceGrant(policy.workspaceRoot);
+			return [
+				...this.windowsAclRunnerInvocation(),
+				"--workspace",
+				policy.workspaceRoot,
+				"--temp",
+				tmpdir(),
+				"--mode",
+				policy.mode
+			];
+		}
 		const temp = this.materializeAclGrant(sessionId, policy.workspaceRoot);
 		return [
 			...this.windowsAclRunnerInvocation(),
@@ -454,21 +460,7 @@ var LocalSandboxProvider = class extends SandboxProvider {
 	*/
 	materializeAclGrant(sessionId, workspaceRoot) {
 		assertTempRootOutsideWorkspace(workspaceRoot, tmpdir());
-		const writeSid = workspaceWriteSid(workspaceRoot);
-		if (!this.workspaceGrants.has(workspaceRoot)) {
-			const grant = AclWriteGrant.create(writeSid);
-			try {
-				grant.add(workspaceRoot, true);
-			} catch (error) {
-				try {
-					grant.dispose();
-				} catch (cleanupError) {
-					throw new AggregateError([error, cleanupError], "sandbox-local windows-acl workspace grant failed and its cleanup also failed");
-				}
-				throw error;
-			}
-			this.workspaceGrants.set(workspaceRoot, grant);
-		}
+		this.materializeWorkspaceGrant(workspaceRoot);
 		const key = JSON.stringify([String(sessionId), workspaceRoot]);
 		const existing = this.tempCapabilities.get(key);
 		if (existing !== void 0) return existing;
@@ -500,6 +492,34 @@ var LocalSandboxProvider = class extends SandboxProvider {
 		};
 		this.tempCapabilities.set(key, capability);
 		return capability;
+	}
+	/**
+	* Materialize the STANDING workspace-root grant on its own.
+	*
+	* The agentless workspace-write path has no session to key a private temp
+	* capability on, so it hands the runner `--mode workspace-write` with no write
+	* SID and lets the RUNNER label the workspace. A refusal then happens inside
+	* the child: the runner prints `windows-acl-run: ... (Win32 5)` and exits 127,
+	* and a terminal that never reached its first prompt reports `PTY shell exited
+	* during startup` — the failure this provider is written to avoid, with
+	* nothing naming the directory. Claiming the same grant here, before the
+	* spawn, turns the refusal into the error {@link confine} already degrades on.
+	* @param workspaceRoot - the resolved policy root to label.
+	*/
+	materializeWorkspaceGrant(workspaceRoot) {
+		if (this.workspaceGrants.has(workspaceRoot)) return;
+		const grant = AclWriteGrant.create(workspaceWriteSid(workspaceRoot));
+		try {
+			grant.add(workspaceRoot, true);
+		} catch (error) {
+			try {
+				grant.dispose();
+			} catch (cleanupError) {
+				throw new AggregateError([error, cleanupError], "sandbox-local windows-acl workspace grant failed and its cleanup also failed");
+			}
+			throw error;
+		}
+		this.workspaceGrants.set(workspaceRoot, grant);
 	}
 	/**
 	* Dispose every write grant (provider dispose): the revocable temp ACEs
