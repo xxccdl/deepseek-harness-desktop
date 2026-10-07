@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.8.0";
+const tag = process.argv[2] ?? "v1.9.0";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,6 +19,13 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
+  "## 1.9.0",
+  "",
+  "本次把 fork 重基到上游 **dsh 0.2.0-rc.2**（上一版停在 0.1.7-rc.2，中间跨过 0.2.0-rc.1）。上游这一版带来桌面端可在菜单栏管理 dsh 命令与插件（不再需要另装 Node 或 pnpm）、模型选择器在模型较多时提供模糊搜索、侧栏文件页用本地应用打开当前文件夹、无标题的历史会话统一显示「未命名」、Windows 沙箱权限脚本合并为一次授权完成诊断与修复、第三方模型目录更新到 pi-ai 0.87.1（部分旧模型 ID 被移除，已保存的选择可能需要重选）等改动（完整清单见上游 `dsh-v0.2.0-rc.1` 与 `dsh-v0.2.0-rc.2`）。0.2.0 连底层的组合方式也换了：profile 的包解析从「往 profile 的 node_modules 投影 junction」改为运行时解析（`PluginPackages` + `createRuntimeResolution`，`healProfilesModuleFallback` 已移除），并新增了一道插件兼容性闸门。下面是本次与本 fork 直接相关的改动。",
+  "- **修复：fork 自研插件在新版下一个都加载不了**。0.2.0 的兼容性闸门会按插件声明的 `peerDependencies` 校验它与运行中的 dsh 是否兼容，不兼容就**在启动时直接关掉那一行**。fork 自有的 29 个包还写着 `^0.1.0-rc.6`，于是面板、动效、用量统计、插件市场、记忆、桌面控制、更新检查、代码片段、新手引导、内置浏览器、电脑控制等**全部被静默禁用**，动效令牌 `--dsm-t-fast` 直接解析为空；控制台只留一行 stderr，界面上是整片功能凭空消失。现在这 29 个包的 dsh peer 范围统一为 `^0.2.0-rc.2`（取 caret 而不是上游那种精确钉版，后续 rc 不会被再次一刀切）。这道闸门只在桌面端生效——它要求 `profileContext`，CLI 不提供，所以无头回归是绿的、只有实机才看得见，本次验证因此补上了实机冒烟",
+  "- **修复：插件加载失败的自愈对客户端失败不生效**。上一版新增的自动停用只审计 host 加载器的行，而一个插件的客户端 bundle 加载失败时，host 半边是完全健康的——页面名册正是从 host 已激活的行发布出来的。于是这类失败既不记录、也不停用，更不会开修复会话：界面停在「Failed to load plugins」错误页，`plugin-quarantine.json` 连文件都不会生成（市场里的 `appearance-optimizer` 就是这样倒下的：包名已改成 `@deepseek-ai/appearance-optimizer`，它的 `client.js` 却仍注册旧 id）。现在壳子会读页面在画错误页之前记下的那份启动报告，用已发布的客户端名册核对出真正的失败条目，交给同一条记录→停用→修复通路：按**包名**记录（host 失败仍按行 id），并把失败 bundle 所在的**包目录**写进修复提示——对市场装进 `node_modules` 的插件，那是 AI 唯一能直接打开的文件；客户端失败会让窗口挂起，通知文案因此改成「重启应用即可恢复界面」。实测：仿造件复现出与截图一致的报错后，记录落盘并带包目录、修复会话已开，第二次启动界面正常、名册 81→80、无重复失败；host 半边的原有通路同时回归通过",
+  "- **重基本身的改动面不大**：13 个带 fork 改动的上游包按 0.2.0-rc.2 重建（fork 改动逐个三方合并回去，唯一冲突的模型选择器手工解掉），52 个 fork 自有包原样保留。依赖侧 `@earendil-works/pi-ai` 升到 0.87.1、`koffi` 由 `^3.1.0` 收紧为精确 `3.1.1`、新包 `dsh-otel` 带进 `got ^14.6.6`、`dsh-skill-filesystem` 带进 `chokidar ^5.0.0`。无头启动回归 187 个 entry 全绿、14 个 fork 必需 bundle 齐全",
+  "",
   "## 1.8.0",
   "",
   "本次把 fork 重基到上游 **dsh 0.1.7-rc.2**（上一版停在 0.1.7-alpha.1）。上游这一版带来定时任务与提醒、桌面端首次使用引导、快捷键查看与自定义、对话中即时启用刚开启的工具、关窗后任务继续在后台运行等改动（完整清单见上游 `dsh-v0.1.7-rc.2`）；其中与桌面端直接相关的两条已随本次重基生效：**修复部分桌面安装包启动失败**，以及**不兼容插件的跳过提示每次启动只显示一次**。覆盖层包随之重新对齐，像 `dsh-host-apiproxy` 这类在新一代组合里已不需要的覆盖层也一并移除。下面是本次与本 fork 直接相关的改动。",
