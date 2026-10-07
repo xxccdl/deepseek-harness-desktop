@@ -1,0 +1,24 @@
+- insert:
+    - id: speech-to-text
+      name: '@deepseek-ai/dsh-experimental-speech-to-text'
+      config:
+        defaultProvider: sensevoice-local
+    - id: speech-to-text-sensevoice
+      name: '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice'
+      config:
+        dataRoot: !!js dshHomePath('speech-to-text', 'sensevoice')
+    - id: speech-to-text-remote
+      name: '@deepseek-ai/dsh-experimental-speech-to-text-remote'
+      config:
+        # 自建 SenseVoice HTTP 服务的地址。默认走公网隧道，不同局域网/外网的机器都能用；
+        # 隧道重启后地址会变，变了只改这一行，再跑一次 node scripts/install-plugins.mjs。
+        #   公网   https://inches-beginning-enhancement-measured.trycloudflare.com
+        #   局域网 http://192.168.31.232:8000
+        #   本机   http://127.0.0.1:8000
+        baseUrl: 'https://inches-beginning-enhancement-measured.trycloudflare.com'
+        # 仅当服务端设置了 ASR_API_KEY 时才需要填写。
+        apiKey: ''
+    - id: api-speech-to-text
+      name: '@deepseek-ai/dsh-experimental-api-speech-to-text'
+    - id: ui-voice-input
+      name: '@deepseek-ai/dsh-experimental-client-ui-voice-input'

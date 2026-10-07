@@ -1,0 +1,27 @@
+{
+  "name": "@deepseek-ai/dsh-experimental-speech-to-text-remote",
+  "description": "Remote SenseVoice HTTP transcription for browser clients",
+  "version": "0.2.0-rc.2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.18.4"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.0-rc.2"
+  }
+}
