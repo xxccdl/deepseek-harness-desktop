@@ -65,12 +65,17 @@ const MARKET_ROW_PREFIX = "market-";
  *
  * A plugin that fails to import is a warning at boot, not a fatal error: the
  * tree comes up without it. What the record adds is what a warning cannot give —
- * the broken entry is skipped by id on the next boot instead of failing again,
- * it carries the original failure so the reason survives the process, and it is
+ * the broken entry is skipped on the next boot instead of failing again, it
+ * carries the original failure so the reason survives the process, and it is
  * what turns the failure into a repair the agent can run. It is deliberately a
  * plain JSON file in `$DSH_HOME` beside `plugin-market.json`: a person can read
  * what this deployment turned off on their behalf, and clearing one entry is the
  * whole re-enable procedure.
+ *
+ * Both halves of a boot report here, keyed by row id for a host row that failed
+ * to activate and by package name for a client entry that never registered —
+ * the page's roster is published from the host's activated entries, so the
+ * second kind leaves the host tree looking perfectly healthy.
  */
 const QUARANTINE_FILENAME = "plugin-quarantine.json";
 /** Repair sessions opened per quarantined plugin before the fallback is the only remedy left. */
@@ -138,7 +143,7 @@ function quarantinePath() {
  * An absent, unreadable, or malformed file means "nothing is quarantined". The
  * record only ever adds to a boot that already tolerates the failure it
  * describes, so losing it must never cost the app its start.
- * @returns map of entry id to `{ name, detail, quarantinedAt, attempts, sessionId }`.
+ * @returns map of row id or package name to `{ name, detail, quarantinedAt, attempts, sessionId, dir? }`.
  */
 function readQuarantine() {
   try {
@@ -239,15 +244,82 @@ async function harnessRpc(method, args) {
 }
 
 /**
+ * The client entries a renderer boot report names, as failure rows.
+ *
+ * The page runs its own audit over the roster it was served and throws one
+ * report naming every entry that did not activate — `web boot: N entries did
+ * not activate`, then one `name: reason` line per entry — which the boot kernel
+ * logs before it draws its failure page. That report is the only statement of a
+ * client-side failure that exists anywhere: the roster is published from the
+ * host's activated entries, so a bundle that loads without registering its own
+ * id leaves the host tree completely healthy and its Loader silent.
+ * @param report - the renderer console message.
+ * @returns `{ name, detail }` per named entry, in report order.
+ */
+function clientBootFailures(report) {
+  const lines = String(report).split("\n");
+  const header = lines.findIndex((line) => /web boot: .*\bdid not activate\b/.test(line));
+  if (header === -1) return [];
+  const failures = [];
+  for (const line of lines.slice(header + 1)) {
+    const named = /^([^\s:]+): (.+)$/.exec(line);
+    if (named !== null) failures.push({ name: named[1], detail: named[2] });
+  }
+  return failures;
+}
+
+/**
+ * Attribute client-side failures to the bundles the roster published.
+ *
+ * A client entry is named by its package, not by the row that mounts it, so the
+ * record keeps the package as its key and the composition resolves it back to
+ * rows. The bundle's own path comes from the roster: it is the file a repair has
+ * to open, and for a plugin the market installed into this deployment's
+ * `node_modules` nothing else in the shell can name it. A name the roster never
+ * published is dropped — the report's trailing stack frames and any other
+ * console noise parse the same way, and only the roster tells them apart.
+ * @param root - the booted context.
+ * @param failures - `{ name, detail }` rows from {@link clientBootFailures}.
+ * @returns failure rows carrying the bundle's directory, roster-known entries only.
+ */
+function attributeClientFailures(root, failures) {
+  const client = root.get("clientModules", false);
+  if (client === undefined) return [];
+  const ids = new Set(client.graph().entries.map((row) => row.id));
+  const attached = [];
+  for (const failure of failures) {
+    const parts = failure.name.split("/");
+    const owner = parts[0].startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
+    if (!ids.has(failure.name) && !ids.has(owner)) continue;
+    const bundle = client.clientPath(owner);
+    attached.push({
+      name: failure.name,
+      detail: failure.detail,
+      ...(bundle === undefined ? {} : { dir: dirname(bundle) })
+    });
+  }
+  return attached;
+}
+
+/**
  * The repair brief the agent receives for one boot's failed plugins.
  * @param plugins - the inactive entries being quarantined.
  * @returns the prompt text.
  */
 function repairPrompt(plugins) {
   return [
-    "以下插件在启动时加载失败，应用已自动停用它们（回退启动）。请修复。",
+    "以下插件在启动时加载失败，应用已自动停用它们（下次启动不再加载）。请修复。",
     "",
-    ...plugins.flatMap((plugin) => [`- 插件行 id：${plugin.id}`, `  包名：${plugin.name}`, `  失败信息：${plugin.detail}`]),
+    // A client-side failure is already attributed to a bundle, so it states the
+    // package and the directory the file lives in; a host failure states the row
+    // the composition mounts it through.
+    ...plugins.flatMap((plugin) => [
+      ...(plugin.id === undefined || plugin.id === plugin.name
+        ? [`- 包名：${plugin.name}`]
+        : [`- 插件行 id：${plugin.id}`, `  包名：${plugin.name}`]),
+      ...(plugin.dir === undefined ? [] : [`  包目录：${plugin.dir}`]),
+      `  失败信息：${plugin.detail}`
+    ]),
     "",
     `停用记录（JSON）：${quarantinePath()}`,
     "",
@@ -285,21 +357,31 @@ async function waitForAppPage() {
  * Turn this boot's plugin failures into a quarantine plus one repair attempt.
  *
  * The fallback is unconditional and comes first: every failed entry is recorded,
- * and {@link composeWebProfile} switches those ids off on the next boot, so a
+ * and {@link composeWebProfile} switches them off on the next boot, so a
  * broken plugin costs one warning once instead of failing at every start. The
  * repair is the second half and is deliberately bounded — at most
  * {@link REPAIR_ATTEMPT_LIMIT} conversations per plugin, recorded in the same
  * file — because a repair that cannot start (no account, no model, a tree still
  * settling) must degrade to the fallback rather than retry in a loop.
+ *
+ * Both halves of the boot arrive here, and they are mutually exclusive: a row
+ * that does not activate never publishes a client bundle, so a plugin is either
+ * missing from the host tree or broken inside it, never both. What differs is
+ * what the person is left with — a host failure costs the plugin, a client
+ * failure costs the window, which keeps its failure page until the next start.
  * @param root - the booted context.
+ * @param failures - this boot's failed entries, from either half.
+ * @param clientSide - whether the failures came from the page rather than the host tree.
  */
-async function quarantineAndRepair(root) {
-  const inactive = await inactivePlugins(root);
-  if (inactive.length === 0) return;
+async function quarantineAndRepair(root, failures, clientSide = false) {
+  if (failures.length === 0) return;
   const record = readQuarantine();
   const repairable = [];
-  for (const plugin of inactive) {
-    const previous = record[plugin.id];
+  for (const plugin of failures) {
+    // A host row is keyed by its row id, a client entry by its package name;
+    // `composeWebProfile` accepts either and resolves it back to rows.
+    const key = plugin.id ?? plugin.name;
+    const previous = record[key];
     const entry = {
       name: plugin.name,
       detail: plugin.detail,
@@ -307,12 +389,13 @@ async function quarantineAndRepair(root) {
       attempts: typeof previous?.attempts === "number" ? previous.attempts : 0
     };
     if (typeof previous?.sessionId === "string") entry.sessionId = previous.sessionId;
-    record[plugin.id] = entry;
+    if (typeof plugin.dir === "string") entry.dir = plugin.dir;
+    record[key] = entry;
     if (entry.attempts < REPAIR_ATTEMPT_LIMIT) repairable.push(plugin);
   }
   writeQuarantine(record);
   // One line naming the file: clearing an entry there is the whole re-enable.
-  console.warn(`dsh-desktop: ${String(inactive.length)} plugin(s) failed to load and are now disabled; ${quarantinePath()} records why`);
+  console.warn(`dsh-desktop: ${String(failures.length)} plugin(s) failed to load and are now disabled; ${quarantinePath()} records why`);
   if (repairable.length === 0) return;
   try {
     await waitForAppPage();
@@ -328,12 +411,13 @@ async function quarantineAndRepair(root) {
       }
     });
     for (const plugin of repairable) {
-      record[plugin.id].attempts += 1;
-      record[plugin.id].sessionId = sessionId;
+      const key = plugin.id ?? plugin.name;
+      record[key].attempts += 1;
+      record[key].sessionId = sessionId;
     }
     writeQuarantine(record);
     console.warn(`dsh-desktop: opened a repair conversation for the disabled plugin(s): ${sessionId}`);
-    notifyRepairStarted(repairable);
+    notifyRepairStarted(repairable, clientSide);
     // The turn does not wait for this — admission wakes the driver on its own —
     // but a repair the person cannot see is a repair they will not trust, so the
     // window follows the conversation the way the quick-chat pill does.
@@ -347,14 +431,19 @@ async function quarantineAndRepair(root) {
 /**
  * Tell the person that a repair is running, since it starts without being asked.
  * @param plugins - the entries the repair conversation covers.
+ * @param clientSide - whether the failure left the window on its boot page.
  */
-function notifyRepairStarted(plugins) {
+function notifyRepairStarted(plugins, clientSide) {
   if (!Notification.isSupported()) return;
   try {
     const names = plugins.map((plugin) => plugin.name).join("、");
     new Notification({
       title: "插件加载失败，已自动停用并开始修复",
-      body: `${names} 无法加载。应用已回退启动，并在新对话里让 AI 尝试修复；修好后会在下次启动自动恢复。`
+      // A client-side failure takes the whole window with it, so the recovery is
+      // a restart rather than something the person can already be looking at.
+      body: clientSide
+        ? `${names} 无法加载，界面因此没能挂载。已自动停用该插件并让 AI 在新对话里尝试修复；重启应用即可恢复界面。`
+        : `${names} 无法加载。应用已回退启动，并在新对话里让 AI 尝试修复；修好后会在下次启动自动恢复。`
     }).show();
   } catch (error) {
     console.warn("dsh-desktop: could not show the repair notification", error);
@@ -501,10 +590,16 @@ async function composeWebProfile() {
   // Quarantined plugins are switched off by an id-targeted overlay rather than
   // edited out of the profile: the market keeps owning its row, the record stays
   // the single source of truth for why the plugin is off, and re-enabling one is
-  // clearing a line in that record instead of repairing a patch layer. Gated on
-  // the composed rows so a stale id never emits an overlay of its own.
-  for (const id of Object.keys(readQuarantine())) {
-    if (rows.has(id)) overlays.push({ id, disabled: true });
+  // clearing a line in that record instead of repairing a patch layer. A record
+  // key is a row id when the host tree reported the failure and a package name
+  // when the page did, so both are resolved here; matching on the composed rows
+  // keeps a key for a plugin this deployment no longer mounts from emitting an
+  // overlay of its own.
+  for (const key of Object.keys(readQuarantine())) {
+    for (const row of rows.values()) {
+      if (row.id !== key && row.name !== key && !String(row.name).startsWith(`${key}/`)) continue;
+      overlays.push({ id: row.id, disabled: true });
+    }
   }
   // Launcher-owned profile locations, the same shape the CLI provides: the
   // plugin manager writes bundle rows through it, and rows that differ by
@@ -956,6 +1051,23 @@ function createMainWindow({ url, startHidden = false } = {}) {
       }
       if (settings.alwaysOnTop === true) win.setAlwaysOnTop(false);
     });
+  });
+
+  // The one statement a client-side plugin failure ever makes: the page's own
+  // boot audit logs its report just before it draws the failure page, and the
+  // host tree never hears about it — a bundle that loads without registering its
+  // own id leaves every host entry healthy. Reading it here is what puts that
+  // failure on the same footing as a host one: recorded, switched off for the
+  // next boot, and handed to the agent. The roster is fixed for the page's
+  // lifetime, so the first report is the whole story for this process and the
+  // reload that follows a repair cannot ask for a second one.
+  let clientReported = false;
+  win.webContents.on("console-message", (details) => {
+    if (clientReported || ctx === undefined) return;
+    const failures = attributeClientFailures(ctx, clientBootFailures(details?.message ?? ""));
+    if (failures.length === 0) return;
+    clientReported = true;
+    void quarantineAndRepair(ctx, failures, true);
   });
 
   // In-app shortcuts: Ctrl+= / Ctrl+- / Ctrl+0 zoom.
@@ -1599,7 +1711,9 @@ if (!gotLock) {
       // cannot do by itself: a record that keeps the broken entry out of the next
       // boot, and a repair conversation for the agent. It runs after the app is
       // revealed, on the same authenticated RPC path the quick-chat pill uses.
-      if (ctx !== undefined) void quarantineAndRepair(ctx);
+      // Only the host half is settled here; the page's half arrives later, on the
+      // console report the window listens for.
+      if (ctx !== undefined) void quarantineAndRepair(ctx, await inactivePlugins(ctx));
     } catch (error) {
       console.error("dsh-desktop: boot failed", error);
       await disposeHarness();
