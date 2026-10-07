@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { LAUNCHER_BIN, LAUNCHER_FAILURE_EXIT, grantArgs, launcherPath, probe } from "@deepseek-ai/node-addon-system/landlock-run";
 import z from "@deepseek-ai/schemastery";
 import { SandboxProvider, SandboxUnavailableError, canonicalPath, writableRoots } from "@deepseek-ai/dsh-sandbox";
-import { AclWriteGrant, assertTempRootOutsideWorkspace, tempWriteSid, workspaceWriteSid } from "@deepseek-ai/dsh-sandbox-windows-acl";
+import { AclWriteGrant, assertTempRootOutsideWorkspace, registerAclDiagnosisSkill, tempWriteSid, workspaceWriteSid } from "@deepseek-ai/dsh-sandbox-windows-acl";
 import { assertNever } from "@deepseek-ai/dsh-util-values";
 //#region lib/types/profiles.js
 /**
@@ -308,6 +308,10 @@ var LocalSandboxProvider = class extends SandboxProvider {
 		this.configuredRunnerFailureSignatures = runnerFailureSignatures;
 		this.probeTimeoutMs = config.probeTimeoutMs;
 		assertPositiveFinite("probeTimeoutMs", this.probeTimeoutMs);
+		/* v8 ignore next 3 -- Windows-only registration; the Linux coverage lane cannot take this branch */
+		if (process.platform === "win32" && this.runnerCommand === void 0) ctx.inject(["skills"], (skillsCtx) => {
+			registerAclDiagnosisSkill(skillsCtx);
+		});
 		ctx.effect(() => () => {
 			this.revokeAclGrants();
 		});

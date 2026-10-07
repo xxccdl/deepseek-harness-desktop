@@ -1,4 +1,4 @@
-/** Product-wide, versioned internal-testing notice. */
+/** Product-wide, versioned preview notice. */
 import type { ReactNode } from 'react';
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store';
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';

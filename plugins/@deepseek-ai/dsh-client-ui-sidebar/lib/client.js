@@ -168,7 +168,7 @@ window.__ModuleLoader__.load({
 		const SCROLLBAR_LINGER_MS = 2e3;
 		/** Format complete-build metadata for the local brand badge. */
 		function localBuildVersion() {
-			return `0.1.7-rc.2-c127551` + ({}.DSH_CLIENT_GIT_DIRTY === "true" ? "-dirty" : "");
+			return `0.2.0-rc.2-04f392c` + ({}.DSH_CLIENT_GIT_DIRTY === "true" ? "-dirty" : "");
 		}
 		/** Each panel row subscribes only to its own selection state. */
 		function PanelRow({ id, label, wide, usePanelInfo, selectPanel, renderSlot }) {
@@ -334,20 +334,15 @@ window.__ModuleLoader__.load({
 							return darwinDesktop ? (0, react_jsx_runtime.jsx)("span", {
 								className: clsx(SidebarRoot_module_css_default.brand, SidebarRoot_module_css_default.wide),
 								children: identity
-							}) : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-								label: t("session.new.label"),
-								shortcutKeys: newShortcut?.keys,
-								delayMs: 500,
-								children: (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: clsx(SidebarRoot_module_css_default.brand, SidebarRoot_module_css_default.wide),
-									"aria-label": t("session.new.label"),
-									"aria-keyshortcuts": newShortcut?.aria,
-									onClick: () => {
-										startSession();
-									},
-									children: identity
-								})
+							}) : (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: clsx(SidebarRoot_module_css_default.brand, SidebarRoot_module_css_default.wide),
+								"aria-label": t("session.new.label"),
+								"aria-keyshortcuts": newShortcut?.aria,
+								onClick: () => {
+									startSession();
+								},
+								children: identity
 							});
 						})(), !darwinDesktop && toggle]
 					}),
@@ -485,6 +480,7 @@ window.__ModuleLoader__.load({
 					ctx.layout.toggleSidebar();
 				},
 				selectPanel: (id) => {
+					if (id === "plugins" || id === "schedules") ctx.get("productAnalytics")?.track("sidebar_menu_click", { menu_name: id === "plugins" ? "plugin" : "cron" });
 					ctx.layout.selectPanel(id);
 				},
 				hooks: {

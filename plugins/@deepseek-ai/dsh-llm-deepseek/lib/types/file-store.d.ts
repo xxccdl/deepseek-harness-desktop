@@ -1,6 +1,5 @@
 /** DeepSeek Files API upload reuse, invalidation, and quota recovery. @module dsh-llm-deepseek/file-store */
 import type { RequestImageAttachment } from '@deepseek-ai/dsh-attachment';
-import type { DeepSeekFileId } from './file-id.ts';
 import { DeepSeekUploadIndex } from './upload-index.ts';
 import type { DeepSeekUploadRecord } from './upload-index.ts';
 /** Shared Files-store limit for each request image, including file-id references. */
@@ -49,12 +48,11 @@ export declare class DeepSeekFileStore {
     ensureUploaded(version: RequestImageAttachment, connection: DeepSeekFileConnection, policy: DeepSeekFilePolicy, signal?: AbortSignal): Promise<DeepSeekFileReference>;
     private ensureUploadedOnce;
     /**
-     * Invalidate one exact local mapping after a model request rejects its remote id.
-     * @param version - request-image version whose remote generation failed.
-     * @param fileId - exact rejected file id.
+     * Invalidate exact local mappings in one index update after a model request rejects their remote ids.
+     * @param generations - request-image variants with the exact file id the request used for each.
      * @param connection - endpoint and API-key snapshot.
      */
-    invalidate(version: RequestImageAttachment, fileId: DeepSeekFileId, connection: DeepSeekFileConnection): Promise<void>;
+    invalidate(generations: readonly Pick<DeepSeekUploadRecord, 'variantId' | 'fileId'>[], connection: DeepSeekFileConnection): Promise<void>;
     /**
      * Delete the indexed remote file for one attachment and remove its local mapping.
      * @param version - exact request-image version to release.

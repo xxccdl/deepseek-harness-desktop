@@ -865,19 +865,19 @@ var DeepSeekUploadIndex = class {
 		});
 	}
 	/**
-	* Remove one exact mapping without deleting a concurrently installed successor.
+	* Remove exact mappings in one locked rewrite without deleting concurrently installed successors.
 	* @param scope - endpoint/API-key namespace.
-	* @param variantId - complete request-image transformation identity.
-	* @param fileId - exact remote generation being invalidated.
+	* @param generations - exact remote generations being invalidated; pairs absent from the index are ignored.
 	*/
-	async remove(scope, variantId, fileId) {
+	async remove(scope, generations) {
+		const invalidated = new Set(generations.map((generation) => `${generation.variantId}\0${generation.fileId}`));
 		await mkdir(dirname(this.path), {
 			recursive: true,
 			mode: 448
 		});
 		await withFileLock(this.path, async () => {
 			const index = await this.load();
-			const records = index.records.filter((record) => !(record.scope === scope && record.variantId === variantId && record.fileId === fileId));
+			const records = index.records.filter((record) => !(record.scope === scope && invalidated.has(`${record.variantId}\0${record.fileId}`)));
 			if (records.length !== index.records.length) await this.save({
 				formatVersion: 3,
 				records
@@ -1068,13 +1068,12 @@ var DeepSeekFileStore = class {
 		};
 	}
 	/**
-	* Invalidate one exact local mapping after a model request rejects its remote id.
-	* @param version - request-image version whose remote generation failed.
-	* @param fileId - exact rejected file id.
+	* Invalidate exact local mappings in one index update after a model request rejects their remote ids.
+	* @param generations - request-image variants with the exact file id the request used for each.
 	* @param connection - endpoint and API-key snapshot.
 	*/
-	async invalidate(version, fileId, connection) {
-		await this.index.remove(fileScope(connection), version.variantId, fileId);
+	async invalidate(generations, connection) {
+		await this.index.remove(fileScope(connection), generations);
 	}
 	/**
 	* Delete the indexed remote file for one attachment and remove its local mapping.
@@ -1089,7 +1088,10 @@ var DeepSeekFileStore = class {
 		const record = await this.index.get(scope, version.variantId, this.now(), policy.refreshMarginSeconds * 1e3);
 		if (record === void 0) return false;
 		await this.client(connection).delete(record.fileId, signal);
-		await this.index.remove(scope, version.variantId, record.fileId);
+		await this.index.remove(scope, [{
+			variantId: version.variantId,
+			fileId: record.fileId
+		}]);
 		return true;
 	}
 	/**
@@ -1302,13 +1304,16 @@ var RequestFiles = class {
 		}
 	}
 	/**
-	* Invalidate rejected mappings; only the first stale-id response permits another request.
+	* Invalidate every rejected mapping in one index update; only the first stale-id response permits another request.
 	* @param detail - provider error fields used for stale-id classification.
 	* @returns whether the caller should serialize and dispatch again.
 	*/
 	async retry(detail) {
 		if (this.used.length === 0 || !providerRejectedFileId(detail)) return false;
-		await Promise.all(staleMappings(this.used, detail).map((file) => this.files.invalidate(file.version, file.fileId, this.connection)));
+		await this.files.invalidate(staleMappings(this.used, detail).map((file) => ({
+			variantId: file.version.variantId,
+			fileId: file.fileId
+		})), this.connection);
 		if (this.retried) return false;
 		this.retried = true;
 		return true;

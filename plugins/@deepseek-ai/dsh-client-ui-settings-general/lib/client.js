@@ -57,7 +57,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.module.css.mjs
-		const css$6 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute;inset:0}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-top-clearance,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css$6 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{inset:var(--dsh-frame-chrome-top,0px) 0 0;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId$6 = "@deepseek-ai/dsh-client-ui-settings-general/SettingsRoot.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
@@ -128,6 +128,10 @@ window.__ModuleLoader__.load({
 				ready: t("desktop.update.ready"),
 				error: t("desktop.update.retry")
 			}[state.phase];
+			if (state.phase === "checking" || state.phase === "verifying" || state.phase === "installing") return {
+				label,
+				detail: state.version ?? label
+			};
 			if (state.phase === "error") return {
 				label,
 				detail: {
@@ -700,7 +704,7 @@ window.__ModuleLoader__.load({
 		function CurrentVersionRow({ t }) {
 			return (0, react_jsx_runtime.jsx)("div", {
 				className: CurrentVersionRow_module_css_default.row,
-				children: t("general.currentVersion", { version: "0.1.7-rc.2" })
+				children: t("general.currentVersion", { version: "0.2.0-rc.2" })
 			});
 		}
 		//#endregion
@@ -907,16 +911,16 @@ window.__ModuleLoader__.load({
 			"desktop.update.installing": "正在准备重启…",
 			"desktop.update.ready": "安装并重启",
 			"desktop.update.retry": "重试更新",
-			"desktop.update.versionDetail": "{label} — V{version}",
-			"desktop.update.downloadDetail": "正在下载更新：{percent}%\n目标版本：V{version}",
+			"desktop.update.versionDetail": "{label}：{version}",
+			"desktop.update.downloadDetail": "正在下载更新：{percent}%\n目标版本：{version}",
 			"desktop.update.checkFailed": "检查更新失败，请稍后重试。",
 			"desktop.update.downloadFailed": "下载更新失败，请重试。",
 			"desktop.update.installFailed": "安装更新失败，请稍后重试。",
-			"desktop.update.checkNetworkFailed": "检查更新失败，请稍后重试。网络连接异常，请检查网络后重试。",
-			"desktop.update.downloadNetworkFailed": "下载更新失败，请重试。网络连接异常，请检查网络后重试。",
-			"desktop.update.installNetworkFailed": "安装更新失败，请稍后重试。网络连接异常，请检查网络后重试。",
-			"desktop.update.stopFailed": "未能安全停止任务，更新未安装。请稍后重试。",
-			"desktop.update.tasksChanged": "有新任务开始，请重新确认更新。",
+			"desktop.update.checkNetworkFailed": "检查更新失败，请检查网络连接后重试。",
+			"desktop.update.downloadNetworkFailed": "下载更新失败，请检查网络连接后重试。",
+			"desktop.update.installNetworkFailed": "安装更新失败，请检查网络连接后重试。",
+			"desktop.update.stopFailed": "未能安全停止任务，更新尚未安装，请稍后重试。",
+			"desktop.update.tasksChanged": "有新任务开始运行，请重新确认是否停止任务并更新。",
 			"desktop.update.tasksUnavailable": "无法确认任务状态，请在工作区就绪后重试更新。",
 			"title": "设置",
 			"close": "关闭",
@@ -924,9 +928,9 @@ window.__ModuleLoader__.load({
 			"openDocument.error": "无法打开配置文件",
 			"general.nav": "通用设置",
 			"general.currentVersion": "当前版本：{version}",
-			"developerTools.title": "代码工作工具",
+			"developerTools.title": "显示代码工作视图",
 			"developerTools.error": "保存失败，请重试",
-			"developerTools.description": "开启后显示轨迹、本轮代码差异，新对话中的 Agent 预设切换",
+			"developerTools.description": "开启后，显示轨迹、本轮代码差异，可选择完整的 Agent 预设切换",
 			"connection.error": "连接异常，刷新重试",
 			"connection.connecting": "重新连接中",
 			"connection.connected": "连接成功",
@@ -944,16 +948,16 @@ window.__ModuleLoader__.load({
 			"desktop.update.installing": "Preparing to restart…",
 			"desktop.update.ready": "Install and Restart",
 			"desktop.update.retry": "Retry update",
-			"desktop.update.versionDetail": "{label} — V{version}",
-			"desktop.update.downloadDetail": "Downloading update: {percent}%\nTarget version: V{version}",
+			"desktop.update.versionDetail": "{label}: {version}",
+			"desktop.update.downloadDetail": "Downloading update: {percent}%\nTarget version: {version}",
 			"desktop.update.checkFailed": "Could not check for updates. Please try again later.",
 			"desktop.update.downloadFailed": "Could not download the update. Please try again.",
 			"desktop.update.installFailed": "Could not install the update. Please try again later.",
-			"desktop.update.checkNetworkFailed": "Could not check for updates. Please try again later. The connection was interrupted. Check your network and try again.",
-			"desktop.update.downloadNetworkFailed": "Could not download the update. Please try again. The connection was interrupted. Check your network and try again.",
-			"desktop.update.installNetworkFailed": "Could not install the update. Please try again later. The connection was interrupted. Check your network and try again.",
-			"desktop.update.stopFailed": "Tasks could not be stopped safely. The update was not installed. Please try again later.",
-			"desktop.update.tasksChanged": "New tasks started. Review the update confirmation again.",
+			"desktop.update.checkNetworkFailed": "Could not check for updates. Check your connection and try again.",
+			"desktop.update.downloadNetworkFailed": "Could not download the update. Check your connection and try again.",
+			"desktop.update.installNetworkFailed": "Could not install the update. Check your connection and try again.",
+			"desktop.update.stopFailed": "Could not safely stop the tasks. The update has not been installed. Please try again later.",
+			"desktop.update.tasksChanged": "New tasks have started. Confirm again to stop the tasks and update.",
 			"desktop.update.tasksUnavailable": "Task status is unavailable. Try updating again when the workspace is ready.",
 			"title": "Settings",
 			"close": "Close",
@@ -961,9 +965,9 @@ window.__ModuleLoader__.load({
 			"openDocument.error": "Could not open configuration file",
 			"general.nav": "General",
 			"general.currentVersion": "Current version: {version}",
-			"developerTools.title": "Coding Tools",
+			"developerTools.title": "Show coding view",
 			"developerTools.error": "Could not save. Please try again.",
-			"developerTools.description": "Shows trajectory, code diffs, and Agent preset switching in new chats",
+			"developerTools.description": "Shows trajectory, code diffs, and all Agent presets",
 			"connection.error": "Disconnected",
 			"connection.connecting": "Reconnecting",
 			"connection.connected": "Connected",
@@ -1121,11 +1125,11 @@ window.__ModuleLoader__.load({
 						},
 						"web:macos": {
 							code: "Comma",
-							modifiers: ["primary"]
+							modifiers: ["primary", "alt"]
 						},
 						"web:windows": {
 							code: "Comma",
-							modifiers: ["primary"]
+							modifiers: ["primary", "alt"]
 						}
 					},
 					regions: [

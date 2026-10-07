@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-primitives",
   "description": "Pure React atoms for the dsh web UI: controls, icons, markdown, and JSON inspectors (zero cordis)",
-  "version": "0.1.7-rc.2",
+  "version": "0.2.0-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -47,10 +47,10 @@
     "micromark-extension-gfm": "^3.0.0",
     "micromark-util-sanitize-uri": "^2.0.1",
     "simple-icons": "16.31.0",
+    "@deepseek-ai/dsh-client-store": "0.2.0-rc.2",
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-client-store": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-util-code-language": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-util-workspace-path": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-util-code-language": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-util-workspace-path": "0.2.0-rc.2"
   },
   "files": [
     "lib/index.js",

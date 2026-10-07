@@ -39,6 +39,7 @@ export interface ToolRowProps {
     errorSummary?: string | null | undefined;
     /** Terminal card; card fields are mutually exclusive and replace text sections. */
     terminal?: TerminalCardModel | null | undefined;
+    /** Diff card with inline totals colored on header hover and while expanded. */
     diff?: DiffCardModel | null | undefined;
     read?: ReadCardModel | null | undefined;
     /**

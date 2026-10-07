@@ -1194,13 +1194,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/AskQuestionCard.module.css.mjs
-		const css$4 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-base);flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
-		const tagId$4 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
+		const css$5 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-base);flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
+		const tagId$5 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$4;
-			tag.textContent = css$4;
+			tag.dataset.pluginCss = tagId$5;
+			tag.textContent = css$5;
 			document.head.appendChild(tag);
 		}
 		var AskQuestionCard_module_css_default = {
@@ -1257,13 +1257,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolDetails.module.css.mjs
-		const css$3 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:0}.DXqwVW_root .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:3px}";
-		const tagId$3 = "@deepseek-ai/dsh-client-ui-tool/ToolDetails.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
+		const css$4 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:0}.DXqwVW_root .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:3px}";
+		const tagId$4 = "@deepseek-ai/dsh-client-ui-tool/ToolDetails.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$3;
-			tag.textContent = css$3;
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
 			document.head.appendChild(tag);
 		}
 		var ToolDetails_module_css_default = {
@@ -1431,22 +1431,23 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolRow.module.css.mjs
-		const css$2 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_leading,.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{color:var(--dsw-alias-state-business-primary)}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_sep{background:var(--dsw-alias-state-business-primary)}.o3BgMG_chevron{color:var(--dsw-alias-label-secondary)}.o3BgMG_title{font-weight:400;transition:color .1s}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;margin-left:4px;transition:color .1s}.o3BgMG_row:hover .o3BgMG_title,.o3BgMG_row:hover .o3BgMG_summary:not(.o3BgMG_errorSummary):not(.o3BgMG_stoppedSummary),.o3BgMG_row:hover .o3BgMG_summarySuffix{color:var(--dsw-alias-label-primary)}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);color:var(--dsw-alias-label-caption);margin-left:10px;transform:translateY(.5px)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);text-decoration:underline dotted;text-decoration-color:var(--dsw-alias-label-tertiary);text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration-thickness:1px;transition:color .1s;overflow:hidden}.o3BgMG_row:hover .o3BgMG_fileLink,.o3BgMG_fileLink:hover{color:var(--dsw-alias-label-primary);text-decoration-color:currentColor}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
-		const tagId$2 = "@deepseek-ai/dsh-client-ui-tool/ToolRow.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+		const css$3 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_title{font-weight:400}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:auto;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:none;margin-left:4px}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);margin-left:10px;transform:translateY(.5px)}.o3BgMG_row:is(:hover,[aria-expanded=true]) .o3BgMG_diffAdded{color:var(--dsw-alias-state-success-primary)}.o3BgMG_row:is(:hover,[aria-expanded=true]) .o3BgMG_diffRemoved{color:var(--dsw-alias-state-error-primary)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:inherit;text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration:underline 1px dotted;overflow:hidden}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const tagId$3 = "@deepseek-ai/dsh-client-ui-tool/ToolRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$2;
-			tag.textContent = css$2;
+			tag.dataset.pluginCss = tagId$3;
+			tag.textContent = css$3;
 			document.head.appendChild(tag);
 		}
 		var ToolRow_module_css_default = {
 			"bodyScroll": "o3BgMG_bodyScroll",
 			"bodyWrap": "o3BgMG_bodyWrap",
-			"chevron": "o3BgMG_chevron",
 			"codeBody": "o3BgMG_codeBody",
 			"detailsBodyWrap": "o3BgMG_detailsBodyWrap",
+			"diffAdded": "o3BgMG_diffAdded",
 			"diffBody": "o3BgMG_diffBody",
+			"diffRemoved": "o3BgMG_diffRemoved",
 			"diffStat": "o3BgMG_diffStat",
 			"errorSummary": "o3BgMG_errorSummary",
 			"fileLink": "o3BgMG_fileLink",
@@ -1526,11 +1527,7 @@ window.__ModuleLoader__.load({
 			const running = state === "running" || state === "preparing";
 			const normalSummary = terminalBody?.description ?? (open ? detailsBody?.expandedSummary ?? summary : summary);
 			const summaryText = (state === "error" ? errorSummary ?? normalSummary : null) ?? normalSummary;
-			const diffStat = (0, react.useMemo)(() => {
-				if (diffBody === null) return null;
-				const { added, removed } = (0, _deepseek_ai_dsh_client_ui_primitives.diffTotals)(diffBody.card.diffs);
-				return `+${added} -${removed}`;
-			}, [diffBody]);
+			const diffStat = (0, react.useMemo)(() => diffBody === null ? null : (0, _deepseek_ai_dsh_client_ui_primitives.diffTotals)(diffBody.card.diffs), [diffBody]);
 			const settledWithCue = state === "error" || state === "stopped";
 			const suffix = settledWithCue ? null : summarySuffix ?? diffStat;
 			const openFile = (0, react.useMemo)(() => filePath !== void 0 && onOpenFile !== void 0 && !settledWithCue ? (event) => {
@@ -1551,6 +1548,7 @@ window.__ModuleLoader__.load({
 			const collapsedContent = (0, react.useMemo)(() => summaryText !== "" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 				(0, react_jsx_runtime.jsx)("span", {
 					className: ToolRow_module_css_default.sep,
+					"data-shimmer-decoration": true,
 					"aria-hidden": true
 				}),
 				openFile !== void 0 ? (0, react_jsx_runtime.jsx)("button", {
@@ -1558,10 +1556,7 @@ window.__ModuleLoader__.load({
 					className: ToolRow_module_css_default.fileLink,
 					onClick: openFile,
 					onKeyDown: summaryLinkKeyDown,
-					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-						active: running,
-						children: summaryText
-					})
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: summaryText })
 				}) : linkHref !== void 0 ? (0, react_jsx_runtime.jsx)("a", {
 					className: ToolRow_module_css_default.fileLink,
 					href: linkHref,
@@ -1569,28 +1564,29 @@ window.__ModuleLoader__.load({
 					rel: "noopener noreferrer",
 					onClick: stopLinkClick,
 					onKeyDown: summaryLinkKeyDown,
-					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-						active: running,
-						children: summaryText
-					})
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: summaryText })
 				}) : (0, react_jsx_runtime.jsx)("span", {
 					className: clsx(ToolRow_module_css_default.summary, state === "error" && ToolRow_module_css_default.errorSummary, state === "stopped" && ToolRow_module_css_default.stoppedSummary),
-					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-						active: running,
-						children: summaryText
-					})
+					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: summaryText })
 				}),
 				suffix !== null && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-					className: clsx(ToolRow_module_css_default.summarySuffix, suffix === diffStat && ToolRow_module_css_default.diffStat),
-					active: running,
-					children: suffix
+					className: clsx(ToolRow_module_css_default.summarySuffix, typeof suffix !== "string" && ToolRow_module_css_default.diffStat),
+					children: typeof suffix === "string" ? suffix : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+						(0, react_jsx_runtime.jsx)("span", {
+							className: ToolRow_module_css_default.diffAdded,
+							children: `+${suffix.added}`
+						}),
+						" ",
+						(0, react_jsx_runtime.jsx)("span", {
+							className: ToolRow_module_css_default.diffRemoved,
+							children: `-${suffix.removed}`
+						})
+					] })
 				})
 			] }), [
-				diffStat,
 				summaryLinkKeyDown,
 				linkHref,
 				openFile,
-				running,
 				state,
 				suffix,
 				summaryText
@@ -1729,7 +1725,6 @@ window.__ModuleLoader__.load({
 					rowClassName: ToolRow_module_css_default.row,
 					leadingClassName: ToolRow_module_css_default.leading,
 					titleClassName: ToolRow_module_css_default.title,
-					chevronClassName: ToolRow_module_css_default.chevron,
 					icon,
 					title,
 					running,
@@ -1790,13 +1785,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/ToolCallTree.module.css.mjs
-		const css$1 = ".ztWv_q_callRow{border-radius:var(--dsw-radius-sm)}.ztWv_q_subCalls{border-left:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:4px;margin:4px 0 2px 22px;padding-left:8px;display:flex}";
-		const tagId$1 = "@deepseek-ai/dsh-client-ui-tool/ToolCallTree.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
+		const css$2 = ".ztWv_q_callRow{border-radius:var(--dsw-radius-sm)}.ztWv_q_subCalls{border-left:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:4px;margin:4px 0 2px 22px;padding-left:8px;display:flex}";
+		const tagId$2 = "@deepseek-ai/dsh-client-ui-tool/ToolCallTree.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$1;
-			tag.textContent = css$1;
+			tag.dataset.pluginCss = tagId$2;
+			tag.textContent = css$2;
 			document.head.appendChild(tag);
 		}
 		var ToolCallTree_module_css_default = {
@@ -1956,6 +1951,111 @@ window.__ModuleLoader__.load({
 		/** Locale namespace supplied by the conversation owner to Tool renderers. */
 		const CONVERSATION_NS = "conversation";
 		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/QuestionToolRow.module.css.mjs
+		const css$1 = ".nvmz7W_panelButton{height:calc(22px + var(--dsh-content-font-delta,0px));corner-shape:round;background:var(--dsw-alias-button-floating-fill);color:var(--dsw-alias-label-primary);font-family:inherit;font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);white-space:nowrap;cursor:pointer;border:none;border-radius:999px;flex:none;align-items:center;gap:4px;margin-left:8px;padding:0 10px;line-height:1;transition:background .1s;display:inline-flex}.nvmz7W_panelButton svg{width:13px;height:13px}.nvmz7W_panelButton:hover{background:var(--dsw-alias-button-floating-hover)}";
+		const tagId$1 = "@deepseek-ai/dsh-client-ui-tool/QuestionToolRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
+			tag.dataset.pluginCss = tagId$1;
+			tag.textContent = css$1;
+			document.head.appendChild(tag);
+		}
+		var QuestionToolRow_module_css_default = { "panelButton": "nvmz7W_panelButton" };
+		//#endregion
+		//#region lib/types/client/tool/components/QuestionToolRow.js
+		/** Question-owned summary action and transcript disclosure. */
+		/**
+		* Render a question with its answer-panel entry point.
+		* @param props - Question transcript, panel action, and disclosure state.
+		* @returns The question's summary and optional expanded record.
+		*/
+		function QuestionToolRow({ useDisclosure, t, summary, bodyRaw, output, askQuestion, state, inspect, openPanel, panelLabel }) {
+			const { expanded, toggle } = useDisclosure();
+			const expandable = bodyRaw != null || output != null || askQuestion != null;
+			const open = expanded && expandable;
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: ToolRow_module_css_default.root,
+				"data-variant": "others",
+				"data-tool": "ask_user_question",
+				"data-state": state,
+				children: [state === "running" && (0, react_jsx_runtime.jsx)("span", {
+					className: ToolRow_module_css_default.visuallyHidden,
+					children: t("row.running")
+				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.DisclosureRow, {
+					rowClassName: ToolRow_module_css_default.row,
+					leadingClassName: ToolRow_module_css_default.leading,
+					titleClassName: ToolRow_module_css_default.title,
+					chevronClassName: ToolRow_module_css_default.chevron,
+					icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQuestionOutlineRegular, {}),
+					title: t("ask.rowTitle"),
+					running: state === "running",
+					open,
+					expandable,
+					keepContentWhenOpen: true,
+					onToggle: toggle,
+					collapsedContent: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [summary !== "" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)("span", {
+						className: ToolRow_module_css_default.sep,
+						"aria-hidden": true
+					}), (0, react_jsx_runtime.jsx)("span", {
+						className: ToolRow_module_css_default.summary,
+						children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+							active: state === "running",
+							children: summary
+						})
+					})] }), (0, react_jsx_runtime.jsxs)("button", {
+						type: "button",
+						className: QuestionToolRow_module_css_default.panelButton,
+						onClick: (event) => {
+							event.stopPropagation();
+							if (!openPanel()) toggle();
+						},
+						onKeyDown: (event) => {
+							if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+						},
+						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconQuestionOutlineRegular, {}), panelLabel]
+					})] }),
+					children: open && (0, react_jsx_runtime.jsxs)("div", {
+						className: ToolRow_module_css_default.bodyWrap,
+						children: [askQuestion != null ? (0, react_jsx_runtime.jsx)(AskQuestionCard, { card: askQuestion }) : (0, react_jsx_runtime.jsxs)("div", {
+							className: ToolRow_module_css_default.ioCard,
+							children: [
+								bodyRaw != null && (0, react_jsx_runtime.jsxs)("div", {
+									className: ToolRow_module_css_default.ioSection,
+									children: [(0, react_jsx_runtime.jsx)("span", {
+										className: ToolRow_module_css_default.ioLabel,
+										children: t("row.input")
+									}), (0, react_jsx_runtime.jsx)("span", {
+										className: ToolRow_module_css_default.ioText,
+										children: formatToolBody("others", bodyRaw)
+									})]
+								}),
+								bodyRaw != null && output != null && (0, react_jsx_runtime.jsx)("span", {
+									className: ToolRow_module_css_default.ioDivider,
+									"aria-hidden": true
+								}),
+								output != null && (0, react_jsx_runtime.jsxs)("div", {
+									className: ToolRow_module_css_default.ioSection,
+									children: [(0, react_jsx_runtime.jsx)("span", {
+										className: ToolRow_module_css_default.ioLabel,
+										children: t("row.output")
+									}), (0, react_jsx_runtime.jsx)("span", {
+										className: ToolRow_module_css_default.ioText,
+										children: output
+									})]
+								})
+							]
+						}), inspect !== void 0 && (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							className: ToolRow_module_css_default.inspectButton,
+							onClick: inspect,
+							children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconInspectOutlineRegular, {}), t("row.inspect")]
+						})]
+					})
+				})]
+			});
+		}
+		//#endregion
 		//#region lib/types/client/tool/toolviews/ask-question-row.js
 		function isRecord(value) {
 			return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -1984,7 +2084,35 @@ window.__ModuleLoader__.load({
 			}
 			return entries;
 		}
-		/** Questions from call JSON; null when pairing with answers would be ambiguous. */
+		/** Answers from a submitted steer that still awaits admission to a step. */
+		function queuedAnswerEntries(message, callId) {
+			if (!isRecord(message) || !Array.isArray(message.content)) return null;
+			const content = message.content[0];
+			if (!isRecord(content) || content.type !== "text" || typeof content.text !== "string") return null;
+			const parsed = parseJson(content.text);
+			if (!isRecord(parsed) || parsed.kind !== "answer_to_pending_question" || parsed.callId !== callId) return null;
+			return answerEntries(content.text);
+		}
+		/** One question's choices from call JSON; absent when any entry is malformed. */
+		function optionEntries(value) {
+			if (!Array.isArray(value)) return void 0;
+			const options = [];
+			for (const option of value) {
+				if (!isRecord(option) || typeof option.label !== "string") return void 0;
+				options.push({
+					label: option.label,
+					...typeof option.description === "string" ? { description: option.description } : {}
+				});
+			}
+			return options;
+		}
+		/**
+		* Questions from call JSON; null when pairing with answers would be ambiguous.
+		* The optional presentation fields are carried for the read-only answer panel,
+		* which renders the same option lists the user chose from; a malformed one is
+		* dropped rather than failing the whole call, because the transcript card needs
+		* only the id and the question text.
+		*/
 		function questionEntries(argsRaw) {
 			const parsed = parseJson(argsRaw);
 			if (!isRecord(parsed) || !Array.isArray(parsed.questions) || parsed.questions.length === 0) return null;
@@ -1993,17 +2121,21 @@ window.__ModuleLoader__.load({
 			for (const question of parsed.questions) {
 				if (!isRecord(question) || typeof question.id !== "string" || typeof question.question !== "string" || ids.has(question.id)) return null;
 				ids.add(question.id);
+				const options = optionEntries(question.options);
 				questions.push({
 					id: question.id,
-					question: question.question
+					question: question.question,
+					...typeof question.header === "string" ? { header: question.header } : {},
+					...typeof question.detail === "string" ? { detail: question.detail } : {},
+					...options === void 0 ? {} : { options },
+					...typeof question.multi_select === "boolean" ? { multiSelect: question.multi_select } : {}
 				});
 			}
 			return questions;
 		}
 		/** Pair questions with result entries by their echoed stable ids. */
-		function pairAnswers(argsRaw, answers) {
-			const questions = questionEntries(argsRaw);
-			if (questions === null || questions.length !== answers.length) return null;
+		function pairAnswers(questions, answers) {
+			if (questions.length !== answers.length) return null;
 			const byId = /* @__PURE__ */ new Map();
 			for (const answer of answers) {
 				if (byId.has(answer.id)) return null;
@@ -2014,23 +2146,38 @@ window.__ModuleLoader__.load({
 				const answer = byId.get(question.id);
 				if (answer === void 0) return null;
 				paired.push({
-					...question,
+					id: question.id,
+					question: question.question,
 					answers: [...answer.selected, ...answer.custom === void 0 || answer.custom === "" ? [] : [answer.custom]]
 				});
 			}
 			return paired;
 		}
-		/** Answer summary plus structured transcript content from the two wire JSON documents. */
-		function answeredPresentation(argsRaw, text, t) {
-			const answers = answerEntries(text);
-			if (answers === null) return null;
+		/**
+		* Answer summary, transcript content, and panel material from one recorded
+		* answer batch, whether the result carried it in time or a late reply did.
+		* @param questions - The call's questions, or null when they failed validation.
+		* @param answers - The recorded answer batch.
+		* @param t - Row translator.
+		* @returns What the answered row shows.
+		*/
+		function answeredPresentation(questions, answers, t) {
 			const answered = answers.filter((answer) => answer.selected.length > 0 || (answer.custom ?? "") !== "").length;
+			const paired = questions === null ? null : pairAnswers(questions, answers);
 			return {
 				summary: t("ask.answered", {
 					answered,
 					total: answers.length
 				}),
-				questions: pairAnswers(argsRaw, answers)
+				transcript: paired === null ? null : {
+					kind: "answered",
+					questions: paired,
+					skippedLabel: t("ask.skipped")
+				},
+				record: paired === null || questions === null ? void 0 : {
+					questions,
+					answers
+				}
 			};
 		}
 		/** Best-effort answered-count summary when strict transcript pairing fails. */
@@ -2045,14 +2192,31 @@ window.__ModuleLoader__.load({
 				total: answers.length
 			});
 		}
+		/** Whether a successful tool result records a still-answerable timed question. */
+		function isPendingResult(text) {
+			const parsed = parseJson(text);
+			return isRecord(parsed) && parsed.pending === true && typeof parsed.callId === "string";
+		}
 		/** Summarizes a pending, answered, cancelled, or interrupted question set. */
-		function AskQuestionRow({ toolName, block, inspect, useDisclosure, t }) {
+		function AskQuestionRow({ callId, toolName, block, inspect, useDisclosure, useProjection, revealPanel, reviewPanel, t }) {
 			const model = toolRowModel(toolName, block);
+			const answerable = useProjection("userQuestions", (view) => view?.active.some((row) => row.callId === callId) ?? false);
+			const settled = useProjection("userQuestions", (view) => view?.settled.find((row) => row.callId === callId));
+			const queuedReply = useProjection("inbox", (view) => {
+				const matches = (message) => {
+					const source = isRecord(message) ? message.source : void 0;
+					return isRecord(source) && source.kind === "user-question-reply" && source.callId === callId;
+				};
+				return view?.["next-step"].find(matches) ?? view?.["next-turn"].find(matches);
+			});
+			const reopen = (0, react.useCallback)(() => revealPanel(callId), [callId, revealPanel]);
 			const code = "kind" in block ? block.error?.code : void 0;
 			const argsRaw = model.bodyRaw ?? "";
 			let summary = model.summary;
 			let state = model.state;
 			let transcript = null;
+			let rowAction;
+			let rowActionLabel = t("ask.reopen");
 			if (code === "ASK_CANCELLED") {
 				summary = t("ask.cancelled");
 				state = "ok";
@@ -2071,19 +2235,92 @@ window.__ModuleLoader__.load({
 					questions,
 					verdict: t("ask.interruptedDetail")
 				};
-			} else if (model.state === "running") summary = t("ask.waiting");
-			else if ("kind" in block && model.state === "ok") {
+			} else if (model.state === "running") {
+				summary = t("ask.waiting");
+				if (answerable) rowAction = reopen;
+			} else if (code === "TOOL_OUTCOME_UNKNOWN" && (answerable || settled !== void 0)) {
+				state = "ok";
+				const questions = questionEntries(argsRaw);
+				if (answerable) {
+					summary = t("ask.pending");
+					if (questions !== null) transcript = {
+						kind: "unanswered",
+						questions,
+						verdict: t("ask.pendingDetail")
+					};
+					rowAction = reopen;
+				} else if (settled?.answers.length === 0) {
+					summary = t("ask.closed");
+					if (questions !== null) transcript = {
+						kind: "unanswered",
+						questions,
+						verdict: t("ask.closedDetail")
+					};
+				} else if (settled !== void 0) {
+					const presentation = answeredPresentation(questions, settled.answers, t);
+					summary = presentation.summary;
+					transcript = presentation.transcript;
+					const record = presentation.record;
+					if (record !== void 0) {
+						rowAction = () => reviewPanel(callId, record);
+						rowActionLabel = t("ask.review");
+					}
+				}
+			} else if ("kind" in block && model.state === "ok") {
 				const text = singleResultText(block);
 				if (text !== void 0) {
-					const presentation = answeredPresentation(argsRaw, text, t);
-					summary = presentation?.summary ?? answeredSummary(text, t) ?? model.summary;
-					if (presentation?.questions !== null && presentation?.questions !== void 0) transcript = {
-						kind: "answered",
-						questions: presentation.questions,
-						skippedLabel: t("ask.skipped")
-					};
+					const questions = questionEntries(argsRaw);
+					const pending = isPendingResult(text);
+					if (pending && answerable) {
+						summary = t("ask.pending");
+						if (questions !== null) transcript = {
+							kind: "unanswered",
+							questions,
+							verdict: t("ask.pendingDetail")
+						};
+						rowAction = reopen;
+					} else if (pending && (settled === void 0 || settled.answers.length === 0)) {
+						summary = t("ask.closed");
+						if (questions !== null) transcript = {
+							kind: "unanswered",
+							questions,
+							verdict: t("ask.closedDetail")
+						};
+					} else {
+						const answers = settled?.answers ?? answerEntries(text);
+						const presentation = answers === null ? null : answeredPresentation(questions, answers, t);
+						summary = presentation?.summary ?? answeredSummary(text, t) ?? model.summary;
+						transcript = presentation?.transcript ?? null;
+						const record = settled === void 0 ? void 0 : presentation?.record;
+						if (record !== void 0) {
+							rowAction = () => reviewPanel(callId, record);
+							rowActionLabel = t("ask.review");
+						}
+					}
 				}
 			}
+			if (answerable && queuedReply !== void 0 && rowAction === reopen) {
+				const answers = queuedAnswerEntries(queuedReply, callId);
+				const presentation = answers === null ? null : answeredPresentation(questionEntries(argsRaw), answers, t);
+				if (presentation?.record !== void 0) {
+					summary = presentation.summary;
+					transcript = presentation.transcript;
+					rowAction = () => false;
+					rowActionLabel = t("ask.review");
+				}
+			}
+			if (rowAction !== void 0) return (0, react_jsx_runtime.jsx)(QuestionToolRow, {
+				useDisclosure,
+				t,
+				summary,
+				bodyRaw: transcript === null ? model.bodyRaw : null,
+				output: transcript === null ? model.output : null,
+				askQuestion: transcript,
+				state,
+				inspect,
+				openPanel: rowAction,
+				panelLabel: rowActionLabel
+			});
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
 				useDisclosure,
 				t,
@@ -2107,7 +2344,11 @@ window.__ModuleLoader__.load({
 				ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({
 					name: "tool.call.toolview",
 					key: "ask_user_question",
-					locale: CONVERSATION_NS
+					locale: CONVERSATION_NS,
+					inject: (sessionId) => ({
+						revealPanel: (callId) => ctx.get("userQuestionPanels")?.reveal(sessionId, callId) ?? false,
+						reviewPanel: (callId, record) => ctx.get("userQuestionPanels")?.review(sessionId, callId, record) ?? false
+					})
 				}, AskQuestionRow));
 			}
 		};
@@ -2132,7 +2373,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/toolviews/bash-sample.module.css.mjs
-		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));align-items:center;min-width:0;display:flex}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:var(--dsw-alias-label-secondary)}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-secondary);flex:none;transition:color .1s}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary);flex:auto;transition:color .1s;overflow:hidden}.CY-8Ka_root:hover .CY-8Ka_title,.CY-8Ka_root:hover .CY-8Ka_summary:not(.CY-8Ka_errorSummary):not(.CY-8Ka_stoppedSummary){color:var(--dsw-alias-label-primary)}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));min-width:0;color:var(--dsw-alias-label-tertiary);align-items:center;transition:color .1s;display:flex}.CY-8Ka_root:hover{color:var(--dsw-alias-label-secondary)}@media (prefers-reduced-motion:reduce){.CY-8Ka_root{transition:none}}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:inherit;flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:inherit}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:none}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:auto;overflow:hidden}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId = "@deepseek-ai/dsh-client-ui-tool/bash-sample.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -2240,21 +2481,23 @@ window.__ModuleLoader__.load({
 							className: bash_sample_module_css_default.visuallyHidden,
 							children: status
 						}),
-						(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-							className: bash_sample_module_css_default.title,
+						(0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
 							active: running,
-							children: t(model.titleKey)
-						}),
-						(0, react_jsx_runtime.jsx)("span", {
-							className: bash_sample_module_css_default.sep,
-							"aria-hidden": true
-						}),
-						(0, react_jsx_runtime.jsx)("span", {
-							className: clsx(bash_sample_module_css_default.summary, state === "error" && bash_sample_module_css_default.errorSummary, state === "stopped" && bash_sample_module_css_default.stoppedSummary),
-							children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-								active: running,
-								children: settlementLine ?? normalSummary
-							})
+							children: [
+								(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+									className: bash_sample_module_css_default.title,
+									children: t(model.titleKey)
+								}),
+								(0, react_jsx_runtime.jsx)("span", {
+									className: bash_sample_module_css_default.sep,
+									"data-shimmer-decoration": true,
+									"aria-hidden": true
+								}),
+								(0, react_jsx_runtime.jsx)("span", {
+									className: clsx(bash_sample_module_css_default.summary, state === "error" && bash_sample_module_css_default.errorSummary, state === "stopped" && bash_sample_module_css_default.stoppedSummary),
+									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: settlementLine ?? normalSummary })
+								})
+							]
 						})
 					]
 				}), open && (0, react_jsx_runtime.jsxs)("div", {

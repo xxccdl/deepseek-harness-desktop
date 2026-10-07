@@ -22,7 +22,7 @@ type SessionStatuses = SessionStatusSnapshot;
 /** One top-level session row in a group or the flat list. */
 export interface SessionNode {
     id: SessionId;
-    /** Stored display title; the renderer substitutes the localized New Session label for blank rows. */
+    /** Stored title, or empty; the renderer localizes blank and unnamed row labels. */
     title: string;
     /** The provisional blank session (renderer shows the localized New Session title). */
     blank: boolean;

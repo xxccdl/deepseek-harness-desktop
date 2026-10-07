@@ -1,4 +1,3 @@
-/** Register the Chat Conversation target, renderers, stats, and details surface. */
 import type { Context } from '@deepseek-ai/cordis';
 /** Services required by the Chat target and its presentation registrations. */
 export declare const inject: string[];

@@ -13,8 +13,6 @@ export declare const zh: {
     'command.label': string;
     'command.description': string;
     'option.loadError': string;
-    'option.deepseekV4Flash.description': string;
-    'option.deepseekV4Pro.description': string;
     'trigger.fallback': string;
     'trigger.loading': string;
     'trigger.selectAria': string;
@@ -29,6 +27,9 @@ export declare const zh: {
     'error.sessionInUse': string;
     'action.reload': string;
     'warning.groupLoad': string;
+    'search.placeholder': string;
+    'search.clear': string;
+    'search.empty': string;
     'empty.models': string;
     'empty.efforts': string;
 };
@@ -40,8 +41,6 @@ export declare const en: {
     'command.label': string;
     'command.description': string;
     'option.loadError': string;
-    'option.deepseekV4Flash.description': string;
-    'option.deepseekV4Pro.description': string;
     'trigger.fallback': string;
     'trigger.loading': string;
     'trigger.selectAria': string;
@@ -56,6 +55,9 @@ export declare const en: {
     'error.sessionInUse': string;
     'action.reload': string;
     'warning.groupLoad': string;
+    'search.placeholder': string;
+    'search.clear': string;
+    'search.empty': string;
     'empty.models': string;
     'empty.efforts': string;
 };

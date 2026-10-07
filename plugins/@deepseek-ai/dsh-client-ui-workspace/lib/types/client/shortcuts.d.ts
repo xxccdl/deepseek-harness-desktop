@@ -35,6 +35,7 @@ interface WorkspaceShortcutControls {
 export declare function createWorkspaceShortcutControls(): WorkspaceShortcutControls;
 /**
  * Register navigation commands against the existing workspace owner.
+ * Rename requires a nonblank main Conversation with no modal obscuring it.
  * @param ctx - plugin context with the shortcut, locale, and model services.
  * @param navigation - session creation and forking from the pointer controls' navigation service.
  * @param controls - browser-owned opening requests.

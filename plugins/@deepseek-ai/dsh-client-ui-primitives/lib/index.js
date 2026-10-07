@@ -18,18 +18,19 @@ import { createPortal } from "react-dom";
 import css$12 from "./ShortcutKeys.module.css";
 import css$13 from "./MenuSurface.module.css";
 import css$14 from "./Menu.module.css";
-import css$15 from "./Tooltip.module.css";
-import css$16 from "./HoverCard.module.css";
-import css$17 from "./Modal.module.css";
-import css$18 from "./RiskConfirmation.module.css";
-import css$19 from "./ConnectionIndicator.module.css";
-import css$20 from "./FileTypeIcon.module.css";
+import css$15 from "./MenuGroup.module.css";
+import css$16 from "./Tooltip.module.css";
+import css$17 from "./HoverCard.module.css";
+import css$18 from "./Modal.module.css";
+import css$19 from "./RiskConfirmation.module.css";
+import css$20 from "./ConnectionIndicator.module.css";
+import css$21 from "./FileTypeIcon.module.css";
 import { siAliexpress, siApple, siBaidu, siBilibili, siCsdn, siDuckduckgo, siEbay, siFacebook, siGithub, siGitlab, siGoogle, siInstagram, siJuejin, siMdnwebdocs, siNetflix, siNpm, siPypi, siQq, siQuora, siReddit, siSinaweibo, siSpotify, siStackoverflow, siTaobao, siTelegram, siTiktok, siV2ex, siWechat, siWhatsapp, siWikipedia, siX, siYcombinator, siYoutube, siZhihu } from "simple-icons";
-import css$21 from "./user-text.module.css";
+import css$22 from "./user-text.module.css";
 import markdownCss from "./markdown/MarkdownText.module.css";
-import css$22 from "./Toast.module.css";
-import css$23 from "./settings-form/SettingsForm.module.css";
-import css$24 from "./settings-form/fields.module.css";
+import css$23 from "./Toast.module.css";
+import css$24 from "./settings-form/SettingsForm.module.css";
+import css$25 from "./settings-form/fields.module.css";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { createCssVariablesTheme, createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine, defaultJavaScriptRegexConstructor } from "shiki/engine/javascript";
@@ -37,14 +38,14 @@ import langTs from "@shikijs/langs/typescript";
 import langBash from "@shikijs/langs/shellscript";
 import langJson from "@shikijs/langs/json";
 import { CODE_HIGHLIGHT_EXTENSIONS, languageForPath } from "@deepseek-ai/dsh-util-code-language";
-import css$25 from "./JsonTree.module.css";
+import css$26 from "./JsonTree.module.css";
 import Anser from "anser";
-import css$26 from "./TerminalBlock.module.css";
+import css$27 from "./TerminalBlock.module.css";
 import cardCss from "./CodeCard.module.css";
-import css$27 from "./ReadBlock.module.css";
+import css$28 from "./ReadBlock.module.css";
 import { structuredPatch } from "diff";
-import css$28 from "./DiffBlock.module.css";
-import css$29 from "./SearchBlock.module.css";
+import css$29 from "./DiffBlock.module.css";
+import css$30 from "./SearchBlock.module.css";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { mathFromMarkdown } from "mdast-util-math";
@@ -56,13 +57,13 @@ import { classifyCharacter } from "micromark-util-classify-character";
 import { codes, constants, types } from "micromark-util-symbol";
 import { factorySpace } from "micromark-factory-space";
 import { normalizeUri } from "micromark-util-sanitize-uri";
-import css$30 from "./markdown/CodeBlock.module.css";
+import css$31 from "./markdown/CodeBlock.module.css";
 import katex from "katex";
-import css$31 from "./ImageLightbox.module.css";
-import css$32 from "./ImagePreview.module.css";
+import css$32 from "./ImageLightbox.module.css";
+import css$33 from "./ImagePreview.module.css";
 import "katex/dist/katex.min.css";
-import css$33 from "./WebBlock.module.css";
-import css$34 from "./markdown/JsonBlock.module.css";
+import css$34 from "./WebBlock.module.css";
+import css$35 from "./markdown/JsonBlock.module.css";
 //#region lib/types/icons/shared-artwork.js
 /**
 * Render new-conversation geometry — the bubble around a plus — for product icons.
@@ -938,15 +939,15 @@ const IconThinkOutlineArtwork = ({ size = 16, className, strokeWidth }) => jsxs(
 	strokeWidth,
 	children: [
 		jsx("path", {
-			d: "M10.7554 5.24466C13.9891 8.4783 15.3769 12.3333 13.8552 13.8551C12.3335 15.3768 8.4785 13.989 5.24478 10.7553C2.01111 7.52165 0.623307 3.66664 2.14504 2.14491C3.66676 0.623189 7.52178 2.01099 10.7554 5.24466Z",
+			d: "M10.2854 5.71481C12.9673 8.39663 14.1182 11.5938 12.8562 12.8559C11.5942 14.1179 8.39706 12.9669 5.71518 10.2851C3.03333 7.60323 1.88236 4.40608 3.14441 3.14403C4.40644 1.882 7.6036 3.03297 10.2854 5.71481Z",
 			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M10.7554 10.7553C7.52178 13.989 3.66676 15.3768 2.14504 13.8551C0.623307 12.3333 2.01111 8.4783 5.24478 5.24466C8.4785 2.01099 12.3335 0.623189 13.8552 2.14491C15.3769 3.66664 13.9891 7.52165 10.7554 10.7553Z",
+			d: "M10.2854 10.2851C7.6036 12.9669 4.40644 14.1179 3.14441 12.8559C1.88236 11.5938 3.03333 8.39663 5.71518 5.71481C8.39706 3.03297 11.5942 1.882 12.8562 3.14403C14.1182 4.40608 12.9673 7.60323 10.2854 10.2851Z",
 			stroke: "currentColor"
 		}),
 		jsx("path", {
-			d: "M8.9587 8.00025C8.9587 8.52835 8.5306 8.95655 8.0024 8.95655C7.47429 8.95655 7.04614 8.52835 7.04614 8.00025C7.04614 7.47209 7.47429 7.04395 8.0024 7.04395C8.5306 7.04395 8.9587 7.47209 8.9587 8.00025Z",
+			d: "M8.86291 8.0002C8.86291 8.47549 8.47762 8.86087 8.00224 8.86087C7.52694 8.86087 7.1416 8.47549 7.1416 8.0002C7.1416 7.52485 7.52694 7.13953 8.00224 7.13953C8.47762 7.13953 8.86291 7.52485 8.86291 8.0002Z",
 			fill: "currentColor"
 		})
 	]
@@ -3094,19 +3095,54 @@ function StateDot({ state, size, className, appearance = "dot" }) {
 }
 //#endregion
 //#region lib/types/TextShimmer.js
-/** Text-only activity animation with a stable span across lifecycle changes. */
-/**
-* Render text with an optional moving highlight; inactive text keeps the same node.
-* @param props - localized text, running state, and owner styling.
-* @returns the retained text span.
-*/
-const TextShimmer = memo(function TextShimmer({ children, active, className }) {
-	const style = useMemo(() => ({ "--dsh-text-shimmer-spread": `${children.length * 8}px` }), [children.length]);
+/** Text activity animation shared by a row and its nested text fragments. */
+const DecorativeCopy = createContext(void 0);
+function TextContent({ children, className }) {
+	const generated = useContext(DecorativeCopy) === true && typeof children === "string";
 	return jsx("span", {
-		className: clsx(css$1.root, className),
-		style,
-		"data-text-shimmer": active || void 0,
+		className: clsx(css$1.text, className),
+		"data-shimmer-text": generated ? children : void 0,
+		children: generated ? null : children
+	});
+}
+/**
+* Render text with one shared highlight while retaining selectable, accessible content.
+* Nested instances inherit the outer animation. Keep icons outside; mark decorative
+* separators with data-shimmer-decoration so their background follows the highlight.
+* Active children also render in an inert, clipped decoration; supply only presentation.
+* @param props - localized text, running state, and owner styling.
+* @returns retained text and its optional decorative highlight.
+*/
+const TextShimmer = memo(function TextShimmer({ children, active = false, className, contentClassName }) {
+	if (useContext(DecorativeCopy) !== void 0) return jsx(TextContent, {
+		className,
 		children
+	});
+	const content = typeof children === "string" ? jsx(TextContent, { children }) : children;
+	return jsxs("span", {
+		className: clsx(css$1.root, className),
+		"data-shimmer": active || void 0,
+		children: [jsx(DecorativeCopy.Provider, {
+			value: false,
+			children: jsx("span", {
+				className: clsx(css$1.content, contentClassName),
+				children: content
+			})
+		}), active && jsx("span", {
+			className: css$1.decoration,
+			"aria-hidden": "true",
+			inert: "",
+			children: jsx("span", {
+				className: css$1.sweep,
+				children: jsx(DecorativeCopy.Provider, {
+					value: true,
+					children: jsx("span", {
+						className: clsx(css$1.content, css$1.highlight, contentClassName),
+						children: content
+					})
+				})
+			})
+		})]
 	});
 });
 //#endregion
@@ -3117,7 +3153,7 @@ const TextShimmer = memo(function TextShimmer({ children, active, className }) {
 * @param props - Visual content, controlled state, and interaction policy.
 * @returns the disclosure row.
 */
-const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandable, onToggle, running = false, expandOnRowClick = false, previewChevron = expandable, keepContentWhenOpen = false, collapsedContent, children, className, rowClassName, leadingClassName, chevronClassName, titleClassName }) {
+const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandable, onToggle, running = false, expandOnRowClick = false, previewChevron = expandable, keepContentWhenOpen = false, collapsedContent, children, className, rowClassName, contentClassName, contentLayoutClassName, leadingClassName, chevronClassName, titleClassName }) {
 	const rowExpands = expandable && expandOnRowClick;
 	const toggleFromLeading = (event) => {
 		event.stopPropagation();
@@ -3145,24 +3181,25 @@ const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandabl
 			"aria-expanded": rowExpands ? open : void 0,
 			onClick: rowExpands ? onToggle : void 0,
 			onKeyDown: rowExpands ? toggleFromKeyboard : void 0,
-			children: [
-				expandable && !rowExpands ? jsx("button", {
-					type: "button",
-					className: clsx(css$2.leading, leadingClassName),
-					"aria-expanded": open,
-					onClick: toggleFromLeading,
-					children: leading
-				}) : jsx("span", {
-					className: clsx(css$2.leading, leadingClassName),
-					children: leading
-				}),
-				jsx(TextShimmer, {
+			children: [expandable && !rowExpands ? jsx("button", {
+				type: "button",
+				className: clsx(css$2.leading, leadingClassName),
+				"aria-label": title,
+				"aria-expanded": open,
+				onClick: toggleFromLeading,
+				children: leading
+			}) : jsx("span", {
+				className: clsx(css$2.leading, leadingClassName),
+				children: leading
+			}), jsxs(TextShimmer, {
+				active: running,
+				className: contentClassName,
+				contentClassName: contentLayoutClassName,
+				children: [jsx(TextShimmer, {
 					className: clsx(css$2.title, titleClassName),
-					active: running,
 					children: title
-				}),
-				(keepContentWhenOpen || !open) && collapsedContent
-			]
+				}), (keepContentWhenOpen || !open) && collapsedContent]
+			})]
 		}), open && children]
 	});
 });
@@ -3486,37 +3523,35 @@ function Checkbox({ checked, onChange, label, disabled = false, title, className
 /**
 * Render a text input with an optional leading icon.
 * @param props.icon - optional 16px leading icon node.
+* @param ref - the native input, cleared when it unmounts.
 * @returns wrapper span containing the native input; input attributes pass through.
 */
-function Input({ icon, className, ...rest }) {
+const Input = forwardRef(function Input({ icon, className, ...rest }, ref) {
 	return jsxs("span", {
 		className: clsx(css$11.wrap, className),
 		children: [icon != null && jsx("span", {
 			className: css$11.icon,
 			children: icon
 		}), jsx("input", {
+			ref,
 			className: css$11.input,
 			...rest
 		})]
 	});
-}
+});
 //#endregion
 //#region lib/types/overlay-top-margin.js
-/**
-* Overlay clearance from the window's top strip. On macOS desktop the frame
-* publishes `--dsh-frame-top-clearance` on the root element — the constant
-* step below the traffic-light strip, where clicks drag the window instead of
-* the overlay. JS-clamped overlays keep at least that much air above them.
-* Elsewhere the property is absent and the caller's own margin applies.
-*/
+/** Shared viewport inset for overlays, derived from the desktop frame's reserved top strip. */
 /**
 * Resolve the top margin an overlay keeps from the viewport edge.
 * @param min - the overlay's own viewport margin in px, used as the floor.
-* @returns the larger of `min` and the frame's published top clearance.
+* @returns the larger of `min` and the frame clearance plus 20px; fullscreen keeps only the 20px gap.
 */
 function overlayTopMargin(min) {
-	const clearance = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dsh-frame-top-clearance"));
-	return Number.isNaN(clearance) ? min : Math.max(min, clearance);
+	const root = document.documentElement;
+	const clearance = Number.parseFloat(getComputedStyle(root).getPropertyValue("--dsh-frame-top-clearance"));
+	if (Number.isNaN(clearance)) return min;
+	return Math.max(min, (root.hasAttribute("data-fullscreen") ? 0 : clearance) + 20);
 }
 /**
 * Delay a pointer-dismissed popup's close so the pointer can cross the gap
@@ -4238,6 +4273,125 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 	});
 }
 //#endregion
+//#region lib/types/MenuGroup.js
+/** Accessible menu groups with shared sticky-heading presentation and viewport observation. */
+/**
+* Render a named group with an instance-owned heading id and an inaccessible position sentinel.
+* @param props - Caller-localized label and optional menu rows.
+* @returns A section named by its direct heading, followed by the supplied children.
+*/
+function MenuGroup({ label, children }) {
+	const headingId = useId();
+	return jsxs("section", {
+		role: "group",
+		"aria-labelledby": headingId,
+		"data-menu-group": "",
+		className: css$15.group,
+		children: [
+			jsx("span", {
+				"aria-hidden": "true",
+				"data-menu-group-start": "",
+				className: css$15.start
+			}),
+			jsx("div", {
+				id: headingId,
+				"data-menu-group-heading": "",
+				className: css$15.heading,
+				children: label
+			}),
+			children
+		]
+	});
+}
+/**
+* Update heading backgrounds asynchronously from native intersection and viewport-size observations.
+* Headings remain transparent until observations identify a section crossing the viewport top.
+* Without IntersectionObserver or ResizeObserver, CSS sticky headings remain transparent.
+* Group membership is captured at setup; dispose before observing changed groups or the same viewport again.
+* @param viewport - Unpadded, borderless scroll container with direct MenuGroup children.
+* @returns Cleanup owning both intersection observers and the viewport resize observer; disconnects
+* them, ignores queued callbacks, and clears managed data-stuck attributes. No valid groups acquires nothing.
+*/
+function observeStickyMenuGroups(viewport) {
+	const groups = [...viewport.querySelectorAll(":scope > [data-menu-group]")].flatMap((section) => {
+		const heading = section.querySelector(":scope > [data-menu-group-heading]");
+		const start = section.querySelector(":scope > [data-menu-group-start]");
+		return heading === null || start === null ? [] : [{
+			section,
+			heading,
+			start,
+			atTop: false,
+			above: false,
+			topTime: -Infinity,
+			aboveTime: -Infinity
+		}];
+	});
+	if (groups.length === 0 || typeof IntersectionObserver === "undefined" || typeof ResizeObserver === "undefined") return () => {};
+	const sections = new Map(groups.map((group) => [group.section, group]));
+	const starts = new Map(groups.map((group) => [group.start, group]));
+	let disposed = false;
+	let stripObserver;
+	let viewportHeight;
+	const render = (group) => {
+		const stuck = group.atTop && group.above;
+		if (group.heading.hasAttribute("data-stuck") !== stuck) group.heading.toggleAttribute("data-stuck", stuck);
+	};
+	const startObserver = new IntersectionObserver((entries) => {
+		if (disposed) return;
+		for (const entry of entries) {
+			const group = starts.get(entry.target);
+			if (!group || entry.rootBounds === null || entry.time < group.aboveTime) continue;
+			group.above = entry.boundingClientRect.top < entry.rootBounds.top;
+			group.aboveTime = entry.time;
+			render(group);
+		}
+	}, {
+		root: viewport,
+		threshold: [0, 1]
+	});
+	for (const { start } of groups) startObserver.observe(start);
+	const sizeObserver = new ResizeObserver((entries) => {
+		if (disposed) return;
+		for (const entry of entries) {
+			if (entry.target !== viewport || entry.contentRect.height === viewportHeight) continue;
+			viewportHeight = entry.contentRect.height;
+			stripObserver?.disconnect();
+			const observer = new IntersectionObserver((intersections) => {
+				if (disposed || stripObserver !== observer) return;
+				for (const intersection of intersections) {
+					const group = sections.get(intersection.target);
+					if (!group || intersection.rootBounds === null) continue;
+					const top = intersection.rootBounds.top;
+					if (intersection.time >= group.topTime) {
+						group.atTop = intersection.isIntersecting && intersection.boundingClientRect.bottom > top;
+						group.topTime = intersection.time;
+					}
+					if (intersection.time >= group.aboveTime) {
+						group.above = intersection.boundingClientRect.top < top;
+						group.aboveTime = intersection.time;
+					}
+					render(group);
+				}
+			}, {
+				root: viewport,
+				rootMargin: `0px 0px ${Math.min(1, viewportHeight) - viewportHeight}px 0px`,
+				threshold: 0
+			});
+			stripObserver = observer;
+			for (const { section } of groups) observer.observe(section);
+		}
+	});
+	sizeObserver.observe(viewport);
+	return () => {
+		if (disposed) return;
+		disposed = true;
+		startObserver.disconnect();
+		stripObserver?.disconnect();
+		sizeObserver.disconnect();
+		for (const { heading } of groups) if (heading.hasAttribute("data-stuck")) heading.removeAttribute("data-stuck");
+	};
+}
+//#endregion
 //#region lib/types/useAnchoredMaxHeight.js
 /**
 * Viewport-fit hook for bottom-anchored overlays (slash menu, popupSelect):
@@ -4247,7 +4401,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 */
 /**
 * Safe distance kept between the overlay and the viewport top edge (mirrors
-* the Menu portal margin); the frame's published top clearance widens it.
+* the Menu portal margin); the frame's overlay inset widens it.
 */
 const MARGIN = 12;
 /**
@@ -4256,8 +4410,8 @@ const MARGIN = 12;
 * @param cap - design max-height in px (the clamp never exceeds it).
 * @param signal - re-measure trigger: pass the overlay's render state so anchor
 *   moves (composer growth) re-fit; resize/scroll re-fit while mounted.
-* @param margin - viewport top margin floor in px; the frame's published top
-*   clearance widens it. Callers under fixed chrome (the conversation header)
+* @param margin - viewport top margin floor in px; the frame's overlay
+*   inset widens it. Callers under fixed chrome (the conversation header)
 *   raise it past their chrome's height.
 * @returns the max-height to apply inline, in px.
 */
@@ -4322,7 +4476,7 @@ function useAnchoredPosition(options) {
 			let left = align === "end" ? rect.right - width : rect.left;
 			let top = side === "top" ? rect.top - gap - height : rect.bottom + gap;
 			if (width > 0) left = Math.min(Math.max(left, margin), window.innerWidth - width - margin);
-			if (height > 0) top = Math.min(Math.max(top, margin), window.innerHeight - height - margin);
+			if (height > 0) top = Math.min(Math.max(top, overlayTopMargin(margin)), window.innerHeight - height - margin);
 			/* v8 ignore stop */
 			setPosition({
 				left,
@@ -4500,20 +4654,26 @@ const TooltipSuppression = createContext(null);
 * bubble would overlap); default 'center'. Ignored for side 'right'.
 * @param props.portal - render the bubble under document.body, so an ancestor's clipping or its
 * stacking context (which confines the bubble's z-index to that context) cannot hide it.
-* @param props.delayMs - hover delay in milliseconds; keyboard focus remains immediate.
+* @param props.delayMs - hover delay in milliseconds (default 0).
+* @param props.focusDelayMs - keyboard focus delay in milliseconds (default 0); blur, click,
+* mouse leave, disabling, and unmount cancel a pending show.
 * @param props.gap - anchor-to-bubble distance in pixels for 'bottom'/'top' bubbles (default 8);
 * ignored for side 'right'.
 * @param props.disabled - suppress the bubble while true; the anchor renders identically so
 * toggling never remounts it (which would cut its CSS transitions).
 * @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
 * half-viewport cap would render a slab wider than the surface the anchor sits on.
+* @param props.openOnClick - clicking also pins the bubble for reading; another click, Escape,
+* Tab, or an outside pointerdown dismisses it. Defaults to false for ordinary action tooltips.
 * @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
 * @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body.
 * The bubble stays hidden until ResizeObserver supplies its size for viewport fitting; clicking the
-* anchor dismisses the bubble until the next trigger, and focus arriving after a pointer
+* anchor dismisses the bubble unless openOnClick is enabled, and focus arriving after a pointer
 * interaction (a closing menu refocusing its trigger) never raises it.
 */
-function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, children }) {
+function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayMs = 0, focusDelayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, openOnClick = false, children }) {
+	const id = useId();
+	const [pinned, setPinned] = useState(false);
 	const anchor = useRef(null);
 	const childRef = children.ref;
 	const mergedRef = useCallback((el) => {
@@ -4586,6 +4746,7 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 		showTimer.current = null;
 	}, []);
 	useEffect(() => {
+		if (pinned && (disabled || !openOnClick)) setPinned(false);
 		if (disabled) {
 			cancelShow();
 			triggers.current = {
@@ -4595,7 +4756,12 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 			setPos(null);
 		}
 		return cancelShow;
-	}, [cancelShow, disabled]);
+	}, [
+		cancelShow,
+		disabled,
+		openOnClick,
+		pinned
+	]);
 	const show = () => {
 		if (disabled) return;
 		const el = anchor.current;
@@ -4609,30 +4775,61 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 		});
 		announce(true);
 	};
-	const showAfterHoverDelay = () => {
+	const showAfterDelay = (delay) => {
 		cancelShow();
-		if (delayMs <= 0) {
+		if (delay <= 0) {
 			show();
 			return;
 		}
 		showTimer.current = setTimeout(() => {
 			showTimer.current = null;
 			show();
-		}, delayMs);
+		}, delay);
 	};
-	const withdraw = () => {
+	const withdraw = useCallback(() => {
+		setPinned(false);
 		setPos(null);
 		announce(false);
-	};
+	}, [announce]);
 	const hide = () => {
 		cancelShow();
-		if (!triggers.current.hover && !triggers.current.focus) withdraw();
+		if (!triggers.current.hover && !triggers.current.focus && !pinned) withdraw();
 	};
+	const dismiss = useCallback(() => {
+		cancelShow();
+		triggers.current = {
+			hover: false,
+			focus: false
+		};
+		withdraw();
+	}, [cancelShow, withdraw]);
+	useDismissOnOutsidePointer(anchor, openOnClick && visible, dismiss, bubble);
+	useEffect(() => {
+		if (!openOnClick || !visible) return;
+		const onKeyDown = (event) => {
+			if (event.key !== "Escape" && event.key !== "Tab") return;
+			if (event.key === "Escape") {
+				event.preventDefault();
+				event.stopPropagation();
+			}
+			dismiss();
+		};
+		document.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [
+		dismiss,
+		openOnClick,
+		visible
+	]);
 	const content = visible && !suppressed && jsxs("span", {
 		ref: bubble,
-		className: css$15.bubble,
+		id: openOnClick ? id : void 0,
+		className: css$16.bubble,
 		"data-side": side,
 		"data-portal": portal || void 0,
+		"data-pinned": pinned || void 0,
 		"data-align": align,
 		"data-has-shortcut": shortcutKeys?.length ? true : void 0,
 		style: {
@@ -4644,7 +4841,7 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 		role: "tooltip",
 		"aria-label": shortcutKeys?.length ? [resolvedLabel, shortcutKeys.join(" ")].filter(Boolean).join(" ") : void 0,
 		children: [resolvedLabel && jsx("span", {
-			className: css$15.label,
+			className: css$16.label,
 			children: resolvedLabel
 		}), shortcutKeys !== void 0 && shortcutKeys.length > 0 && jsx(ShortcutKeys, {
 			keys: shortcutKeys,
@@ -4655,29 +4852,32 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 		value: setSuppressed,
 		children: [cloneElement(children, {
 			ref: mergedRef,
+			"aria-describedby": openOnClick && visible ? [children.props["aria-describedby"], id].filter(Boolean).join(" ") : children.props["aria-describedby"],
 			onMouseEnter: (e) => {
 				children.props.onMouseEnter?.(e);
 				triggers.current.hover = true;
-				showAfterHoverDelay();
+				showAfterDelay(delayMs);
 			},
 			onMouseLeave: (e) => {
 				children.props.onMouseLeave?.(e);
 				triggers.current.hover = false;
 				cancelShow();
-				withdraw();
+				if (!pinned) withdraw();
 			},
 			onClick: (e) => {
 				children.props.onClick?.(e);
 				triggers.current.focus = false;
 				cancelShow();
-				withdraw();
+				if (openOnClick && !disabled && !pinned) {
+					setPinned(true);
+					show();
+				} else withdraw();
 			},
 			onFocus: (e) => {
 				children.props.onFocus?.(e);
 				if (pointerModality()) return;
 				triggers.current.focus = true;
-				cancelShow();
-				show();
+				showAfterDelay(focusDelayMs);
 			},
 			onBlur: (e) => {
 				children.props.onBlur?.(e);
@@ -4909,7 +5109,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 	};
 	const card = open && pos !== null && !suppressed && jsx("div", {
 		ref: cardRef,
-		className: clsx(css$16.card, variant === "preview" && css$16.preview, inline && css$16.media, copyable && css$16.copyable, copied && css$16.feedback),
+		className: clsx(css$17.card, variant === "preview" && css$17.preview, inline && css$17.media, copyable && css$17.copyable, copied && css$17.feedback),
 		"data-closing": closing || void 0,
 		style: {
 			...pos,
@@ -4932,14 +5132,14 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 			copy(copyText);
 		} : void 0,
 		children: copied ? jsx("span", {
-			className: css$16.copied,
+			className: css$17.copied,
 			"aria-hidden": "true",
 			children: copiedLabel
 		}) : content
 	});
 	return jsxs("span", {
 		ref: rootRef,
-		className: clsx(css$16.root, inline && css$16.inline),
+		className: clsx(css$17.root, inline && css$17.inline),
 		onFocus: inline ? (event) => {
 			if (!disabled && event.target.matches(":focus-visible")) {
 				cancelClose();
@@ -4977,7 +5177,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 				children: anchor
 			}),
 			open && !suppressed && copyable && jsx("span", {
-				className: css$16.status,
+				className: css$17.status,
 				role: "status",
 				children: copied ? copiedLabel : ""
 			}),
@@ -5012,11 +5212,11 @@ function Modal({ open, onClose, title, closeLabel, description, children, footer
 	useModalLayer(dialog, open, onClose);
 	if (!open) return null;
 	return createPortal(jsxs("div", {
-		className: css$17.root,
+		className: css$18.root,
 		role: "presentation",
 		onKeyDownCapture,
 		children: [jsx("div", {
-			className: css$17.mask,
+			className: css$18.mask,
 			style: backdropBlur ? void 0 : { backdropFilter: "none" },
 			"aria-hidden": "true",
 			onClick: onClose
@@ -5024,37 +5224,37 @@ function Modal({ open, onClose, title, closeLabel, description, children, footer
 			ref: dialog,
 			tabIndex: -1,
 			"data-shortcut-modal": shortcutModal,
-			className: clsx(css$17.dialog, className),
+			className: clsx(css$18.dialog, className),
 			role: "dialog",
 			"aria-modal": "true",
 			"aria-label": title,
 			children: headless ? children : jsxs(Fragment, { children: [jsxs("div", {
-				className: clsx(css$17.content, contentClassName),
+				className: clsx(css$18.content, contentClassName),
 				children: [
 					jsxs("div", {
-						className: css$17.header,
+						className: css$18.header,
 						children: [jsx("h2", {
-							className: css$17.title,
+							className: css$18.title,
 							children: title
 						}), jsx("button", {
 							type: "button",
-							className: css$17.close,
+							className: css$18.close,
 							"aria-label": closeLabel,
 							onClick: onClose,
 							children: jsx(IconCloseOutlineRegular, { size: 14 })
 						})]
 					}),
 					description !== void 0 && description !== "" && jsx("p", {
-						className: css$17.description,
+						className: css$18.description,
 						children: description
 					}),
 					children !== void 0 && jsx("div", {
-						className: css$17.body,
+						className: css$18.body,
 						children
 					})
 				]
 			}), footer !== void 0 && jsx("div", {
-				className: css$17.footer,
+				className: css$18.footer,
 				children: footer
 			})] })
 		})]
@@ -5076,28 +5276,28 @@ function RiskConfirmation({ open, title, description, acknowledgeLabel, cancelLa
 		onClose: onCancel,
 		title,
 		closeLabel,
-		className: css$18.confirmation ?? "",
-		contentClassName: css$18.confirmationContent ?? "",
+		className: css$19.confirmation ?? "",
+		contentClassName: css$19.confirmationContent ?? "",
 		footer: jsxs(Fragment, { children: [jsx(Button, {
 			variant: "outline",
-			className: css$18.modalAction,
+			className: css$19.modalAction,
 			onClick: onCancel,
 			children: cancelLabel
 		}), jsx(Button, {
 			variant: "primary",
-			className: css$18.confirmAction,
+			className: css$19.confirmAction,
 			disabled: disabled || !acknowledged,
 			onClick: onConfirm,
 			children: confirmLabel
 		})] }),
 		children: [jsxs("div", {
-			className: css$18.warning,
+			className: css$19.warning,
 			children: [jsx(IconWarningOutlineRegular, {
 				size: 18,
-				className: css$18.warningIcon
+				className: css$19.warningIcon
 			}), jsx("p", { children: description })]
 		}), jsxs("label", {
-			className: css$18.acknowledgement,
+			className: css$19.acknowledgement,
 			children: [jsx("input", {
 				type: "checkbox",
 				checked: acknowledged,
@@ -5145,44 +5345,44 @@ function ConnectionIndicator({ state, disconnectedLabel, connectingLabel, recove
 		};
 	}, [state, rendered]);
 	if (rendered === void 0) return null;
-	const leavingClass = leaving ? ` ${css$19.leaving}` : "";
+	const leavingClass = leaving ? ` ${css$20.leaving}` : "";
 	if (rendered === "recovered") return jsxs("div", {
-		className: `${css$19.indicator} ${css$19.success}${leavingClass}`,
+		className: `${css$20.indicator} ${css$20.success}${leavingClass}`,
 		role: "status",
 		"aria-label": recoveredLabel,
 		children: [jsx("span", {
-			className: css$19.icon,
+			className: css$20.icon,
 			"aria-hidden": "true",
 			children: jsx(IconCheckOutlineRegular, { size: 14 })
 		}), jsx("span", {
-			className: css$19.label,
+			className: css$20.label,
 			children: recoveredLabel
 		})]
 	});
 	const connecting = rendered === "connecting";
 	return jsxs("button", {
 		type: "button",
-		className: `${css$19.indicator} ${css$19.warning}${leavingClass}`,
+		className: `${css$20.indicator} ${css$20.warning}${leavingClass}`,
 		"data-phase": rendered,
 		"aria-label": connecting ? restartActionLabel : reconnectActionLabel,
 		onClick: onReconnect,
 		children: [jsx("span", {
-			className: css$19.icon,
+			className: css$20.icon,
 			"aria-hidden": "true",
 			children: connecting ? jsx(StateDot, { state: "ongoing" }) : jsx(IconRefreshOutlineRegular, { size: 14 })
 		}), jsx("span", {
-			className: css$19.label,
+			className: css$20.label,
 			children: connecting ? jsxs(Fragment, { children: [connectingLabel, jsxs("span", {
-				className: css$19.dots,
+				className: css$20.dots,
 				"aria-hidden": "true",
 				children: [
 					jsx("span", { children: "." }),
 					jsx("span", {
-						className: css$19.secondDot,
+						className: css$20.secondDot,
 						children: "."
 					}),
 					jsx("span", {
-						className: css$19.thirdDot,
+						className: css$20.thirdDot,
 						children: "."
 					})
 				]
@@ -6213,7 +6413,7 @@ function FileTypeIcon(props) {
 		type: resolvedType,
 		size,
 		className
-	}) : glyph(resolvedType, size, clsx(css$20.icon, css$20[resolvedType], className));
+	}) : glyph(resolvedType, size, clsx(css$21.icon, css$21[resolvedType], className));
 }
 //#endregion
 //#region lib/types/SiteGlyph.js
@@ -6542,7 +6742,7 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 	let cursor = 0;
 	const pushPlain = (from, to) => {
 		parts.push(jsx("span", {
-			className: css$21.plainRun,
+			className: css$22.plainRun,
 			children: text.slice(from, to)
 		}, `t${from}`));
 	};
@@ -6555,14 +6755,14 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 		const contents = jsxs(Fragment, { children: [referenceKind !== void 0 && jsx(ReferenceIconRegular, {
 			kind: referenceKind,
 			size: 16,
-			className: css$21.refIcon
+			className: css$22.refIcon
 		}), displayLabel] });
 		const open = references === void 0 ? void 0 : referenceKind === "file" ? () => {
 			references.openFile(label.slice(1).replace(/^"|"$/gu, ""));
 		} : referenceKind === void 0 && slashKind === "skill" ? () => {
 			references.openSkill(label.slice(1));
 		} : void 0;
-		const className = clsx(css$21.refChip, referenceKind === void 0 && css$21.slashChip);
+		const className = clsx(css$22.refChip, referenceKind === void 0 && css$22.slashChip);
 		parts.push(open === void 0 ? jsx("span", {
 			className,
 			"data-ref-chip": referenceKind ?? slashKind,
@@ -6582,7 +6782,7 @@ function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skil
 		cursor = end;
 	}
 	if (parts.length === 0) return jsx("span", {
-		className: css$21.plainRun,
+		className: css$22.plainRun,
 		children: text
 	});
 	if (cursor < text.length) pushPlain(cursor, text.length);
@@ -6655,25 +6855,25 @@ function Toast({ text, icon, tone, anchor, holdMs = HOLD_MS, actions, onDone }) 
 		};
 	}, [anchor]);
 	return createPortal(jsxs("div", {
-		className: css$22.toast,
+		className: css$23.toast,
 		role: "alert",
 		style: {
 			...left === null ? {} : { left },
 			"--dsh-toast-hold": `${String(holdMs)}ms`
 		},
 		children: [tone === "success" ? jsx("span", {
-			className: `${css$22.icon} ${css$22.success}`,
+			className: `${css$23.icon} ${css$23.success}`,
 			"aria-hidden": true,
 			children: jsx(IconCheckCircleOutlineRegular, {})
 		}) : icon !== void 0 && jsx("span", {
-			className: css$22.icon,
+			className: css$23.icon,
 			"aria-hidden": true,
 			children: icon
 		}), jsxs("span", {
-			className: css$22.text,
+			className: css$23.text,
 			children: [text, actions?.map((action) => jsxs(Fragment$1, { children: [action.prefix, jsx("button", {
 				type: "button",
-				className: css$22.action,
+				className: css$23.action,
 				onClick: action.onClick,
 				children: action.label
 			})] }, action.label))]
@@ -6723,29 +6923,29 @@ function SettingsForm(props) {
 		discard.current();
 	}, []);
 	if (!state.available) return jsx("p", {
-		className: css$23.unavailable,
+		className: css$24.unavailable,
 		role: "status",
 		children: labels.unavailable
 	});
 	const blocked = !state.dirty || state.invalid || state.saving;
 	return jsxs("div", {
-		className: css$23.form,
+		className: css$24.form,
 		children: [
 			!state.writable ? jsx("p", {
-				className: css$23.readOnly,
+				className: css$24.readOnly,
 				role: "status",
 				children: labels.readOnly
 			}) : null,
 			props.children,
 			jsxs("div", {
-				className: css$23.footer,
+				className: css$24.footer,
 				children: [state.failed ? jsx("p", {
-					className: css$23.failed,
+					className: css$24.failed,
 					role: "status",
 					children: labels.saveFailed
 				}) : null, jsx("button", {
 					type: "button",
-					className: css$23.save,
+					className: css$24.save,
 					disabled: blocked,
 					onClick: props.onSave,
 					children: state.saving ? labels.saving : labels.save
@@ -6777,19 +6977,19 @@ function SettingsValueField(props) {
 	const hasMessage = props.invalid || Boolean(props.hint);
 	const description = [hasMessage ? messageId : "", helpOpen ? helpId : ""].filter(Boolean).join(" ");
 	return jsxs("div", {
-		className: css$24.field,
+		className: css$25.field,
 		children: [
 			jsxs("div", {
-				className: css$24.head,
+				className: css$25.head,
 				children: [jsxs("div", {
-					className: css$24.labelGroup,
+					className: css$25.labelGroup,
 					children: [jsx("label", {
-						className: css$24.label,
+						className: css$25.label,
 						htmlFor: props.id,
 						children: props.label
 					}), props.help !== void 0 ? jsx("button", {
 						type: "button",
-						className: css$24.helpButton,
+						className: css$25.helpButton,
 						"aria-label": props.help.label,
 						"aria-expanded": helpOpen,
 						"aria-controls": helpId,
@@ -6799,13 +6999,13 @@ function SettingsValueField(props) {
 						children: jsx(IconInfoOutlineRegular, { size: 12 })
 					}) : null]
 				}), props.overridden ? jsxs("span", {
-					className: css$24.badges,
+					className: css$25.badges,
 					children: [jsx(Tag, {
 						tone: "neutral",
 						children: props.overriddenLabel
 					}), jsx("button", {
 						type: "button",
-						className: css$24.reset,
+						className: css$25.reset,
 						disabled: props.disabled,
 						onClick: props.onReset,
 						children: props.resetLabel
@@ -6814,7 +7014,7 @@ function SettingsValueField(props) {
 			}),
 			jsx("input", {
 				id: props.id,
-				className: css$24.input,
+				className: css$25.input,
 				type: "text",
 				...props.numeric === true ? { inputMode: "numeric" } : {},
 				...props.invalid ? { "aria-invalid": true } : {},
@@ -6828,12 +7028,12 @@ function SettingsValueField(props) {
 			}),
 			hasMessage ? jsx("p", {
 				id: messageId,
-				className: props.invalid ? css$24.invalid : css$24.hint,
+				className: props.invalid ? css$25.invalid : css$25.hint,
 				children: props.invalid ? props.invalidLabel : props.hint
 			}) : null,
 			props.help !== void 0 && helpOpen ? jsx("div", {
 				id: helpId,
-				className: css$24.help,
+				className: css$25.help,
 				role: "region",
 				"aria-label": props.help.label,
 				children: props.help.content
@@ -6851,16 +7051,16 @@ function SettingsValueField(props) {
 */
 function SettingsSecretField(props) {
 	return jsxs("div", {
-		className: css$24.field,
+		className: css$25.field,
 		children: [
 			jsxs("div", {
-				className: css$24.head,
+				className: css$25.head,
 				children: [jsx("label", {
-					className: css$24.label,
+					className: css$25.label,
 					htmlFor: props.id,
 					children: props.label
 				}), jsx("span", {
-					className: css$24.badges,
+					className: css$25.badges,
 					children: jsx(Tag, {
 						tone: props.configured ? "neutral" : "quiet",
 						children: props.stateLabel
@@ -6869,7 +7069,7 @@ function SettingsSecretField(props) {
 			}),
 			jsx("input", {
 				id: props.id,
-				className: css$24.input,
+				className: css$25.input,
 				type: "password",
 				autoComplete: "new-password",
 				value: props.text,
@@ -6879,7 +7079,7 @@ function SettingsSecretField(props) {
 				}
 			}),
 			jsx("p", {
-				className: css$24.hint,
+				className: css$25.hint,
 				children: props.hint
 			})
 		]
@@ -7945,7 +8145,7 @@ function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) 
 	const object = typeof target.value === "object" && target.value !== null;
 	const copyTitle = state === "copied" ? labels.copied : state === "failed" ? labels.copyFailed : object ? labels.copyPrettyJson : labels.copyValue;
 	return jsx("span", {
-		className: css$25.copySlot,
+		className: css$26.copySlot,
 		children: (persistent || snapshot !== void 0) && jsx(Menu, {
 			open: snapshot?.menuOpen === true,
 			compact: true,
@@ -7954,7 +8154,7 @@ function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) 
 			anchor: jsx("button", {
 				ref: buttonRef,
 				type: "button",
-				className: css$25.actionButton,
+				className: css$26.actionButton,
 				"data-json-copy-button": true,
 				"data-state": state,
 				"aria-label": copyTitle,
@@ -7993,35 +8193,35 @@ function bracketOf(value) {
 }
 function previewPrimitive(value) {
 	if (value === null) return jsx("span", {
-		className: css$25.keywordValue,
+		className: css$26.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$25.stringValue,
+		className: css$26.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$25.numberValue,
+		className: css$26.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$25.keywordValue,
+		className: css$26.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: value.toString()
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: "undefined"
 	});
 	if (typeof value === "symbol") return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: value.description ?? "Symbol"
 	});
 	if (typeof value === "function") return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: value.name || "Function"
 	});
 	return null;
@@ -8035,71 +8235,71 @@ function previewValue(value, depth) {
 	const [open, close] = bracketOf(value);
 	return jsxs(Fragment, { children: [
 		jsx("span", {
-			className: css$25.punctuation,
+			className: css$26.punctuation,
 			children: open
 		}),
 		depth >= PREVIEW_DEPTH_LIMIT ? jsx("span", {
-			className: css$25.previewEllipsis,
+			className: css$26.previewEllipsis,
 			children: "…"
 		}) : visible.map(([key, item], index) => jsxs("span", { children: [
 			index > 0 && jsx("span", {
-				className: css$25.punctuation,
+				className: css$26.punctuation,
 				children: ", "
 			}),
 			!array && jsxs(Fragment, { children: [jsx("span", {
-				className: css$25.previewProperty,
+				className: css$26.previewProperty,
 				children: key
 			}), jsx("span", {
-				className: css$25.punctuation,
+				className: css$26.punctuation,
 				children: ": "
 			})] }),
 			previewValue(item, depth + 1)
 		] }, key)),
 		depth < PREVIEW_DEPTH_LIMIT && entries.length > limit && jsx("span", {
-			className: css$25.previewEllipsis,
+			className: css$26.previewEllipsis,
 			children: ", …"
 		}),
 		jsx("span", {
-			className: css$25.punctuation,
+			className: css$26.punctuation,
 			children: close
 		})
 	] });
 }
 function primitiveValue(value) {
 	if (value === null) return jsx("span", {
-		className: css$25.keywordValue,
+		className: css$26.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$25.stringValue,
+		className: css$26.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$25.keywordValue,
+		className: css$26.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$25.numberValue,
+		className: css$26.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$25.numberValue,
+		className: css$26.numberValue,
 		children: `${value.toString()}n`
 	});
 	if (value instanceof Date) return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: value.toISOString()
 	});
 	if (typeof value === "function") return jsxs("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: ["function() ", "{ }"]
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: "undefined"
 	});
 	return jsx("span", {
-		className: css$25.otherValue,
+		className: css$26.otherValue,
 		children: value.toString()
 	});
 }
@@ -8127,7 +8327,7 @@ function moveFocus(button, direction) {
 function NodeField({ field, expandable, onToggle }) {
 	if (field === void 0) return null;
 	return jsxs("span", {
-		className: clsx(css$25.label, expandable && css$25.clickableLabel),
+		className: clsx(css$26.label, expandable && css$26.clickableLabel),
 		onClick: expandable ? onToggle : void 0,
 		children: [fieldText(field), ":"]
 	});
@@ -8164,7 +8364,7 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 		if (!expanded) return;
 		const raw = rawRef.current;
 		const clips = [];
-		const tree = raw.closest(`.${css$25.root}`);
+		const tree = raw.closest(`.${css$26.root}`);
 		for (let parent = tree.parentElement; parent !== null; parent = parent.parentElement) if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowY)) clips.push(parent);
 		const measure = () => {
 			let top = 0;
@@ -8193,33 +8393,33 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 	if (expanded) {
 		const fieldId = `${contentsId}-field`;
 		return jsxs("div", {
-			className: css$25.stringField,
+			className: css$26.stringField,
 			"data-expanded": true,
 			children: [
 				field !== void 0 && jsxs("span", {
 					id: fieldId,
-					className: css$25.label,
+					className: css$26.label,
 					children: [fieldText(field), ":"]
 				}),
 				jsx("pre", {
 					ref: rawRef,
 					id: contentsId,
-					className: css$25.stringRaw,
+					className: css$26.stringRaw,
 					"data-wrap": wrapped,
 					tabIndex: 0,
 					"aria-labelledby": field === void 0 ? void 0 : fieldId,
 					children: value
 				}),
 				!lastElement && jsx("span", {
-					className: css$25.punctuation,
+					className: css$26.punctuation,
 					children: ","
 				}),
 				jsxs("div", {
-					className: css$25.stringActions,
+					className: css$26.stringActions,
 					children: [
 						stringWrapping !== void 0 && jsx("button", {
 							type: "button",
-							className: css$25.actionButton,
+							className: css$26.actionButton,
 							"aria-label": stringWrapping.label,
 							title: stringWrapping.label,
 							"aria-pressed": wrapped,
@@ -8233,7 +8433,7 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 						}),
 						jsx("button", {
 							type: "button",
-							className: css$25.actionButton,
+							className: css$26.actionButton,
 							"aria-label": labels.collapseNode,
 							title: labels.collapseNode,
 							"aria-expanded": true,
@@ -8258,18 +8458,18 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 		});
 	}
 	return jsxs(Fragment, { children: [renderCopy?.(), jsx("span", {
-		className: css$25.stringField,
+		className: css$26.stringField,
 		"data-expanded": expanded,
 		children: jsxs("span", {
 			ref: contentRef,
 			id: contentsId,
-			className: css$25.stringText,
+			className: css$26.stringText,
 			children: [
 				truncated && jsx("span", {
-					className: css$25.stringToggleSlot,
+					className: css$26.stringToggleSlot,
 					children: jsxs("button", {
 						type: "button",
-						className: css$25.stringToggle,
+						className: css$26.stringToggle,
 						"aria-label": labels.expandNode,
 						"aria-expanded": false,
 						"aria-controls": contentsId,
@@ -8284,12 +8484,12 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 					})
 				}),
 				field !== void 0 && jsxs("span", {
-					className: css$25.label,
+					className: css$26.label,
 					children: [fieldText(field), ":"]
 				}),
 				primitiveValue(value),
 				!lastElement && jsx("span", {
-					className: css$25.punctuation,
+					className: css$26.punctuation,
 					children: ","
 				})
 			]
@@ -8320,7 +8520,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		}
 	};
 	const row = (children, ariaExpanded) => jsxs("div", {
-		className: css$25.row,
+		className: css$26.row,
 		role: "treeitem",
 		"aria-expanded": ariaExpanded,
 		onMouseOver: (event) => {
@@ -8355,7 +8555,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		}),
 		primitiveValue(value),
 		!lastElement && jsx("span", {
-			className: css$25.punctuation,
+			className: css$26.punctuation,
 			children: ","
 		})
 	] }));
@@ -8367,22 +8567,22 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 			onToggle: toggle
 		}),
 		jsx("span", {
-			className: css$25.punctuation,
+			className: css$26.punctuation,
 			children: open
 		}),
 		jsx("span", {
-			className: css$25.punctuation,
+			className: css$26.punctuation,
 			children: close
 		}),
 		!lastElement && jsx("span", {
-			className: css$25.punctuation,
+			className: css$26.punctuation,
 			children: ","
 		})
 	] }));
 	return row(jsxs(Fragment, { children: [
 		jsx("span", {
 			ref: expanderRef,
-			className: clsx(css$25.expander, expanded ? css$25.collapseIcon : css$25.expandIcon),
+			className: clsx(css$26.expander, expanded ? css$26.collapseIcon : css$26.expandIcon),
 			"data-json-expander": true,
 			role: "button",
 			"aria-label": expanded ? labels.collapseNode : labels.expandNode,
@@ -8396,7 +8596,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 			onKeyDown: onExpanderKeyDown
 		}),
 		jsxs("span", {
-			className: css$25.summary,
+			className: css$26.summary,
 			children: [
 				jsx(NodeField, {
 					field,
@@ -8404,11 +8604,11 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 					onToggle: toggle
 				}),
 				jsx("span", {
-					className: css$25.preview,
+					className: css$26.preview,
 					children: previewValue(value, 0)
 				}),
 				!lastElement && jsx("span", {
-					className: css$25.punctuation,
+					className: css$26.punctuation,
 					children: ","
 				})
 			]
@@ -8416,7 +8616,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		expanded && jsx("ul", {
 			id: contentsId,
 			role: "group",
-			className: css$25.children,
+			className: css$26.children,
 			children: entries.map(([key, item], index) => jsx(JsonTreeNode, {
 				collapsedStringLines,
 				stringWrapping,
@@ -8548,17 +8748,17 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 		onClose: clearCopyTarget
 	}) : void 0;
 	return jsx("div", {
-		className: clsx(css$25.root, className),
+		className: clsx(css$26.root, className),
 		style: { "--json-tree-collapsed-lines": collapsedStringLines },
 		onMouseOver: handleRootMouseOver,
 		onMouseLeave: () => {
 			if (!copyStore.get()?.menuOpen) clearCopyTarget();
 		},
 		children: expandTopLevel ? jsxs("div", {
-			className: css$25.expandedTopLevel,
+			className: css$26.expandedTopLevel,
 			children: [
 				jsxs("div", {
-					className: clsx(css$25.row, css$25.topLevelBracket),
+					className: clsx(css$26.row, css$26.topLevelBracket),
 					"data-json-root-row": true,
 					onMouseOver: (event) => {
 						event.stopPropagation();
@@ -8571,13 +8771,13 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 						path: [],
 						value: data
 					}), jsx("span", {
-						className: css$25.punctuation,
+						className: css$26.punctuation,
 						children: rootOpen
 					})]
 				}),
 				jsx("div", {
 					"aria-label": label,
-					className: clsx(css$25.container, css$25.expandedTopLevelContainer),
+					className: clsx(css$26.container, css$26.expandedTopLevelContainer),
 					role: "tree",
 					children: rootEntries.map(([key, value], index) => jsx(JsonTreeNode, {
 						collapsedStringLines,
@@ -8595,16 +8795,16 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 					}, key))
 				}),
 				jsx("div", {
-					className: clsx(css$25.row, css$25.topLevelBracket),
+					className: clsx(css$26.row, css$26.topLevelBracket),
 					children: jsx("span", {
-						className: css$25.punctuation,
+						className: css$26.punctuation,
 						children: rootClose
 					})
 				})
 			]
 		}) : jsx("div", {
 			"aria-label": label,
-			className: css$25.container,
+			className: css$26.container,
 			role: "tree",
 			children: jsx(JsonTreeNode, {
 				collapsedStringLines,
@@ -9167,67 +9367,67 @@ function TerminalBlock({ command, cwd, home, output, exitCode, signal, running =
 	const { hidden, capped, headLines, tailLines } = headTailCap(lines.length, maxLines, expanded);
 	const body = !running || !empty;
 	return jsxs("div", {
-		className: clsx(css$26.block, className),
+		className: clsx(css$27.block, className),
 		"data-terminal": "",
 		"data-running": running ? "" : void 0,
 		"data-body": body ? "" : void 0,
 		children: [jsxs("div", {
-			className: css$26.header,
+			className: css$27.header,
 			children: [
 				jsxs("div", {
-					className: css$26.prompt,
+					className: css$27.prompt,
 					children: [runStateDot && jsx("span", {
-						className: css$26.runStateLabel,
+						className: css$27.runStateLabel,
 						children: state.label
 					}), commandLines.map((line, index) => jsxs("div", {
-						className: css$26.promptLine,
+						className: css$27.promptLine,
 						children: [
 							index === 0 && runStateDot && jsx(StateDot, {
 								state: state.state,
-								className: css$26.runState
+								className: css$27.runState
 							}),
 							jsx("span", {
-								className: css$26.cwd,
+								className: css$27.cwd,
 								children: index > 0 || cwd === void 0 ? "$" : promptLabel(cwd, home)
 							}),
 							jsx("span", {
-								className: css$26.command,
+								className: css$27.command,
 								children: line
 							})
 						]
 					}, index))]
 				}),
 				status !== void 0 && jsx(Pill, {
-					className: css$26.status,
+					className: css$27.status,
 					children: status
 				}),
 				(copyText !== void 0 || !running && !empty) && jsx("button", {
 					type: "button",
-					className: css$26.copyButton,
+					className: css$27.copyButton,
 					onClick: onCopy,
 					children: copied ? copy.copied : copy.copy
 				})
 			]
 		}), body && (empty ? jsx("div", {
-			className: css$26.empty,
+			className: css$27.empty,
 			children: copy.noOutput
 		}) : jsxs("div", {
-			className: css$26.output,
+			className: css$27.output,
 			children: [
 				(capped ? lines.slice(0, headLines) : lines).map((line, index) => jsx("div", {
-					className: css$26.line,
+					className: css$27.line,
 					children: renderLine$1(line)
 				}, index)),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$26.expand,
+					className: css$27.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? copy.collapseAria : copy.expandAria(hidden),
 					onClick: onToggle,
 					children: expanded ? copy.collapse : copy.expand(hidden)
 				}),
 				capped && lines.slice(lines.length - tailLines).map((line, index) => jsx("div", {
-					className: css$26.line,
+					className: css$27.line,
 					children: renderLine$1(line)
 				}, index))
 			]
@@ -9430,13 +9630,13 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	const tailLines = maxLines - headLines;
 	const windowed = lines.length < totalLines;
 	const rows = (slice) => slice.map(([line, spans]) => jsxs("div", {
-		className: css$27.line,
+		className: css$28.line,
 		children: [jsx("span", {
-			className: css$27.gutter,
+			className: css$28.gutter,
 			"aria-hidden": true,
 			children: line.number
 		}), jsx("span", {
-			className: css$27.content,
+			className: css$28.content,
 			children: spans === void 0 ? line.text : renderSpans(spans)
 		})]
 	}, line.number));
@@ -9444,7 +9644,7 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	const paired = lines.map((line, index) => [line, highlighted?.[index]]);
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(cardCss.card, css$27.block, className),
+		className: clsx(cardCss.card, css$28.block, className),
 		"data-read": "",
 		"data-code-wrap": wrapped,
 		style: gutterStyle,
@@ -9466,7 +9666,7 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 			children: [
 				rows(capped ? paired.slice(0, headLines) : paired),
 				hidden > 0 && jsx(FoldToggle, {
-					className: css$27.expand,
+					className: css$28.expand,
 					expanded,
 					hidden,
 					labels,
@@ -9488,11 +9688,11 @@ function assertNever(value) {
 }
 /** The dim class per row kind (path/gap chrome vs the diff's own +/- colors). */
 const ROW_CLASS = {
-	path: css$28.path,
-	del: css$28.del,
-	add: css$28.add,
-	context: css$28.context,
-	gap: css$28.gap
+	path: css$29.path,
+	del: css$29.del,
+	add: css$29.add,
+	context: css$29.context,
+	gap: css$29.gap
 };
 /** Bound synchronous edit-graph search; one replacement consumes two edits. */
 const MAX_DIFF_EDIT_LENGTH = 256;
@@ -9626,7 +9826,7 @@ function DiffBlock({ diffs, labels, maxLines = 16, className }) {
 	const head = capped ? rows.slice(0, headLines) : rows;
 	const tail = capped ? rows.slice(rows.length - tailLines) : [];
 	return jsxs("div", {
-		className: clsx(cardCss.card, css$28.block, className),
+		className: clsx(cardCss.card, css$29.block, className),
 		"data-diff": "",
 		"data-code-wrap": wrapped,
 		children: [jsx(CodeToolbar, {
@@ -9641,21 +9841,21 @@ function DiffBlock({ diffs, labels, maxLines = 16, className }) {
 				setWrapped((value) => !value);
 			}
 		}), jsxs("div", {
-			className: css$28.body,
+			className: css$29.body,
 			children: [
 				head.map((row, index) => jsx("div", {
-					className: clsx(css$28.line, ROW_CLASS[row.kind]),
+					className: clsx(css$29.line, ROW_CLASS[row.kind]),
 					children: row.text
 				}, index)),
 				hidden > 0 && jsx(FoldToggle, {
-					className: css$28.expand,
+					className: css$29.expand,
 					expanded,
 					hidden,
 					labels,
 					onToggle
 				}),
 				tail.map((row, index) => jsx("div", {
-					className: clsx(css$28.line, ROW_CLASS[row.kind]),
+					className: clsx(css$29.line, ROW_CLASS[row.kind]),
 					children: row.text
 				}, index))
 			]
@@ -9785,56 +9985,56 @@ function SearchBlock(props) {
 	const tail = tailHeader === void 0 ? naturalTail : naturalTail.slice(1);
 	const renderRow = (row) => {
 		if (row.type === "path") return jsx("div", {
-			className: css$29.line,
+			className: css$30.line,
 			children: row.path
 		});
 		if (row.type === "match") return jsxs("div", {
-			className: css$29.line,
+			className: css$30.line,
 			children: [jsxs("span", {
-				className: css$29.lineNumber,
+				className: css$30.lineNumber,
 				children: [row.lineNumber, ": "]
 			}), row.line]
 		});
 		return jsxs("button", {
 			type: "button",
-			className: css$29.fileHeader,
+			className: css$30.fileHeader,
 			"aria-expanded": !row.collapsed,
 			onClick: () => {
 				toggleFile(row.index);
 			},
 			children: [jsx("span", {
-				className: css$29.filePath,
+				className: css$30.filePath,
 				children: row.path
 			}), jsx("span", {
-				className: css$29.fileCount,
+				className: css$30.fileCount,
 				children: row.count
 			})]
 		});
 	};
 	return jsxs("div", {
-		className: clsx(css$29.block, className),
+		className: clsx(css$30.block, className),
 		"data-search": props.kind,
 		children: [jsxs("div", {
-			className: css$29.header,
+			className: css$30.header,
 			children: [jsx("span", {
-				className: css$29.summary,
+				className: css$30.summary,
 				children: summaryText(props, shown, truncated, total)
 			}), !empty && jsx("button", {
 				type: "button",
-				className: css$29.copyButton,
+				className: css$30.copyButton,
 				onClick: onCopy,
 				children: copied ? props.labels.copied : props.labels.copy
 			})]
 		}), empty ? jsx("div", {
-			className: css$29.empty,
+			className: css$30.empty,
 			children: props.labels.noResults
 		}) : jsxs("div", {
-			className: css$29.body,
+			className: css$30.body,
 			children: [
 				head.map((row) => jsx("div", { children: renderRow(row) }, rowKey(row))),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$29.expand,
+					className: css$30.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? props.labels.collapseAria : props.labels.expandAria(hidden),
 					onClick: onToggle,
@@ -10664,7 +10864,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 		});
 	}, [copied, trimmed]);
 	const body = streamedBody !== void 0 ? streamedBody : html === void 0 ? jsx("pre", {
-		className: css$30.plain,
+		className: css$31.plain,
 		children: jsx("code", { children: sourceLines === void 0 ? trimmed : sourceLines.map((line, index) => jsxs(Fragment$1, { children: [index > 0 && "\n", jsx("span", {
 			className: "line",
 			children: line
@@ -10672,12 +10872,12 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 	}) : jsx("div", { dangerouslySetInnerHTML: { __html: html } });
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(css$30.block, "md-code-block", lineNumbers && css$30.numbered, toolbarLabels !== void 0 && css$30.card, className),
+		className: clsx(css$31.block, "md-code-block", lineNumbers && css$31.numbered, toolbarLabels !== void 0 && css$31.card, className),
 		"data-line-numbers": lineNumbers || void 0,
 		"data-code-wrap": toolbarLabels === void 0 ? void 0 : wrapped,
 		style: sourceLines === void 0 ? void 0 : { "--dsl-code-block-line-number-width": `${Math.max(2, String(sourceLines.length).length)}ch` },
 		children: [showHeader && jsx("div", {
-			className: css$30.bannerWrap,
+			className: css$31.bannerWrap,
 			children: toolbarLabels !== void 0 ? jsx(CodeToolbar, {
 				lang,
 				labels: toolbarLabels,
@@ -10690,16 +10890,16 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 					setWrapped((value) => !value);
 				} : void 0
 			}) : jsxs("div", {
-				className: css$30.banner,
+				className: css$31.banner,
 				"data-code-block-banner": true,
 				children: [jsx("div", {
-					className: css$30.infostring,
+					className: css$31.infostring,
 					children: lang ?? ""
 				}), jsx("div", {
-					className: css$30.action,
+					className: css$31.action,
 					children: jsx("button", {
 						type: "button",
-						className: css$30.copyButton,
+						className: css$31.copyButton,
 						onClick: onCopy,
 						children: copied ? copiedLabel : copyLabel
 					})
@@ -10707,7 +10907,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 			})
 		}), jsx("div", {
 			ref: contentRef,
-			className: css$30.content,
+			className: css$31.content,
 			"data-code-block-content": true,
 			children: body
 		})]
@@ -10897,25 +11097,25 @@ function ImageLightbox({ src, alt, labels, onClose }) {
 		};
 	}, [onClose]);
 	return createPortal(jsxs("div", {
-		className: css$31.backdrop,
+		className: css$32.backdrop,
 		role: "dialog",
 		"aria-modal": "true",
 		"aria-label": labels.dialog,
 		children: [
 			jsx("div", {
-				className: css$31.mask,
+				className: css$32.mask,
 				"aria-hidden": "true",
 				onMouseDown: onClose
 			}),
 			jsx("img", {
-				className: css$31.image,
+				className: css$32.image,
 				src,
 				alt
 			}),
 			jsx("button", {
 				ref: closeRef,
 				type: "button",
-				className: css$31.close,
+				className: css$32.close,
 				"aria-label": labels.close,
 				onClick: onClose,
 				children: jsx(IconCloseOutlineRegular, { size: 16 })
@@ -10942,14 +11142,14 @@ function ImagePreview({ src, alt, loadingLabel, failedLabel }) {
 function Preview({ src, alt, loadingLabel, failedLabel }) {
 	const [state, setState] = useState("loading");
 	return jsxs("span", {
-		className: css$32.frame,
+		className: css$33.frame,
 		children: [state !== "failed" && jsx("img", {
 			src,
 			alt,
 			loading: "lazy",
 			decoding: "async",
 			referrerPolicy: "no-referrer",
-			className: css$32.image,
+			className: css$33.image,
 			"data-ready": state === "ready" || void 0,
 			onLoad: () => {
 				setState("ready");
@@ -10958,7 +11158,7 @@ function Preview({ src, alt, loadingLabel, failedLabel }) {
 				setState("failed");
 			}
 		}), state !== "ready" && jsxs("span", {
-			className: css$32.status,
+			className: css$33.status,
 			role: "status",
 			children: [state === "loading" && jsx(IconLoadingOutlineRegular, { size: 16 }), jsx("span", { children: state === "loading" ? loadingLabel : failedLabel })]
 		})]
@@ -11697,7 +11897,7 @@ function SafeLink({ url, label, className }) {
 		children: [jsx(LinkIconMedium, {
 			kind: "url",
 			href,
-			className: css$33.linkIcon
+			className: css$34.linkIcon
 		}), label]
 	});
 }
@@ -11712,20 +11912,20 @@ function SafeLink({ url, label, className }) {
 */
 function SourceItem({ source, ordinal }) {
 	return jsxs("li", {
-		className: css$33.source,
+		className: css$34.source,
 		value: ordinal,
 		children: [
 			jsx(SafeLink, {
 				url: source.url,
 				label: linkLabel(source.url, source.title),
-				className: css$33.sourceLink
+				className: css$34.sourceLink
 			}),
 			source.snippet !== void 0 && source.snippet !== "" && jsx("div", {
-				className: css$33.snippet,
+				className: css$34.snippet,
 				children: source.snippet
 			}),
 			source.publishedAt !== void 0 && source.publishedAt !== "" && jsx("div", {
-				className: css$33.published,
+				className: css$34.published,
 				children: source.publishedAt
 			})
 		]
@@ -11740,28 +11940,28 @@ function SourceItem({ source, ordinal }) {
 function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 	const empty = (answer === void 0 || answer === "") && sources.length === 0;
 	return jsxs("div", {
-		className: clsx(css$33.block, className),
+		className: clsx(css$34.block, className),
 		"data-web": "search",
 		children: [
 			answer !== void 0 && answer !== "" && jsx("div", {
-				className: css$33.answer,
+				className: css$34.answer,
 				children: jsx(MarkdownText, {
 					text: answer,
 					labels: labels.markdown
 				})
 			}),
 			empty ? jsx("div", {
-				className: css$33.empty,
+				className: css$34.empty,
 				children: labels.noResults
 			}) : jsx("ol", {
-				className: css$33.sources,
+				className: css$34.sources,
 				children: sources.map((source, index) => jsx(SourceItem, {
 					source,
 					ordinal: index + 1
 				}, index))
 			}),
 			truncated && jsx("div", {
-				className: css$33.truncated,
+				className: css$34.truncated,
 				children: labels.sourcesTruncated
 			})
 		]
@@ -11774,23 +11974,23 @@ function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 */
 function WebFetchBlock({ url, statusCode, truncated, labels, className }) {
 	return jsxs("div", {
-		className: clsx(css$33.block, css$33.fetch, className),
+		className: clsx(css$34.block, css$34.fetch, className),
 		"data-web": "fetch",
 		children: [jsx(SafeLink, {
 			url,
 			label: url,
-			className: css$33.fetchUrl
+			className: css$34.fetchUrl
 		}), jsxs("div", {
-			className: css$33.fetchMeta,
+			className: css$34.fetchMeta,
 			children: [jsxs("span", {
-				className: css$33.status,
+				className: css$34.status,
 				children: [
 					labels.http,
 					" ",
 					statusCode
 				]
 			}), truncated && jsx("span", {
-				className: css$33.truncated,
+				className: css$34.truncated,
 				children: labels.contentTruncated
 			})]
 		})]
@@ -11824,10 +12024,10 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 		truncatedLabel
 	]);
 	return jsxs("div", {
-		className: css$34.root,
+		className: css$35.root,
 		children: [jsxs("button", {
 			type: "button",
-			className: css$34.toggle,
+			className: css$35.toggle,
 			onClick: () => {
 				setOpen((v) => !v);
 			},
@@ -11837,7 +12037,7 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 				label
 			]
 		}), open && jsx("pre", {
-			className: css$34.body,
+			className: css$35.body,
 			children: body
 		})]
 	});
@@ -12058,7 +12258,7 @@ const PluginArtworkSearch = ({ size = 36, className }) => {
 		children: [
 			jsx("path", {
 				d: "M26.5362 26.9865L22.3813 22.8317",
-				stroke: "#2F2295",
+				stroke: "#658EFF",
 				strokeWidth: "3"
 			}),
 			jsx("g", {
@@ -12071,7 +12271,7 @@ const PluginArtworkSearch = ({ size = 36, className }) => {
 						width: "1917.88",
 						height: "1917.88",
 						children: jsx("div", { style: {
-							background: "conic-gradient(from 90deg, rgb(65, 225, 172) 0deg, rgb(85, 71, 210) 62.0619deg, rgb(65, 225, 172) 360deg)",
+							background: "conic-gradient(from 90deg, rgb(65, 225, 172) 0deg, rgb(101, 142, 255) 62.0619deg, rgb(65, 225, 172) 360deg)",
 							height: "100%",
 							width: "100%"
 						} })
@@ -12178,6 +12378,6 @@ function GuideArtworkFiles({ size = 36, className }) {
 	});
 }
 //#endregion
-export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, projectUserText, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
+export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuGroup, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, observeStickyMenuGroups, pointerModality, projectUserText, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
 
 //# sourceMappingURL=index.js.map

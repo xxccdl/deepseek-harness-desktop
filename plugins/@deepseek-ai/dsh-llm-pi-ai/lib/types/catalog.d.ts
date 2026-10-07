@@ -11,7 +11,7 @@
  *
  * @module dsh-llm-pi-ai/catalog
  */
-import type { AnthropicMessagesCompat, Api, BedrockCompat, ChatTemplateKwargValue, Model, ModelThinkingLevel, OpenAICompletionsCompat, OpenAIResponsesCompat, Provider } from '@earendil-works/pi-ai';
+import type { AnthropicMessagesCompat, Api, BedrockCompat, ChatTemplateKwargValue, MistralConversationsCompat, Model, ModelThinkingLevel, OpenAICompletionsCompat, OpenAIResponsesCompat, Provider } from '@earendil-works/pi-ai';
 /** One request modality a pi-ai model may accept. */
 export type PiAiModality = Model<Api>['input'][number];
 /** Every request modality a profile may declare. */
@@ -96,7 +96,8 @@ declare const COMPLETIONS_COMPAT_GATE: {
     readonly zaiToolStream: "withhold";
     readonly supportsOpenAIGrammarTools: "withhold";
     readonly sendSessionAffinityHeaders: "withhold";
-    readonly deferredToolsMode: "withhold";
+    readonly supportsMidConvoSystemMessages: "withhold";
+    readonly supportsMidConvoToolAdditions: "withhold";
     readonly sessionAffinityFormat: "withhold";
 };
 /** Disposition of every `OpenAIResponsesCompat` field; a drift gate like the one above. */
@@ -110,6 +111,7 @@ declare const RESPONSES_COMPAT_GATE: {
     readonly supportsAdditionalTools: "withhold";
     readonly supportsToolSearch: "withhold";
     readonly supportsExplicitPromptCacheMode: "withhold";
+    readonly supportsMidConvoSystemMessages: "withhold";
 };
 /** Disposition of every `AnthropicMessagesCompat` field; a drift gate like the one above. */
 declare const ANTHROPIC_COMPAT_GATE: {
@@ -121,7 +123,9 @@ declare const ANTHROPIC_COMPAT_GATE: {
     readonly allowEmptySignature: "offer";
     readonly supportsStrictTools: "offer";
     readonly sendSessionAffinityHeaders: "withhold";
-    readonly supportsToolReferences: "withhold";
+    readonly sessionAffinityFormat: "withhold";
+    readonly supportsMidConvoSystemMessages: "withhold";
+    readonly supportsMidConvoToolChanges: "withhold";
     readonly supportsMidConvoEffort: "withhold";
     readonly allowedFallbackModels: "withhold";
 };
@@ -129,12 +133,16 @@ declare const ANTHROPIC_COMPAT_GATE: {
 declare const BEDROCK_COMPAT_GATE: {
     readonly supportsStrictMode: "offer";
 };
+/** Disposition of every `MistralConversationsCompat` field. */
+declare const MISTRAL_COMPAT_GATE: {
+    readonly supportsMidConvoSystemMessages: "withhold";
+};
 /** The field names one gate offers. */
 type OfferedIn<G> = {
     [K in keyof G]: G[K] extends 'offer' ? K : never;
 }[keyof G];
 /** Every compat field name a profile may set, on whichever protocol takes it. */
-type OfferedCompatField = OfferedIn<typeof COMPLETIONS_COMPAT_GATE> | OfferedIn<typeof RESPONSES_COMPAT_GATE> | OfferedIn<typeof ANTHROPIC_COMPAT_GATE> | OfferedIn<typeof BEDROCK_COMPAT_GATE>;
+type OfferedCompatField = OfferedIn<typeof COMPLETIONS_COMPAT_GATE> | OfferedIn<typeof RESPONSES_COMPAT_GATE> | OfferedIn<typeof ANTHROPIC_COMPAT_GATE> | OfferedIn<typeof BEDROCK_COMPAT_GATE> | OfferedIn<typeof MISTRAL_COMPAT_GATE>;
 /**
  * pi-ai wire-compatibility switches, set on the route (its models' default) or
  * per model (winning over the route, field by field).
@@ -242,7 +250,7 @@ export type EveryOfferedFieldIsDocumented = AssertNever<Exclude<OfferedCompatFie
 /** Compile-time constraint that `T` is `true`. */
 type AssertTrue<T extends true> = T;
 /** Every compat type a gate classifies, merged so one `Pick` reaches all offered fields. */
-type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & AnthropicMessagesCompat & BedrockCompat;
+type UpstreamCompat = OpenAICompletionsCompat & OpenAIResponsesCompat & AnthropicMessagesCompat & BedrockCompat & MistralConversationsCompat;
 /**
  * Proof that each documented field carries its upstream type, not a hand-copied
  * restatement of it. The name gates above pin *which* fields exist; this pins

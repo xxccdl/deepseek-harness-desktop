@@ -4,6 +4,7 @@
  * Session's durable selection projection, then submit through the same
  * selectModel call. A switch made in either entry updates this shared state.
  */
+import type { TrackProductEvent } from '@deepseek-ai/dsh-client-product-analytics/client';
 import type { ModelCatalogFailure, ModelProviderGroup, ModelSelection } from '@deepseek-ai/dsh-api-session-controller/types';
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client';
 import type { RemoteResult, TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol';
@@ -35,6 +36,8 @@ export declare class ModelDirectory {
     private readonly available;
     private readonly catalog;
     private readonly projected;
+    private readonly isBlank;
+    private readonly track?;
     /** The shared snapshot both entries render from (uSES-safe store). */
     readonly store: SnapshotStore<ModelDirectoryState>;
     /** Latest selection operation wins; an older response never overwrites a newer one. */
@@ -48,8 +51,10 @@ export declare class ModelDirectory {
      * @param available - whether this session may use Agent-bound model RPCs.
      * @param catalog - Host-generation catalog shared by every Session.
      * @param projected - durable model selection projected from Session history.
+     * @param isBlank - whether this Session has no first message yet.
+     * @param track - desktop-only callback after a successful user selection.
      */
-    constructor(sessions: Pick<TypertClientRemote['session'], 'selectModel'>, sessionId: SessionId, available: () => boolean, catalog: ModelCatalogDirectory, projected: ObservableSnapshot<unknown>);
+    constructor(sessions: Pick<TypertClientRemote['session'], 'selectModel'>, sessionId: SessionId, available: () => boolean, catalog: ModelCatalogDirectory, projected: ObservableSnapshot<unknown>, isBlank: () => boolean, track?: TrackProductEvent | undefined);
     /**
      * Ensure the Host generation's shared available catalog is loaded.
      * @returns the fresh directory value.

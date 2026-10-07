@@ -1,4 +1,3 @@
-/** Registers the sidebar shell and global panel navigation. */
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { type SidebarKey } from './locales.ts';
 export type { SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps, } from './contract/slots.ts';

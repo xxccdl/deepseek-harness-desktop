@@ -13,7 +13,7 @@ const TRANSCRIPT_VIEW_MODES = [
 	"verbose"
 ];
 /**
-* Saved value from the two-mode generation of this setting. Read as `standard`;
+* Saved value from the two-mode generation of this setting. Read as `detailed`;
 * never offered as a choice and never written back.
 */
 const LEGACY_TRANSCRIPT_VIEW_MODE = "normal";
@@ -25,8 +25,8 @@ const TRANSCRIPT_VIEW_SETTING_VALUES = [
 	LEGACY_TRANSCRIPT_VIEW_MODE,
 	LEGACY_EXPANDED_TRANSCRIPT_VIEW_MODE
 ];
-/** Standard process summaries for users without an explicit preference. */
-const DEFAULT_TRANSCRIPT_VIEW_MODE = "standard";
+/** Default work details for non-Desktop Web clients. */
+const DEFAULT_TRANSCRIPT_VIEW_MODE = "detailed";
 /** Performance and usage detail levels accepted by user settings. */
 const PERFORMANCE_USAGE_MODES = ["compact", "detailed"];
 /** Preserve detailed accounting for users without an explicit preference. */
@@ -35,7 +35,7 @@ const DEFAULT_PERFORMANCE_USAGE = "detailed";
 const ChatSettingsFields = {
 	linkOpening: z.union(["sidebar", "new-tab"]).default("sidebar"),
 	performanceUsage: z.union([...PERFORMANCE_USAGE_MODES]).default(DEFAULT_PERFORMANCE_USAGE),
-	[TRANSCRIPT_VIEW_FIELD]: z.union([...TRANSCRIPT_VIEW_SETTING_VALUES]).default(DEFAULT_TRANSCRIPT_VIEW_MODE).loose()
+	[TRANSCRIPT_VIEW_FIELD]: z.union([...TRANSCRIPT_VIEW_SETTING_VALUES]).loose()
 };
 z.object(ChatSettingsFields);
 //#endregion

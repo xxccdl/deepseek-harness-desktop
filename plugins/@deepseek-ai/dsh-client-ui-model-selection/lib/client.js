@@ -173,6 +173,8 @@ window.__ModuleLoader__.load({
 			available;
 			catalog;
 			projected;
+			isBlank;
+			track;
 			/** The shared snapshot both entries render from (uSES-safe store). */
 			store = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)({
 				current: null,
@@ -194,13 +196,17 @@ window.__ModuleLoader__.load({
 			* @param available - whether this session may use Agent-bound model RPCs.
 			* @param catalog - Host-generation catalog shared by every Session.
 			* @param projected - durable model selection projected from Session history.
+			* @param isBlank - whether this Session has no first message yet.
+			* @param track - desktop-only callback after a successful user selection.
 			*/
-			constructor(sessions, sessionId, available, catalog, projected) {
+			constructor(sessions, sessionId, available, catalog, projected, isBlank, track) {
 				this.sessions = sessions;
 				this.sessionId = sessionId;
 				this.available = available;
 				this.catalog = catalog;
 				this.projected = projected;
+				this.isBlank = isBlank;
+				this.track = track;
 				this.unsubscribeCatalog = catalog.store.subscribe(() => {
 					this.syncInputs();
 				});
@@ -228,6 +234,9 @@ window.__ModuleLoader__.load({
 			*/
 			async select(selection) {
 				this.assertAvailable();
+				const previous = this.store.getSnapshot().current;
+				const previousEffort = previous?.reasoningEffort ?? (previous === null ? void 0 : this.catalog.reasoningFor(previous)?.defaultEffort);
+				const nextEffort = selection.reasoningEffort ?? this.catalog.reasoningFor(selection)?.defaultEffort;
 				const generation = ++this.generation;
 				this.store.update((s) => {
 					s.status = "selecting";
@@ -251,6 +260,21 @@ window.__ModuleLoader__.load({
 						s.error = `${result.error.code}: ${result.error.message}`;
 					});
 					return result;
+				}
+				if (previous !== null) {
+					const from = `${previous.provider}/${previous.model}`;
+					const to = `${selection.provider}/${selection.model}`;
+					if (from !== to) this.track?.("model_switch", {
+						...this.isBlank() ? {} : { session_id: this.sessionId },
+						switch_from: from,
+						switch_to: to
+					});
+					if (from === to && previousEffort !== nextEffort) this.track?.("thinking_level_switch", {
+						...this.isBlank() ? {} : { session_id: this.sessionId },
+						model_name: to,
+						switch_from: previousEffort ?? "default",
+						switch_to: nextEffort ?? "default"
+					});
 				}
 				this.store.update((s) => {
 					s.status = "ready";
@@ -325,20 +349,6 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region lib/types/client/service.js
-		/**
-		* ModelDirectoryResolver (`ctx.modelDirectories`): the root owner of per-session
-		* {@link ModelDirectory} instances. Both selection entries (the /model popup
-		* and the composer model seat) resolve their session's directory through
-		* this service, which is what makes the dual entry one shared state.
-		*
-		* Per-session storage follows the client service pattern (InputTriggerService /
-		* CommandUiRuntime): a lazy service-internal map whose entry is deleted by the
-		* owning scope's disposer. The host `dsh-scope` ScopedLayers registry does
-		* does not belong here: it derives scope from the host carrier mechanism
-		* (object-keyed), while client scopes tag contexts with branded SessionId
-		* strings, and it models global+shadow named registries — this is a
-		* per-session singleton with no global layer to merge.
-		*/
 		/** The `ctx.modelDirectories` session model-selection service. */
 		var ModelDirectoryResolver = class extends _deepseek_ai_cordis.Service {
 			static inject = [
@@ -387,7 +397,7 @@ window.__ModuleLoader__.load({
 				if (binding === void 0) throw new Error(`ui-model-selection: session "${String(sessionId)}" resolved no binding`);
 				const existing = live.directories.get(binding);
 				if (existing !== void 0) return existing;
-				const directory = new ModelDirectory(this.ctx.remote.session, sessionId, () => sessions.subagentAddress(sessionId) === void 0, this.catalog, binding.session.projections.faceOf("modelSelection"));
+				const directory = new ModelDirectory(this.ctx.remote.session, sessionId, () => sessions.subagentAddress(sessionId) === void 0, this.catalog, binding.session.projections.faceOf("modelSelection"), () => binding.session.getSnapshot().blank, (name, attributes) => this.ctx.get("productAnalytics")?.track(name, attributes));
 				live.directories.set(binding, directory);
 				actx.effect(() => () => {
 					directory.dispose();
@@ -413,7 +423,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-model-selection/src/client/ModelSelect.module.css.mjs
-		const css = "._7KE1Ra_root{min-width:0;position:relative}._7KE1Ra_trigger{border-radius:var(--dsw-radius-sm);min-width:0;max-width:min(360px,45cqw);height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;outline:none;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:13px;font-weight:400;line-height:20px;display:flex}._7KE1Ra_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}._7KE1Ra_trigger:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_triggerLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._7KE1Ra_triggerEffort{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-caption);flex-shrink:1000;overflow:hidden}._7KE1Ra_triggerIcon{display:var(--dsh-composer-model-icon-display,none);flex:none}._7KE1Ra_triggerLabel,._7KE1Ra_triggerEffort{display:var(--dsh-composer-model-text-display,block)}._7KE1Ra_chevron{color:var(--dsw-alias-label-caption);flex:none;transition:transform .12s}._7KE1Ra_chevronOpen{transform:rotate(180deg)}._7KE1Ra_menu{z-index:1100;--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);width:max-content;min-width:min(240px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(360px,100vh - 96px);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;flex-direction:column;padding:4px;display:flex;position:fixed;overflow:hidden}._7KE1Ra_status,._7KE1Ra_empty{color:var(--dsw-alias-label-tertiary);padding:8px;font-size:12px;line-height:18px}._7KE1Ra_error,._7KE1Ra_warning{border-radius:var(--dsw-radius-md);background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;padding:6px 7px;font-size:11px;line-height:16px;display:flex}._7KE1Ra_warning{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-warn-label)}._7KE1Ra_retry{color:inherit;font:inherit;cursor:pointer;background:0 0;border:none;flex:none;padding:0;font-weight:600}._7KE1Ra_groups{min-height:0;overflow-y:auto}._7KE1Ra_group+._7KE1Ra_group{margin-top:3px}._7KE1Ra_groupTitle{z-index:1;background:var(--dsw-specific-menu);color:var(--dsw-alias-label-tertiary);padding:4px 7px 2px;font-size:11px;font-weight:500;line-height:16px;position:sticky;top:0}._7KE1Ra_option{box-sizing:border-box;border-radius:var(--dsw-radius-md);width:auto;min-width:100%;min-height:34px;color:inherit;text-align:left;cursor:pointer;background:0 0;border:none;outline:none;align-items:center;gap:6px;padding:5px 7px;display:flex}._7KE1Ra_option:hover:not(:disabled),._7KE1Ra_option:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_selected{background:0 0}._7KE1Ra_option:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_optionCopy{flex-direction:column;flex:1;min-width:0;display:flex}._7KE1Ra_modelName{color:inherit;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}._7KE1Ra_check{color:var(--dsw-alias-label-primary);flex:0 0 14px;place-items:center;display:grid}._7KE1Ra_check svg{width:14px;height:14px}._7KE1Ra_cell{box-sizing:border-box;border-radius:var(--dsw-radius-md);width:auto;min-width:100%;height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;align-items:center;gap:6px;padding:0 8px;font-size:13px;line-height:20px;display:flex}._7KE1Ra_cell:hover{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_cellLabel{white-space:nowrap;flex:none}._7KE1Ra_cellValue{text-overflow:ellipsis;white-space:nowrap;text-align:right;min-width:0;color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}._7KE1Ra_cellChevron{width:12px;height:12px;color:var(--dsw-alias-menu-icon);flex:none}";
+		const css = "._7KE1Ra_root{min-width:0;position:relative}._7KE1Ra_trigger{border-radius:var(--dsw-radius-sm);min-width:0;max-width:min(360px,45cqw);height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;outline:none;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:13px;font-weight:400;line-height:20px;display:flex}._7KE1Ra_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_trigger:focus-visible:not([data-selection-focus]){box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}._7KE1Ra_trigger:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_triggerLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._7KE1Ra_triggerEffort{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-caption);flex-shrink:1000;overflow:hidden}._7KE1Ra_triggerIcon{display:var(--dsh-composer-model-icon-display,none);flex:none}._7KE1Ra_triggerLabel,._7KE1Ra_triggerEffort{display:var(--dsh-composer-model-text-display,block)}._7KE1Ra_chevron{color:var(--dsw-alias-label-caption);flex:none;transition:transform .12s}._7KE1Ra_chevronOpen{transform:rotate(180deg)}._7KE1Ra_menu{z-index:1100;--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);width:max-content;min-width:min(240px,100vw - 32px);max-width:min(420px,100vw - 32px);max-height:min(360px,100vh - 96px);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);border:0;flex-direction:column;padding:4px;display:flex;position:fixed;overflow:hidden}._7KE1Ra_status,._7KE1Ra_empty{color:var(--dsw-alias-label-tertiary);padding:8px;font-size:12px;line-height:18px}._7KE1Ra_error,._7KE1Ra_warning{border-radius:var(--dsw-radius-md);background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary);justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px;padding:6px 7px;font-size:11px;line-height:16px;display:flex}._7KE1Ra_warning{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-warn-label)}._7KE1Ra_retry{color:inherit;font:inherit;cursor:pointer;background:0 0;border:none;flex:none;padding:0;font-weight:600}._7KE1Ra_searchRow{flex-shrink:0;margin:2px 0 3px;position:relative}._7KE1Ra_searchRow ._7KE1Ra_search{border-radius:var(--dsw-radius-md);background:0 0;border:0 solid #0000;height:auto;padding:5px 7px;display:flex}._7KE1Ra_searchRow ._7KE1Ra_searchWithQuery{padding-right:34px}._7KE1Ra_searchClear{corner-shape:round;width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;justify-content:center;align-items:center;padding:0;display:inline-flex;position:absolute;top:50%;right:4px;transform:translateY(-50%)}._7KE1Ra_searchClear:hover,._7KE1Ra_searchClear:focus-visible{background:var(--dsw-alias-interactive-bg-hover);outline:none}._7KE1Ra_searchRow ._7KE1Ra_search:focus-within{border-color:#0000}._7KE1Ra_searchRow ._7KE1Ra_search input{padding:0;font-size:12px;line-height:normal}._7KE1Ra_searchRow ._7KE1Ra_search input::placeholder{color:var(--dsw-alias-label-caption)}._7KE1Ra_groups{min-height:0;overflow-y:auto}._7KE1Ra_option{box-sizing:border-box;border-radius:var(--dsw-radius-md);width:auto;min-width:100%;min-height:34px;color:inherit;text-align:left;cursor:pointer;background:0 0;border:none;outline:none;align-items:center;gap:6px;padding:5px 7px;display:flex}._7KE1Ra_option:not(._7KE1Ra_modelOption):hover:not(:disabled),._7KE1Ra_option:focus-visible,._7KE1Ra_optionActive:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_selected{background:0 0}._7KE1Ra_option:disabled{color:var(--dsw-alias-label-dimmed);cursor:default}._7KE1Ra_optionCopy{flex-direction:column;flex:1;min-width:0;display:flex}._7KE1Ra_modelName{color:inherit;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:400;line-height:18px;overflow:hidden}._7KE1Ra_check{color:var(--dsw-alias-label-primary);flex:0 0 14px;place-items:center;display:grid}._7KE1Ra_check svg{width:14px;height:14px}._7KE1Ra_cell{box-sizing:border-box;border-radius:var(--dsw-radius-md);width:auto;min-width:100%;height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;outline:none;align-items:center;gap:6px;padding:0 8px;font-size:13px;line-height:20px;display:flex}._7KE1Ra_cell:hover,._7KE1Ra_cell:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}._7KE1Ra_cellLabel{white-space:nowrap;flex:none}._7KE1Ra_cellValue{text-overflow:ellipsis;white-space:nowrap;text-align:right;min-width:0;color:var(--dsw-alias-label-tertiary);flex:auto;overflow:hidden}._7KE1Ra_cellChevron{width:12px;height:12px;color:var(--dsw-alias-menu-icon);flex:none}";
 		const tagId = "@deepseek-ai/dsh-client-ui-model-selection/ModelSelect.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -432,15 +442,19 @@ window.__ModuleLoader__.load({
 			"chevronOpen": "_7KE1Ra_chevronOpen",
 			"empty": "_7KE1Ra_empty",
 			"error": "_7KE1Ra_error",
-			"group": "_7KE1Ra_group",
-			"groupTitle": "_7KE1Ra_groupTitle",
 			"groups": "_7KE1Ra_groups",
 			"menu": "_7KE1Ra_menu",
 			"modelName": "_7KE1Ra_modelName",
+			"modelOption": "_7KE1Ra_modelOption",
 			"option": "_7KE1Ra_option",
+			"optionActive": "_7KE1Ra_optionActive",
 			"optionCopy": "_7KE1Ra_optionCopy",
 			"retry": "_7KE1Ra_retry",
 			"root": "_7KE1Ra_root",
+			"search": "_7KE1Ra_search",
+			"searchClear": "_7KE1Ra_searchClear",
+			"searchRow": "_7KE1Ra_searchRow",
+			"searchWithQuery": "_7KE1Ra_searchWithQuery",
 			"selected": "_7KE1Ra_selected",
 			"status": "_7KE1Ra_status",
 			"trigger": "_7KE1Ra_trigger",
@@ -449,6 +463,17 @@ window.__ModuleLoader__.load({
 			"triggerLabel": "_7KE1Ra_triggerLabel",
 			"warning": "_7KE1Ra_warning"
 		};
+		//#endregion
+		//#region lib/types/client/provider-order.js
+		/** Shared provider display order for the composer and command model pickers. */
+		/**
+		* Put the account and official providers first, preserving every other relative order.
+		* @param groups - Provider groups in catalog order.
+		* @returns a sorted copy; model order within each group is unchanged.
+		*/
+		function orderModelProviders(groups) {
+			return groups.toSorted((left, right) => (left.id === "deepseek-account" ? 0 : left.id === "deepseek-official" ? 1 : 2) - (right.id === "deepseek-account" ? 0 : right.id === "deepseek-official" ? 1 : 2));
+		}
 		//#endregion
 		//#region desktop-fork motion layer
 		// The upstream effort pane is a plain radio list. This fork keeps the same
@@ -553,19 +578,25 @@ window.__ModuleLoader__.load({
 		* each drilling into its own list — the provider-grouped model list over
 		* the shared directory, and the effort levels. The trigger (313:14108's
 		* ToggleButton) shows both: model name + effort in the caption tone.
-		* While open, ↑/↓ move focus across the rows of the shown pane (wrapping; a
-		* step taken while the trigger still holds focus enters at the near end), Tab
-		* settles like Enter, and Escape and Shift+Tab leave a drilled pane first and
-		* otherwise close back to the trigger. A drilled pane hands focus to the row
-		* of the value in use, and returning to the root pane hands it back to the
-		* cell that opened it. Data and submission ride the SAME per-session
-		* ModelDirectory as the /model popup; exact-model reasoning metadata and the
-		* selected effort come from the Host rather than a client-owned vocabulary. A
-		* rejected selection announces through the shared transient Toast anchored to
-		* the composer card; the in-menu strip with Retry remains the catalog-load
-		* surface. While the directory's pending selection is unsettled, the trigger
-		* shows a spinner in place of its chevron, and each row whose value that
-		* selection carries shows one in place of its check mark.
+		* Model catalogs above four entries show search, which retains focus while
+		* ↑/↓ cycle the highlighted result; Enter and Tab accept it. Smaller model
+		* catalogs, root panes, and effort panes move focus between rows. Escape and Shift+Tab leave a drilled pane first and otherwise close
+		* back to the trigger. A drilled pane focuses the current effort or model
+		* search field. Provider headings paint their background only while pinned
+		* by scrolling. Clearing a query restores the full list and search focus.
+		* Selecting restores trigger focus without a ring until the trigger loses focus
+		* or the menu reopens. Model names match a case-insensitive ordered subsequence
+		* within each provider group, ranked by
+		* prefix, alignment score, then catalog order. Returning to the root pane
+		* hands focus back to the cell that opened it. Data and submission ride the
+		* same per-session ModelDirectory as the /model popup; exact-model reasoning
+		* metadata and the selected effort come from the Host rather than a
+		* client-owned vocabulary. A rejected selection announces through the shared
+		* transient Toast anchored to the composer card; the in-menu strip with
+		* Retry remains the catalog-load surface. While the directory's pending
+		* selection is unsettled, the trigger shows a spinner in place of its
+		* chevron, and each row whose value that selection carries shows one in place
+		* of its check mark.
 		*/
 		/**
 		* Reasoning-effort picker built as a real slider, the way Codex asks for a
@@ -756,6 +787,9 @@ window.__ModuleLoader__.load({
 			const state = (0, react.useSyncExternalStore)((fn) => directory.subscribe(fn), () => directory.getSnapshot());
 			const [open, setOpen] = (0, react.useState)(false);
 			const [pane, setPane] = (0, react.useState)("root");
+			const [query, setQuery] = (0, react.useState)("");
+			const [highlightedIndex, setHighlightedIndex] = (0, react.useState)(null);
+			const [selectionFocus, setSelectionFocus] = (0, react.useState)(false);
 			// Which way the shown pane travelled to get here — null on the pane the
 			// menu opens on, so its first paint carries no entrance animation.
 			const [dir, setDir] = (0, react.useState)(null);
@@ -764,11 +798,13 @@ window.__ModuleLoader__.load({
 			const toastSeq = (0, react.useRef)(0);
 			const rootRef = (0, react.useRef)(null);
 			const triggerRef = (0, react.useRef)(null);
+			const searchRef = (0, react.useRef)(null);
 			const menuRef = (0, react.useRef)(null);
+			const groupsRef = (0, react.useRef)(null);
 			const [menuPos, setMenuPos] = (0, react.useState)(null);
 			const itemRefs = (0, react.useRef)([]);
 			const id = (0, react.useId)();
-			const groups = (0, react.useMemo)(() => state.groups.toSorted((left, right) => (left.id === "deepseek-account" ? 0 : left.id === "deepseek-official" ? 1 : 2) - (right.id === "deepseek-account" ? 0 : right.id === "deepseek-official" ? 1 : 2)), [state.groups]);
+			const groups = (0, react.useMemo)(() => orderModelProviders(state.groups), [state.groups]);
 			const choices = (0, react.useMemo)(() => groups.flatMap((group) => group.models.map((model) => ({
 				group,
 				model,
@@ -778,6 +814,21 @@ window.__ModuleLoader__.load({
 					...model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort }
 				}
 			}))), [groups]);
+			const showSearch = choices.length > 4;
+			const filteredGroups = (0, react.useMemo)(() => groups.map((group) => ({
+				...group,
+				models: (0, _deepseek_ai_dsh_client_ui_primitives.rankByName)(group.models, showSearch ? query.trim() : "")
+			})).filter((group) => group.models.length > 0), [
+				groups,
+				query,
+				showSearch
+			]);
+			const visibleModels = (0, react.useMemo)(() => filteredGroups.flatMap((group) => group.models.map((model) => ({
+				provider: group.id,
+				model: model.id
+			}))), [filteredGroups]);
+			const currentVisibleIndex = visibleModels.findIndex((model) => model.provider === state.current?.provider && model.model === state.current.model);
+			const activeModelIndex = Math.min(highlightedIndex ?? Math.max(0, currentVisibleIndex), visibleModels.length - 1);
 			const currentChoice = choices[state.current === null ? -1 : choices.findIndex((c) => c.selection.provider === state.current?.provider && c.selection.model === state.current.model)];
 			const reasoning = currentChoice?.model.reasoning;
 			const effectiveEffort = state.current?.reasoningEffort ?? reasoning?.defaultEffort;
@@ -809,18 +860,53 @@ window.__ModuleLoader__.load({
 					document.removeEventListener("mousedown", closeOutside);
 				};
 			}, [open]);
+			(0, react.useLayoutEffect)(() => {
+				if (!showSearch) {
+					setQuery("");
+					setHighlightedIndex(null);
+				}
+			}, [showSearch]);
 			const paneFocus = (0, react.useRef)(null);
+			const previousShowSearch = (0, react.useRef)(showSearch);
 			(0, react.useEffect)(() => {
-				const intent = paneFocus.current;
+				const changedSearchMode = previousShowSearch.current !== showSearch;
+				previousShowSearch.current = showSearch;
+				const intent = paneFocus.current ?? (changedSearchMode && pane === "model" ? "drill" : null);
 				paneFocus.current = null;
 				if (!open || intent === null) return;
 				if (intent === "drill") {
+					if (pane === "model" && showSearch) {
+						searchRef.current?.focus();
+						return;
+					}
 					(menuRef.current?.querySelector("[role=\"menuitemradio\"][aria-checked=\"true\"]:not([disabled])") ?? itemRefs.current.find((item) => item !== null && !item.disabled) ?? triggerRef.current)?.focus();
 					return;
 				}
 				const cell = itemRefs.current[intent === "effort" ? 1 : 0];
 				(cell !== null && cell !== void 0 && !cell.disabled ? cell : triggerRef.current)?.focus();
-			}, [open, pane]);
+			}, [
+				open,
+				pane,
+				showSearch
+			]);
+			(0, react.useEffect)(() => {
+				const viewport = groupsRef.current;
+				if (viewport === null) return;
+				return (0, _deepseek_ai_dsh_client_ui_primitives.observeStickyMenuGroups)(viewport);
+			}, [
+				available,
+				open,
+				pane,
+				filteredGroups
+			]);
+			(0, react.useLayoutEffect)(() => {
+				if (open && pane === "model" && activeModelIndex >= 0) itemRefs.current[activeModelIndex]?.scrollIntoView({ block: "nearest" });
+			}, [
+				open,
+				pane,
+				activeModelIndex,
+				visibleModels
+			]);
 			(0, react.useLayoutEffect)(() => {
 				if (!open) {
 					setMenuPos(null);
@@ -852,16 +938,24 @@ window.__ModuleLoader__.load({
 			}, [
 				open,
 				pane,
-				state
+				state,
+				query
 			]);
 			if (!available) return null;
 			const show = () => {
+				setSelectionFocus(false);
 				triggerRef.current?.focus();
+				setQuery("");
+				setHighlightedIndex(null);
 				if (state.current === null) paneFocus.current = "drill";
 				setDir(null);
 				setPane(state.current === null ? "model" : "root");
 				setOpen(true);
 				reload();
+			};
+			const changeQuery = (next) => {
+				setQuery(next);
+				setHighlightedIndex(0);
 			};
 			const close = (restoreFocus = false) => {
 				setOpen(false);
@@ -871,7 +965,13 @@ window.__ModuleLoader__.load({
 					triggerRef.current?.focus();
 				});
 			};
+			const closeAfterSelection = () => {
+				setSelectionFocus(true);
+				close(true);
+			};
 			const drill = (next) => {
+				setQuery("");
+				setHighlightedIndex(null);
 				paneFocus.current = "drill";
 				setDir(next === "root" ? "back" : "forward");
 				setPane(next);
@@ -889,6 +989,7 @@ window.__ModuleLoader__.load({
 				items[active === -1 ? offset > 0 ? 0 : items.length - 1 : (active + offset + items.length) % items.length]?.focus();
 			};
 			const onRootKeyDown = (event) => {
+				if (event.nativeEvent.isComposing) return;
 				if (event.key === "Escape" && open) {
 					event.preventDefault();
 					if (pane !== "root" && state.current !== null) back(pane);
@@ -896,6 +997,21 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				if (!open) return;
+				if (pane === "model" && showSearch && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+					event.preventDefault();
+					if (!busy && visibleModels.length > 0) {
+						setHighlightedIndex((activeModelIndex + (event.key === "ArrowDown" ? 1 : -1) + visibleModels.length) % visibleModels.length);
+						searchRef.current?.focus();
+					}
+					return;
+				}
+				if (pane === "model" && showSearch && event.target instanceof HTMLInputElement && (event.key === "Enter" || event.key === "Tab" && !event.shiftKey)) {
+					if (event.key === "Tab" && visibleModels.length === 0) return;
+					event.preventDefault();
+					const highlighted = visibleModels[activeModelIndex];
+					if (!busy && highlighted !== void 0) choose(highlighted);
+					return;
+				}
 				if (event.key === "Tab") {
 					if (event.shiftKey) {
 						event.preventDefault();
@@ -912,6 +1028,11 @@ window.__ModuleLoader__.load({
 					}
 					if (focused !== triggerRef.current) return;
 					event.preventDefault();
+					if (pane === "model" && showSearch) {
+						setHighlightedIndex(null);
+						searchRef.current?.focus();
+						return;
+					}
 					(menuRef.current?.querySelector("[role=\"menuitemradio\"][aria-checked=\"true\"]:not([disabled])") ?? rows.find((item) => !item.disabled))?.focus();
 					return;
 				}
@@ -927,7 +1048,7 @@ window.__ModuleLoader__.load({
 			const settleSelection = (result, keepOpen = false) => {
 				if (result === void 0) return;
 				if (result.ok) {
-					if (!keepOpen && rootRef.current !== null) close(true);
+					if (!keepOpen && rootRef.current !== null) closeAfterSelection();
 					return;
 				}
 				const { error } = result;
@@ -948,12 +1069,13 @@ window.__ModuleLoader__.load({
 			};
 			const submit = (selection, settle = settleSelection) => {
 				lastActionRef.current = "select";
+				setSelectionFocus(true);
 				triggerRef.current?.focus();
 				select(selection).then(settle);
 			};
 			const choose = (selection) => {
 				if (state.current?.provider === selection.provider && state.current.model === selection.model) {
-					close(true);
+					closeAfterSelection();
 					return;
 				}
 				submit(selection);
@@ -978,6 +1100,7 @@ window.__ModuleLoader__.load({
 			});
 			itemRefs.current = [];
 			let itemIndex = 0;
+			let modelIndex = 0;
 			const itemRef = () => {
 				const at = itemIndex++;
 				return (node) => {
@@ -1003,6 +1126,10 @@ window.__ModuleLoader__.load({
 						"aria-controls": open ? `${id}-menu` : void 0,
 						title: triggerLabel,
 						"aria-busy": busy,
+						"data-selection-focus": selectionFocus ? "" : void 0,
+						onBlur: () => {
+							setSelectionFocus(false);
+						},
 						disabled: locked,
 						onClick: () => {
 							if (open) close(true);
@@ -1030,7 +1157,7 @@ window.__ModuleLoader__.load({
 						id: `${id}-menu`,
 						className: clsx(ModelSelect_module_css_default.menu, "dsms-menu"),
 						style: menuPos ?? MEASURE_STYLE,
-						role: "menu",
+						role: pane === "model" ? "group" : "menu",
 						"aria-label": t("menu.aria"),
 						"aria-busy": state.status === "loading" || busy,
 						children: [
@@ -1077,6 +1204,34 @@ window.__ModuleLoader__.load({
 								]
 							})] }),
 							pane === "model" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+								showSearch && (0, react_jsx_runtime.jsxs)("div", {
+									className: ModelSelect_module_css_default.searchRow,
+									children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+										ref: searchRef,
+										className: clsx(ModelSelect_module_css_default.search, query !== "" && ModelSelect_module_css_default.searchWithQuery),
+										type: "text",
+										role: "searchbox",
+										"aria-label": t("search.placeholder"),
+										"aria-controls": `${id}-models`,
+										"aria-activedescendant": activeModelIndex < 0 ? void 0 : `${id}-model-${activeModelIndex}`,
+										placeholder: t("search.placeholder"),
+										value: query,
+										readOnly: busy,
+										onChange: (event) => {
+											changeQuery(event.target.value);
+										}
+									}), query !== "" && (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: ModelSelect_module_css_default.searchClear,
+										"aria-label": t("search.clear"),
+										disabled: busy,
+										onClick: () => {
+											changeQuery("");
+											searchRef.current?.focus();
+										},
+										children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFillRegular, {})
+									})]
+								}),
 								state.status === "loading" && (0, react_jsx_runtime.jsx)("div", {
 									className: ModelSelect_module_css_default.status,
 									children: t("status.loading")
@@ -1103,25 +1258,34 @@ window.__ModuleLoader__.load({
 									})]
 								}, failure.id)),
 								(0, react_jsx_runtime.jsx)("div", {
+									ref: groupsRef,
+									id: `${id}-models`,
 									className: clsx(ModelSelect_module_css_default.groups, "scrollable"),
-									children: groups.map((group) => {
-										const headingId = `${id}-${group.id}`;
-										return (0, react_jsx_runtime.jsxs)("section", {
-											role: "group",
-											"aria-labelledby": headingId,
-											className: ModelSelect_module_css_default.group,
-											children: [(0, react_jsx_runtime.jsx)("div", {
-												className: ModelSelect_module_css_default.groupTitle,
-												id: headingId,
-												children: group.id === "deepseek-account" ? t("provider.account") : group.name
-											}), group.models.map((model) => {
+									role: "menu",
+									"aria-label": t("menu.model"),
+									hidden: filteredGroups.length === 0,
+									children: filteredGroups.map((group) => {
+										return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuGroup, {
+											label: group.id === "deepseek-account" ? t("provider.account") : group.name,
+											children: group.models.map((model) => {
+												const index = modelIndex++;
 												const selected = state.current?.provider === group.id && state.current.model === model.id;
 												return (0, react_jsx_runtime.jsxs)("button", {
 													ref: itemRef(),
 													type: "button",
 													role: "menuitemradio",
 													"aria-checked": selected,
-													className: clsx(ModelSelect_module_css_default.option, selected && ModelSelect_module_css_default.selected),
+													id: `${id}-model-${index}`,
+													tabIndex: showSearch ? -1 : 0,
+													onFocus: () => {
+														setHighlightedIndex(index);
+													},
+													"data-highlighted": index === activeModelIndex ? "" : void 0,
+													className: clsx(ModelSelect_module_css_default.option, ModelSelect_module_css_default.modelOption, selected && ModelSelect_module_css_default.selected, index === activeModelIndex && ModelSelect_module_css_default.optionActive),
+													onMouseMove: busy || index === activeModelIndex ? void 0 : () => {
+														if (showSearch) setHighlightedIndex(index);
+														else itemRefs.current[index]?.focus();
+													},
 													title: model.name,
 													disabled: busy,
 													onClick: () => {
@@ -1141,13 +1305,14 @@ window.__ModuleLoader__.load({
 														children: pending?.provider === group.id && pending.model === model.id ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "ongoing" }) : selected ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCheckOutlineRegular, {}) : null
 													})]
 												}, model.id);
-											})]
+											})
 										}, group.id);
 									})
 								}),
-								state.status === "ready" && choices.length === 0 && (0, react_jsx_runtime.jsx)("div", {
+								state.status === "ready" && filteredGroups.length === 0 && (0, react_jsx_runtime.jsx)("div", {
 									className: ModelSelect_module_css_default.empty,
-									children: t("empty.models")
+									role: "status",
+									children: t(choices.length === 0 ? "empty.models" : "search.empty")
 								})
 							] }),
 							pane === "effort" && (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [state.error !== null && lastActionRef.current === "load" && (0, react_jsx_runtime.jsxs)("div", {
@@ -1217,8 +1382,6 @@ window.__ModuleLoader__.load({
 			"command.label": "模型",
 			"command.description": "选择本会话使用的模型",
 			"option.loadError": "目录加载失败：{message}",
-			"option.deepseekV4Flash.description": "快速、高效且经济；适合目标明确、常规或并行任务。",
-			"option.deepseekV4Pro.description": "更强的自主编码、知识与复杂推理能力；适合复杂或质量优先的任务，但成本更高。",
 			"trigger.fallback": "请选择模型",
 			"trigger.loading": "正在加载模型…",
 			"trigger.selectAria": "请选择模型",
@@ -1241,6 +1404,9 @@ window.__ModuleLoader__.load({
 			"error.sessionInUse": "当前会话已被占用，可能是其他正在运行的 DSH 导致的（如其他 dsh web、桌面端），请退出其他正在运行的 DSH 后重试。",
 			"action.reload": "重新加载",
 			"warning.groupLoad": "{name} 加载失败：{message}",
+			"search.placeholder": "搜索模型…",
+			"search.clear": "清除搜索",
+			"search.empty": "没有匹配的模型。",
 			"empty.models": "没有可用的模型。",
 			"empty.efforts": "当前模型未提供推理等级。"
 		};
@@ -1250,8 +1416,6 @@ window.__ModuleLoader__.load({
 			"command.label": "Model",
 			"command.description": "Select the model for this conversation",
 			"option.loadError": "Catalog failed to load: {message}",
-			"option.deepseekV4Flash.description": "Fast, efficient, and economical; suited to focused, routine, or parallel tasks.",
-			"option.deepseekV4Pro.description": "Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.",
 			"trigger.fallback": "Select model",
 			"trigger.loading": "Loading models…",
 			"trigger.selectAria": "Select model",
@@ -1274,6 +1438,9 @@ window.__ModuleLoader__.load({
 			"error.sessionInUse": "This session is already in use, possibly by another running DSH instance (such as dsh web or the desktop app). Quit other running DSH instances and try again.",
 			"action.reload": "Reload",
 			"warning.groupLoad": "{name} failed to load: {message}",
+			"search.placeholder": "Search models…",
+			"search.clear": "Clear search",
+			"search.empty": "No matching models.",
 			"empty.models": "No models available.",
 			"empty.efforts": "This model provides no reasoning effort levels."
 		};
@@ -1283,30 +1450,20 @@ window.__ModuleLoader__.load({
 		function rowId(providerId, modelId) {
 			return `${providerId}/${modelId}`;
 		}
-		const BUILTIN_DESCRIPTION_KEYS = {
-			"deepseek-account/deepseek-v4-flash": "option.deepseekV4Flash.description",
-			"deepseek-account/deepseek-v4-pro": "option.deepseekV4Pro.description",
-			"deepseek-official/deepseek-v4-flash": "option.deepseekV4Flash.description",
-			"deepseek-official/deepseek-v4-pro": "option.deepseekV4Pro.description"
-		};
-		function descriptionOf(providerId, model, t) {
-			const key = BUILTIN_DESCRIPTION_KEYS[rowId(providerId, model.id)];
-			return key !== void 0 && model.description === en[key] ? t(key) : model.description;
-		}
 		/** Flatten the directory into popup rows; failure rows are listed for visibility but never selectable. */
 		function optionsOf(directory, t) {
 			const rows = [];
-			for (const group of directory.groups) {
+			for (const group of orderModelProviders(directory.groups)) {
 				const name = group.id === "deepseek-account" ? t("provider.account") : group.name;
-				for (const model of group.models) {
-					const description = descriptionOf(group.id, model, t);
-					rows.push({
-						id: rowId(group.id, model.id),
-						label: model.name,
-						detail: description !== void 0 ? `${name} · ${description}` : name,
-						...directory.current !== null && directory.current.provider === group.id && directory.current.model === model.id ? { active: true } : {}
-					});
-				}
+				for (const model of group.models) rows.push({
+					id: rowId(group.id, model.id),
+					label: model.name,
+					group: {
+						name: group.id,
+						label: name
+					},
+					...directory.current !== null && directory.current.provider === group.id && directory.current.model === model.id ? { active: true } : {}
+				});
 			}
 			for (const failure of directory.failures) rows.push({
 				id: `failure/${failure.id}`,
@@ -1369,6 +1526,12 @@ window.__ModuleLoader__.load({
 					available: (session) => sessions.subagentAddress(session.sessionId) === void 0,
 					ui: {
 						kind: "popupSelect",
+						searchMode: "fuzzy-label",
+						searchLabels: () => ({
+							placeholder: t("search.placeholder"),
+							empty: t("empty.models"),
+							noResults: t("search.empty")
+						}),
 						options: async (session) => {
 							if (sessions.subagentAddress(session.sessionId) !== void 0) throw new Error("model selection is unavailable for addressed subagent sessions");
 							return optionsOf(await models.directoryFor(session.sessionId).load(), t);

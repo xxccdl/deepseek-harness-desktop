@@ -20,12 +20,12 @@ function assertNever(value, context) {
 	const rendered = JSON.stringify(value) ?? String(value);
 	throw new Error(`unreachable variant${context ? ` in ${context}` : ""}: ${rendered}`);
 }
-/** Whether a realm-owned intrinsic prototype is backed by its native constructor. */
+/** Whether a realm-owned intrinsic prototype has a native constructor matching this engine's representation. */
 function hasIntrinsicConstructor(prototype, name) {
 	const constructor = Object.getOwnPropertyDescriptor(prototype, "constructor")?.value;
 	if (typeof constructor !== "function") return false;
 	try {
-		return constructor.name === name && constructor.prototype === prototype && Function.prototype.toString.call(constructor) === `function ${name}() { [native code] }`;
+		return constructor.name === name && constructor.prototype === prototype && Function.prototype.toString.call(constructor) === Function.prototype.toString.call(name === "Array" ? Array : Object);
 	} catch {
 		return false;
 	}

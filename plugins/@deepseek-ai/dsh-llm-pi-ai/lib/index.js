@@ -59,7 +59,6 @@ function emptyPiUsage() {
 * @returns the versioned lossless-JSON replay projection.
 */
 function toPiReplayState(message, requestedModel = message.model) {
-	const responseModel = message.api === "anthropic-messages" && message.model !== requestedModel ? message.model : message.responseModel;
 	return {
 		response: {
 			kind: "pi-ai",
@@ -67,7 +66,7 @@ function toPiReplayState(message, requestedModel = message.model) {
 			api: message.api,
 			provider: message.provider,
 			model: requestedModel,
-			...responseModel === void 0 ? {} : { responseModel },
+			...message.responseModel === void 0 ? {} : { responseModel: message.responseModel },
 			...message.responseId === void 0 ? {} : { responseId: message.responseId },
 			...message.providerThinkingLevel === void 0 ? {} : { providerThinkingLevel: message.providerThinkingLevel },
 			stopReason: message.stopReason
@@ -215,7 +214,7 @@ function replayedAssistant(message, source, rawState) {
 		}),
 		api: state.response.api,
 		provider: state.response.provider,
-		model: state.response.api === "anthropic-messages" ? state.response.responseModel ?? state.response.model : state.response.model,
+		model: state.response.model,
 		...state.response.responseModel === void 0 ? {} : { responseModel: state.response.responseModel },
 		...state.response.responseId === void 0 ? {} : { responseId: state.response.responseId },
 		...state.response.providerThinkingLevel === void 0 ? {} : { providerThinkingLevel: state.response.providerThinkingLevel },
@@ -402,7 +401,8 @@ const COMPLETIONS_COMPAT_GATE = {
 	zaiToolStream: "withhold",
 	supportsOpenAIGrammarTools: "withhold",
 	sendSessionAffinityHeaders: "withhold",
-	deferredToolsMode: "withhold",
+	supportsMidConvoSystemMessages: "withhold",
+	supportsMidConvoToolAdditions: "withhold",
 	sessionAffinityFormat: "withhold"
 };
 /** Disposition of every `OpenAIResponsesCompat` field; a drift gate like the one above. */
@@ -415,7 +415,8 @@ const RESPONSES_COMPAT_GATE = {
 	supportsOpenAIGrammarTools: "withhold",
 	supportsAdditionalTools: "withhold",
 	supportsToolSearch: "withhold",
-	supportsExplicitPromptCacheMode: "withhold"
+	supportsExplicitPromptCacheMode: "withhold",
+	supportsMidConvoSystemMessages: "withhold"
 };
 /**
 * The compat gate of every wire protocol a profile may configure.
@@ -427,6 +428,7 @@ const RESPONSES_COMPAT_GATE = {
 * models declare.
 */
 const COMPAT_GATES = {
+	"mistral-conversations": { supportsMidConvoSystemMessages: "withhold" },
 	"openai-completions": COMPLETIONS_COMPAT_GATE,
 	"openai-responses": RESPONSES_COMPAT_GATE,
 	"azure-openai-responses": RESPONSES_COMPAT_GATE,
@@ -440,7 +442,9 @@ const COMPAT_GATES = {
 		allowEmptySignature: "offer",
 		supportsStrictTools: "offer",
 		sendSessionAffinityHeaders: "withhold",
-		supportsToolReferences: "withhold",
+		sessionAffinityFormat: "withhold",
+		supportsMidConvoSystemMessages: "withhold",
+		supportsMidConvoToolChanges: "withhold",
 		supportsMidConvoEffort: "withhold",
 		allowedFallbackModels: "withhold"
 	},

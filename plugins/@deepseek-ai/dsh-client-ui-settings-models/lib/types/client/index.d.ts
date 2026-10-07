@@ -1,11 +1,3 @@
-/**
- * Models settings and product-onboarding plugin, browser half. It registers
- * the Models page plus the ordered internal-testing and official-DeepSeek
- * onboarding dialogs, whose UI shares this package's modal wrapper. The Host
- * settings and credential contracts stay behind their existing wire APIs.
- * Export discipline:
- * packages/client/AGENTS.md.
- */
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { ModelsSettingsStore } from './store.ts';
 import { type ModelsKey } from './locales.ts';

@@ -2,7 +2,7 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots';
 /** The date-template share of the conversation dictionary the clock consumes. */
 export type ClockTranslate = Translate<'clock.md' | 'clock.ymd'>;
 /** The elapsed-duration share of the conversation dictionary. */
-export type RunDurationTranslate = Translate<'duration.seconds' | 'duration.minutes' | 'duration.hours'>;
+export type RunDurationTranslate = Translate<'duration.secondUnit' | 'duration.minuteUnit' | 'duration.hourUnit'>;
 /** Refresh interval for whole-second live run clocks. */
 export declare const LIVE_RUN_CLOCK_INTERVAL_MS = 1000;
 /**
@@ -17,23 +17,19 @@ export declare function startOfLocalDay(ms: number): number;
  * @returns Milliseconds until the following local midnight.
  */
 export declare function msUntilNextLocalMidnight(ms: number): number;
+/** One numeric value or localized unit in an elapsed-time label. */
+export interface RunDurationPart {
+    readonly text: string;
+    readonly numeric: boolean;
+}
 /**
- * Localized elapsed-time label for the running conversation clock.
- * @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
- * @param t - Translate seat supplying the duration templates.
- * @returns Display string in whole seconds; minutes and seconds once the
- * duration reaches a minute; hours, minutes, and seconds once it reaches an
- * hour, with the smaller units zero-padded.
+ * Build elapsed-time fragments for both live and completed Turn labels.
+ * @param ms - elapsed milliseconds; negatives clamp to zero and fractions floor.
+ * @param t - translate seat supplying units and their trailing spacing.
+ * @returns numbers and localized units in display order, without leading zeros;
+ * minutes start at 60 seconds and hours at 60 minutes.
  */
-export declare function formatRunDuration(ms: number, t: RunDurationTranslate): string;
-/**
- * Localized live elapsed time without padded seconds or early rollover.
- * @param ms - Elapsed duration in milliseconds (negatives clamp to zero).
- * @param t - Translate seat supplying the duration templates.
- * @returns Whole seconds without a leading zero; minutes start at 60 seconds
- * and hours start at exactly 60 minutes.
- */
-export declare function formatLiveRunDuration(ms: number, t: RunDurationTranslate): string;
+export declare function formatRunDuration(ms: number, t: RunDurationTranslate): RunDurationPart[];
 /**
  * Decode-throughput figure: whole tokens from ten up, one decimal below.
  * @param tps - Tokens per second.

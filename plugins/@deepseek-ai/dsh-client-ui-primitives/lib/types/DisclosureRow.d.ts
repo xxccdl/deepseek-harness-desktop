@@ -1,12 +1,12 @@
 import { type ReactNode } from 'react';
-/** Shared 24px disclosure chrome for compact flow rows. */
+/** Shared 24px process row: tertiary text and icons, secondary on hover. */
 export interface DisclosureRowProps {
     icon: ReactNode;
     title: string;
     open: boolean;
     expandable: boolean;
     onToggle: () => void;
-    /** Animate the title while its owning operation is running. */
+    /** Animate the complete header while its owning operation is running. */
     running?: boolean | undefined;
     /** Makes the complete title row the disclosure target. */
     expandOnRowClick?: boolean | undefined;
@@ -18,6 +18,10 @@ export interface DisclosureRowProps {
     children?: ReactNode;
     className?: string | undefined;
     rowClassName?: string | undefined;
+    /** Sizing class for the header text area, beside the leading icon. */
+    contentClassName?: string | undefined;
+    /** Layout class shared by the header text and its decorative copy. */
+    contentLayoutClassName?: string | undefined;
     leadingClassName?: string | undefined;
     chevronClassName?: string | undefined;
     titleClassName?: string | undefined;
@@ -28,5 +32,5 @@ export interface DisclosureRowProps {
  * @param props - Visual content, controlled state, and interaction policy.
  * @returns the disclosure row.
  */
-export declare const DisclosureRow: import("react").MemoExoticComponent<({ icon, title, open, expandable, onToggle, running, expandOnRowClick, previewChevron, keepContentWhenOpen, collapsedContent, children, className, rowClassName, leadingClassName, chevronClassName, titleClassName, }: DisclosureRowProps) => import("react").JSX.Element>;
+export declare const DisclosureRow: import("react").MemoExoticComponent<({ icon, title, open, expandable, onToggle, running, expandOnRowClick, previewChevron, keepContentWhenOpen, collapsedContent, children, className, rowClassName, contentClassName, contentLayoutClassName, leadingClassName, chevronClassName, titleClassName, }: DisclosureRowProps) => import("react").JSX.Element>;
 //# sourceMappingURL=DisclosureRow.d.ts.map

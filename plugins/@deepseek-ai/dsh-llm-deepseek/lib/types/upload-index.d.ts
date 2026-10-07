@@ -53,12 +53,11 @@ export declare class DeepSeekUploadIndex {
      */
     commit(candidate: DeepSeekUploadRecord, now: number, refreshMarginMs: number): Promise<UploadIndexCommit>;
     /**
-     * Remove one exact mapping without deleting a concurrently installed successor.
+     * Remove exact mappings in one locked rewrite without deleting concurrently installed successors.
      * @param scope - endpoint/API-key namespace.
-     * @param variantId - complete request-image transformation identity.
-     * @param fileId - exact remote generation being invalidated.
+     * @param generations - exact remote generations being invalidated; pairs absent from the index are ignored.
      */
-    remove(scope: DeepSeekFileScopeType, variantId: ImageVariantIdType, fileId: DeepSeekFileIdType): Promise<void>;
+    remove(scope: DeepSeekFileScopeType, generations: readonly Pick<DeepSeekUploadRecord, 'variantId' | 'fileId'>[]): Promise<void>;
     /**
      * Remove every local mapping for one remote namespace.
      * @param scope - endpoint/API-key namespace.

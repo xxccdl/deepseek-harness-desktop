@@ -32,7 +32,7 @@ export declare class RequestFiles {
      */
     resolve(version: RequestImageAttachment, location: ImageWireLocation): Promise<DeepSeekFileId>;
     /**
-     * Invalidate rejected mappings; only the first stale-id response permits another request.
+     * Invalidate every rejected mapping in one index update; only the first stale-id response permits another request.
      * @param detail - provider error fields used for stale-id classification.
      * @returns whether the caller should serialize and dispatch again.
      */

@@ -95,6 +95,7 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Register navigation commands against the existing workspace owner.
+		* Rename requires a nonblank main Conversation with no modal obscuring it.
 		* @param ctx - plugin context with the shortcut, locale, and model services.
 		* @param navigation - session creation and forking from the pointer controls' navigation service.
 		* @param controls - browser-owned opening requests.
@@ -156,15 +157,15 @@ window.__ModuleLoader__.load({
 					reason
 				};
 			});
-			register("session.rename", () => t("rename.session.title"), ["rename session"], "KeyR", ["primary", "alt"], ["primary", "shift"], () => {
+			register("session.rename", () => t("rename.session.title"), ["rename session"], "KeyG", ["primary", "alt"], ["primary", "alt"], (context) => {
 				const target = current();
-				return target === void 0 ? {
+				return target === void 0 || target.blank || context.modal !== null || ctx.layout.panelInfo.getSnapshot().activePanelId !== null ? {
 					status: "blocked",
 					reason: t("shortcut.noSession")
 				} : {
 					status: "handled",
 					run: () => {
-						controls.rename(target.id, target.displayTitle);
+						controls.rename(target.id, target.title?.trim() ?? "");
 					}
 				};
 			});
@@ -384,10 +385,11 @@ window.__ModuleLoader__.load({
 		/**
 		* A blank session is the selected Workspace's provisional New Session row;
 		* its canonical title never enters search (blank rows are query-excluded)
-		* and the renderer localizes its display label.
+		* and the renderer localizes its display label. Unnamed history also yields an
+		* empty title for localization and does not match a directory-name title search.
 		*/
 		function sessionTitle(session) {
-			return session.blank ? "" : session.displayTitle;
+			return session.blank ? "" : session.title?.trim() ?? "";
 		}
 		/** Build one group without projecting session lineage into presentation. */
 		function buildGroup(key, workspaceId, cwd, createdAt, label, members) {
@@ -834,10 +836,11 @@ window.__ModuleLoader__.load({
 				if (navigation.aborted) return;
 				this.replaceMain(sessionId, navigation, "reveal", beforeOpen);
 			}
-			async forkSession(sessionId) {
-				await this.sessions.fork({
+			async forkSession(sessionId, onCreated) {
+				return this.sessions.fork({
 					sessionId,
-					increaseTitle: true
+					increaseTitle: true,
+					...onCreated === void 0 ? {} : { onCreated }
 				});
 			}
 			startSession(workspaceId) {
@@ -1117,7 +1120,7 @@ window.__ModuleLoader__.load({
 		*/
 		/** Row display title: blank rows show the localized New Session label. */
 		function displayTitle(node, t) {
-			return node.blank ? t("session.new") : node.title;
+			return node.blank ? t("session.new") : node.title || t("session.untitled");
 		}
 		const MIN_TITLE_REVEAL_PX = 8;
 		const TITLE_MARQUEE_PX_PER_MS = .03;
@@ -1511,7 +1514,7 @@ window.__ModuleLoader__.load({
 						}),
 						(0, react_jsx_runtime.jsx)("span", {
 							className: Rows_module_css_default.searchResultTitle,
-							children: result.title
+							children: result.title || t("session.untitled")
 						}),
 						result.archived && (0, react_jsx_runtime.jsx)("span", {
 							className: Rows_module_css_default.rowActions,
@@ -1674,7 +1677,7 @@ window.__ModuleLoader__.load({
 				}),
 				openDelayMs: 800,
 				disabled: menuOpen || drag?.active === true,
-				copyText: row.blank ? void 0 : row.title,
+				copyText: row.blank || row.title === "" ? void 0 : row.title,
 				copyLabel: t("copy"),
 				copiedLabel: t("hover.copied")
 			});
@@ -3696,7 +3699,7 @@ window.__ModuleLoader__.load({
 		* one dialog per request (keyed by the Session, so a new request starts a
 		* fresh draft). Sessions have no client-side name-conflict rule (the host
 		* normalizes), and unlike Workspace rename an unchanged title is NOT
-		* blocked: confirming the current automatic title is the gesture that pins it.
+		* blocked. An unnamed Session starts with an empty draft and requires a name.
 		* @param props - the request hook, its settlement, the rename hop, and the locale seat.
 		* @returns the open dialog, or null.
 		*/
@@ -3865,6 +3868,7 @@ window.__ModuleLoader__.load({
 			"defaultWorkspace.failed": "无法创建默认工作区，请通过“选择工作区”选择文件夹",
 			"group.ungrouped": "未分组",
 			"session.new": "新会话",
+			"session.untitled": "未命名",
 			"shortcut.noSession": "请先选择一个会话",
 			"shortcut.noPicker": "目录选择器不可用",
 			"shortcut.directoryBusy": "正在选择或添加工作区",
@@ -3979,6 +3983,7 @@ window.__ModuleLoader__.load({
 			"defaultWorkspace.failed": "Unable to create default workspace. Use Choose workspace to select a folder.",
 			"group.ungrouped": "Ungrouped",
 			"session.new": "New Session",
+			"session.untitled": "Untitled",
 			"shortcut.noSession": "Select a session first",
 			"shortcut.noPicker": "Directory picker unavailable",
 			"shortcut.directoryBusy": "Selecting or adding a workspace",
@@ -4227,7 +4232,13 @@ window.__ModuleLoader__.load({
 				}
 			});
 			const forkInjected = () => ({ forkSession: (sessionId) => {
-				uiWorkspace.forkSession(sessionId).catch(() => {});
+				uiWorkspace.forkSession(sessionId, (childId) => {
+					ctx.get("productAnalytics")?.track("branch_session_click", {
+						session_id: childId,
+						parent_session_id: sessionId,
+						click_position: "sidebar"
+					});
+				}).catch(() => {});
 			} });
 			const renameInjected = () => ({ requestSessionRename });
 			const renameDialogInjected = () => ({

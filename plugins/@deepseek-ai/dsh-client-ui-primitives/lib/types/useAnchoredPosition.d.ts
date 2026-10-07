@@ -24,7 +24,7 @@ export interface AnchoredPositionOptions {
     align?: 'start' | 'end';
     /** Distance kept between the anchor edge named by `side` and the panel. */
     gap: number;
-    /** Distance kept between the panel and each viewport edge. */
+    /** Distance kept between the panel and each viewport edge; the frame's overlay inset widens the top margin. */
     margin: number;
 }
 /**

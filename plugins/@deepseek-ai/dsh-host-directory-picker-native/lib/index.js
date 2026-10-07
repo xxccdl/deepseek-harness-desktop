@@ -243,7 +243,7 @@ async function pickNativeDirectory(signal, internals = {}) {
 			"set selectedFolder to choose folder with prompt \"Select Workspace Directory\"",
 			"-e",
 			"POSIX path of selectedFolder"
-		], signal)).stdout);
+		], signal, "hidden")).stdout);
 	} catch (error) {
 		if (!signal.aborted && errorCode(error) === 1 && /(?:User canceled|-128)/i.test(errorStderr(error))) return null;
 		throw error;
@@ -255,7 +255,7 @@ async function pickNativeDirectory(signal, internals = {}) {
 				"--file-selection",
 				"--directory",
 				"--title=Select Workspace Directory"
-			], signal)).stdout);
+			], signal, "hidden")).stdout);
 		} catch (error) {
 			rethrowIfAborted(signal, error);
 			if (errorCode(error) === 1) return null;
@@ -267,7 +267,7 @@ async function pickNativeDirectory(signal, internals = {}) {
 				".",
 				"--title",
 				"Select Workspace Directory"
-			], signal)).stdout);
+			], signal, "hidden")).stdout);
 		} catch (error) {
 			rethrowIfAborted(signal, error);
 			if (errorCode(error) === 1) return null;

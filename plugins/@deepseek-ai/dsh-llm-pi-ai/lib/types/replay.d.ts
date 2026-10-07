@@ -29,7 +29,7 @@ export interface PiAiReplayResponse {
     provider: string;
     /** Requested model identity, matching the durable assistant source. */
     model: string;
-    /** Provider-reported model; only Anthropic replays it as the native model (reported in `message.model`, not `message.responseModel`). */
+    /** Provider-reported model; replay retains the requested model for signature matching. */
     responseModel?: string;
     responseId?: string;
     /** Provider-native effort for historical replay; absence is preserved. */

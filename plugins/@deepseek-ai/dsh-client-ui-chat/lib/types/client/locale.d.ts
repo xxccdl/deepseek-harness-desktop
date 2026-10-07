@@ -60,7 +60,6 @@ export declare const zh: {
     'message.trigger.plugin': string;
     'message.trigger.explanation': string;
     'message.turnProcess.worked': string;
-    'message.turnProcess.deepDivingFor': string;
     'message.turnProcess.took': string;
     'message.turnProcess.failed': string;
     'view.chat': string;
@@ -86,6 +85,7 @@ export declare const zh: {
     'chat.loadOlder': string;
     'chat.toBottom': string;
     'chat.deepDiving': string;
+    'chat.deepDivingFor': string;
     'chat.turnNavigation.label': string;
     'chat.turnNavigation.jump': string;
     'chat.turnNavigation.jumpLoad': string;
@@ -177,9 +177,9 @@ export declare const zh: {
     'message.turnUsage.output': string;
     'message.turnUsage.reasoning': string;
     'message.turnUsage.count': string;
-    'duration.seconds': string;
-    'duration.minutes': string;
-    'duration.hours': string;
+    'duration.secondUnit': string;
+    'duration.minuteUnit': string;
+    'duration.hourUnit': string;
     'command.running': string;
     'command.failed': string;
     'command.done': string;
@@ -251,7 +251,6 @@ export declare const en: {
     'message.trigger.plugin': string;
     'message.trigger.explanation': string;
     'message.turnProcess.worked': string;
-    'message.turnProcess.deepDivingFor': string;
     'message.turnProcess.took': string;
     'message.turnProcess.failed': string;
     'view.chat': string;
@@ -277,6 +276,7 @@ export declare const en: {
     'chat.loadOlder': string;
     'chat.toBottom': string;
     'chat.deepDiving': string;
+    'chat.deepDivingFor': string;
     'chat.turnNavigation.label': string;
     'chat.turnNavigation.jump': string;
     'chat.turnNavigation.jumpLoad': string;
@@ -368,9 +368,9 @@ export declare const en: {
     'message.turnUsage.output': string;
     'message.turnUsage.reasoning': string;
     'message.turnUsage.count': string;
-    'duration.seconds': string;
-    'duration.minutes': string;
-    'duration.hours': string;
+    'duration.secondUnit': string;
+    'duration.minuteUnit': string;
+    'duration.hourUnit': string;
     'command.running': string;
     'command.failed': string;
     'command.done': string;

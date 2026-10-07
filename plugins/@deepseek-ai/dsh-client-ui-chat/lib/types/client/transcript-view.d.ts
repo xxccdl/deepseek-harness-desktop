@@ -5,13 +5,15 @@ import { type ChatSettings, type TranscriptViewMode } from '../chat-settings.ts'
 /** Live work-details preference consumed by Chat and its Settings row. */
 export declare class TranscriptViewPolicy {
     private readonly host;
+    private readonly defaultMode;
     private readonly unsubscribe;
-    /** Reactive current mode; defaults to Standard before Host settings arrive. */
+    /** Reactive current mode, including the client default before Host settings arrive. */
     readonly mode: SnapshotStore<TranscriptViewMode>;
     /**
      * @param host - durable Chat settings scope.
+     * @param defaultMode - presentation used without an explicit saved mode.
      */
-    constructor(host: ConfigForm<ChatSettings>);
+    constructor(host: ConfigForm<ChatSettings>, defaultMode?: TranscriptViewMode);
     /** Release the accepted-value subscription. */
     dispose(): void;
     /**

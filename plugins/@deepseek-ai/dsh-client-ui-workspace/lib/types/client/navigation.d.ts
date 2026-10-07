@@ -26,9 +26,10 @@ export interface UiWorkspace {
     /**
      * Fork a Session without changing the current selection.
      * @param sessionId - source Session.
-     * @returns completion after child creation and inherited-title increment.
+     * @param onCreated - observer before the optional child-title update.
+     * @returns the child SessionId after creation and inherited-title increment.
      */
-    forkSession(sessionId: SessionId): Promise<void>;
+    forkSession(sessionId: SessionId, onCreated?: (childId: SessionId) => void): Promise<SessionId>;
     /**
      * Resolve the reusable or newly created blank Session for a Workspace.
      * @param workspaceId - target Workspace.
@@ -125,7 +126,7 @@ declare class UiWorkspaceService extends Service implements UiWorkspace {
     private reuseBlank;
     openSession(target: SessionTarget): void;
     openWorkspace(workspaceId: WorkspaceId, beforeOpen?: (sessionId: SessionId) => void): Promise<void>;
-    forkSession(sessionId: SessionId): Promise<void>;
+    forkSession(sessionId: SessionId, onCreated?: (childId: SessionId) => void): Promise<SessionId>;
     startSession(workspaceId?: WorkspaceId): void;
     archiveSession(sessionId: SessionId, options?: {
         readonly stopActivity?: boolean;

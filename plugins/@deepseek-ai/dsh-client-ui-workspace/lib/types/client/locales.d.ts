@@ -8,6 +8,7 @@ export declare const zh: {
     'defaultWorkspace.failed': string;
     'group.ungrouped': string;
     'session.new': string;
+    'session.untitled': string;
     'shortcut.noSession': string;
     'shortcut.noPicker': string;
     'shortcut.directoryBusy': string;
@@ -124,6 +125,7 @@ export declare const en: {
     'defaultWorkspace.failed': string;
     'group.ungrouped': string;
     'session.new': string;
+    'session.untitled': string;
     'shortcut.noSession': string;
     'shortcut.noPicker': string;
     'shortcut.directoryBusy': string;
