@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.9.0";
+const tag = process.argv[2] ?? "v1.10.0";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,6 +19,14 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
+  "## 1.10.0",
+  "",
+  "本次是一次小版本：语音输入多了一个云端识别器，另修掉一个 Windows 终端起不来的成因，并补上网络失败时看得懂的提示。本地识别仍是默认值，原有行为不变。",
+  "- **新增：语音输入可选远程识别服务**。此前只有一个识别器：本地 SenseVoice，模型要下载、且只在运行 DSH 的那台机器上算。现在插件详情页的「识别服务」里多出一项 `SenseVoiceSmall (远程)`——录音以 multipart 发到自建的 SenseVoice HTTP 服务（`POST /asr`，字段 `file` + `language`），默认地址指向公网隧道，所以不在同一局域网、没装模型的机器也能用；选中它时页面会标成「云端语音识别已就绪」并写明「音频将发送至所选云端服务」。它以 `location: \"cloud\"` 注册，因此不会出现本地识别器那套「下载并准备」与下载源选择；语言沿用自动/中文/英语/粤语/日语/韩语；服务端若设了 `ASR_API_KEY`，在同一个配置块的 `apiKey` 里填即可，会同时以 `Authorization: Bearer` 与 `X-API-Key` 下发。地址与密钥都在语音输入 Bundle 的 `cordis.patch.yml` 里，隧道地址变了只改那一行、重跑一次 `scripts/install-plugins.mjs`（profile 是 `patchReload: live`，不必重装）",
+  "- **新增：远程识别的失败提示带上底层原因**。连不上时此前只有一句 `fetch failed`，分不出是端口没开、被防火墙丢包还是域名解析失败。现在会把底层错误码带出来——`ECONNREFUSED`（对端在线但端口没人监听）、`ENOTFOUND`（域名不存在）、超时则单独报「timed out after …ms」，一眼能判断该去启动服务还是查网络",
+  "- **修复：取消远程识别会让主进程报错**。录音中途取消时，`FormData` 的 `Blob` 分片是作为 web stream 上传的，中止会让 undici 往一个已经关闭的流里继续 enqueue，抛出的 `ERR_INVALID_STATE` 不在任何 await 链上，Electron 于是直接弹「A JavaScript error occurred in the main process」。现在上传体改成一次性拼好的定长 multipart，取消退回成一次普通的 reject；已逐项验证：正常转写、503 带 detail、非 JSON 响应、鉴权头透传、非法音频在发请求前就拒、调用方取消、不可达报错、地址结尾斜杠容错",
+  "- **修复：Windows 上 `PTY shell exited during startup` 的另一个成因**。1.7.0 修的是「给工作区根目录写 Low 完整性标签时缺少 WRITE_OWNER」那条路径，这一条在它下面：当调用没有带 session id 时（`workspace-write` 且无会话），沙箱把工作区授权交给子进程 runner 自己做，而 runner 被 Windows 拒绝后不会降级，直接以 127 退出——终端还没启动就已经不在，界面只剩一句 `PTY shell exited during startup`。现在这条路径也在本进程里先认领工作区授权，拒绝因此能落进既有的 `isAclRefusal` 分支，降级为 `partial` 并写明原因，命令按原 argv 照常执行。探针逐案对照：带 session id 的路径本来就正常，无 session id 的路径修复前 `exited`（`SetNamedSecurityInfoW failed (Win32 5)`）、修复后 `alive`",
+  "",
   "## 1.9.0",
   "",
   "本次把 fork 重基到上游 **dsh 0.2.0-rc.2**（上一版停在 0.1.7-rc.2，中间跨过 0.2.0-rc.1）。上游这一版带来桌面端可在菜单栏管理 dsh 命令与插件（不再需要另装 Node 或 pnpm）、模型选择器在模型较多时提供模糊搜索、侧栏文件页用本地应用打开当前文件夹、无标题的历史会话统一显示「未命名」、Windows 沙箱权限脚本合并为一次授权完成诊断与修复、第三方模型目录更新到 pi-ai 0.87.1（部分旧模型 ID 被移除，已保存的选择可能需要重选）等改动（完整清单见上游 `dsh-v0.2.0-rc.1` 与 `dsh-v0.2.0-rc.2`）。0.2.0 连底层的组合方式也换了：profile 的包解析从「往 profile 的 node_modules 投影 junction」改为运行时解析（`PluginPackages` + `createRuntimeResolution`，`healProfilesModuleFallback` 已移除），并新增了一道插件兼容性闸门。下面是本次与本 fork 直接相关的改动。",
