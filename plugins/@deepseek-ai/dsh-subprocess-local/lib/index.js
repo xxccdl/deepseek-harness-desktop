@@ -1270,9 +1270,10 @@ const requireNodePty = createLazyRequire("node-pty", import.meta.url);
 * standard handles, the ACL runner behind it exits with code 127 before
 * spawning anything, and the terminal backend reports "PTY shell exited during
 * startup". Fronting the same command with the console host gives the
-* pseudoconsole a child it can attach to; node-pty quotes each argument, so
-* paths containing spaces or `&` still survive. A target that is any other
-* program keeps its argv, because it already is the console image the PTY wants.
+* pseudoconsole a child it can attach to, and node-pty quotes each argument, so
+* a path containing `&` still survives; the `call` below is what keeps a path
+* containing SPACES intact. A target that is any other program keeps its argv,
+* because it already is the console image the PTY wants.
 * @param file - resolved program to launch.
 * @param args - resolved program arguments.
 * @returns the program and arguments to hand to node-pty.
@@ -1282,7 +1283,25 @@ function consoleHostedPtyProgram(file, args) {
 	/* Win32 paths are case-insensitive and the same binary arrives with either
 	* casing, so compare normalized rather than by exact string. */
 	if (typeof file !== "string" || file.toLowerCase() !== process.execPath.toLowerCase()) return { file, args };
-	return { file: process.env.ComSpec ?? "cmd.exe", args: ["/d", "/c", file, ...args] };
+	return {
+		file: process.env.ComSpec ?? "cmd.exe",
+		/* `call` first, deliberately. cmd's `/c` handling strips the leading quote
+		* and the last quote on the line whenever the command line starts with a
+		* quote, which splits any path containing a space at that space: a packaged
+		* install confined into `"D:\Somewhere\DeepSeek Harness\DeepSeek Harness.exe"`
+		* plus its runner path containing the same space made the child exit 1 with
+		* `'D:\Somewhere\DeepSeek' is not recognized as an internal or external
+		* command`, i.e. the same startup failure as an unusable console. Leading
+		* with `call` means the line no longer begins with a quote, so cmd parses
+		* the quoted paths as written. */
+		args: [
+			"/d",
+			"/c",
+			"call",
+			file,
+			...args
+		]
+	};
 }
 /**
 * Local subprocess service: platform-selected managed ranges, Node-shaped stdio
