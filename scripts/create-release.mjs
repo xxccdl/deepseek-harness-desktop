@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
-const tag = process.argv[2] ?? "v1.10.0";
+const tag = process.argv[2] ?? "v1.10.1";
 
 // Resolve the token from git credential manager without printing it.
 const cred = execSync(`git credential fill`, {
@@ -19,6 +19,14 @@ if (!tokenLine) {
 const token = tokenLine.slice("password=".length);
 
 const body = [
+  "## 1.10.1",
+  "",
+  "补丁版：修掉 1.10.0 安装版里终端全线不可用的一条路径问题，并让终端起不来时的报错带上现场。",
+  "- **修复：安装在带空格的目录下时，终端工具一律报 `PTY shell exited during startup`**。伪终端需要借控制台宿主 `cmd.exe /d /c <命令>` 启动——ConPTY 只能把控制台交给控制台子系统映像，而 Electron 是 GUI 子系统二进制。问题出在 cmd 自己的 `/c` 引号规则：命令行若以引号开头，cmd 会剥掉开头的引号、并删掉整行最后一个引号。开发时 `process.execPath` 是 `…\\electron\\dist\\electron.exe`、插件目录也在仓库里，路径没有空格、一个引号都不产生，规则不触发；而安装目录 `D:\\xcomputer\\DeepSeek Harness\\` 让程序路径与 runner 路径都带空格、参数被引起来，规则随即触发——路径在空格处断成 `D:\\xcomputer\\DeepSeek`，cmd 以 1 退出，终端还没到第一个提示符就已经不在。现在命令宿主改为 `cmd.exe /d /c call <命令>`：行首不再是引号，cmd 按原样解析被引起来的路径。对照实测（都用真实安装路径）：原写法 `exit=1` 并报 `'D:\\xcomputer\\DeepSeek' 不是内部或外部命令`；加上 `call` 后正常到达 `dsh> ` 提示符",
+  "- **终端启动失败的报错不再只有一句笼统提示**。此前无论沙箱拒绝、命令宿主把命令行拆坏、还是 shell 自身启动失败，界面上都是同一句 `PTY shell exited during startup`，既不说启动的是哪个程序、也不说子进程说了什么——排查时只能靠逐层复现。现在错误里会附上 PTY 实际收到的 argv，以及子进程退出前写到终端上的最后 500 个字符（已去掉光标与窗口标题等控制序列），上面那条故障因此能直接从报错里读出 `'D:\\xcomputer\\DeepSeek' 不是内部或外部命令`。同一改动覆盖「启动超时」分支；正常启动路径不受影响（三个分支均以存根会话验证）",
+  "",
+  "1.10.0 修的是另一条同样表现为 `PTY shell exited during startup` 的路径：`workspace-write` 且调用不带会话 id 时，沙箱把工作区授权交给子进程 runner，被 Windows 拒绝后子进程直接以 127 退出。两条成因彼此独立，本版两条都已修好。",
+  "",
   "## 1.10.0",
   "",
   "本次是一次小版本：语音输入多了一个云端识别器，另修掉一个 Windows 终端起不来的成因，并补上网络失败时看得懂的提示。本地识别仍是默认值，原有行为不变。",
