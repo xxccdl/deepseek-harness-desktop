@@ -12,10 +12,6 @@ export interface WorkspaceShortcutState {
         readonly sessionId: SessionId;
         readonly currentTitle: string;
     } | null;
-    readonly forkError: {
-        readonly reason: 'unavailable' | 'failed';
-        readonly seq: number;
-    } | null;
 }
 interface WorkspaceShortcutControls {
     state: SnapshotStore<WorkspaceShortcutState>;
@@ -25,8 +21,6 @@ interface WorkspaceShortcutControls {
     directoryBusy: (busy: boolean) => void;
     rename: (sessionId: SessionId, currentTitle: string) => void;
     closeRename: () => void;
-    forkFailed: (reason: 'unavailable' | 'failed') => void;
-    dismissForkError: () => void;
 }
 /**
  * Create the private browser request source shared by commands and controls.
@@ -40,7 +34,8 @@ export declare function createWorkspaceShortcutControls(): WorkspaceShortcutCont
  * @param navigation - session creation and forking from the pointer controls' navigation service.
  * @param controls - browser-owned opening requests.
  * @param archiveSession - shared archive action, including running-work confirmation and notices.
+ * @param reportForkFailure - publish a classified failure through the frame-wide notice channel.
  */
-export declare function installWorkspaceShortcuts(ctx: Context, navigation: Pick<UiWorkspace, 'startSession' | 'forkSession'>, controls: ReturnType<typeof createWorkspaceShortcutControls>, archiveSession: (sessionId: SessionId) => void): void;
+export declare function installWorkspaceShortcuts(ctx: Context, navigation: Pick<UiWorkspace, 'startSession' | 'forkSession'>, controls: ReturnType<typeof createWorkspaceShortcutControls>, archiveSession: (sessionId: SessionId) => void, reportForkFailure: (reason: 'unavailable' | 'failed') => void): void;
 export {};
 //# sourceMappingURL=shortcuts.d.ts.map

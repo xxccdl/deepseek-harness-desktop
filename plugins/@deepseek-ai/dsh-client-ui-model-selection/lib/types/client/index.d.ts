@@ -3,7 +3,7 @@ import { type ModelKey } from './locales.ts';
 export { ModelDirectory } from './directory.ts';
 export type { ModelDirectoryState } from './directory.ts';
 export { ModelDirectoryResolver } from './service.ts';
-export type { ModelSelectInjected } from './slots.ts';
+export type { ModelLabelOwner, ModelSelectInjected } from './slots.ts';
 export type { ModelKey } from './locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface LocaleNamespaceMap {

@@ -1,8 +1,6 @@
 /**
- * Welcome-notice state derived from the welcome settings scope. The scope is
- * the transport: a loopback browser follows the durable Host section, while a
- * remote browser's memory-mode scope never answers and the acknowledgement
- * stays process-local here.
+ * Welcome-notice state derived from the welcome settings scope: the notice
+ * follows the Host section and records its acknowledgement through it.
  */
 import { type SnapshotStore } from '@deepseek-ai/dsh-client-store';
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
@@ -22,18 +20,13 @@ export type WelcomeSection = Record<string, unknown>;
  * @returns the section object, or an empty one for non-object values.
  */
 export declare function decodeWelcomeSection(section: unknown): WelcomeSection;
-/** Coordinates durable Host acknowledgement or a process-local remote fallback. */
+/** Coordinates the durable Host acknowledgement. */
 export declare class WelcomeNoticeStore {
     private readonly scope;
     /** uSES-safe state source shared by the registered welcome step. */
     readonly store: SnapshotStore<WelcomeNoticeState>;
-    private localAcknowledged;
     private saving;
     private following;
-    /**
-     * @param scope - the welcome settings namespace scope; its memory mode is
-     * what keeps a remote browser process-local.
-     */
     constructor(scope: ConfigForm<WelcomeSection>);
     /**
      * Begin following the bound scope (idempotent) and publish its current answer.
@@ -41,10 +34,10 @@ export declare class WelcomeNoticeStore {
      */
     load(): Promise<void>;
     /**
-     * Persist this copy version, or advance only this process for a remote
-     * browser. Success is judged against the state the write left behind, so a
-     * refused or failed write reports false after its recovery read settles.
-     * @returns true when the selected persistence mode holds the acknowledgement.
+     * Persist this copy version through the scope. Success is judged against the
+     * state the write left behind, so a refused or failed write reports false
+     * after its recovery read settles.
+     * @returns true when the Host holds the acknowledgement.
      */
     acknowledge(): Promise<boolean>;
     /** Stop following the scope. */

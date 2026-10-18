@@ -60,6 +60,20 @@ window.__ModuleLoader__.load({
 			return text;
 		}
 		//#endregion
+		//#region lib/types/client/tool/models/recorded-path.js
+		/** Operation-time filesystem locations carried by settled tool results. */
+		/**
+		* Read one absolute location from opaque persisted result metadata.
+		* @param meta - tool-owned result metadata from the Session log.
+		* @param field - the file path or command working directory.
+		* @returns the recorded path, or undefined for old or malformed metadata.
+		*/
+		function recordedAbsolutePath(meta, field) {
+			if (meta === null || typeof meta !== "object" || Array.isArray(meta)) return void 0;
+			const value = meta[field];
+			return typeof value === "string" && isAbsoluteWorkspacePath(value) ? value : void 0;
+		}
+		//#endregion
 		//#region lib/types/client/tool/models/tool-call-model.js
 		/** Locale key per generic row variant. */
 		const VARIANT_TITLE_KEYS = {
@@ -239,6 +253,26 @@ window.__ModuleLoader__.load({
 			"write",
 			"edit"
 		]);
+		/**
+		* Summary material read the same way at every stage from the argument view: a
+		* complete `file_path` for file tools, otherwise the `description` text so far.
+		* Empty when the view carries neither, so the caller falls back to the raw text.
+		*/
+		function argumentSummary(variant, args, cwd, home) {
+			if (FILE_PATH_VARIANTS.has(variant)) {
+				const path = args.complete("file_path") ? args.text("file_path") : void 0;
+				const filePath = path !== void 0 && path !== "" && args.complete("file_path") ? firstLine(path) : void 0;
+				return {
+					summary: filePath === void 0 ? "" : abbreviateHomePath(relativizeToCwd(filePath, cwd), home),
+					filePath
+				};
+			}
+			const description = args.text("description");
+			return {
+				summary: description === void 0 ? "" : firstLine(description),
+				filePath: void 0
+			};
+		}
 		function deriveFilePath(variant, argsRaw) {
 			if (!FILE_PATH_VARIANTS.has(variant)) return void 0;
 			const parsed = parseArgs(argsRaw);
@@ -275,18 +309,22 @@ window.__ModuleLoader__.load({
 			const titleKey = toolTitleKey(toolName);
 			const done = "kind" in block;
 			const argsRaw = done ? block.call?.argsRaw ?? "" : block.phase === "start" ? block.argsRaw : null;
+			const primary = argumentSummary(variant, block.args, cwd, home);
+			const argumentPath = primary.filePath ?? (argsRaw === null ? void 0 : deriveFilePath(variant, argsRaw));
+			const recordedPath = done ? recordedAbsolutePath(block.meta, "path") : void 0;
+			const canUseArgumentPath = argumentPath !== void 0 && (isAbsoluteWorkspacePath(argumentPath) || done && !block.isError && block.parentCallId === void 0);
+			const filePath = argumentPath === void 0 ? void 0 : recordedPath ?? (canUseArgumentPath ? argumentPath : void 0);
 			const state = !done ? block.phase === "preparing" ? "preparing" : "running" : block.error?.code === "interrupted" ? "stopped" : block.isError ? "error" : "ok";
-			const base = argsRaw === null ? "" : argsRaw === "" ? block.callId : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home);
+			const base = primary.summary !== "" || argsRaw === null ? primary.summary : argsRaw === "" ? block.callId : abbreviateHomePath(relativizeToCwd(deriveSummary(variant, argsRaw), cwd), home);
 			const summary = [titleKey === "tool.title.generic" ? toolName : "", base].filter(Boolean).join(" · ");
 			const output = done ? resultText(block) || null : null;
 			const errorSummary = state === "error" && output !== null ? firstLine(output) : null;
-			const bodyRaw = argsRaw === "" ? null : argsRaw;
 			return {
 				variant,
 				titleKey,
 				summary,
-				filePath: argsRaw === null ? void 0 : deriveFilePath(variant, argsRaw),
-				bodyRaw,
+				filePath,
+				bodyRaw: argsRaw === "" ? null : argsRaw,
 				output,
 				errorSummary,
 				autoReviewDenial: deriveAutoReviewDenial(block),
@@ -337,19 +375,6 @@ window.__ModuleLoader__.load({
 			if (block.content.length !== 1) return void 0;
 			const only = block.content[0];
 			return only?.type === "text" ? only.text : void 0;
-		}
-		/**
-		* Validate the optional escalation pair shared by first-party shell and file
-		* mutation tools.
-		* @param args - parsed open-root Tool arguments.
-		* @returns whether the declared escalation fields form a valid pair.
-		*/
-		function validEscalationFields(args) {
-			const permission = args.sandbox_permissions;
-			const justification = args.justification;
-			if (permission === void 0 && justification === void 0) return true;
-			if (permission !== "workspace-write" && permission !== "danger-full-access") return false;
-			return typeof justification === "string" && justification.trim() !== "";
 		}
 		//#endregion
 		//#region lib/types/client/tool/models/read-card-model.js
@@ -490,7 +515,6 @@ window.__ModuleLoader__.load({
 			}
 			const { file_path: path } = parsed.args;
 			if (typeof path !== "string" || path.trim() === "") return null;
-			if (!validEscalationFields(parsed.args)) return null;
 			if (parsed.name === "write") {
 				const { content } = parsed.args;
 				return typeof content === "string" ? {
@@ -540,7 +564,11 @@ window.__ModuleLoader__.load({
 			if (block.isError) return null;
 			const applied = appliedDiffs(block.meta);
 			if (applied === null || applied === "empty") return intended.tool === "write" ? { card: { diffs: [intended.diff] } } : null;
-			return { card: { diffs: applied } };
+			const path = recordedAbsolutePath(block.meta, "path");
+			return { card: { diffs: applied.map((diff) => diff.path === path ? {
+				...diff,
+				path: intended.diff.path
+			} : diff) } };
 		}
 		//#endregion
 		//#region lib/types/client/tool/models/search-card-model.js
@@ -713,6 +741,7 @@ window.__ModuleLoader__.load({
 		*/
 		function terminalBlockLabels(t) {
 			return {
+				commandLine: (line) => t("terminal.commandLine", { n: line }),
 				signal: (signal) => t("terminal.signal", { signal }),
 				exitCode: (code) => t("terminal.exitCode", { code }),
 				noExitCode: t("terminal.noExitCode"),
@@ -752,17 +781,29 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/**
-		* True when a settled terminal card reports a failing exit — a non-zero code
-		* or a terminating signal. The bash tool settles a failing command as a
-		* completed call (`isError` stays false: the exit status is result data), so
-		* this is the collapsed row's only failure signal; without it the red exit
-		* pill would be visible only after expanding the card.
+		* True when a settled terminal card reports a failing exit — a non-zero code,
+		* an explicitly missing exit code, or a terminating signal. The bash tool settles
+		* a failing command as a completed call (`isError` stays false: the exit status is result data), so
+		* the row retains that failure state alongside its exit capsule.
 		* @param model - a derived terminal card.
 		* @returns whether the card's exit status is a failure.
 		*/
 		function terminalFailed(model) {
 			const { exitCode, signal, running } = model.card;
 			return running !== true && (exitCode !== void 0 && exitCode !== 0 || signal !== void 0);
+		}
+		/**
+		* Localize a settled foreground command's exit status without inventing a code.
+		* @param model - terminal card, absent for generic execution errors.
+		* @param t - conversation locale.
+		* @returns the capsule label, or null for running, background, or successful calls.
+		*/
+		function terminalExitLabel(model, t) {
+			if (model == null || model.card.background || !terminalFailed(model)) return null;
+			const { exitCode, signal } = model.card;
+			if (signal !== void 0) return t("terminal.signal", { signal });
+			if (exitCode == null) return t("terminal.noExitCode");
+			return t("terminal.exitCode", { code: exitCode });
 		}
 		/**
 		* Resolve a shell call's workdir for display: an absolute path is used as-is,
@@ -835,7 +876,6 @@ window.__ModuleLoader__.load({
 			if (timeoutMs !== void 0 && (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs) || timeoutMs <= 0)) return null;
 			if (workdir !== void 0 && typeof workdir !== "string") return null;
 			if (background !== void 0 && typeof background !== "boolean") return null;
-			if (!validEscalationFields(args)) return null;
 			if (description === void 0) return {
 				kind: "shell",
 				command,
@@ -853,6 +893,15 @@ window.__ModuleLoader__.load({
 				persistent: false,
 				background: background === true
 			};
+		}
+		/**
+		* Identify a background shell launch whose result acknowledges a job, not its exit.
+		* @param block - Tool block at any call stage.
+		* @returns whether the call requests a background shell job.
+		*/
+		function isBackgroundShellCall(block) {
+			const parsed = parsedToolCall(block);
+			return parsed !== null && shellCall(parsed.name, parsed.args)?.background === true;
 		}
 		/**
 		* Identify a settled root call from the persistent Bash or PowerShell tool.
@@ -906,10 +955,10 @@ window.__ModuleLoader__.load({
 				output: text.slice(0, signal.index),
 				signal: signal[1]
 			};
-			const exit = /\n\[exit code: (\d+)\]$/.exec(text);
+			const exit = /\n\[exit code: (-?\d+|null)\]$/.exec(text);
 			if (exit?.[1] !== void 0) return {
 				output: text.slice(0, exit.index),
-				exitCode: Number(exit[1])
+				exitCode: exit[1] === "null" ? null : Number(exit[1])
 			};
 			return {
 				output: text,
@@ -919,18 +968,19 @@ window.__ModuleLoader__.load({
 		/**
 		* Derive terminal props for supported shell and terminal-send calls, including
 		* nested PTC dispatch calls. Standard shell results parse their final status
-		* marker; persistent shell results, spill previews, background calls, errors,
-		* and malformed input use the generic path. {@link isSettledPersistentShellCall} lets that generic
+		* marker. Successful background shell launches retain only their command after
+		* settlement; persistent shell results, spill previews, background terminal sends,
+		* errors, and malformed input use the generic path. {@link isSettledPersistentShellCall} lets that generic
 		* persistent result remain expandable without inventing one process status.
 		* @param block - running or settled Tool block.
-		* @param sessionCwd - session workspace root used to resolve workdir.
+		* @param sessionCwd - original workspace root used only for old results without recorded cwd.
 		* @returns locale-neutral terminal-card data, or null for the generic path.
 		*/
 		function terminalCardModel(block, sessionCwd) {
 			const parsed = parsedToolCall(block);
 			if (parsed === null) return null;
 			const call = shellCall(parsed.name, parsed.args) ?? terminalSendCall(parsed.name, parsed.args);
-			if (call === null || call.background) return null;
+			if (call === null || call.kind === "terminal-send" && call.background) return null;
 			const copy = call.kind === "shell" ? {
 				kind: "shell",
 				command: call.command,
@@ -940,7 +990,9 @@ window.__ModuleLoader__.load({
 				text: call.text,
 				sessionId: call.sessionId
 			};
-			const cwd = resolveTerminalCwd(call.kind === "shell" ? call.workdir : void 0, sessionCwd);
+			const workdir = call.kind === "shell" ? call.workdir : void 0;
+			const absoluteRequestCwd = workdir !== void 0 && isAbsoluteWorkspacePath(workdir) ? normalizeSegments(workdir) : void 0;
+			const cwd = "kind" in block ? recordedAbsolutePath(block.meta, "cwd") ?? (call.kind === "shell" && block.parentCallId === void 0 ? resolveTerminalCwd(workdir, sessionCwd) : absoluteRequestCwd) : absoluteRequestCwd;
 			if (!("kind" in block)) return {
 				copy,
 				card: {
@@ -948,10 +1000,19 @@ window.__ModuleLoader__.load({
 					output: void 0,
 					exitCode: void 0,
 					signal: void 0,
-					running: true
+					running: true,
+					...call.kind === "shell" && call.background ? { background: call.background } : {}
 				}
 			};
 			if (block.isError || call.kind === "shell" && call.persistent || isSpilledShellCall(block)) return null;
+			if (call.kind === "shell" && call.background) return {
+				copy,
+				card: {
+					cwd,
+					running: false,
+					background: call.background
+				}
+			};
 			const output = singleResultText(block);
 			if (output === void 0) return null;
 			const status = call.kind === "terminal-send" ? { output } : parseExitStatus(output);
@@ -1194,13 +1255,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/AskQuestionCard.module.css.mjs
-		const css$5 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-base);flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
-		const tagId$5 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
+		const css$6 = ".fsXYAq_card{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-base);flex-direction:column;gap:16px;max-height:360px;margin:4px 0 4px 4px;padding:16px 20px;display:flex;overflow-y:auto}.fsXYAq_item{flex-direction:column;gap:2px;min-width:0;display:flex}.fsXYAq_question,.fsXYAq_answer{white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_question{color:var(--dsw-alias-label-tertiary)}.fsXYAq_answer{color:var(--dsw-alias-label-primary)}.fsXYAq_answerLine{display:block}.fsXYAq_skipped{color:var(--dsw-alias-label-tertiary)}.fsXYAq_verdict{color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px));margin:0}.fsXYAq_questionList{flex-direction:column;gap:8px;margin:0;padding-left:20px;display:flex}.fsXYAq_unansweredQuestion{color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--dsh-content-font-size,14px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}";
+		const tagId$6 = "@deepseek-ai/dsh-client-ui-tool/AskQuestionCard.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$5;
-			tag.textContent = css$5;
+			tag.dataset.pluginCss = tagId$6;
+			tag.textContent = css$6;
 			document.head.appendChild(tag);
 		}
 		var AskQuestionCard_module_css_default = {
@@ -1257,13 +1318,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolDetails.module.css.mjs
-		const css$4 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:0}.DXqwVW_root .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:3px}";
-		const tagId$4 = "@deepseek-ai/dsh-client-ui-tool/ToolDetails.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
+		const css$5 = ".DXqwVW_root{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-13);margin:4px 0 4px 4px;overflow:hidden}.DXqwVW_list{max-height:320px;margin:0;padding:0;list-style:none;overflow-y:auto}.DXqwVW_item,.DXqwVW_empty{margin:0;padding:10px 14px}.DXqwVW_item+.DXqwVW_item{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_root[data-inspect]:not([data-caption])>.DXqwVW_list>.DXqwVW_item,.DXqwVW_root[data-inspect]:not([data-caption]) .DXqwVW_empty,.DXqwVW_root[data-inspect] .DXqwVW_caption{padding-inline-end:88px}.DXqwVW_caption{color:var(--dsw-alias-label-caption);padding:10px 14px 6px;font-size:12px}.DXqwVW_heading{flex-wrap:wrap;align-items:baseline;gap:8px;display:flex}.DXqwVW_text{white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}.DXqwVW_status{flex:none;justify-content:center;align-self:flex-start;align-items:center;width:14px;height:18px;font-size:16px;line-height:18px;display:inline-flex}.DXqwVW_pending{box-sizing:border-box;border:1px solid var(--dsw-alias-label-tertiary);border-radius:2px;width:10px;height:10px}.DXqwVW_heading:has(.DXqwVW_statusText) .DXqwVW_text{flex-basis:12em}.DXqwVW_statusText{color:var(--dsw-alias-label-caption);white-space:nowrap;margin-inline-start:auto;font-size:12px}.DXqwVW_previous,.DXqwVW_unchanged{color:var(--dsw-alias-label-tertiary)}.DXqwVW_item[data-change=added] .DXqwVW_status{color:var(--dsw-alias-state-success-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_status{color:var(--dsw-alias-state-error-primary)}.DXqwVW_item[data-change=removed] .DXqwVW_text{color:var(--dsw-alias-label-tertiary);text-decoration:line-through}.DXqwVW_unchanged{border-top:.5px solid var(--dsw-alias-border-l2)}.DXqwVW_unchanged summary{cursor:pointer;align-items:center;gap:6px;padding:9px 14px;list-style:none;display:flex}.DXqwVW_unchanged summary::-webkit-details-marker{display:none}.DXqwVW_unchanged[open] summary svg{transform:rotate(90deg)}.DXqwVW_fields{margin:0}.DXqwVW_heading+.DXqwVW_fields{margin-top:6px}.DXqwVW_field{grid-template-columns:5.5em minmax(0,1fr);gap:12px;display:grid}.DXqwVW_field+.DXqwVW_field{margin-top:4px}.DXqwVW_field dt{color:var(--dsw-alias-label-caption)}.DXqwVW_field dd{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.DXqwVW_badge{color:var(--dsw-alias-label-caption);flex:none;align-items:center;gap:5px;font-size:12px;display:inline-flex}.DXqwVW_badge:before{content:\"\";corner-shape:round;background:currentColor;border-radius:50%;width:5px;height:5px}.DXqwVW_badge[data-tone=info]{color:var(--dsw-alias-state-business-primary)}.DXqwVW_badge[data-tone=success]{color:var(--dsw-alias-state-success-primary)}.DXqwVW_badge[data-tone=warning]{color:var(--dsw-alias-state-warn-primary)}.DXqwVW_badge[data-tone=error]{color:var(--dsw-alias-state-error-primary)}.DXqwVW_subtitle{color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;margin-top:3px;font-size:12px}.DXqwVW_description{color:var(--dsw-alias-label-caption);white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}.DXqwVW_lines{white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding-inline-start:18px}.DXqwVW_lines li+li{margin-top:4px}.DXqwVW_group{border-top:.5px solid var(--dsw-alias-border-l2);margin-top:8px}.DXqwVW_group>summary{color:var(--dsw-alias-label-caption);cursor:pointer;overflow-wrap:anywhere;align-items:center;gap:6px;padding:8px 0 0;list-style:none;display:flex}.DXqwVW_group>summary::-webkit-details-marker{display:none}.DXqwVW_group[open]>summary svg{transform:rotate(90deg)}.DXqwVW_group>summary svg{flex:none}.DXqwVW_group .DXqwVW_list{max-height:none;overflow:visible}.DXqwVW_group .DXqwVW_item{padding:9px 0 2px 20px}.DXqwVW_prose,.DXqwVW_code{max-width:100%;font-size:13px}.DXqwVW_prose{margin-top:8px}.DXqwVW_root .DXqwVW_item>.DXqwVW_code{max-height:240px;margin:8px 0 0;overflow:auto}.DXqwVW_root .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:0}.DXqwVW_root .DXqwVW_item>.DXqwVW_code:only-child{margin:0}.DXqwVW_root .DXqwVW_group .DXqwVW_item:has(>.DXqwVW_code:only-child){padding:4px 0 0 20px}.DXqwVW_path{min-width:0;color:inherit;font:inherit;text-align:start;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:none;flex:1;padding:0}.DXqwVW_path:hover{text-decoration:underline}.DXqwVW_path:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:3px}";
+		const tagId$5 = "@deepseek-ai/dsh-client-ui-tool/ToolDetails.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
-			tag.dataset.pluginCss = tagId$4;
-			tag.textContent = css$4;
+			tag.dataset.pluginCss = tagId$5;
+			tag.textContent = css$5;
 			document.head.appendChild(tag);
 		}
 		var ToolDetails_module_css_default = {
@@ -1430,8 +1491,41 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ExitCodeBadge.module.css.mjs
+		const css$4 = ".YJoo9W_badge{flex:none;gap:5px;margin-left:8px}.YJoo9W_dot{corner-shape:round;background:var(--dsw-alias-state-error-primary);border-radius:50%;flex:none;width:4px;height:4px}";
+		const tagId$4 = "@deepseek-ai/dsh-client-ui-tool/ExitCodeBadge.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-tool";
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
+			document.head.appendChild(tag);
+		}
+		var ExitCodeBadge_module_css_default = {
+			"badge": "YJoo9W_badge",
+			"dot": "YJoo9W_dot"
+		};
+		//#endregion
+		//#region lib/types/client/tool/components/ExitCodeBadge.js
+		/** Inline exit status for a settled command. */
+		/**
+		* Render a neutral capsule with a failure dot and a localized exit status.
+		* @param props - localized exit code or terminating signal label.
+		* @returns the exit status capsule.
+		*/
+		function ExitCodeBadge({ label }) {
+			return (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+				tone: "neutral",
+				className: ExitCodeBadge_module_css_default.badge,
+				children: [(0, react_jsx_runtime.jsx)("span", {
+					className: ExitCodeBadge_module_css_default.dot,
+					"aria-hidden": true
+				}), label]
+			});
+		}
+		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/components/ToolRow.module.css.mjs
-		const css$3 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_title{font-weight:400}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:auto;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:none;margin-left:4px}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);margin-left:10px;transform:translateY(.5px)}.o3BgMG_row:is(:hover,[aria-expanded=true]) .o3BgMG_diffAdded{color:var(--dsw-alias-state-success-primary)}.o3BgMG_row:is(:hover,[aria-expanded=true]) .o3BgMG_diffRemoved{color:var(--dsw-alias-state-error-primary)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:inherit;text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration:underline 1px dotted;overflow:hidden}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageLabel{overflow-wrap:anywhere;font:var(--dsw-font-sm-13);color:var(--dsw-alias-label-secondary);margin-bottom:4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary)}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css$3 = ".o3BgMG_root{flex-direction:column;display:flex}.o3BgMG_leading{flex-shrink:0}.o3BgMG_root[data-tool^=cordis_] .o3BgMG_title{font-weight:500}.o3BgMG_title{font-weight:400}.o3BgMG_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.o3BgMG_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:auto;overflow:hidden}.o3BgMG_summarySuffix{white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:none;margin-left:4px}.o3BgMG_diffStat{font-family:var(--ds-font-family-code);font-size:calc(var(--dsh-content-font-size-secondary,13px) - 2px);margin-left:10px;transform:translateY(.5px)}.o3BgMG_row:is(:hover,[aria-expanded=true]) .o3BgMG_diffAdded{color:var(--dsw-alias-state-success-primary)}.o3BgMG_row:is(:hover,[aria-expanded=true]) .o3BgMG_diffRemoved{color:var(--dsw-alias-state-error-primary)}.o3BgMG_fileLink{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:inherit;text-align:left;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:inherit;text-underline-offset:3px;cursor:pointer;background:0 0;border:none;flex:0 auto;margin:0;padding:0;text-decoration:underline 1px dotted;overflow:hidden}.o3BgMG_errorSummary{color:var(--dsw-alias-state-error-primary)}.o3BgMG_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.o3BgMG_bodyWrap{flex-direction:column;display:flex}.o3BgMG_inspectButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.o3BgMG_root:hover .o3BgMG_inspectButton,.o3BgMG_inspectButton:focus-visible{opacity:1}.o3BgMG_detailsBodyWrap{position:relative}.o3BgMG_detailsBodyWrap .o3BgMG_inspectButton{margin:0;position:absolute;top:12px;right:12px}.o3BgMG_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.o3BgMG_bodyScroll{max-height:260px;overflow-y:auto}.o3BgMG_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.o3BgMG_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.o3BgMG_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.o3BgMG_ioSection::-webkit-scrollbar-track{margin:6px 0}.o3BgMG_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.o3BgMG_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.o3BgMG_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.o3BgMG_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.o3BgMG_codeBody,.o3BgMG_terminalBody,.o3BgMG_diffBody,.o3BgMG_readBody,.o3BgMG_imageBody,.o3BgMG_searchBody,.o3BgMG_webBody{margin:4px 0 4px 4px}.o3BgMG_searchRecovery{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin:4px 0 4px 4px}.o3BgMG_imageMeta{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-tertiary);margin-top:4px}.o3BgMG_imageExtra{white-space:pre-wrap;overflow-wrap:anywhere;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);margin-top:4px}.o3BgMG_terminalBody{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;--dsl-terminal-command-whitespace:pre-wrap;border:.5px solid var(--dsw-alias-border-l1)}.o3BgMG_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId$3 = "@deepseek-ai/dsh-client-ui-tool/ToolRow.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1452,7 +1546,7 @@ window.__ModuleLoader__.load({
 			"errorSummary": "o3BgMG_errorSummary",
 			"fileLink": "o3BgMG_fileLink",
 			"imageBody": "o3BgMG_imageBody",
-			"imageLabel": "o3BgMG_imageLabel",
+			"imageExtra": "o3BgMG_imageExtra",
 			"imageMeta": "o3BgMG_imageMeta",
 			"inspectButton": "o3BgMG_inspectButton",
 			"ioCard": "o3BgMG_ioCard",
@@ -1526,10 +1620,12 @@ window.__ModuleLoader__.load({
 			const status = stateStatus$1(state, t);
 			const running = state === "running" || state === "preparing";
 			const normalSummary = terminalBody?.description ?? (open ? detailsBody?.expandedSummary ?? summary : summary);
-			const summaryText = (state === "error" ? errorSummary ?? normalSummary : null) ?? normalSummary;
+			const exitLabel = terminalExitLabel(terminal, t);
+			const summaryText = (state === "error" && exitLabel === null ? errorSummary ?? normalSummary : null) ?? normalSummary;
 			const diffStat = (0, react.useMemo)(() => diffBody === null ? null : (0, _deepseek_ai_dsh_client_ui_primitives.diffTotals)(diffBody.card.diffs), [diffBody]);
 			const settledWithCue = state === "error" || state === "stopped";
-			const suffix = settledWithCue ? null : summarySuffix ?? diffStat;
+			const suffix = settledWithCue ? null : summarySuffix ?? null;
+			const totals = settledWithCue ? null : diffStat;
 			const openFile = (0, react.useMemo)(() => filePath !== void 0 && onOpenFile !== void 0 && !settledWithCue ? (event) => {
 				event.stopPropagation();
 				if (filePathLine === void 0) onOpenFile(filePath);
@@ -1551,13 +1647,13 @@ window.__ModuleLoader__.load({
 					"data-shimmer-decoration": true,
 					"aria-hidden": true
 				}),
-				openFile !== void 0 ? (0, react_jsx_runtime.jsx)("button", {
+				exitLabel === null && openFile !== void 0 ? (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: ToolRow_module_css_default.fileLink,
 					onClick: openFile,
 					onKeyDown: summaryLinkKeyDown,
 					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: summaryText })
-				}) : linkHref !== void 0 ? (0, react_jsx_runtime.jsx)("a", {
+				}) : exitLabel === null && linkHref !== void 0 ? (0, react_jsx_runtime.jsx)("a", {
 					className: ToolRow_module_css_default.fileLink,
 					href: linkHref,
 					target: "_blank",
@@ -1566,22 +1662,27 @@ window.__ModuleLoader__.load({
 					onKeyDown: summaryLinkKeyDown,
 					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: summaryText })
 				}) : (0, react_jsx_runtime.jsx)("span", {
-					className: clsx(ToolRow_module_css_default.summary, state === "error" && ToolRow_module_css_default.errorSummary, state === "stopped" && ToolRow_module_css_default.stoppedSummary),
+					className: clsx(ToolRow_module_css_default.summary, exitLabel === null && state === "error" && ToolRow_module_css_default.errorSummary, exitLabel === null && state === "stopped" && ToolRow_module_css_default.stoppedSummary),
 					children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: summaryText })
 				}),
+				exitLabel !== null && (0, react_jsx_runtime.jsx)(ExitCodeBadge, { label: exitLabel }),
 				suffix !== null && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
-					className: clsx(ToolRow_module_css_default.summarySuffix, typeof suffix !== "string" && ToolRow_module_css_default.diffStat),
-					children: typeof suffix === "string" ? suffix : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+					className: ToolRow_module_css_default.summarySuffix,
+					children: suffix
+				}),
+				totals !== null && (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, {
+					className: clsx(ToolRow_module_css_default.summarySuffix, ToolRow_module_css_default.diffStat),
+					children: [
 						(0, react_jsx_runtime.jsx)("span", {
 							className: ToolRow_module_css_default.diffAdded,
-							children: `+${suffix.added}`
+							children: `+${totals.added}`
 						}),
 						" ",
 						(0, react_jsx_runtime.jsx)("span", {
 							className: ToolRow_module_css_default.diffRemoved,
-							children: `-${suffix.removed}`
+							children: `-${totals.removed}`
 						})
-					] })
+					]
 				})
 			] }), [
 				summaryLinkKeyDown,
@@ -1589,7 +1690,9 @@ window.__ModuleLoader__.load({
 				openFile,
 				state,
 				suffix,
-				summaryText
+				totals,
+				summaryText,
+				exitLabel
 			]);
 			const expandedContent = (0, react.useMemo)(() => open ? (0, react_jsx_runtime.jsxs)("div", {
 				className: clsx(ToolRow_module_css_default.bodyWrap, detailsBody !== null && ToolRow_module_css_default.detailsBodyWrap),
@@ -1611,18 +1714,28 @@ window.__ModuleLoader__.load({
 				}) : imageBody !== null ? (0, react_jsx_runtime.jsxs)("div", {
 					className: ToolRow_module_css_default.imageBody,
 					children: [
-						(0, react_jsx_runtime.jsx)("div", {
-							className: ToolRow_module_css_default.imageLabel,
-							children: imageBody.label
-						}),
 						renderSlot !== void 0 && loadImage !== void 0 && renderSlot("tool.call.images", {
 							images: imageBody.images,
 							loadImage,
 							align: "start"
 						}),
-						(0, react_jsx_runtime.jsx)("div", {
+						(0, react_jsx_runtime.jsxs)("div", {
 							className: ToolRow_module_css_default.imageMeta,
-							children: imageBody.text
+							children: [(0, react_jsx_runtime.jsx)("div", { children: imageBody.path }), imageBody.images.map(({ attachment }, index) => (0, react_jsx_runtime.jsx)("div", { children: attachment.originalDimensions === void 0 ? t("row.imageSize", {
+								width: attachment.width,
+								height: attachment.height,
+								bytes: attachment.bytes
+							}) : t("row.imageSizeDownscaled", {
+								width: attachment.width,
+								height: attachment.height,
+								originalWidth: attachment.originalDimensions.width,
+								originalHeight: attachment.originalDimensions.height,
+								bytes: attachment.bytes
+							}) }, index))]
+						}),
+						imageBody.extraText !== null && (0, react_jsx_runtime.jsx)("div", {
+							className: ToolRow_module_css_default.imageExtra,
+							children: imageBody.extraText
 						})
 					]
 				}) : searchBody !== null ? (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SearchBlock, {
@@ -1819,16 +1932,7 @@ window.__ModuleLoader__.load({
 			return call.phase === "result" ? call.block.call?.name ?? "" : call.block.name;
 		}
 		/** One atomic call dispatched through the Tool-owned keyed slot. */
-		const ToolCall = (0, react.memo)(function ToolCall({ renderSlot, callId, toolName, call, assistant, openFile, cwd, home, inspectCall, loadImage, useDisclosure, t, children }) {
-			const preparing = call.phase === "preparing";
-			const hookContext = (0, react.useMemo)(() => ({
-				callId,
-				assistant: preparing ? assistant : void 0
-			}), [
-				assistant,
-				callId,
-				preparing
-			]);
+		const ToolCall = (0, react.memo)(function ToolCall({ renderSlot, callId, toolName, call, openFile, cwd, home, inspectCall, loadImage, useDisclosure, t, children }) {
 			const owner = (0, react.useMemo)(() => ({
 				callId,
 				toolName,
@@ -1862,7 +1966,6 @@ window.__ModuleLoader__.load({
 					t
 				}) : renderSlot("tool.call.toolview", owner, {
 					entryKey: toolName,
-					hookContext,
 					fallback: (0, react_jsx_runtime.jsx)(GenericToolCard, {
 						...owner,
 						t
@@ -1870,14 +1973,13 @@ window.__ModuleLoader__.load({
 				}), children]
 			});
 		});
-		const ToolCallBranch = (0, react.memo)(function ToolCallBranch({ renderSlot, block, assistant, cwd, home, openFile, inspectCall, loadImage, useDisclosure, t }) {
+		const ToolCallBranch = (0, react.memo)(function ToolCallBranch({ renderSlot, block, cwd, home, openFile, inspectCall, loadImage, useDisclosure, t }) {
 			const call = (0, react.useMemo)(() => toolCallPhase(block), [block]);
 			return (0, react_jsx_runtime.jsx)(ToolCall, {
 				renderSlot,
 				callId: call.block.callId,
 				toolName: callName(call),
 				call,
-				assistant,
 				openFile,
 				cwd,
 				home,
@@ -1891,7 +1993,6 @@ window.__ModuleLoader__.load({
 					children: call.block.subCalls.map((child) => (0, react_jsx_runtime.jsx)(ToolCallBranch, {
 						renderSlot,
 						block: child,
-						assistant,
 						cwd,
 						home,
 						openFile,
@@ -1911,11 +2012,9 @@ window.__ModuleLoader__.load({
 		*/
 		function ToolCallTree({ renderSlot, node, cwd, openFile, inspectCall, loadImage, useDisclosure, useHostInfo, t }) {
 			const home = useHostInfo((info) => info.home);
-			const assistant = node.location.kind === "step" ? node.location.step.data.source("assistant-step") : void 0;
 			return (0, react_jsx_runtime.jsx)(ToolCallBranch, {
 				renderSlot,
 				block: node.data.root,
-				assistant,
 				cwd,
 				home,
 				openFile,
@@ -1925,27 +2024,6 @@ window.__ModuleLoader__.load({
 				t
 			});
 		}
-		//#endregion
-		//#region lib/types/client/tool/tool-call-arguments-partial.js
-		/** Call-local argument subscription bound by the atomic Tool slot. */
-		const subscribeEmpty = () => () => {};
-		/**
-		* Bind one call without subscribing until its component invokes the Hook.
-		* @param _standard - framework-provided scope props.
-		* @param context - the preparing call's Step source and identity.
-		* @returns a Hook that reads only this call's raw argument prefix.
-		*/
-		const bindToolCallArgumentsPartial = (_standard, context) => {
-			const { assistant, callId } = context;
-			const subscribe = assistant === void 0 ? subscribeEmpty : (listener) => assistant.subscribe(listener);
-			const getSnapshot = () => {
-				const block = assistant?.getSnapshot()?.blocks.find((candidate) => candidate.kind === "tool-call" && candidate.callId === callId);
-				return block?.kind === "tool-call" ? block.argsRaw : "";
-			};
-			return function useToolCallArgumentsPartial() {
-				return (0, react.useSyncExternalStore)(subscribe, getSnapshot);
-			};
-		};
 		//#endregion
 		//#region lib/types/client/locale.js
 		/** Locale namespace supplied by the conversation owner to Tool renderers. */
@@ -2353,27 +2431,8 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
-		//#region lib/types/client/tool/components/PreparingToolRow.js
-		/**
-		* Render a non-expandable tool prefix with an optional preparation summary.
-		* @param props - tool prefix and locale.
-		* @returns the preparation row.
-		*/
-		function PreparingToolRow({ toolName, useDisclosure, icon, title, summary = "", t }) {
-			return (0, react_jsx_runtime.jsx)(ToolRow, {
-				useDisclosure,
-				t,
-				variant: classifyTool(toolName),
-				toolName,
-				icon,
-				title,
-				summary,
-				state: "preparing"
-			});
-		}
-		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-tool/src/client/tool/toolviews/bash-sample.module.css.mjs
-		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));min-width:0;color:var(--dsw-alias-label-tertiary);align-items:center;transition:color .1s;display:flex}.CY-8Ka_root:hover{color:var(--dsw-alias-label-secondary)}@media (prefers-reduced-motion:reduce){.CY-8Ka_root{transition:none}}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:inherit;flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:inherit}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:none}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:auto;overflow:hidden}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css = ".CY-8Ka_card{flex-direction:column;display:flex}.CY-8Ka_terminal{--dsl-terminal-font:var(--dsw-font-markdown-code-block-small);--dsl-terminal-line-height:18px;--dsl-terminal-output-max-height:224px;--dsl-terminal-command-whitespace:pre-wrap;border:.5px solid var(--dsw-alias-border-l1);margin:4px 0 4px 4px}.CY-8Ka_ioCard{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-markdown-code-block);font:var(--dsw-font-markdown-code-block-small);flex-direction:column;margin:4px 0 4px 4px;display:flex}.CY-8Ka_ioSection{grid-template-columns:max-content 1fr;align-items:baseline;column-gap:14px;max-height:150px;padding:12px 16px;display:grid;overflow-y:auto}.CY-8Ka_ioSection::-webkit-scrollbar-thumb{border-radius:var(--dsw-radius-sm);background-clip:padding-box;border:2px solid #0000}.CY-8Ka_ioSection::-webkit-scrollbar-track{margin:6px 0}.CY-8Ka_ioLabel{color:var(--dsw-alias-label-caption);align-self:start;position:sticky;top:0}.CY-8Ka_ioDivider{background:var(--dsw-alias-border-l2);flex:none;height:.5px}.CY-8Ka_ioText{white-space:pre-wrap;word-break:break-word;min-width:0;color:var(--dsw-alias-label-secondary)}.CY-8Ka_ioText[data-error]{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_commandInput{--dsl-command-whitespace:pre-wrap;color:var(--dsw-alias-label-secondary)}.CY-8Ka_root[data-expandable]{cursor:pointer}.CY-8Ka_root{height:calc(24px + var(--dsh-content-font-delta,0px));min-width:0;color:var(--dsw-alias-label-tertiary);align-items:center;transition:color .1s;display:flex}.CY-8Ka_root:hover{color:var(--dsw-alias-label-secondary)}@media (prefers-reduced-motion:reduce){.CY-8Ka_root{transition:none}}.CY-8Ka_leading{width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));color:inherit;flex:none;justify-content:center;align-items:center;margin-right:6px;display:inline-flex;position:relative}.CY-8Ka_leading svg:not([data-state]){width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}.CY-8Ka_chevron{color:inherit}.CY-8Ka_iconIdle{opacity:1;transition:opacity .1s;display:inline-flex}.CY-8Ka_chevronHover{opacity:0;margin:auto;transition:opacity .1s;position:absolute;inset:0}.CY-8Ka_root:hover .CY-8Ka_iconIdle{opacity:0}.CY-8Ka_root:hover .CY-8Ka_chevronHover{opacity:1}.CY-8Ka_title{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:none}.CY-8Ka_sep{background:var(--dsw-alias-label-caption);border-radius:1px;flex:none;width:2px;height:2px;margin:0 8px}.CY-8Ka_summary{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));flex:auto;overflow:hidden}.CY-8Ka_errorSummary{color:var(--dsw-alias-state-error-primary)}.CY-8Ka_stoppedSummary{color:var(--dsw-alias-state-warn-label)}.CY-8Ka_bodyWrap{flex-direction:column;display:flex}.CY-8Ka_inspectButton{border:.5px solid var(--dsw-alias-border-l4);corner-shape:round;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);cursor:pointer;opacity:0;border-radius:999px;align-self:flex-start;align-items:center;gap:4px;margin:4px 0 2px 4px;padding:2px 8px;font-size:11px;line-height:16px;transition:opacity .1s;display:inline-flex}.CY-8Ka_card:hover .CY-8Ka_inspectButton,.CY-8Ka_inspectButton:focus-visible{opacity:1}.CY-8Ka_inspectButton:hover{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary)}.CY-8Ka_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId = "@deepseek-ai/dsh-client-ui-tool/bash-sample.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -2387,6 +2446,7 @@ window.__ModuleLoader__.load({
 			"card": "CY-8Ka_card",
 			"chevron": "CY-8Ka_chevron",
 			"chevronHover": "CY-8Ka_chevronHover",
+			"commandInput": "CY-8Ka_commandInput",
 			"errorSummary": "CY-8Ka_errorSummary",
 			"iconIdle": "CY-8Ka_iconIdle",
 			"inspectButton": "CY-8Ka_inspectButton",
@@ -2410,6 +2470,7 @@ window.__ModuleLoader__.load({
 		/** Visually hidden status for the color-only running sweep and error tone. */
 		function stateStatus(state, t) {
 			switch (state) {
+				case "preparing": return t("row.preparing");
 				case "running": return t("bash.running");
 				case "error": return t("bash.failed");
 				case "stopped": return t("bash.stopped");
@@ -2417,19 +2478,12 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/**
-		* Render expandable Bash output with an accessible lifecycle label.
+		* Render expandable Bash output with an accessible lifecycle label. While the
+		* call is preparing the row shows the description streamed so far and cannot expand.
 		* @param props - tool call, Session sources, locale, and inspection callback.
 		* @returns the Bash output row.
 		*/
-		const BashRow = (0, react.memo)(function BashRow(props) {
-			if (props.phase === "preparing") return (0, react_jsx_runtime.jsx)(PreparingToolRow, {
-				...props,
-				icon: BASH_ICON,
-				title: props.t(toolTitleKey(props.toolName))
-			});
-			return (0, react_jsx_runtime.jsx)(StartedBashRow, { ...props });
-		});
-		const StartedBashRow = (0, react.memo)(function StartedBashRow({ toolName, block, sessionId, useSessions, inspect, useDisclosure, t }) {
+		const BashRow = (0, react.memo)(function BashRow({ toolName, block, sessionId, useSessions, inspect, useDisclosure, t }) {
 			const model = (0, react.useMemo)(() => toolRowModel(toolName, block), [toolName, block]);
 			const cwd = useSessions((list) => list.byId[sessionId]?.cwd);
 			const terminalModel = (0, react.useMemo)(() => terminalCardModel(block, cwd), [block, cwd]);
@@ -2438,7 +2492,8 @@ window.__ModuleLoader__.load({
 			const state = model.state === "ok" && terminalModel !== null && terminalFailed(terminalModel) ? "error" : model.state;
 			const status = stateStatus(state, t);
 			const { expanded, toggle: toggleExpand } = useDisclosure();
-			const genericBody = terminal === null && (model.state === "error" || isSettledPersistentShellCall(block) || isSpilledShellCall(block)) && (model.bodyRaw !== null || model.output !== null);
+			const background = isBackgroundShellCall(block);
+			const genericBody = terminal === null && (model.state === "error" || isSettledPersistentShellCall(block) || isSpilledShellCall(block) || background) && (model.bodyRaw !== null || model.output !== null);
 			const expandable = terminal !== null || genericBody;
 			const open = expanded && expandable;
 			const body = (0, react.useMemo)(() => open && genericBody && model.bodyRaw !== null ? formatToolBody(model.variant, model.bodyRaw) : null, [
@@ -2448,8 +2503,9 @@ window.__ModuleLoader__.load({
 				open
 			]);
 			const normalSummary = terminal?.description ?? model.summary;
-			const settlementLine = state === "error" ? model.errorSummary ?? normalSummary : state === "stopped" ? t("bash.stopped") : null;
-			const running = state === "running";
+			const exitLabel = terminalExitLabel(terminalModel, t);
+			const settlementLine = exitLabel !== null ? null : state === "error" ? model.errorSummary ?? normalSummary : state === "stopped" ? t("bash.stopped") : null;
+			const running = state === "running" || state === "preparing";
 			const toggleFromKeyboard = (0, react.useCallback)((event) => {
 				if (!expandable || event.key !== "Enter" && event.key !== " ") return;
 				event.preventDefault();
@@ -2494,9 +2550,10 @@ window.__ModuleLoader__.load({
 									"aria-hidden": true
 								}),
 								(0, react_jsx_runtime.jsx)("span", {
-									className: clsx(bash_sample_module_css_default.summary, state === "error" && bash_sample_module_css_default.errorSummary, state === "stopped" && bash_sample_module_css_default.stoppedSummary),
+									className: clsx(bash_sample_module_css_default.summary, exitLabel === null && state === "error" && bash_sample_module_css_default.errorSummary, exitLabel === null && state === "stopped" && bash_sample_module_css_default.stoppedSummary),
 									children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.TextShimmer, { children: settlementLine ?? normalSummary })
-								})
+								}),
+								exitLabel !== null && (0, react_jsx_runtime.jsx)(ExitCodeBadge, { label: exitLabel })
 							]
 						})
 					]
@@ -2515,7 +2572,11 @@ window.__ModuleLoader__.load({
 								children: [(0, react_jsx_runtime.jsx)("span", {
 									className: bash_sample_module_css_default.ioLabel,
 									children: t("row.input")
-								}), (0, react_jsx_runtime.jsx)("span", {
+								}), background ? (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.CommandText, {
+									className: bash_sample_module_css_default.commandInput,
+									text: body,
+									label: t("row.commandArguments")
+								}) : (0, react_jsx_runtime.jsx)("span", {
 									className: bash_sample_module_css_default.ioText,
 									children: body
 								})]
@@ -2560,26 +2621,33 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/tool/toolviews/file-mutation-row.js
 		const FILE_MUTATION_ICON = (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutlineRegular, { size: 14 });
+		const CONTENT_FIELDS = [
+			"content",
+			"old_string",
+			"new_string"
+		];
+		const KILOBYTE = 1024;
+		/** Kilobytes of decoded input at every stage; null before any content field arrives. */
+		function contentKilobytes(block) {
+			const { args } = block;
+			const open = CONTENT_FIELDS.find((key) => args.has(key) && !args.complete(key));
+			const completed = CONTENT_FIELDS.reduce((total, key) => key !== open && args.complete(key) ? total + (args.stringLength(key, { step: KILOBYTE }) ?? 0) : total, 0);
+			if (open === void 0) return CONTENT_FIELDS.some((key) => args.has(key)) ? Math.ceil(completed / KILOBYTE) : null;
+			const chars = completed + (args.stringLength(open, {
+				step: KILOBYTE,
+				offset: completed
+			}) ?? 0);
+			return Math.ceil(chars / KILOBYTE);
+		}
 		/**
-		* Lets users expand an applied file diff and open the reported path.
+		* Shows the path and decoded input size through preparation, execution, and
+		* settlement, with the applied diff available once the call settles.
 		*/
-		function FileMutationRow(props) {
-			return props.phase === "preparing" ? (0, react_jsx_runtime.jsx)(PreparingFileMutationRow, { ...props }) : (0, react_jsx_runtime.jsx)(StartedFileMutationRow, { ...props });
-		}
-		function PreparingFileMutationRow({ toolName, useDisclosure, useToolCallArgumentsPartial, t }) {
-			const raw = useToolCallArgumentsPartial();
-			return (0, react_jsx_runtime.jsx)(PreparingToolRow, {
-				toolName,
-				useDisclosure,
-				icon: FILE_MUTATION_ICON,
-				title: t(toolTitleKey(toolName)),
-				t,
-				summary: t("tool.preparing.content", { kilobytes: Math.ceil(raw.length / 1024) })
-			});
-		}
-		function StartedFileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
+		function FileMutationRow({ toolName, block, cwd, home, openFile, inspect, useDisclosure, t }) {
 			const model = toolRowModel(toolName, block, cwd, home);
 			const diff = diffCardModel(block);
+			const kilobytes = contentKilobytes(block);
+			const size = kilobytes === null ? null : t("tool.preparing.content", { kilobytes });
 			return (0, react_jsx_runtime.jsx)(ToolRow, {
 				useDisclosure,
 				t,
@@ -2588,6 +2656,7 @@ window.__ModuleLoader__.load({
 				icon: FILE_MUTATION_ICON,
 				title: t(model.titleKey),
 				summary: model.summary,
+				summarySuffix: size !== null && model.summary !== "" ? size : void 0,
 				output: model.output,
 				errorSummary: model.errorSummary,
 				diff,
@@ -2767,24 +2836,15 @@ window.__ModuleLoader__.load({
 			return refs.length > 0 ? refs : null;
 		}
 		/**
-		* Read the text of every text block of a settled image result, joined in order.
-		*
-		* The envelope is one of them; a post-execute hook that appends further text
-		* blocks keeps them visible under the gallery instead of being dropped. The
-		* envelope shape is still the recognition gate: a result without it is not a
-		* well-formed image read and declines.
-		* @param content - the settled result's content blocks.
-		* @returns the joined text, or null when no envelope-shaped block is present.
+		* Join the text blocks other than the image envelope, in order. A post-execute
+		* hook that appends further text blocks keeps them visible under the gallery
+		* instead of being dropped.
+		* @param content - the settled result's text blocks.
+		* @returns the joined text, or null when there is none.
 		*/
-		function imageTexts(content) {
-			const parts = [];
-			let sawEnvelope = false;
-			for (const part of content) {
-				if (part.type !== "text" || typeof part.text !== "string") continue;
-				if (IMAGE_ENVELOPE.test(part.text)) sawEnvelope = true;
-				parts.push(part.text);
-			}
-			return sawEnvelope && parts.length > 0 ? parts.join("\n") : null;
+		function extraTexts(content) {
+			const parts = content.flatMap((part) => part.type === "text" && typeof part.text === "string" && !IMAGE_ENVELOPE.test(part.text) ? [part.text] : []);
+			return parts.length > 0 ? parts.join("\n") : null;
 		}
 		/**
 		* Whether the content carries only blocks the card consumes.
@@ -2810,16 +2870,13 @@ window.__ModuleLoader__.load({
 		*
 		* The card is result-side only: a call carries no content until `execute`
 		* returns, so a running `read_image` has none and this returns null for it.
-		* Both root and nested calls settle as ToolResultNode; the nested one (a
-		* read_image dispatched from inside run_code) persists no presentationMeta, so
-		* its label falls back to the call's own `file_path` argument.
+		* Both root and nested calls settle as ToolResultNode. Historical nested
+		* records without presentation metadata fall back to the call's own
+		* `file_path` argument for the path.
 		* @param block - running or settled Tool block.
-		* @param sessionCwd - the session workspace root; a workspace-rooted absolute
-		*   path label displays relative to it. Absent leaves the path as authored.
-		* @param home - host account home; a leftover POSIX home path displays as `~`.
 		* @returns the image-card props, or null for the generic path.
 		*/
-		function imageCardModel(block, sessionCwd, home) {
+		function imageCardModel(block) {
 			if (!("kind" in block) || block.isError) return null;
 			const call = parsedToolCall(block);
 			if (call?.name !== "read_image") return null;
@@ -2830,12 +2887,11 @@ window.__ModuleLoader__.load({
 			if (!fullyRendered(block.content)) return null;
 			const refs = imageReferences(block.content);
 			if (refs === null) return null;
-			const text = imageTexts(block.content);
-			if (text === null) return null;
+			if (!block.content.some((part) => part.type === "text" && typeof part.text === "string" && IMAGE_ENVELOPE.test(part.text))) return null;
 			return {
-				label: abbreviateHomePath(relativizeToCwd(path, sessionCwd), home),
+				path,
 				images: refs.map((ref) => ({ attachment: ref })),
-				text
+				extraText: extraTexts(block.content)
 			};
 		}
 		//#endregion
@@ -2846,9 +2902,9 @@ window.__ModuleLoader__.load({
 		* slot this entry declares.
 		*/
 		function ReadImageRow(props) {
-			const { block, cwd, home, renderSlot, loadImage } = props;
+			const { block, renderSlot, loadImage } = props;
 			return readFamilyRow(props, {
-				image: imageCardModel(block, cwd, home),
+				image: imageCardModel(block),
 				renderSlot,
 				loadImage
 			});
@@ -4557,8 +4613,7 @@ window.__ModuleLoader__.load({
 				locale: CONVERSATION_NS,
 				children: { "tool.call.toolview": {
 					kind: "keyed",
-					scope: "session",
-					inject: { hooks: { toolCallArgumentsPartial: bindToolCallArgumentsPartial } }
+					scope: "session"
 				} },
 				inject: toolInject
 			}, ToolCallTree));

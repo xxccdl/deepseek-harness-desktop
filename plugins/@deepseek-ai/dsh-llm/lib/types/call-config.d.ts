@@ -5,22 +5,35 @@
  * changed snapshots instead of allowing silent per-call drift.
  * @module dsh-llm/call-config
  */
-import type { GenerateOptions } from './types.ts';
+import type { GenerateOptions, LlmResolvedModelInfo } from './types.ts';
 import type { ReasoningEffortId } from './brand.ts';
+/** Concrete generation settings; omitted controls use the selected route's defaults. */
+export interface LlmCallControls {
+    reasoningEffort?: ReasoningEffortId;
+    temperature?: number;
+    maxTokens?: number;
+    stop?: string[];
+}
 /**
  * Provider, model, reasoning effort, and sampling scalars of one conversation's
  * requests. Every field maps 1:1 onto the same-named `GenerateOptions` field;
  * the loop builds requests from the logged header rather than accepting these
  * per call.
  */
-export interface LlmCallConfig {
+export interface LlmCallConfig extends LlmCallControls {
     provider: string;
     model: string;
-    reasoningEffort?: ReasoningEffortId;
-    temperature?: number;
-    maxTokens?: number;
-    stop?: string[];
 }
+/**
+ * Synchronous, pure configuration of one call before defaults and validation.
+ * Compose functions in the desired order; later writes replace earlier ones.
+ * The returned controls cannot change the captured route. Errors reject
+ * preparation before dispatch; only the resolved configuration is recordable.
+ * @param controls - detached, deeply frozen proposed controls, without defaults.
+ * @param model - detached, deeply frozen metadata from the captured adapter generation.
+ * @returns concrete controls; omitted fields receive the route's defaults.
+ */
+export type ConfigureCall = (controls: Readonly<LlmCallControls>, model: Readonly<LlmResolvedModelInfo>) => LlmCallControls;
 /**
  * Effective config fields supplied by exact-model adapter resolution rather
  * than by the caller's request proposal.

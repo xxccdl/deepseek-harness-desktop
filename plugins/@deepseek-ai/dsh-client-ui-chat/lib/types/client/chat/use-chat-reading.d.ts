@@ -50,8 +50,23 @@ export declare class ChatReading {
     dispose(): void;
     /** Release bottom follow and pending sampling for an explicit navigation. */
     pauseFollowing(): void;
-    /** Land at the current floor and clear saved reader position. */
-    followTail(): void;
+    /**
+     * Land at the current floor and clear saved reader position.
+     * @param behavior - immediate positioning, or one native animation when the reader's own input moved the tail.
+     */
+    followTail(behavior?: 'instant' | 'smooth'): void;
+    /**
+     * Follow the tail on the active fold's animation clock.
+     * @returns whether a fold batch owns the tail movement instead of a separate scroll animation.
+     */
+    followInputFold(): boolean;
+    /**
+     * Let fold batches read follow intent and commit their tail landings.
+     * @returns a disposer that disconnects this reading policy from the viewport.
+     */
+    bindFolds(): () => void;
+    /** Stop a native follow animation where it is; the next sampled position decides follow intent. */
+    interruptFollow(): void;
     /** Restore the Session's semantic position, or follow the tail when none is saved. */
     restore(): void;
     /**
@@ -69,8 +84,11 @@ export declare class ChatReading {
      * @param scroll - attributed scroll delivery; other reader movement remains pending until sampled.
      */
     readonly onScroll: (scroll: ViewportScroll) => void;
-    /** Settle pending reader movement at the browser's scrollend. */
-    readonly onScrollEnd: () => void;
+    /**
+     * Settle pending reader movement; only the outer scroller can finish its native follow animation.
+     * @param outer - whether the event belongs to the outer scroller rather than a process body.
+     */
+    readonly onScrollEnd: (outer?: boolean) => void;
     /** Reconcile a layout change without overriding unsampled reader input. */
     onResize(): void;
     /** Resolve the active turn from tail ownership or a coalesced reading-line probe. */

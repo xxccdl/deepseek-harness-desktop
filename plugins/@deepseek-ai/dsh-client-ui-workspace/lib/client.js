@@ -5,10 +5,10 @@ window.__ModuleLoader__.load({
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
+		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let _deepseek_ai_cordis = require("@deepseek-ai/cordis");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react = require("react");
-		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		//#region lib/types/client/contract/slots.js
 		/**
 		* Bind the row's render occurrence into the entries' `useMenuOpenState` hook:
@@ -30,10 +30,8 @@ window.__ModuleLoader__.load({
 				searchRequest: 0,
 				addRequested: false,
 				directoryBusy: false,
-				renameTarget: null,
-				forkError: null
+				renameTarget: null
 			});
-			let forkErrorSeq = 0;
 			return {
 				state,
 				search: () => {
@@ -74,22 +72,6 @@ window.__ModuleLoader__.load({
 						...state.getSnapshot(),
 						renameTarget: null
 					});
-				},
-				forkFailed: (reason) => {
-					forkErrorSeq += 1;
-					state.set({
-						...state.getSnapshot(),
-						forkError: {
-							reason,
-							seq: forkErrorSeq
-						}
-					});
-				},
-				dismissForkError: () => {
-					state.set({
-						...state.getSnapshot(),
-						forkError: null
-					});
 				}
 			};
 		}
@@ -100,8 +82,9 @@ window.__ModuleLoader__.load({
 		* @param navigation - session creation and forking from the pointer controls' navigation service.
 		* @param controls - browser-owned opening requests.
 		* @param archiveSession - shared archive action, including running-work confirmation and notices.
+		* @param reportForkFailure - publish a classified failure through the frame-wide notice channel.
 		*/
-		function installWorkspaceShortcuts(ctx, navigation, controls, archiveSession) {
+		function installWorkspaceShortcuts(ctx, navigation, controls, archiveSession, reportForkFailure) {
 			const t = ctx.locale.bind("workspace");
 			const current = () => Object.values(ctx.sessions.list.getSnapshot().byId).find((row) => (row.retainedBy.mainView ?? 0) > 0);
 			const addReason = () => ctx.slots.entries("sidebar.workspaces.directoryFlow").length === 0 ? t("shortcut.noPicker") : controls.state.getSnapshot().directoryBusy ? t("shortcut.directoryBusy") : null;
@@ -184,7 +167,7 @@ window.__ModuleLoader__.load({
 					run: () => {
 						navigation.forkSession(target.id).catch((error) => {
 							const unavailable = error instanceof Error && error.name === "SessionForkError" && error.rpcError.code === "session/fork-unavailable";
-							controls.forkFailed(unavailable ? "unavailable" : "failed");
+							reportForkFailure(unavailable ? "unavailable" : "failed");
 							if (!unavailable) console.warn("session fork rejected:", error);
 						});
 					}
@@ -203,6 +186,630 @@ window.__ModuleLoader__.load({
 				};
 			});
 		}
+		//#endregion
+		//#region ../../util/values/src/partial-json.ts
+		/**
+		* Lazily scanned view of one JSON object's top-level fields, built from text
+		* that may still be streaming or from an already parsed object. Nothing is
+		* scanned until a reader asks; the view remembers every question it answered
+		* and reports changed answers when the owner refreshes for publication.
+		* Used for model tool-call arguments: a row reads the fields it
+		* cares about at whatever granularity it displays, at every stage of the call.
+		* @module @deepseek-ai/dsh-util-values/src/partial-json
+		*/
+		const SIMPLE_ESCAPES = {
+			"\"": "\"",
+			"\\": "\\",
+			"/": "/",
+			b: "\b",
+			f: "\f",
+			n: "\n",
+			r: "\r",
+			t: "	"
+		};
+		const CONTENT_ESCAPE = /[\\\u0000-\u001f]/u;
+		function isWhitespace(c) {
+			return c === " " || c === "\n" || c === "\r" || c === "	";
+		}
+		function isHex(c) {
+			return c >= "0" && c <= "9" || c >= "a" && c <= "f" || c >= "A" && c <= "F";
+		}
+		(class PartialArguments {
+			/** The view of a call with no arguments available. */
+			static EMPTY = PartialArguments.fromObject({});
+			/**
+			* View finished argument text without scanning it until a reader asks.
+			* @param text - the complete argument JSON text.
+			* @returns a sealed view.
+			*/
+			static fromText(text) {
+				const view = new PartialArguments();
+				view.append(text);
+				view.sealed = true;
+				return view;
+			}
+			/**
+			* View an already parsed argument payload, such as a PTC dispatch object.
+			* @param value - the parsed argument value.
+			* @returns a sealed view; a non-object payload has no fields.
+			*/
+			static fromObject(value) {
+				const view = new PartialArguments();
+				view.object = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+				view.sealed = true;
+				return view;
+			}
+			/**
+			* The source: text so far or a parsed object, plus whether it can still grow.
+			* These are the only enumerable fields, so two views over the same source
+			* compare equal structurally however far each has been read.
+			*/
+			chunks = [];
+			object;
+			sealed = false;
+			#ends = [];
+			#size = 0;
+			#consumed = 0;
+			#mode = "root";
+			#escape = false;
+			#keyStart = 0;
+			#keyEscaped = false;
+			#key = "";
+			#current = null;
+			#nestedEnds = [];
+			#nestedInString = false;
+			#invalidAt;
+			#invalidValue = false;
+			#entries = /* @__PURE__ */ new Map();
+			#order = [];
+			#reads = /* @__PURE__ */ new Map();
+			/** Whether this view rejects further appends; does not scan text or register reads. */
+			get isSealed() {
+				return this.sealed;
+			}
+			/** Whether indexing or a content read found invalid JSON; unread value contents are not validated. */
+			get invalid() {
+				this.scan();
+				return this.#mode === "invalid" || this.#invalidValue;
+			}
+			/**
+			* Retain streamed argument text without scanning or comparing observed answers.
+			* @param fragment - the text following every fragment appended before.
+			*/
+			append(fragment) {
+				if (this.sealed) throw new Error("PartialArguments: cannot append to a sealed view");
+				if (fragment.length === 0) return;
+				this.chunks.push(fragment);
+				this.#size += fragment.length;
+				this.#ends.push(this.#size);
+			}
+			/**
+			* Reconcile a streamed prefix with authoritative complete text without joining the fragments.
+			* @param text - the final argument text, which replaces missing or conflicting deltas.
+			* @returns this view sealed with its caches retained when every character matches; otherwise a new sealed view.
+			*/
+			settle(text) {
+				if (this.object !== void 0 || text.length !== this.#size) return PartialArguments.fromText(text);
+				let offset = 0;
+				for (const chunk of this.chunks) {
+					if (!text.startsWith(chunk, offset)) return PartialArguments.fromText(text);
+					offset += chunk.length;
+				}
+				this.chunks = text.length === 0 ? [] : [text];
+				this.#ends = text.length === 0 ? [] : [text.length];
+				this.sealed = true;
+				return this;
+			}
+			/**
+			* Compare observed answers and advance their publication baseline. Unread views remain unscanned.
+			* @returns whether any observed answer changed since its first read or the preceding refresh.
+			*/
+			refresh() {
+				if (this.#reads.size === 0) return false;
+				this.scan();
+				let changed = false;
+				let completions = false;
+				for (const read of this.#reads.values()) {
+					if (read.completion) {
+						completions = true;
+						continue;
+					}
+					changed = this.refreshRead(read) || changed;
+				}
+				if (completions) {
+					for (const read of this.#reads.values()) if (read.completion) changed = this.refreshRead(read) || changed;
+				}
+				if (this.sealed) this.#reads.clear();
+				return changed;
+			}
+			refreshRead(read) {
+				const now = read.answer();
+				if (Object.is(now, read.last)) return false;
+				read.last = now;
+				return true;
+			}
+			/**
+			* Check whether no further fields can arrive.
+			* @returns whether the outer object closed, indexing failed, or the view is sealed; unread values are not validated.
+			*/
+			closed() {
+				return this.remember("closed", "", () => this.closedNow());
+			}
+			/**
+			* List discovered fields in first-appearance order.
+			* @returns top-level keys seen so far, in first-appearance order.
+			*/
+			keys() {
+				return this.remember("keys", "", () => this.keysNow(), (keys) => keys.length);
+			}
+			/**
+			* Check whether a top-level field has appeared.
+			* @param key - argument name.
+			* @returns whether the field has appeared (a string opened or another value began).
+			*/
+			has(key) {
+				return this.remember("has", key, () => this.hasNow(key));
+			}
+			/**
+			* Check whether a field's closing delimiter has arrived, without validating its contents.
+			* @param key - argument name.
+			* @returns whether its delimiter arrived and no content reader has reported an error for this value.
+			*/
+			complete(key) {
+				return this.remember("complete", key, () => this.completeNow(key));
+			}
+			/**
+			* Read string length without materializing its text.
+			* @param key - argument name.
+			* @param options - change granularity for a streaming string.
+			* @returns decoded UTF-16 length of the string field so far; undefined when absent or not a string.
+			*/
+			stringLength(key, options) {
+				const step = Math.max(1, Math.floor(options?.step ?? 1));
+				const offset = options?.offset ?? 0;
+				return this.remember(`length:${step}:${offset}`, key, () => this.lengthNow(key), (length) => length === void 0 ? void 0 : Math.ceil((length + offset) / step));
+			}
+			/**
+			* Check a string against a decoded UTF-16 length limit without materializing it.
+			* @param key - argument name.
+			* @param maxLength - decoded UTF-16 limit, floored to at least zero.
+			* @returns whether the string is longer than the limit; false when absent or not a string.
+			*/
+			stringExceeds(key, maxLength) {
+				const limit = Math.max(0, Math.floor(maxLength));
+				return this.remember(`exceeds:${limit}`, key, () => (this.lengthNow(key, limit + 1) ?? 0) > limit);
+			}
+			/**
+			* Read a decoded string, including a streaming prefix.
+			* @param key - argument name.
+			* @returns the string field's decoded text so far; undefined when absent or not a string.
+			*/
+			text(key) {
+				return this.remember("text", key, () => this.textNow(key));
+			}
+			/**
+			* Read at most the first decoded UTF-16 units of a string.
+			* @param key - argument name.
+			* @param maxLength - maximum decoded UTF-16 length, floored to at least one.
+			* @returns the bounded string prefix; undefined when absent or not a string.
+			*/
+			textPrefix(key, maxLength) {
+				const limit = Math.max(1, Math.floor(maxLength));
+				return this.remember(`prefix:${limit}`, key, () => this.textPrefixNow(key, limit));
+			}
+			/**
+			* Read a completed non-string argument.
+			* @param key - argument name.
+			* @returns the parsed non-string value once it closed; undefined while open, absent, or a string.
+			*/
+			value(key) {
+				return this.remember("value", key, () => this.valueNow(key));
+			}
+			/** Answer a question and, on a streaming view, remember it for change detection. */
+			remember(kind, key, read, comparison) {
+				this.scan();
+				const result = read();
+				if (!this.sealed) {
+					const id = `${kind}/${key}`;
+					if (!this.#reads.has(id)) this.#reads.set(id, {
+						completion: kind === "complete",
+						answer: comparison === void 0 ? read : () => comparison(read()),
+						last: comparison === void 0 ? result : comparison(result)
+					});
+				}
+				return result;
+			}
+			closedNow() {
+				return this.sealed || this.#mode === "closed" || this.#mode === "invalid";
+			}
+			keysNow() {
+				return this.object === void 0 ? this.#order : Object.keys(this.object);
+			}
+			hasNow(key) {
+				return this.object === void 0 ? this.#entries.has(key) : Object.hasOwn(this.object, key);
+			}
+			completeNow(key) {
+				if (this.object !== void 0) return Object.hasOwn(this.object, key);
+				const entry = this.#entries.get(key);
+				return entry !== void 0 && entry.end >= 0 && (entry.kind === "string" ? entry.invalidAt === void 0 : !entry.invalid);
+			}
+			lengthNow(key, limit = Number.POSITIVE_INFINITY) {
+				if (this.object !== void 0) {
+					const field = Object.hasOwn(this.object, key) ? this.object[key] : void 0;
+					return typeof field === "string" ? field.length : void 0;
+				}
+				const entry = this.#entries.get(key);
+				if (entry?.kind !== "string") return void 0;
+				if (entry.text !== void 0 && entry.text.at === entry.end) return entry.text.length;
+				const read = entry.length ??= {
+					at: entry.start,
+					length: 0,
+					text: ""
+				};
+				this.readString(entry, read, limit, false);
+				return read.length;
+			}
+			textNow(key) {
+				if (this.object !== void 0) {
+					const field = Object.hasOwn(this.object, key) ? this.object[key] : void 0;
+					return typeof field === "string" ? field : void 0;
+				}
+				const entry = this.#entries.get(key);
+				if (entry?.kind !== "string") return void 0;
+				if (entry.text === void 0 && entry.end >= 0 && entry.needsDecoding && entry.invalidAt === void 0) {
+					let text;
+					try {
+						text = JSON.parse(`"${this.slice(entry.start, entry.end)}"`);
+					} catch (_error) {}
+					if (text !== void 0) entry.text = {
+						at: entry.end,
+						length: text.length,
+						text
+					};
+				}
+				const read = entry.text ??= {
+					at: entry.start,
+					length: 0,
+					text: ""
+				};
+				this.readString(entry, read, Number.POSITIVE_INFINITY, true);
+				return read.text;
+			}
+			textPrefixNow(key, maxLength) {
+				if (this.object !== void 0) {
+					const field = Object.hasOwn(this.object, key) ? this.object[key] : void 0;
+					return typeof field === "string" ? field.slice(0, maxLength) : void 0;
+				}
+				const entry = this.#entries.get(key);
+				if (entry?.kind !== "string") return void 0;
+				const prefixes = entry.prefixes ??= /* @__PURE__ */ new Map();
+				let read = prefixes.get(maxLength);
+				if (read === void 0) {
+					read = {
+						at: entry.start,
+						length: 0,
+						text: ""
+					};
+					prefixes.set(maxLength, read);
+				}
+				this.readString(entry, read, maxLength, true);
+				return read.text;
+			}
+			valueNow(key) {
+				if (this.object !== void 0) {
+					if (!Object.hasOwn(this.object, key)) return void 0;
+					const field = this.object[key];
+					return typeof field === "string" ? void 0 : field;
+				}
+				const entry = this.#entries.get(key);
+				if (entry?.kind !== "value" || entry.end < 0 || entry.invalid) return void 0;
+				if (entry.parsed === void 0) try {
+					entry.parsed = JSON.parse(this.slice(entry.start, entry.end));
+				} catch (_error) {
+					entry.invalid = true;
+					this.#invalidValue = true;
+				}
+				return entry.parsed;
+			}
+			chunkAt(at) {
+				let low = 0;
+				let high = this.#ends.length;
+				while (low < high) {
+					const mid = low + high >>> 1;
+					if (this.#ends[mid] <= at) low = mid + 1;
+					else high = mid;
+				}
+				return low;
+			}
+			/** Materialize only a requested range, never the cumulative source. */
+			slice(start, end) {
+				if (start >= end) return "";
+				const first = this.chunkAt(start);
+				const last = this.chunkAt(end - 1);
+				const base = first === 0 ? 0 : this.#ends[first - 1];
+				if (first === last) return this.chunks[first].slice(start - base, end - base);
+				const parts = [this.chunks[first].slice(start - base)];
+				for (let i = first + 1; i < last; i++) parts.push(this.chunks[i]);
+				parts.push(this.chunks[last].slice(0, end - this.#ends[last - 1]));
+				return parts.join("");
+			}
+			readString(entry, read, limit, materialize) {
+				const end = Math.min(entry.end < 0 ? this.#consumed : entry.end, entry.invalidAt ?? Number.POSITIVE_INFINITY, this.#invalidAt ?? Number.POSITIVE_INFINITY);
+				if (!entry.needsDecoding) {
+					const length = Math.min(end - read.at, limit - read.length);
+					if (length <= 0) return;
+					if (materialize) read.text += this.slice(read.at, read.at + length);
+					read.at += length;
+					read.length += length;
+					return;
+				}
+				let chunkIndex = this.chunkAt(read.at);
+				while (read.at < end && read.length < limit) {
+					const base = chunkIndex === 0 ? 0 : this.#ends[chunkIndex - 1];
+					const chunk = this.chunks[chunkIndex];
+					const remaining = chunk.slice(read.at - base, Math.min(chunk.length, end - base));
+					const boundary = remaining.search(CONTENT_ESCAPE);
+					const length = Math.min(boundary < 0 ? remaining.length : boundary, limit - read.length);
+					if (length > 0) {
+						if (materialize) read.text += remaining.slice(0, length);
+						read.at += length;
+						read.length += length;
+						if (read.at === base + chunk.length) chunkIndex++;
+						continue;
+					}
+					const type = remaining.length > 1 ? remaining[1] : read.at + 1 < end ? this.chunks[chunkIndex + 1][0] : void 0;
+					let decoded;
+					let width = 2;
+					if (remaining[0] === "\\" && type === void 0 && entry.end < 0) return;
+					if (remaining[0] === "\\" && type === "u") {
+						const hex = this.slice(read.at + 2, Math.min(end, read.at + 6));
+						let valid = true;
+						for (let i = 0; i < hex.length; i++) if (!isHex(hex[i])) valid = false;
+						if (valid) {
+							if (hex.length < 4 && entry.end < 0) return;
+							if (hex.length === 4) decoded = String.fromCharCode(Number.parseInt(hex, 16));
+						}
+						width = 6;
+					} else if (remaining[0] === "\\" && type !== void 0) decoded = SIMPLE_ESCAPES[type];
+					if (decoded === void 0) {
+						entry.invalidAt = read.at;
+						this.#invalidValue = true;
+						return;
+					}
+					if (materialize) read.text += decoded;
+					read.length++;
+					read.at += width;
+					while (chunkIndex < this.chunks.length && read.at >= this.#ends[chunkIndex]) chunkIndex++;
+				}
+			}
+			/** Locate new field ranges without decoding or parsing their contents. */
+			scan() {
+				if (this.object !== void 0 || this.#consumed === this.#size) return;
+				for (let i = this.chunkAt(this.#consumed); i < this.chunks.length && this.#invalidAt === void 0; i++) {
+					const pending = this.chunks[i];
+					const base = i === 0 ? 0 : this.#ends[i - 1];
+					for (let index = this.#consumed - base; index < pending.length && this.#mode !== "invalid"; index++) {
+						if (this.#mode === "string" || this.#mode === "nested" && this.#nestedInString) {
+							const end = this.stringBoundary(pending, index);
+							this.#consumed += end - index;
+							index = end;
+							if (index === pending.length) break;
+						}
+						this.step(pending[index], this.#consumed);
+						this.#consumed++;
+					}
+				}
+			}
+			/** Only raw quotes and their preceding backslash runs can terminate a string. */
+			stringBoundary(fragment, start) {
+				let at = start;
+				while (true) {
+					const quote = fragment.indexOf("\"", at);
+					const end = quote < 0 ? fragment.length : quote;
+					if (this.#mode === "string") {
+						const entry = this.#current;
+						if (!entry.needsDecoding && CONTENT_ESCAPE.test(fragment.slice(at, end))) entry.needsDecoding = true;
+					}
+					let slashStart = end;
+					while (slashStart > at && fragment[slashStart - 1] === "\\") slashStart--;
+					const escaped = (end - slashStart) % 2 === 1 !== (slashStart === at && this.#escape);
+					this.#escape = quote < 0 && escaped;
+					if (quote < 0 || !escaped) return end;
+					at = quote + 1;
+				}
+			}
+			step(c, at) {
+				switch (this.#mode) {
+					case "root":
+						if (isWhitespace(c)) return;
+						if (c === "{") {
+							this.#mode = "key-or-end";
+							return;
+						}
+						this.fail();
+						return;
+					case "key-or-end":
+						if (isWhitespace(c)) return;
+						if (c === "}") {
+							this.#mode = "closed";
+							return;
+						}
+						if (c === "\"") {
+							this.beginKey(at);
+							return;
+						}
+						this.fail();
+						return;
+					case "key-only":
+						if (isWhitespace(c)) return;
+						if (c === "\"") {
+							this.beginKey(at);
+							return;
+						}
+						this.fail();
+						return;
+					case "key":
+						this.stepKey(c, at);
+						return;
+					case "colon":
+						if (isWhitespace(c)) return;
+						if (c === ":") {
+							this.#mode = "value";
+							return;
+						}
+						this.fail();
+						return;
+					case "value":
+						this.beginValue(c, at);
+						return;
+					case "string": {
+						const entry = this.#current;
+						entry.end = at;
+						this.#current = null;
+						this.#mode = "comma-or-end";
+						return;
+					}
+					case "scalar":
+						this.stepScalar(c, at);
+						return;
+					case "nested":
+						this.stepNested(c, at);
+						return;
+					case "comma-or-end":
+						if (isWhitespace(c)) return;
+						if (c === ",") {
+							this.#mode = "key-only";
+							return;
+						}
+						if (c === "}") {
+							this.#mode = "closed";
+							return;
+						}
+						this.fail();
+						return;
+					case "closed":
+						if (isWhitespace(c)) return;
+						this.fail();
+						return;
+					/* v8 ignore next 2 -- scan() stops stepping once the view is invalid. */
+					case "invalid": return;
+					/* v8 ignore next 2 -- Every scanner mode has a handler above. */
+					default: assertNever$1(this.#mode);
+				}
+			}
+			fail() {
+				this.#invalidAt = this.#consumed;
+				this.#mode = "invalid";
+				this.#current = null;
+			}
+			beginKey(at) {
+				this.#mode = "key";
+				this.#keyStart = at + 1;
+				this.#keyEscaped = false;
+				this.#escape = false;
+			}
+			stepKey(c, at) {
+				if (c < " ") {
+					this.fail();
+					return;
+				}
+				if (this.#escape) {
+					this.#escape = false;
+					return;
+				}
+				if (c === "\\") {
+					this.#escape = true;
+					this.#keyEscaped = true;
+					return;
+				}
+				if (c !== "\"") return;
+				const raw = this.slice(this.#keyStart, at);
+				if (this.#keyEscaped) try {
+					this.#key = JSON.parse(`"${raw}"`);
+				} catch (_error) {
+					this.fail();
+					return;
+				}
+				else this.#key = raw;
+				this.#mode = "colon";
+			}
+			open(entry) {
+				if (!this.#entries.has(this.#key)) this.#order.push(this.#key);
+				this.#entries.set(this.#key, entry);
+				this.#current = entry;
+			}
+			beginValue(c, at) {
+				if (isWhitespace(c)) return;
+				if (c === "\"") {
+					this.open({
+						kind: "string",
+						start: at + 1,
+						end: -1,
+						needsDecoding: false,
+						invalidAt: void 0,
+						length: void 0,
+						text: void 0,
+						prefixes: void 0
+					});
+					this.#escape = false;
+					this.#mode = "string";
+					return;
+				}
+				if (c === "}" || c === "," || c === ":" || c === "]") {
+					this.fail();
+					return;
+				}
+				this.open({
+					kind: "value",
+					start: at,
+					end: -1,
+					parsed: void 0,
+					invalid: false
+				});
+				if (c === "{" || c === "[") {
+					this.#mode = "nested";
+					this.#nestedEnds = [c === "{" ? "}" : "]"];
+					this.#nestedInString = false;
+					this.#escape = false;
+					return;
+				}
+				this.#mode = "scalar";
+			}
+			stepScalar(c, at) {
+				if (c !== "," && c !== "}" && !isWhitespace(c)) return;
+				this.closeValue(at);
+				this.#mode = c === "," ? "key-only" : c === "}" ? "closed" : "comma-or-end";
+			}
+			stepNested(c, at) {
+				if (this.#nestedInString) {
+					this.#nestedInString = false;
+					return;
+				}
+				if (c === "\"") {
+					this.#nestedInString = true;
+					return;
+				}
+				if (c === "{" || c === "[") {
+					this.#nestedEnds.push(c === "{" ? "}" : "]");
+					return;
+				}
+				if (c === "}" || c === "]") {
+					if (this.#nestedEnds.pop() !== c) {
+						this.fail();
+						return;
+					}
+					if (this.#nestedEnds.length === 0) {
+						this.closeValue(at + 1);
+						this.#mode = "comma-or-end";
+					}
+				}
+			}
+			closeValue(end) {
+				const entry = this.#current;
+				entry.end = end;
+				this.#current = null;
+			}
+		});
 		//#endregion
 		//#region ../../util/values/src/index.ts
 		/**
@@ -756,6 +1363,7 @@ window.__ModuleLoader__.load({
 			sessions;
 			view;
 			notify;
+			/** The latest in-flight connection per Workspace; a request joins it only when both name the same preset. */
 			connecting = /* @__PURE__ */ new Map();
 			lifetime = new AbortController();
 			selection = (0, _deepseek_ai_dsh_client_store.createSnapshotStore)({}, { persist: { name: "dsh.sessions.current" } });
@@ -786,46 +1394,90 @@ window.__ModuleLoader__.load({
 					};
 				}, "ui-workspace: Workspace navigation policy");
 			}
-			async connectWorkspace(workspaceId) {
+			connectWorkspace(workspaceId, options = {}) {
+				return this.connectBlank(workspaceId, options);
+			}
+			/**
+			* @param reuse - preset for the reused or created blank; absent creates a fresh Session.
+			*/
+			async connectBlank(workspaceId, reuse) {
 				const workspace = this.workspaces.list.getSnapshot().items.find((item) => item.workspaceId === workspaceId);
 				if (workspace === void 0) throw new Error(`uiWorkspace.connectWorkspace: unknown workspace ${workspaceId}`);
+				if (reuse === void 0) return this.sessions.create({ workspaceId });
 				const inflight = this.connecting.get(workspaceId);
-				if (inflight !== void 0) return inflight;
-				const attempt = this.reuseOrCreateBlank(workspace).finally(() => {
-					this.connecting.delete(workspaceId);
+				if (inflight !== void 0 && inflight.agentPreset === reuse.agentPreset) return inflight.attempt;
+				const attempt = this.createInWorkspace(workspace, reuse).finally(() => {
+					if (this.connecting.get(workspaceId)?.attempt === attempt) this.connecting.delete(workspaceId);
 				});
-				this.connecting.set(workspaceId, attempt);
+				this.connecting.set(workspaceId, {
+					agentPreset: reuse.agentPreset,
+					attempt
+				});
 				return attempt;
 			}
-			reuseOrCreateBlank(workspace) {
+			createInWorkspace(workspace, options) {
 				const archived = this.workspaces.list.getSnapshot().archivedSessionIds;
 				const sessions = this.sessions.list.getSnapshot();
-				for (const id of sessions.ids) {
+				const blank = sessions.ids.find((id) => {
 					const summary = sessions.byId[id];
-					if (summary === void 0 || !summary.blank || summary.cwd !== workspace.path || !workspace.sessionIds.includes(id) || archived.includes(id)) continue;
-					return this.reuseBlank(workspace.workspaceId, id);
-				}
-				return this.sessions.create({ workspaceId: workspace.workspaceId });
+					return summary !== void 0 && summary.blank && summary.cwd === workspace.path && workspace.sessionIds.includes(id) && !archived.includes(id);
+				});
+				return this.createNamed({
+					workspaceId: workspace.workspaceId,
+					...blank === void 0 ? {} : { sessionId: blank },
+					...options.agentPreset === void 0 ? {} : { agentPreset: options.agentPreset }
+				});
 			}
-			async reuseBlank(workspaceId, sessionId) {
+			/**
+			* Create through the Host. A named blank the Host declined may still read as
+			* blank from stale cached list metadata, which hides it from the Session tree;
+			* its projections are reloaded so the row reflects its log.
+			*/
+			async createNamed(request) {
+				const sessionId = await this.sessions.create(request);
+				const named = request.sessionId;
+				if (named !== void 0 && named !== sessionId) this.sessions.refreshProjections(named).catch((reason) => {
+					console.warn("declined blank Session projection reload failed:", reason);
+				});
+				return sessionId;
+			}
+			/**
+			* Reopen a saved blank Session under the preset its log recorded, or under
+			* the Host default once that preset no longer activates. Listed values are
+			* cached hints that can lag the log after an unclean Host exit, so the
+			* Session's projections are reloaded before the preset is read; a Session
+			* that still awaits a format migration reloads only those cached hints.
+			*/
+			async restoreBlank(workspaceId, sessionId) {
+				await this.sessions.refreshProjections(sessionId);
+				const recorded = this.sessions.list.getSnapshot().byId[sessionId]?.projectionValues?.agentPreset;
+				const request = {
+					workspaceId,
+					sessionId
+				};
+				if (typeof recorded !== "string") return this.createNamed(request);
 				try {
-					return await this.sessions.create({
-						workspaceId,
-						sessionId
+					return await this.createNamed({
+						...request,
+						agentPreset: recorded
 					});
 				} catch (error) {
-					if (sessionCreateErrorOf(error)?.rpcError.code !== "session/writer-held") throw error;
-					return this.sessions.create({ workspaceId });
+					const code = sessionCreateErrorOf(error)?.rpcError.code;
+					if (code !== "agent-preset/not-found" && code !== "agent-preset/invalid") throw error;
+					return this.createNamed(request);
 				}
 			}
 			openSession(target) {
 				this.replaceMain(target, this.lifetime.signal, "reveal");
 			}
-			async openWorkspace(workspaceId, beforeOpen) {
+			openWorkspace(workspaceId, beforeOpen, options = {}) {
+				return this.openWorkspaceSession(workspaceId, beforeOpen, options);
+			}
+			async openWorkspaceSession(workspaceId, beforeOpen, reuse) {
 				const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal]);
 				let sessionId;
 				try {
-					sessionId = await this.connectWorkspace(workspaceId);
+					sessionId = await this.connectBlank(workspaceId, reuse);
 				} catch (error) {
 					if (!navigation.aborted) this.notify({
 						kind: "createFailed",
@@ -836,14 +1488,18 @@ window.__ModuleLoader__.load({
 				if (navigation.aborted) return;
 				this.replaceMain(sessionId, navigation, "reveal", beforeOpen);
 			}
-			async forkSession(sessionId, onCreated) {
+			async forkSession(sessionId, onCreated, options) {
 				return this.sessions.fork({
 					sessionId,
 					increaseTitle: true,
-					...onCreated === void 0 ? {} : { onCreated }
+					...onCreated === void 0 ? {} : { onCreated },
+					...options?.allowMigration === void 0 ? {} : { allowMigration: options.allowMigration }
 				});
 			}
-			startSession(workspaceId) {
+			startSession(workspaceId, options) {
+				const { agentPreset, ...draft } = options ?? {};
+				const draftOptions = options === void 0 ? void 0 : draft;
+				const initializeDraft = draftOptions !== void 0 && (draftOptions.prompt !== void 0 || draftOptions.clearPreviousDraft === true);
 				const workspace = this.workspaces.list.getSnapshot();
 				const sessions = this.sessions.list.getSnapshot();
 				const current = this.mainReference?.sessionId;
@@ -851,12 +1507,36 @@ window.__ModuleLoader__.load({
 				const recent = workspace.phase === "ready" && sessions.phase === "ready" ? recentWorkspace(workspace.items, sessions.byId) : void 0;
 				const target = workspaceId ?? currentWorkspaceId ?? recent;
 				if (target === void 0) {
+					if (initializeDraft) {
+						this.notify({
+							kind: "createFailed",
+							message: this.ctx.locale.bind("workspace")("draft.workspaceRequired")
+						});
+						return;
+					}
 					this.clearMain();
 					return;
 				}
-				this.openWorkspace(target).catch((reason) => {
+				(draftOptions === void 0 ? this.openWorkspaceSession(target, void 0, void 0) : this.openWorkspace(target, initializeDraft ? (id) => {
+					const binding = this.sessions.binding(id);
+					if (binding === void 0) this.draftPreparationFailed();
+					this.prepareDraft(binding, draftOptions);
+				} : void 0, agentPreset === void 0 ? {} : { agentPreset })).catch((reason) => {
 					console.warn("new session failed:", reason);
 				});
+			}
+			prepareDraft(binding, options) {
+				const conversation = this.ctx.get("conversation");
+				if (conversation === void 0) this.draftPreparationFailed();
+				if (conversation.input.requestDraftInitialization(binding, options) === "blocked") this.draftPreparationFailed();
+			}
+			draftPreparationFailed() {
+				const message = this.ctx.locale.bind("workspace")("draft.initializationFailed");
+				this.notify({
+					kind: "createFailed",
+					message
+				});
+				throw new Error(message);
 			}
 			async archiveSession(sessionId, options = {}) {
 				await this.workspaces.archiveSession(sessionId, options);
@@ -936,7 +1616,7 @@ window.__ModuleLoader__.load({
 				}
 				const navigation = AbortSignal.any([this.ctx.layout.beginNavigation(), this.lifetime.signal]);
 				let sessionId;
-				if (summary !== void 0 && workspace !== void 0 && summary.cwd === workspace.path && !workspaces.archivedSessionIds.includes(summary.id)) sessionId = await this.reuseBlank(workspace.workspaceId, summary.id);
+				if (summary !== void 0 && workspace !== void 0 && summary.cwd === workspace.path && !workspaces.archivedSessionIds.includes(summary.id)) sessionId = await this.restoreBlank(workspace.workspaceId, summary.id);
 				let target = workspace?.workspaceId ?? recentWorkspace(workspaces.items, sessions.byId);
 				if (target === void 0 && workspaces.items.length === 0 && sessions.ids.length === 0) {
 					const prepared = await this.initializeDefaultWorkspace(navigation);
@@ -1058,7 +1738,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-workspace/src/client/rows/Rows.module.css.mjs
-		const css$3 = ".YDXeBa_projectRow,.YDXeBa_sessionRow{border-radius:var(--dsw-radius-md);padding:0 8px;cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary);align-items:center;gap:6px;padding-inline-start:calc(8px + var(--dsh-workspace-indent,0px));display:flex}.YDXeBa_projectRow:hover,.YDXeBa_sessionRow:hover,.YDXeBa_sessionRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultRow{box-sizing:border-box;border-radius:var(--dsw-radius-lg);cursor:pointer;text-align:left;width:100%;min-height:48px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex-direction:column;align-items:stretch;padding:4px 8px;display:flex}.YDXeBa_searchResultRow:hover,.YDXeBa_searchResultRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultHeading{align-items:center;min-width:0;display:flex}.YDXeBa_searchResultTitle{text-overflow:ellipsis;white-space:nowrap;flex:0 auto;min-width:0;margin-left:4px;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_searchResultMeta{align-items:center;gap:6px;min-width:0;margin-left:20px;display:flex}.YDXeBa_searchResultWorkspace,.YDXeBa_searchResultSnippet{text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:17px;overflow:hidden}.YDXeBa_searchResultWorkspace{max-width:40%;color:var(--dsw-alias-label-tertiary);flex:none}.YDXeBa_searchResultWorkspace:only-child{max-width:100%}.YDXeBa_searchResultSnippet{min-width:0;color:var(--dsw-alias-label-secondary);flex:1}.YDXeBa_projectRow{box-sizing:border-box;align-items:center;height:34px}.YDXeBa_projectRow .YDXeBa_rowActions{height:20px}.YDXeBa_sessionRow{gap:0;height:32px}.YDXeBa_sessionRow .YDXeBa_title{margin:0 6px 0 4px}.YDXeBa_slot{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.YDXeBa_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.YDXeBa_folderActive{color:var(--dsw-alias-state-business-primary)}.YDXeBa_projectRow .YDXeBa_chevron{display:none}.YDXeBa_projectRow:hover .YDXeBa_chevron{display:inline-flex}.YDXeBa_projectRow:hover .YDXeBa_folder{display:none}.YDXeBa_arrow{transition:transform .15s var(--ds-ease-in-out)}.YDXeBa_arrowOpen{transform:rotate(90deg)}.YDXeBa_projectText{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.YDXeBa_title{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_renameInput{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-button-elevated-fill);min-width:0;color:inherit;outline:none;padding:0 2px;font-size:14px;line-height:20px}.YDXeBa_sessionRow .YDXeBa_title{flex:1}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled]{mask-image:linear-gradient(90deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-clipped]{mask-image:linear-gradient(270deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled][data-clipped]{mask-image:linear-gradient(90deg,#0000,#000 12px calc(100% - 12px),#0000)}.YDXeBa_meta{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow:hidden}.YDXeBa_time{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px;line-height:16px}.YDXeBa_pinIndicator{width:16px;height:20px;color:var(--dsw-alias-label-caption);flex:none;justify-content:center;align-items:center;margin-left:6px;display:inline-flex}.YDXeBa_sessionRow.YDXeBa_archived .YDXeBa_title,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultTitle,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultWorkspace,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultSnippet{color:var(--dsw-alias-label-caption)}.YDXeBa_dot{flex:none}.YDXeBa_rowActions{flex:none;align-items:center;gap:10px;display:none}.YDXeBa_projectRow:hover .YDXeBa_rowActions,.YDXeBa_sessionRow:hover .YDXeBa_rowActions,.YDXeBa_searchResultRow:hover .YDXeBa_rowActions,.YDXeBa_projectRow.YDXeBa_menuOpen .YDXeBa_rowActions,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_rowActions{display:inline-flex}.YDXeBa_searchResultHeading .YDXeBa_rowActions{margin-left:auto}.YDXeBa_sessionRow:hover .YDXeBa_time,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_time,.YDXeBa_sessionRow:hover .YDXeBa_pinIndicator,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_pinIndicator{display:none}@media (hover:hover){.YDXeBa_sessionRow:hover .YDXeBa_title,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_title{text-overflow:clip}}.YDXeBa_projectRow.YDXeBa_menuOpen,.YDXeBa_sessionRow.YDXeBa_menuOpen{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_sessionRow.YDXeBa_dropBefore,.YDXeBa_sessionRow.YDXeBa_dropAfter{position:relative}.YDXeBa_sessionRow.YDXeBa_dropBefore:before,.YDXeBa_sessionRow.YDXeBa_dropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:4px}.YDXeBa_sessionRow.YDXeBa_dropBefore:before{top:-7px}.YDXeBa_sessionRow.YDXeBa_dropAfter:after{bottom:-7px}.YDXeBa_hoverContent{flex-direction:column;gap:8px;display:flex}.YDXeBa_hoverTitle{color:#fff;overflow-wrap:break-word;font-size:14px;line-height:20px}.YDXeBa_hoverPath{color:#cfd3d6;word-break:break-all;font-size:12px;line-height:16px}.YDXeBa_hoverTime{color:#cfd3d6;font-size:12px;line-height:16px}.YDXeBa_hoverStatus{color:#adb2b8;align-items:center;gap:8px;font-size:12px;line-height:20px;display:flex}.YDXeBa_hoverArchived svg{flex-shrink:0;margin:0 -4px}.YDXeBa_iconButton{border-radius:var(--dsw-radius-xs);cursor:pointer;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.YDXeBa_iconButton:hover{color:var(--dsw-alias-label-primary)}.YDXeBa_chevron{color:var(--dsw-alias-label-caption)}@media (prefers-reduced-motion:reduce){.YDXeBa_arrow{transition:none;animation:none}}";
+		const css$3 = ".YDXeBa_projectRow,.YDXeBa_sessionRow{border-radius:var(--dsw-radius-md);padding:0 8px;cursor:pointer;user-select:none;color:var(--dsw-alias-label-primary);align-items:center;gap:6px;padding-inline-start:calc(8px + var(--dsh-workspace-indent,0px));display:flex}.YDXeBa_projectRow:hover,.YDXeBa_sessionRow:hover,.YDXeBa_sessionRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultRow{box-sizing:border-box;border-radius:var(--dsw-radius-lg);cursor:pointer;text-align:left;width:100%;min-height:48px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex-direction:column;align-items:stretch;padding:4px 8px;display:flex}.YDXeBa_searchResultRow:hover,.YDXeBa_searchResultRow.YDXeBa_selected{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_searchResultHeading{align-items:center;min-width:0;display:flex}.YDXeBa_searchResultTitle{text-overflow:ellipsis;white-space:nowrap;flex:0 auto;min-width:0;margin-left:4px;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_searchResultMeta{align-items:center;gap:6px;min-width:0;margin-left:20px;display:flex}.YDXeBa_searchResultWorkspace,.YDXeBa_searchResultSnippet{text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:17px;overflow:hidden}.YDXeBa_searchResultWorkspace{max-width:40%;color:var(--dsw-alias-label-tertiary);flex:none}.YDXeBa_searchResultWorkspace:only-child{max-width:100%}.YDXeBa_searchResultSnippet{min-width:0;color:var(--dsw-alias-label-secondary);flex:1}.YDXeBa_projectRow{box-sizing:border-box;align-items:center;height:34px}.YDXeBa_projectRow .YDXeBa_rowActions{height:20px}.YDXeBa_sessionRow{gap:0;height:32px}.YDXeBa_sessionRow .YDXeBa_title{margin:0 6px 0 4px}.YDXeBa_slot{width:16px;height:20px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.YDXeBa_visuallyHidden{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.YDXeBa_folderActive{color:var(--dsw-alias-state-business-primary)}.YDXeBa_projectRow .YDXeBa_chevron{display:none}.YDXeBa_projectRow:hover .YDXeBa_chevron{display:inline-flex}.YDXeBa_projectRow:hover .YDXeBa_folder{display:none}.YDXeBa_arrow{transition:transform .15s var(--ds-ease-in-out)}.YDXeBa_arrowOpen{transform:rotate(90deg)}.YDXeBa_projectText{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.YDXeBa_title{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:14px;line-height:20px;overflow:hidden}.YDXeBa_renameInput{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-button-elevated-fill);min-width:0;color:inherit;outline:none;padding:0 2px;font-size:14px;line-height:20px}.YDXeBa_sessionRow .YDXeBa_title{flex:1}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled]{mask-image:linear-gradient(90deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-clipped]{mask-image:linear-gradient(270deg,#0000,#000 12px)}.YDXeBa_sessionRow .YDXeBa_title[data-scrolled][data-clipped]{mask-image:linear-gradient(90deg,#0000,#000 12px calc(100% - 12px),#0000)}.YDXeBa_meta{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px;overflow:hidden}.YDXeBa_time{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px;line-height:16px}.YDXeBa_pinIndicator{width:16px;height:20px;color:var(--dsw-alias-label-caption);flex:none;justify-content:center;align-items:center;margin-left:6px;display:inline-flex}.YDXeBa_sessionRow.YDXeBa_archived .YDXeBa_title,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultTitle,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultWorkspace,.YDXeBa_searchResultRow.YDXeBa_archived .YDXeBa_searchResultSnippet{color:var(--dsw-alias-label-caption)}.YDXeBa_dot{flex:none}.YDXeBa_rowActions{flex:none;align-items:center;gap:15px;display:none}.YDXeBa_projectRow:hover .YDXeBa_rowActions,.YDXeBa_sessionRow:hover .YDXeBa_rowActions,.YDXeBa_searchResultRow:hover .YDXeBa_rowActions,.YDXeBa_projectRow.YDXeBa_menuOpen .YDXeBa_rowActions,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_rowActions{display:inline-flex}.YDXeBa_searchResultHeading .YDXeBa_rowActions{margin-left:auto}.YDXeBa_sessionRow:hover .YDXeBa_time,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_time,.YDXeBa_sessionRow:hover .YDXeBa_pinIndicator,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_pinIndicator{display:none}@media (hover:hover){.YDXeBa_sessionRow:hover .YDXeBa_title,.YDXeBa_sessionRow.YDXeBa_menuOpen .YDXeBa_title{text-overflow:clip}}.YDXeBa_projectRow.YDXeBa_menuOpen,.YDXeBa_sessionRow.YDXeBa_menuOpen{background:var(--dsw-alias-interactive-bg-hover)}.YDXeBa_sessionRow.YDXeBa_dropBefore,.YDXeBa_sessionRow.YDXeBa_dropAfter{position:relative}.YDXeBa_sessionRow.YDXeBa_dropBefore:before,.YDXeBa_sessionRow.YDXeBa_dropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:4px}.YDXeBa_sessionRow.YDXeBa_dropBefore:before{top:-7px}.YDXeBa_sessionRow.YDXeBa_dropAfter:after{bottom:-7px}.YDXeBa_hoverContent{flex-direction:column;gap:8px;display:flex}.YDXeBa_hoverTitle{color:#fff;overflow-wrap:break-word;font-size:14px;line-height:20px}.YDXeBa_hoverPath{color:#cfd3d6;word-break:break-all;font-size:12px;line-height:16px}.YDXeBa_hoverTime{color:#cfd3d6;font-size:12px;line-height:16px}.YDXeBa_hoverStatus{color:#adb2b8;align-items:center;gap:8px;font-size:12px;line-height:20px;display:flex}.YDXeBa_hoverArchived svg{flex-shrink:0;margin:0 -4px}.YDXeBa_iconButton{border-radius:var(--dsw-radius-xs);cursor:pointer;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.YDXeBa_iconButton:hover{color:var(--dsw-alias-label-primary)}.YDXeBa_chevron{color:var(--dsw-alias-label-caption)}@media (prefers-reduced-motion:reduce){.YDXeBa_arrow{transition:none;animation:none}}";
 		const tagId$3 = "@deepseek-ai/dsh-client-ui-workspace/Rows.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1344,6 +2024,7 @@ window.__ModuleLoader__.load({
 							side: "bottom",
 							align: "end",
 							delayMs: 500,
+							portal: true,
 							children: (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: Rows_module_css_default.iconButton,
@@ -1369,6 +2050,7 @@ window.__ModuleLoader__.load({
 					t
 				}),
 				openDelayMs: 800,
+				grouped: true,
 				disabled: menuOpen,
 				copyText: row.cwd,
 				copyLabel: t("copy"),
@@ -1523,6 +2205,7 @@ window.__ModuleLoader__.load({
 								side: "bottom",
 								align: "end",
 								delayMs: 500,
+								portal: true,
 								children: (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
 									className: Rows_module_css_default.iconButton,
@@ -1676,6 +2359,7 @@ window.__ModuleLoader__.load({
 					t
 				}),
 				openDelayMs: 800,
+				grouped: true,
 				disabled: menuOpen || drag?.active === true,
 				copyText: row.blank || row.title === "" ? void 0 : row.title,
 				copyLabel: t("copy"),
@@ -2116,21 +2800,45 @@ window.__ModuleLoader__.load({
 		const SEARCH_DEBOUNCE_MS = 250;
 		/** `session.search` wire bound, measured in JavaScript UTF-16 code units. */
 		const SEARCH_QUERY_MAX_CODE_UNITS = 500;
-		/** Idle Session rows visible per Workspace before the local overflow control. */
-		const COLLAPSED_SESSION_LIMIT = 5;
-		/** Keep provisional and running rows outside the idle-session quota, including parents with running children. */
-		function collapsedSessionRows(sessions, limit = COLLAPSED_SESSION_LIMIT) {
-			let idleCount = 0;
+		/** Non-blank Session rows visible per Workspace while no Session raises its watermark. */
+		const SESSION_WATERMARK_BASE = 5;
+		/** Highest watermark that attention-bearing Sessions raise automatically; Show more and search reveals may exceed it. */
+		const SESSION_WATERMARK_AUTO_MAX = 50;
+		/** Show the blank row plus the first `watermark` non-blank rows, in list order. */
+		function watermarkRows(sessions, watermark) {
+			let count = 0;
 			const rows = sessions.filter((session) => {
-				if (session.blank || session.running || session.runningSubagentCount > 0) return true;
-				if (idleCount >= limit) return false;
-				idleCount += 1;
-				return true;
+				if (session.blank) return true;
+				count += 1;
+				return count <= watermark;
 			});
 			return {
 				rows,
 				hiddenCount: sessions.length - rows.length
 			};
+		}
+		/**
+		* Smallest watermark that covers every non-blank row within the automatic maximum that is running, has a running
+		* child, awaits the user, carries an unread completion, or is current, and the reveal target at any position.
+		*/
+		function requiredWatermark(sessions, current, revealSessionId) {
+			let index = 0;
+			let required = 0;
+			for (const session of sessions) {
+				if (session.blank) continue;
+				index += 1;
+				if (index <= SESSION_WATERMARK_AUTO_MAX && (session.running || session.runningSubagentCount > 0 || session.pendingInteraction !== void 0 || session.completed || session.id === current) || session.id === revealSessionId) required = index;
+			}
+			return required;
+		}
+		/** Raise each listed group's watermark to its requirement; returns `marks` itself when nothing rises. */
+		function raiseWatermarks(marks, required) {
+			let raised = marks;
+			for (const [key, watermark] of required) if (watermark > (raised[key] ?? SESSION_WATERMARK_BASE)) raised = {
+				...raised,
+				[key]: watermark
+			};
+			return raised;
 		}
 		/** Keep controlled input and RPC payload inside the session.search wire contract. */
 		function sanitizeSearchQuery(value) {
@@ -2312,13 +3020,14 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		/** The scrolling session tree; unmounting drops the sessions subscription and local row limits. */
+		/** The scrolling session tree; unmounting drops the sessions subscription and the session watermarks. */
 		function SessionTree({ list, useSessionStatus, startSession, open, workspaces, ungroupedSessionIds, rowState, onLeaveArchivedOnly, workspaceReady, animationResetKey, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRenameRequest, renderSlot, insertWorkspaceBefore, nestWorkspaces, groupExpansion, setGroupExpanded, setSessionOrder, home, t, revealSessionId, onSessionRevealed, shortcuts }) {
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
 			const statuses = useSessionStatus((s) => s);
 			const current = panelActive ? void 0 : Object.values(list.byId).find((session) => (session.retainedBy.mainView ?? 0) > 0)?.id;
 			const revealGroup = revealSessionId === void 0 || !workspaceReady ? void 0 : owningGroupKey(workspaces, revealSessionId);
-			const [sessionLimits, setSessionLimits] = (0, react.useState)({});
+			const [storedWatermarks, setStoredWatermarks] = (0, react.useState)({});
+			const [watermarkMotionKey, setWatermarkMotionKey] = (0, react.useState)(0);
 			const [drag, setDrag] = (0, react.useState)(null);
 			const sessionDropCommitted = (0, react.useRef)(false);
 			const [workspaceDrag, setWorkspaceDrag] = (0, react.useState)(null);
@@ -2376,20 +3085,24 @@ window.__ModuleLoader__.load({
 				revealGroup,
 				setGroupExpanded
 			]);
-			(0, react.useEffect)(() => {
-				if (revealSessionId === void 0 || revealGroup === void 0) return;
-				const group = groups.find((candidate) => candidate.key === revealGroup);
-				if (group === void 0 || !group.expanded || !group.sessions.some((row) => row.id === revealSessionId)) return;
-				if (collapsedSessionRows(group.sessions).rows.some((row) => row.id === revealSessionId)) return;
-				setSessionLimits((limits) => limits[revealGroup] === Infinity ? limits : {
-					...limits,
-					[revealGroup]: Infinity
-				});
-			}, [
-				groups,
-				revealGroup,
-				revealSessionId
-			]);
+			const baselines = new Map(groups.map((group) => [group.key, Math.max(SESSION_WATERMARK_BASE, requiredWatermark(group.sessions, current, group.key === revealGroup ? revealSessionId : void 0))]));
+			const foldedKeys = new Set(groups.filter((group) => !group.expanded).map((group) => group.key));
+			const underFoldedAncestor = (key) => {
+				for (let owner = parents.get(key); owner !== void 0; owner = parents.get(owner)) if (foldedKeys.has(owner)) return true;
+				return false;
+			};
+			const requiredWatermarks = new Map([...baselines].filter(([key]) => !underFoldedAncestor(key)));
+			const sessionWatermarks = raiseWatermarks(storedWatermarks, requiredWatermarks);
+			if (sessionWatermarks !== storedWatermarks) setStoredWatermarks((marks) => raiseWatermarks(marks, requiredWatermarks));
+			const dropWatermarks = (drop) => {
+				if (!Object.keys(storedWatermarks).some(drop)) return;
+				setStoredWatermarks((marks) => Object.fromEntries(Object.entries(marks).filter(([key]) => !drop(key))));
+				setWatermarkMotionKey((key) => key + 1);
+			};
+			const withinGroup = (key, root) => {
+				for (let owner = key; owner !== void 0; owner = parents.get(owner)) if (owner === root) return true;
+				return false;
+			};
 			const now = Date.now();
 			const commitSessionDrag = (activeDrag, over) => {
 				if (sessionDropCommitted.current) return;
@@ -2400,7 +3113,7 @@ window.__ModuleLoader__.load({
 				if (over.id === activeDrag.sessionId) return;
 				const accountSessionIds = activeDrag.accountKey === "" ? ungroupedSessionIds : workspaces.find((workspace) => workspace.workspaceId === activeDrag.accountKey)?.sessionIds;
 				if (accountSessionIds === void 0) return;
-				const renderedSessions = collapsedSessionRows(group.sessions, sessionLimits[group.key]).rows;
+				const renderedSessions = watermarkRows(group.sessions, sessionWatermarks[group.key] ?? SESSION_WATERMARK_BASE).rows;
 				const nextOrder = sessionDragOrder(accountSessionIds, renderedSessions, activeDrag, over);
 				if (nextOrder !== void 0) setSessionOrder(activeDrag.accountKey, nextOrder);
 			};
@@ -2440,8 +3153,9 @@ window.__ModuleLoader__.load({
 				const workspaceId = group.workspaceId;
 				const children = childrenByParent.get(group.key) ?? [];
 				const compatibleDrag = workspaceDrag !== null && parents.get(workspaceDrag.workspaceId) === parents.get(group.key);
-				const collapsed = collapsedSessionRows(group.sessions);
-				const visible = collapsedSessionRows(group.sessions, sessionLimits[group.key]);
+				const watermark = sessionWatermarks[group.key] ?? SESSION_WATERMARK_BASE;
+				const collapsed = watermarkRows(group.sessions, baselines.get(group.key) ?? SESSION_WATERMARK_BASE);
+				const visible = watermarkRows(group.sessions, watermark);
 				const sessionsExpanded = visible.hiddenCount === 0;
 				rowKeys.push(`workspace:${group.key}`);
 				const childRows = group.expanded ? children.map((child) => renderGroup(child, depth + 1)) : [];
@@ -2513,10 +3227,7 @@ window.__ModuleLoader__.load({
 							home,
 							t,
 							onToggle: () => {
-								if (group.expanded) setSessionLimits((limits) => ({
-									...limits,
-									[group.key]: COLLAPSED_SESSION_LIMIT
-								}));
+								if (group.expanded) dropWatermarks((key) => withinGroup(key, group.key));
 								setGroupExpanded(group.key, !group.expanded);
 							},
 							onCreate: () => {
@@ -2601,10 +3312,15 @@ window.__ModuleLoader__.load({
 							"data-row-key": `overflow:${group.key}`,
 							"aria-expanded": sessionsExpanded,
 							onClick: () => {
-								setSessionLimits((limits) => ({
-									...limits,
-									[group.key]: sessionsExpanded ? COLLAPSED_SESSION_LIMIT : visible.hiddenCount <= COLLAPSED_SESSION_LIMIT ? Infinity : (limits[group.key] ?? COLLAPSED_SESSION_LIMIT) + COLLAPSED_SESSION_LIMIT
+								if (sessionsExpanded) {
+									dropWatermarks((key) => key === group.key);
+									return;
+								}
+								setStoredWatermarks((marks) => ({
+									...marks,
+									[group.key]: visible.hiddenCount <= SESSION_WATERMARK_BASE ? Infinity : watermark + SESSION_WATERMARK_BASE
 								}));
+								setWatermarkMotionKey((key) => key + 1);
 							},
 							children: sessionsExpanded ? t("sessions.collapse") : t("sessions.expand", { n: visible.hiddenCount })
 						})
@@ -2612,7 +3328,7 @@ window.__ModuleLoader__.load({
 				}, group.key);
 			};
 			const groupRows = rootGroups.map((group) => renderGroup(group, 0));
-			return (0, react_jsx_runtime.jsxs)("div", {
+			return (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.HoverCardGroup, {
 				className: clsx(WorkspaceBrowser_module_css_default.treeBody, WorkspaceBrowser_module_css_default.wide),
 				children: [
 					workspaceDropAtListStart && (0, react_jsx_runtime.jsx)("span", {
@@ -2624,7 +3340,7 @@ window.__ModuleLoader__.load({
 						label: t("section.sessions"),
 						rowKeys,
 						ready: list.phase === "ready" && workspaceReady && !nativeDragActive,
-						resetKey: JSON.stringify([animationResetKey, sessionLimits]),
+						resetKey: JSON.stringify([animationResetKey, watermarkMotionKey]),
 						children: [groups.length === 0 && (0, react_jsx_runtime.jsx)(EmptySessions, {
 							rowState,
 							onLeaveArchivedOnly,
@@ -2657,7 +3373,7 @@ window.__ModuleLoader__.load({
 				if (nextOrder !== void 0) setSessionOrder(FLAT_SESSION_ORDER_KEY, nextOrder);
 			};
 			const now = Date.now();
-			return (0, react_jsx_runtime.jsxs)("div", {
+			return (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.HoverCardGroup, {
 				className: clsx(WorkspaceBrowser_module_css_default.treeBody, WorkspaceBrowser_module_css_default.wide),
 				children: [(0, react_jsx_runtime.jsxs)(AnimatedRows, {
 					className: clsx(WorkspaceBrowser_module_css_default.list, WorkspaceBrowser_module_css_default.flatList),
@@ -2790,7 +3506,7 @@ window.__ModuleLoader__.load({
 		* @param props - composed slot props (shell owner share + store + injected actions).
 		* @returns the region element tree.
 		*/
-		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionStatus, useWorkspaces, useStore, actions, startSession, open, requestSessionRename, notifyArchivedNotOpenable, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, unarchiveSession, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, useShortcuts, useWorkspaceShortcuts, requestSearch, requestAddWorkspace, closeAddWorkspace, setDirectoryBusy, dismissForkError, renderSlot, t }) {
+		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionStatus, useWorkspaces, useStore, actions, startSession, open, requestSessionRename, notifyArchivedNotOpenable, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, unarchiveSession, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, useShortcuts, useWorkspaceShortcuts, requestSearch, requestAddWorkspace, closeAddWorkspace, setDirectoryBusy, renderSlot, t }) {
 			const home = useHostInfo((info) => info.home);
 			const shortcuts = useShortcuts((rows) => rows);
 			const searchShortcut = shortcuts.find((row) => row.id === "session.search");
@@ -3219,7 +3935,7 @@ window.__ModuleLoader__.load({
 								side: "right",
 								onPick: (workspaceId) => {
 									closeAddWorkspace();
-									startSession(workspaceId);
+									startSession(workspaceId, { clearPreviousDraft: false });
 								},
 								onClose: () => {
 									closeAddWorkspace();
@@ -3398,11 +4114,7 @@ window.__ModuleLoader__.load({
 							role: "alert",
 							children: deleteError
 						})]
-					}),
-					shortcutState.forkError !== null && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
-						text: t(shortcutState.forkError.reason === "unavailable" ? "shortcut.noCompletedTurn" : "shortcut.forkFailed"),
-						onDone: dismissForkError
-					}, shortcutState.forkError.seq)
+					})
 				]
 			});
 		}
@@ -3447,6 +4159,7 @@ window.__ModuleLoader__.load({
 				side: "bottom",
 				align: "end",
 				delayMs: 500,
+				portal: true,
 				children: (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: Rows_module_css_default.iconButton,
@@ -3592,14 +4305,17 @@ window.__ModuleLoader__.load({
 		/** The fork action: one `sidebar.workspaces.session.menu.item` row. */
 		/**
 		* Menu row (order 300): fork at the Session's last completed turn; the child
-		* arrives through the Host list beside its source.
-		* @param props - owner share, menu open state, and the fork share.
-		* @returns the row.
+		* arrives through the Host list beside its source. Absent when the access
+		* snapshot excludes `session/fork` for this Session.
+		* @param props - owner share, menu open state, access Hook, and the fork share.
+		* @returns the row, or nothing when the caller may not fork this Session.
 		*/
-		function ForkSessionMenuItem({ sessionId, useMenuOpenState, useShortcuts, forkSession, t }) {
+		function ForkSessionMenuItem({ sessionId, useMenuOpenState, useShortcuts, useSessionAccess, forkSession, t }) {
 			const [, setMenuOpen] = useMenuOpenState();
+			const shortcut = useShortcuts((rows) => rows.find((row) => row.id === "session.fork"));
+			if (!useSessionAccess(sessionId, "session/fork")) return null;
 			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {
-				shortcut: useShortcuts((rows) => rows.find((row) => row.id === "session.fork")),
+				shortcut,
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBranchOutlineRegular, {}),
 				onSelect: () => {
 					setMenuOpen(false);
@@ -3658,6 +4374,7 @@ window.__ModuleLoader__.load({
 				side: "bottom",
 				align: "end",
 				delayMs: 500,
+				portal: true,
 				children: (0, react_jsx_runtime.jsx)("button", {
 					type: "button",
 					className: Rows_module_css_default.iconButton,
@@ -3788,73 +4505,238 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/session-actions/RowActionToast.js
 		/**
-		* The `shell.overlay` entry for Workspace and Session notices.
-		* One notice is visible at a time; a parent rerender does not extend its hold.
+		* Dispatch the current notice without interpreting its business payload.
+		* @param props - Current notice, dismissal, and the declared keyed renderer.
+		* @returns The selected notice presentation, or nothing.
 		*/
-		/**
-		* Hold for the notices that take longer to read than a one-line warning: the
-		* actionable archived notice (two buttons to react to) and a refused Session
-		* creation, which quotes the Host's reason.
-		*/
-		const LONG_TOAST_HOLD_MS = 6e3;
-		/**
-		* Render the current notice: the archived and stopped-and-archived notices
-		* with their undo action — plus the show-archived action while archived rows
-		* are hidden — on a 6 s hold, a refused Session creation with the Host's
-		* reason on the same hold, or a plain warning for a failed pin, an archived
-		* row that was clicked, or default Workspace creation.
-		* @param props - the notice hook, the shared viewing store, the notice dismissal, the two archived-notice actions, and the locale seat.
-		* @returns the notice on display, or null.
-		*/
-		function RowActionToast({ useToast, useStore, dismissToast, undoArchive, showArchived, t }) {
-			const toast = useToast((current) => current);
-			const archivedRowsVisible = useStore((state) => (state.archivedFilter ?? "default") !== "default");
-			if (toast === null) return null;
-			if (toast.kind === "archived" || toast.kind === "stoppedAndArchived") {
-				const { sessionId } = toast;
-				return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
-					text: t(toast.kind === "archived" ? "toast.archived" : "toast.stoppedAndArchived"),
-					tone: "success",
-					holdMs: LONG_TOAST_HOLD_MS,
-					actions: [{
-						label: t("toast.archivedUndo"),
-						onClick: () => {
-							dismissToast();
-							undoArchive(sessionId);
-						}
-					}, ...archivedRowsVisible ? [] : [{
-						prefix: t("toast.archivedOr"),
-						label: t("toast.archivedFilter"),
-						onClick: () => {
-							dismissToast();
-							showArchived();
-						}
-					}]],
-					onDone: dismissToast
-				}, `toast-${String(toast.seq)}`);
-			}
-			if (toast.kind === "createFailed") return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
-				text: t("toast.createFailed", { message: toast.message }),
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconWarningOutlineRegular, {}),
-				holdMs: LONG_TOAST_HOLD_MS,
-				onDone: dismissToast
-			}, `toast-${String(toast.seq)}`);
-			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
-				text: plainNoticeText(toast, t),
-				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconWarningOutlineRegular, {}),
-				onDone: dismissToast
-			}, `toast-${String(toast.seq)}`);
+		function RowActionToast({ useToast, dismissToast, renderSlot }) {
+			const notice = useToast((current) => current);
+			if (notice === null) return null;
+			return renderSlot("workspace.toast", {
+				...notice,
+				dismissToast
+			}, { entryKey: notice.kind });
 		}
-		/** The copy of one plain warning, keyed by the notice kind the union closes over. */
-		function plainNoticeText(toast, t) {
-			switch (toast.kind) {
-				case "pinFailed": return t("toast.pinFailed");
-				case "unpinFailed": return t("toast.unpinFailed");
-				case "defaultWorkspaceFailed": return t("defaultWorkspace.failed");
-				case "archivedNotOpenable": return t("toast.archivedNotOpenable");
-				/* v8 ignore next 2 -- closed-union backstop; only reached if a notice kind is forged */
-				default: return assertNever$1(toast);
-			}
+		//#endregion
+		//#region lib/types/client/toast/Toast.js
+		/** One presentation Factory and the adapters for keyed Workspace notices. */
+		/**
+		* Render one notice using the shared Factory.
+		* @param props - Keyed payload, injected display mapping, locale, and Factory renderer.
+		* @returns The shared Toast occurrence.
+		*/
+		function ToastEntry(props) {
+			const { dismissToast, display, t, renderFactorySlot, seq } = props;
+			return renderFactorySlot("workspace.toast.content", {
+				...display(props, t, dismissToast),
+				seq,
+				onDone: dismissToast
+			});
+		}
+		/**
+		* Keep the archive filter action reactive without subscribing unrelated notices.
+		* @param props - Archive notice, display mapping, and the existing viewing store.
+		* @returns The shared Toast occurrence with its current actions.
+		*/
+		function ArchiveToastEntry(props) {
+			const { dismissToast, display, filterAction, useStore, t, renderFactorySlot, seq } = props;
+			const archivedVisible = useStore((state) => (state.archivedFilter ?? "default") !== "default");
+			const fields = display(props, t, dismissToast);
+			return renderFactorySlot("workspace.toast.content", {
+				...fields,
+				actions: [...fields.actions ?? [], ...archivedVisible ? [] : [filterAction(t, dismissToast)]],
+				seq,
+				onDone: dismissToast
+			});
+		}
+		/**
+		* Present plain display data with the shared primitive's timing and portal.
+		* @param props - Localized display fields, display identity, and dismissal.
+		* @returns One Toast, remounted only for a new display identity.
+		*/
+		function WorkspaceToast({ seq, text, tone, holdMs, actions, onDone }) {
+			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Toast, {
+				text,
+				onDone,
+				...tone === "success" ? { tone: "success" } : {},
+				...tone === "warning" ? { icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconWarningOutlineRegular, {}) } : {},
+				...holdMs === void 0 ? {} : { holdMs },
+				...actions === void 0 ? {} : { actions }
+			}, seq);
+		}
+		//#endregion
+		//#region lib/types/client/toast/register.js
+		/** Register notice presentations with their business-owned display fields and actions.
+		* @param ctx - Workspace plugin context.
+		* @param viewStore - Viewing store, read only by archive notices.
+		* @param actions - Archive and source-opening callbacks.
+		*/
+		function registerToasts(ctx, viewStore, actions) {
+			const archiveFilterAction = (t, dismiss) => ({
+				prefix: t("toast.archivedOr"),
+				label: t("toast.archivedFilter"),
+				onClick: () => {
+					dismiss();
+					actions.showArchived();
+				}
+			});
+			ctx.slots.registerFactory({
+				name: "workspace.toast.content",
+				scope: "root"
+			}, WorkspaceToast);
+			ctx.slots.inject("workspace.toast", function* () {
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "sessionIdCopied",
+					locale: "workspace",
+					inject: () => ({ display: (_notice, t) => ({
+						text: t("toast.sessionIdCopied"),
+						tone: "success"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "sessionIdCopyFailed",
+					locale: "workspace",
+					inject: () => ({ display: (_notice, t) => ({
+						text: t("toast.sessionIdCopyFailed"),
+						tone: "warning"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "pinFailed",
+					locale: "workspace",
+					inject: () => ({ display: (_notice, t) => ({
+						text: t("toast.pinFailed"),
+						tone: "warning"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "unpinFailed",
+					locale: "workspace",
+					inject: () => ({ display: (_notice, t) => ({
+						text: t("toast.unpinFailed"),
+						tone: "warning"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "archivedNotOpenable",
+					locale: "workspace",
+					inject: () => ({ display: (_notice, t) => ({
+						text: t("toast.archivedNotOpenable"),
+						tone: "warning"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "defaultWorkspaceFailed",
+					locale: "workspace",
+					inject: () => ({ display: (_notice, t) => ({
+						text: t("defaultWorkspace.failed"),
+						tone: "warning"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "shortcutForkFailed",
+					locale: "workspace",
+					inject: () => ({ display: (notice, t) => ({
+						text: t(notice.reason === "unavailable" ? "shortcut.noCompletedTurn" : "shortcut.forkFailed"),
+						tone: "plain"
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "createFailed",
+					locale: "workspace",
+					inject: () => ({ display: (notice, t) => ({
+						text: t("toast.createFailed", { message: notice.message }),
+						tone: "warning",
+						holdMs: 6e3
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "forkRequiresOpen",
+					locale: "workspace",
+					inject: () => ({ display: (notice, t, dismiss) => ({
+						text: t("toast.forkRequiresOpen"),
+						tone: "warning",
+						holdMs: 6e3,
+						actions: [{
+							label: t("toast.openForkSource"),
+							onClick: () => {
+								dismiss();
+								actions.openForkSource(notice.sessionId);
+							}
+						}]
+					}) })
+				}, ToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "archived",
+					locale: "workspace",
+					store: viewStore,
+					inject: () => ({
+						display: (notice, t, dismiss) => ({
+							text: t("toast.archived"),
+							tone: "success",
+							holdMs: 6e3,
+							actions: [{
+								label: t("toast.archivedUndo"),
+								onClick: () => {
+									dismiss();
+									actions.undoArchive(notice.sessionId);
+								}
+							}]
+						}),
+						filterAction: archiveFilterAction
+					})
+				}, ArchiveToastEntry);
+				yield ctx.slots.register({
+					name: "workspace.toast",
+					key: "stoppedAndArchived",
+					locale: "workspace",
+					store: viewStore,
+					inject: () => ({
+						display: (notice, t, dismiss) => ({
+							text: t("toast.stoppedAndArchived"),
+							tone: "success",
+							holdMs: 6e3,
+							actions: [{
+								label: t("toast.archivedUndo"),
+								onClick: () => {
+									dismiss();
+									actions.undoArchive(notice.sessionId);
+								}
+							}]
+						}),
+						filterAction: archiveFilterAction
+					})
+				}, ArchiveToastEntry);
+			});
+		}
+		//#endregion
+		//#region lib/types/client/session-actions/SessionId.js
+		/** Copy the row's Session ID without opening its history. */
+		/**
+		* Copy the complete ID after dismissing the row menu.
+		* @param props - Row identity, menu dismissal, clipboard action, and locale.
+		* @returns The final built-in menu item.
+		*/
+		function SessionIdMenuItem({ sessionId, useMenuOpenState, copySessionId, t }) {
+			const [, setMenuOpen] = useMenuOpenState();
+			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutlineRegular, {}),
+				onSelect: () => {
+					setMenuOpen(false);
+					copySessionId(sessionId);
+				},
+				children: t("menu.sessionId")
+			});
 		}
 		//#endregion
 		//#region lib/types/client/locales.js
@@ -3866,6 +4748,8 @@ window.__ModuleLoader__.load({
 		/** Simplified Chinese dictionary (the key-set source of truth). */
 		const zh = {
 			"defaultWorkspace.failed": "无法创建默认工作区，请通过“选择工作区”选择文件夹",
+			"draft.workspaceRequired": "请先选择工作区",
+			"draft.initializationFailed": "暂时无法填入草稿，请稍后重试",
 			"group.ungrouped": "未分组",
 			"session.new": "新会话",
 			"session.untitled": "未命名",
@@ -3920,6 +4804,9 @@ window.__ModuleLoader__.load({
 			"menu.unarchiveSession": "取消归档",
 			"menu.pinSession": "置顶会话",
 			"menu.unpinSession": "取消置顶",
+			"menu.sessionId": "复制 Session ID",
+			"toast.sessionIdCopied": "Session ID 已复制",
+			"toast.sessionIdCopyFailed": "复制失败，请重试",
 			"row.archived": "已归档",
 			"row.pinned": "已置顶",
 			"toast.archivedNotOpenable": "已归档对话暂时无法查看，请取消归档后查看",
@@ -3946,6 +4833,8 @@ window.__ModuleLoader__.load({
 			"toast.pinFailed": "置顶失败，请稍后重试",
 			"toast.unpinFailed": "取消置顶失败，请稍后重试",
 			"toast.createFailed": "新建会话失败：{message}",
+			"toast.forkRequiresOpen": "请先打开原会话完成迁移，再创建分支",
+			"toast.openForkSource": "打开原会话",
 			"sessions.count.one": "{n} 个会话",
 			"sessions.count.other": "{n} 个会话",
 			"actions.workspace.aria": "工作区“{name}”的操作",
@@ -3981,6 +4870,8 @@ window.__ModuleLoader__.load({
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
 			"defaultWorkspace.failed": "Unable to create default workspace. Use Choose workspace to select a folder.",
+			"draft.workspaceRequired": "Choose a workspace first.",
+			"draft.initializationFailed": "Could not fill the draft. Please try again shortly.",
 			"group.ungrouped": "Ungrouped",
 			"session.new": "New Session",
 			"session.untitled": "Untitled",
@@ -4035,6 +4926,9 @@ window.__ModuleLoader__.load({
 			"menu.unarchiveSession": "Unarchive session",
 			"menu.pinSession": "Pin session",
 			"menu.unpinSession": "Unpin session",
+			"menu.sessionId": "Copy Session ID",
+			"toast.sessionIdCopied": "Session ID copied",
+			"toast.sessionIdCopyFailed": "Copy failed. Try again.",
 			"row.archived": "Archived",
 			"row.pinned": "Pinned",
 			"toast.archivedNotOpenable": "Archived sessions cannot be opened. Unarchive it to view.",
@@ -4061,6 +4955,8 @@ window.__ModuleLoader__.load({
 			"toast.pinFailed": "Pin failed. Try again later.",
 			"toast.unpinFailed": "Unpin failed. Try again later.",
 			"toast.createFailed": "New session failed: {message}",
+			"toast.forkRequiresOpen": "Open the original session to complete migration before creating a branch.",
+			"toast.openForkSource": "Open original session",
 			"sessions.count.one": "{n} session",
 			"sessions.count.other": "{n} sessions",
 			"actions.workspace.aria": "Workspace actions for {name}",
@@ -4113,7 +5009,8 @@ window.__ModuleLoader__.load({
 			"remote",
 			"remote.directoryPicker",
 			"layout",
-			"shortcuts"
+			"shortcuts",
+			"remoteAccess"
 		];
 		/**
 		* Register the browser and picker once their slot declarations are on the
@@ -4139,7 +5036,10 @@ window.__ModuleLoader__.load({
 				});
 			};
 			const uiWorkspace = new UiWorkspaceService(ctx, ctx.remote.directoryPicker, workspaces, sessions, viewInstance.actions, notify);
-			ctx.slots.provideRoot({ hooks: { workspaces: workspaces.list } });
+			ctx.slots.provideRoot({
+				hooks: { workspaces: workspaces.list },
+				keyedHooks: { workspaceAccess: (workspaceId, action) => action === void 0 ? void 0 : ctx.remoteAccess.source("workspace", workspaceId, action) }
+			});
 			ctx.effect(() => ctx.locale.register(NS, {
 				zh,
 				en
@@ -4217,7 +5117,12 @@ window.__ModuleLoader__.load({
 				},
 				unarchiveSession
 			});
-			installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession);
+			installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession, (reason) => {
+				notify({
+					kind: "shortcutForkFailed",
+					reason
+				});
+			});
 			const archiveConfirmInjected = () => ({
 				hooks: { archiveRequest },
 				settleSessionArchive: () => {
@@ -4238,7 +5143,15 @@ window.__ModuleLoader__.load({
 						parent_session_id: sessionId,
 						click_position: "sidebar"
 					});
-				}).catch(() => {});
+				}, { allowMigration: false }).catch((error) => {
+					if (error instanceof Error && error.name === "SessionForkError" && error.rpcError.code === "session/migration-required") notify({
+						kind: "forkRequiresOpen",
+						sessionId
+					});
+				});
+			} });
+			const sessionIdInjected = () => ({ copySessionId: async (sessionId) => {
+				notify({ kind: await (0, _deepseek_ai_dsh_client_ui_primitives.writeClipboard)(sessionId) ? "sessionIdCopied" : "sessionIdCopyFailed" });
 			} });
 			const renameInjected = () => ({ requestSessionRename });
 			const renameDialogInjected = () => ({
@@ -4246,19 +5159,28 @@ window.__ModuleLoader__.load({
 				settleSessionRename: shortcutControls.closeRename,
 				renameSession
 			});
+			registerToasts(ctx, viewStore, {
+				undoArchive: unarchiveSession,
+				showArchived: () => {
+					viewInstance.actions.setArchivedFilter("show");
+				},
+				openForkSource: (sessionId) => {
+					if (workspaces.list.getSnapshot().archivedSessionIds.includes(sessionId)) {
+						notify({ kind: "archivedNotOpenable" });
+						return;
+					}
+					openSession(sessionId);
+				}
+			});
 			const rowToastInjected = () => ({
 				hooks: { toast: rowToast },
 				dismissToast: () => {
 					rowToast.set(null);
-				},
-				undoArchive: unarchiveSession,
-				showArchived: () => {
-					viewInstance.actions.setArchivedFilter("show");
 				}
 			});
 			const browserInjected = () => ({
-				startSession: (workspaceId) => {
-					uiWorkspace.startSession(workspaceId);
+				startSession: (workspaceId, options) => {
+					uiWorkspace.startSession(workspaceId, options);
 				},
 				open: openSession,
 				searchSessions,
@@ -4284,7 +5206,6 @@ window.__ModuleLoader__.load({
 				requestAddWorkspace: shortcutControls.add,
 				closeAddWorkspace: shortcutControls.closeAdd,
 				setDirectoryBusy: shortcutControls.directoryBusy,
-				dismissForkError: shortcutControls.dismissForkError,
 				hooks: {
 					directoryFlow: browserFlowSource,
 					hostInfo,
@@ -4357,6 +5278,13 @@ window.__ModuleLoader__.load({
 					locale: NS,
 					inject: archiveInjected
 				}, ArchiveSessionMenuItem);
+				yield ctx.slots.register({
+					name: "sidebar.workspaces.session.menu.item",
+					id: "session-id",
+					order: 450,
+					locale: NS,
+					inject: sessionIdInjected
+				}, SessionIdMenuItem);
 			});
 			ctx.slots.inject("sidebar.workspaces.session.row.action", function* () {
 				yield ctx.slots.register({
@@ -4390,9 +5318,11 @@ window.__ModuleLoader__.load({
 				yield ctx.slots.register({
 					name: "shell.overlay",
 					id: "workspace.row-toast",
-					locale: NS,
-					store: viewStore,
-					inject: rowToastInjected
+					inject: rowToastInjected,
+					children: { "workspace.toast": {
+						kind: "keyed",
+						scope: "root"
+					} }
 				}, RowActionToast);
 			});
 			ctx.slots.inject("conversation.hero.workspace", () => ctx.slots.register({

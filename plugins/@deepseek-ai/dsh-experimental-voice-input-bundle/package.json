@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-voice-input-bundle",
   "description": "Experimental voice input with local SenseVoice; downloads its runtime on first use",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.1-rc.2",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"
@@ -33,18 +33,18 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.0-rc.2"
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.1-rc.2"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.4"
+    "@deepseek-ai/cordis": "~4.0.5"
   },
   "devDependencies": {
-    "js-yaml": "^4.2.0",
-    "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/cordis-plugin-include": "~1.0.9"
+    "@deepseek-ai/cordis": "~4.0.5",
+    "@deepseek-ai/cordis-plugin-include": "~1.0.10",
+    "js-yaml": "^4.3.2"
   },
   "dsh": {
     "bundle": {

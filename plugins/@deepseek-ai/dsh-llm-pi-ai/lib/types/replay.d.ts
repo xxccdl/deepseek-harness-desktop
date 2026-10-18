@@ -20,6 +20,7 @@ export type PiAiReplayBlock = {
 } | {
     type: 'tool-call';
     thoughtSignature?: string;
+    namespace?: string;
 };
 /** Versioned response-level half of the pi-ai replay envelope. */
 export interface PiAiReplayResponse {

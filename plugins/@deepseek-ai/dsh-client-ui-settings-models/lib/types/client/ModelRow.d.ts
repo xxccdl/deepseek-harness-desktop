@@ -16,6 +16,8 @@ interface ModelRowProps {
     inputField: 'inputModalities' | 'input';
     inputFallback?: readonly string[] | undefined;
     inputLoading?: boolean;
+    /** Levels the row's `reasoningEfforts` may declare; absent or empty shows no reasoning control. */
+    reasoningLevels?: readonly string[] | undefined;
     expanded: boolean;
     disabled: boolean;
     t: (key: ModelsKey) => string;

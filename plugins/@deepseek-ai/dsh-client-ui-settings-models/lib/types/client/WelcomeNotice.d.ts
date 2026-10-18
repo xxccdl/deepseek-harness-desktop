@@ -7,7 +7,7 @@ import type { en } from './locales.ts';
 /** Registration-side dependencies of {@link WelcomeNotice}. */
 export interface WelcomeNoticeInjected {
     hooks: {
-        /** Durable or process-local acknowledgement state. */
+        /** Durable acknowledgement state. */
         welcome: SnapshotStore<WelcomeNoticeState>;
     };
     /** Welcome acknowledgement controller. */

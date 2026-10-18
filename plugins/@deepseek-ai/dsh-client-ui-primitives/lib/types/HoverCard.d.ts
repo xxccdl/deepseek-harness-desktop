@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 /**
- * Render an anchor with a hover-triggered preview card, hidden while a tooltip within the anchor is visible.
+ * Render an anchor with a hover-triggered preview card independently of nested tooltips.
  * @param props.anchor - the hover target (rendered in place inside a wrapper span).
  * @param props.content - card content; the pointer may rest on it, so it is
  * readable and selectable, but it carries no dismissal affordance of its own.
@@ -10,19 +10,22 @@ import type { ReactNode, RefObject } from 'react';
  * @param props.widthAnchorRef - optional element whose width and horizontal position size the preview.
  * @param props.inline - keep the anchor in prose; show a contained preview on hover or keyboard focus.
  * @param props.disabled - suppress opening; turning true dismisses an open card.
+ * @param props.grouped - share first-display dwell across the surrounding list and active portal.
+ * Group replacement removes the previous card immediately, including a fading preview.
  * @param props.copyText - optional primary value copied by activation and
  * included in the card's accessible name.
  * @param props.copyLabel - localized accessible activation-label prefix.
  * @param props.copiedLabel - localized visible success label.
  * @returns anchor wrapper with the conditional portaled card.
  */
-export declare function HoverCard({ anchor, content, openDelayMs, disabled, copyText, copyLabel, copiedLabel, variant, widthAnchorRef, inline, }: {
+export declare function HoverCard({ anchor, content, openDelayMs, disabled, grouped, copyText, copyLabel, copiedLabel, variant, widthAnchorRef, inline, }: {
     anchor: ReactNode;
     /** Inline media preview using the shared menu material and keyboard focus. */
     inline?: boolean;
     content: ReactNode;
     openDelayMs?: number;
     disabled?: boolean;
+    grouped?: boolean;
     variant?: 'compact' | 'preview';
     widthAnchorRef?: RefObject<HTMLElement | null>;
 } & ({

@@ -3,8 +3,8 @@ import type { FocusEventHandler, MouseEventHandler, ReactElement, Ref } from 're
 /** Bubble placement relative to the anchor. */
 export type TooltipSide = 'right' | 'bottom' | 'top';
 /**
- * Suppression channel for enclosing tooltip and hover-card anchors: a visible
- * tooltip within an anchor withdraws the enclosing preview while its bubble is shown.
+ * Suppression channel for nested tooltips: a visible descendant tooltip
+ * withdraws the enclosing tooltip while its bubble is shown.
  */
 export declare const TooltipSuppression: import("react").Context<((suppressed: boolean) => void) | null>;
 /** Props Tooltip injects into its anchor child; the child's own handlers are chained ahead of the tooltip's. */

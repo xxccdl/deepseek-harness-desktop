@@ -23,10 +23,9 @@ export interface ToolRowProps {
     summary: string;
     /**
      * Trailing summary fragment rendered outside the ellipsized summary text, so
-     * a narrow row clips the summary before this. For a fragment whose whole
-     * value is surviving that clip — the todo row's parallel-active count.
-     * null/absent = the summary is the whole collapsed content. Dropped on an
-     * error row, whose collapsed summary is the failure line instead.
+     * a narrow row clips the summary before this. Appears before diff totals
+     * when both are present. null/absent omits this fragment. Error and stopped
+     * rows omit both the suffix and diff totals.
      */
     summarySuffix?: string | null | undefined;
     /** Original argument JSON formatted only while the row is expanded. */
@@ -35,7 +34,10 @@ export interface ToolRowProps {
     output?: string | null | undefined;
     /** Ask-user transcript card; card fields are mutually exclusive and replace text sections. */
     askQuestion?: AskQuestionCardModel | null | undefined;
-    /** Error first line shown as the collapsed summary on an error row; null/absent = keep `summary`. */
+    /**
+     * First error line for rows without an exit status capsule; null/absent keeps
+     * the ordinary summary. Rows with an exit capsule retain the command description.
+     */
     errorSummary?: string | null | undefined;
     /** Terminal card; card fields are mutually exclusive and replace text sections. */
     terminal?: TerminalCardModel | null | undefined;
@@ -63,8 +65,8 @@ export interface ToolRowProps {
     details?: ToolDetailsModel | null | undefined;
     state: ToolRowState;
     /**
-     * Filesystem path from tool args; when set with onOpenFile, the summary
-     * renders as a hover-underline link that opens the host default app.
+     * Recorded file target or a supported argument fallback. With onOpenFile,
+     * the summary opens that path through the owner's file-preview callback.
      */
     filePath?: string | undefined;
     /** 1-based line the call was about; absent = open the file at its beginning. */

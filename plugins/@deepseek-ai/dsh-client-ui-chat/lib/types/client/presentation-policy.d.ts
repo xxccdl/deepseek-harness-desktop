@@ -1,14 +1,13 @@
-/**
- * Runtime vocabulary derived from the persisted work-details mode. Renderers
- * and seats select single fields of this policy; none of them compares the
- * mode enum, so adding a mode changes only the table below.
- */
+/** Chat presentation derived from Host-backed detail and collapse timing. */
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store';
-import type { TranscriptViewMode } from '../chat-settings.ts';
+import type { CollapseTiming, TranscriptViewMode } from '../chat-settings.ts';
+export { COLLAPSE_TIMINGS, type CollapseTiming } from '../chat-settings.ts';
 /** Presentation capabilities that one work-details mode enables. */
 export interface ChatPresentationPolicy {
-    /** Mode this policy was derived from; for diagnostics, never for branching in renderers. */
+    /** Preference identity for layout resets and diagnostics; renderers select the capabilities below. */
     readonly mode: TranscriptViewMode;
+    /** Saved collapse timing; completion retains the default immediate folding and scrolling. */
+    readonly collapseTiming: CollapseTiming;
     /** Whether a normally completed Turn folds its process rows behind the whole-Turn control. */
     readonly foldCompletedTurns: boolean;
     /** Collapsible group headers for all Turns, historical Turns only, or no Turns. */
@@ -19,17 +18,17 @@ export interface ChatPresentationPolicy {
     readonly settledReasoningPreview: boolean;
 }
 /**
- * Resolve the policy constant for one mode. The same mode always yields the
- * same object, so selectors over a policy see stable identities.
+ * Resolve a stable policy for one detail mode and collapse timing.
  * @param mode - persisted work-details mode.
- * @returns the mode's presentation policy.
+ * @param collapseTiming - persisted timing; defaults to immediate completion folding.
+ * @returns the same policy object for the same pair of choices.
  */
-export declare function presentationPolicyFor(mode: TranscriptViewMode): ChatPresentationPolicy;
+export declare function presentationPolicyFor(mode: TranscriptViewMode, collapseTiming?: CollapseTiming): ChatPresentationPolicy;
 /**
- * Derive a policy observable from the mode observable without a subscription of
- * its own: reads are a table lookup and change notifications are the mode's.
+ * Combine Host-backed detail and persisted timing without owning subscriptions.
  * @param mode - live work-details mode.
- * @returns observable policy that changes exactly when the mode changes.
+ * @param collapseTiming - live Host-backed collapse timing.
+ * @returns observable policy whose subscriptions follow both preferences.
  */
-export declare function derivePresentationPolicy(mode: ObservableSnapshot<TranscriptViewMode>): ObservableSnapshot<ChatPresentationPolicy>;
+export declare function derivePresentationPolicy(mode: ObservableSnapshot<TranscriptViewMode>, collapseTiming: ObservableSnapshot<CollapseTiming>): ObservableSnapshot<ChatPresentationPolicy>;
 //# sourceMappingURL=presentation-policy.d.ts.map

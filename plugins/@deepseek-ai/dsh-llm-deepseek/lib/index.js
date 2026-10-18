@@ -1,6 +1,6 @@
 import z from "@deepseek-ai/schemastery";
 import { isVolatile } from "@deepseek-ai/cosmokit";
-import { IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ProviderRequestId, ReasoningEffortId, RetryPolicySchema, ToolCallId, attributionHeaders, contentHasImage, isContextWindowExceededError, isQuotaExceededError, offloadedImageText, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText } from "@deepseek-ai/dsh-llm";
+import { IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ProviderRequestId, ReasoningEffortId, RetryPolicySchema, ToolCallId, attributionHeaders, contentHasImage, errorChain, isContextWindowExceededError, isQuotaExceededError, offloadedImageText, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText } from "@deepseek-ai/dsh-llm";
 import { MAX_TIMER_DELAY_MS, deadline, idleWatchdog, timeoutOf } from "@deepseek-ai/dsh-timeout";
 import { ImageVariantId, longEdgeDimensions, requestImageDimensions } from "@deepseek-ai/dsh-attachment";
 import { createHash } from "node:crypto";
@@ -294,17 +294,25 @@ const MODEL_MODALITIES = ["text", "image"];
 function plainOptions(config) {
 	return Object.fromEntries(Object.entries(config).map(([key, value]) => [key, isVolatile(value) ? value.get() : value]));
 }
-const catalogModel = z.object({
-	id: z.string().required(),
+/**
+* Schemas of the catalog-entry fields other than `id` and `inputModalities`,
+* whose requiredness and defaults differ between a `models` entry and a
+* provider's per-model overrides.
+*/
+const catalogModelFields = {
 	name: z.string(),
 	description: z.string(),
 	contextWindow: z.number().step(1).min(1),
 	maxTokens: z.number().step(1).min(1),
-	inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(["text"]),
 	imagePixelBudget: z.union([z.number().step(1).min(1), "low"]),
 	imageMaxBytes: z.number().step(1).min(1),
 	systemPromptUpdate: z.const("in-history"),
 	toolUpdate: z.union(["in-history", "addition-only"])
+};
+const catalogModel = z.object({
+	id: z.string().required(),
+	...catalogModelFields,
+	inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(["text"])
 });
 /** Shared schema fields for Messages protocol options. */
 const deepSeekConfigFields = {
@@ -386,7 +394,8 @@ function resolveModels(models) {
 * the product CLI. Every layer may supply an endpoint: the product trusts the
 * project it is launched in, so a checkout can point its own agent at the
 * gateway that checkout is meant to use.
-* @returns validated protocol settings.
+* @returns validated protocol settings; `models` holds one resolved entry per
+* input model in input order, or the built-in catalog when `models` is absent.
 */
 function resolveAdapterOptions(config, environment) {
 	if (Object.hasOwn(config, "protocol")) throw new Error("llm-deepseek: protocol is not configurable; remove it and use a Messages-compatible baseURL");
@@ -1333,17 +1342,20 @@ var RequestFiles = class {
 //#region lib/types/request-extensions.js
 /** Prepare plugin-contributed request fields and commit their delivery after HTTP acceptance. */
 /**
-* Merge contributions without replacing Messages fields. Preparation and
-* acceptance failures report REQUEST_EXTENSION. When the merged request fails
-* to serialize, the payload is the base request alone and acceptance is a no-op,
-* so contributors resend their unaccepted state on a later request.
+* Merge contributions without replacing Messages fields. A rejected preparation or
+* a base-field collision reports REQUEST_EXTENSION with the cause chain appended to
+* the message. When the merged request fails to serialize, the payload is the
+* base request alone and acceptance is a no-op, so contributors resend their
+* unaccepted state on a later request. An acceptance failure is reported and
+* does not fail the request.
 * @param body - serialized Messages request before extension fields.
 * @param options - request identity, purpose, and cancellation.
 * @param prepare - contributor registry captured for this adapter.
 * @param onOmitted - receives the omitted field names and the serialization failure.
+* @param onUnaccepted - receives an acceptance failure after HTTP 2xx.
 * @returns HTTP payload and a commit to invoke only after a successful HTTP response.
 */
-async function prepareRequestExtensions(body, options, prepare, onOmitted) {
+async function prepareRequestExtensions(body, options, prepare, onOmitted, onUnaccepted) {
 	let extensions;
 	try {
 		extensions = await prepare({
@@ -1351,7 +1363,7 @@ async function prepareRequestExtensions(body, options, prepare, onOmitted) {
 			...options
 		});
 	} catch (error) {
-		throw new LlmError("DeepSeek request extension preparation failed", "REQUEST_EXTENSION", { cause: error });
+		throw new LlmError(`DeepSeek request extension preparation failed: ${errorChain(error)}`, "REQUEST_EXTENSION", { cause: error });
 	}
 	const fields = Object.keys(extensions.fields);
 	for (const field of fields) if (Object.hasOwn(body, field)) throw new LlmError(`DeepSeek request extension field ${JSON.stringify(field)} collides with the base request`, "REQUEST_EXTENSION");
@@ -1375,7 +1387,7 @@ async function prepareRequestExtensions(body, options, prepare, onOmitted) {
 			try {
 				await extensions.accept();
 			} catch (error) {
-				throw new LlmError("DeepSeek request extension acceptance failed", "REQUEST_EXTENSION", { cause: error });
+				onUnaccepted(error);
 			}
 		}
 	};
@@ -1538,9 +1550,9 @@ function toolInput(raw) {
 }
 function assistant(message, model, onReplayDegrade) {
 	const replay = readReplay(message, model, onReplayDegrade);
-	return message.content.map((block, index) => {
+	return message.content.flatMap((block, index) => {
 		switch (block.type) {
-			case "text": return {
+			case "text": return block.text.length === 0 ? [] : {
 				type: "text",
 				text: block.text
 			};
@@ -1561,7 +1573,8 @@ function assistant(message, model, onReplayDegrade) {
 }
 /** Serialize one complete request using already prepared image bytes.
 * User and tool-result content omits reasoning and tool-call blocks.
-* Empty user messages are skipped; empty tool results retain their call ids.
+* Empty assistant text blocks and empty user/assistant messages are skipped;
+* empty tool results retain their call ids.
 * Developer messages, already projected for this route by `LlmRuntime`, become
 * system-role updates after the preceding user turn, with tool changes as
 * `tool_addition` and `tool_removal` references to the declared tool.
@@ -1662,14 +1675,14 @@ function serialize(options, connection, history, images, access, onReplayDegrade
 			} else historySystem = text;
 			continue;
 		}
-		if (message.role === "assistant") flushSystemUpdates();
 		const content = message.role === "assistant" ? assistant(message, options.model, onReplayDegrade) : message.role === "tool" ? [{
 			type: "tool_result",
 			tool_use_id: message.toolCallId,
 			content: input(message.content),
 			...message.isError === void 0 ? {} : { is_error: message.isError }
 		}] : message.content.flatMap((block) => input([block]));
-		if (message.role === "user" && content.length === 0) continue;
+		if ((message.role === "user" || message.role === "assistant") && content.length === 0) continue;
+		if (message.role === "assistant") flushSystemUpdates();
 		const wireRole = message.role === "tool" ? "user" : message.role;
 		const previous = messages.at(-1);
 		if (previous?.role === wireRole) previous.content.push(...content);
@@ -1691,7 +1704,7 @@ function serialize(options, connection, history, images, access, onReplayDegrade
 		message.content = [...results, ...message.content.filter((block) => block.type !== "tool_result")];
 	}
 	if (pending.size > 0) throw new LlmError("DeepSeek Messages history ends with unresolved tools", "INVALID_REQUEST");
-	const effort = options.purpose === "session-title" ? "off" : options.reasoningEffort ?? connection.defaults.reasoningEffort ?? (connection.defaults.thinking === "disabled" ? "off" : "high");
+	const effort = options.reasoningEffort ?? connection.defaults.reasoningEffort ?? (connection.defaults.thinking === "disabled" ? "off" : "high");
 	if (![
 		"off",
 		"low",
@@ -2091,21 +2104,32 @@ var DeepSeekAdapter = class extends LlmAdapter {
 	async listModels(provider) {
 		return this.dependencies.discoverModels?.(provider) ?? [];
 	}
-	resolveModel(provider, model, _signal) {
-		return Promise.resolve(modelInfo(this.dependencies.options(), provider, model));
+	async resolveModel(provider, model, signal) {
+		return modelInfo(await this.connection(signal), provider, model);
 	}
 	imageRequestPricing(_provider, model) {
 		return deepSeekImageRequestPricing(this.dependencies.options(), model, this.imageAccess);
 	}
-	prepareCall(provider, model, _signal) {
-		const connection = this.dependencies.options();
-		return Promise.resolve({
+	imageRequestTarget(_provider, model, image) {
+		const entry = this.dependencies.options().models.find((entry) => entry.id === model);
+		if (entry === void 0) throw new LlmError(`DeepSeek model "${model}" has no declared image projection`, "UNKNOWN_MODEL");
+		return resolveRequestImageTarget(entry, image);
+	}
+	async prepareCall(provider, model, signal) {
+		const connection = await this.connection(signal);
+		this.dependencies.admit?.(connection, model);
+		return {
 			model: modelInfo(connection, provider, model),
 			stream: (options) => this.generate(options, connection)
-		});
+		};
 	}
 	stream(options) {
-		return this.generate(options, this.dependencies.options());
+		const connection = this.dependencies.options();
+		this.dependencies.admit?.(connection, options.model);
+		return this.generate(options, connection);
+	}
+	connection(signal) {
+		return this.dependencies.connect?.(signal) ?? Promise.resolve(this.dependencies.options());
 	}
 	async *generate(options, connection) {
 		const env_1 = {
@@ -2132,9 +2156,8 @@ var DeepSeekAdapter = class extends LlmAdapter {
 				throw new LlmError("DeepSeek Messages transport failed", "TRANSPORT", { cause: error });
 			} finally {
 				consumer.abort();
-				try {
-					await iterator.return(void 0);
-				} catch (_abortedRequestCleanup) {}
+				/* v8 ignore next -- the detached drain only rejects while unwinding an abandoned request. */
+				iterator.return(void 0).catch(() => {});
 			}
 		} catch (e_1) {
 			env_1.error = e_1;
@@ -2180,6 +2203,12 @@ var DeepSeekAdapter = class extends LlmAdapter {
 						provider: options.provider,
 						model: options.model,
 						fields,
+						error
+					});
+				}, (error) => {
+					this.dependencies.onExtensionsUnaccepted?.({
+						provider: options.provider,
+						model: options.model,
 						error
 					});
 				});
@@ -2248,14 +2277,29 @@ function registerDeepSeekProvider(ctx, provider, dependencies) {
 		child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
 	});
 	let userId;
+	const degradedReplays = /* @__PURE__ */ new Set();
+	const omittedRoutes = /* @__PURE__ */ new Set();
+	const unacceptedRoutes = /* @__PURE__ */ new Set();
 	const adapter = new DeepSeekAdapter({
 		...dependencies,
 		resolveUserId: () => userId ??= getOrCreateAnonymousUserId(),
 		onReplayDegrade: ({ provider, model, reason }) => {
+			const key = `${provider}/${model}\u0000${reason}`;
+			if (degradedReplays.has(key)) return;
+			degradedReplays.add(key);
 			ctx.logger.warn(`llm-deepseek: unusable Messages replay state on assistant history for route "${provider}/${model}"; sending provider-neutral content (${reason})`);
 		},
 		onExtensionsOmitted: ({ provider, model, fields, error }) => {
-			ctx.logger.warn(`llm-deepseek: sending route "${provider}/${model}" without request extension fields ${fields.join(", ")} because they failed to serialize: %o`, error);
+			const route = `${provider}/${model}`;
+			if (omittedRoutes.has(route)) return;
+			omittedRoutes.add(route);
+			ctx.logger.warn(`llm-deepseek: sending route "${route}" without request extension fields ${fields.join(", ")} because they failed to serialize: %o`, error);
+		},
+		onExtensionsUnaccepted: ({ provider, model, error }) => {
+			const route = `${provider}/${model}`;
+			if (unacceptedRoutes.has(route)) return;
+			unacceptedRoutes.add(route);
+			ctx.logger.warn(`llm-deepseek: route "${route}" request extension acceptance failed; contributors resend on a later request: %o`, error);
 		},
 		resolveAttachments: () => ctx.get("attachments"),
 		resolveImageAccess: (attachments, ref) => resolveImageAttachmentAccess(attachments, (hostPath) => ctx.get("fs")?.processPathFromHostPath(hostPath), ref),
@@ -2280,4 +2324,4 @@ function registerDeepSeekProvider(ctx, provider, dependencies) {
 	});
 }
 //#endregion
-export { Config, DEFAULT_CONTEXT_WINDOW, DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILE_EXPIRY_SECONDS, DEFAULT_FILE_QUOTA_CLEANUP_BATCH, DEFAULT_FILE_REFRESH_MARGIN_SECONDS, DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM, DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET, DEFAULT_MAX_IMAGES_PER_REQUEST, DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES, DEFAULT_MAX_REQUEST_FILES_BYTES, DEFAULT_MAX_TOKENS, DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DeepSeekAdapter, DeepSeekFileId, DeepSeekFileStore, DeepSeekFilesClient, DeepSeekUploadIndex, MAX_FILE_EXPIRY_SECONDS, MAX_FILE_UPLOAD_BYTES, MAX_IMAGE_BYTES, MAX_STORED_FILE_BYTES, MAX_STORED_FILE_COUNT, MIN_FILE_EXPIRY_SECONDS, PUBLIC_BASE_URL, REQUEST_IMAGE_MAX_DIMENSION, catalogModelInfo, deepSeekConfigFields, deepSeekFileScope, deepSeekImageRequestPricing, deepSeekImageTokens, deepSeekRequestImageDimensions, plainOptions, registerDeepSeekProvider, resolveAdapterOptions, resolveRequestImageMaxBytes, resolveRequestImageTarget };
+export { Config, DEFAULT_CONTEXT_WINDOW, DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILE_EXPIRY_SECONDS, DEFAULT_FILE_QUOTA_CLEANUP_BATCH, DEFAULT_FILE_REFRESH_MARGIN_SECONDS, DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM, DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET, DEFAULT_MAX_IMAGES_PER_REQUEST, DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES, DEFAULT_MAX_REQUEST_FILES_BYTES, DEFAULT_MAX_TOKENS, DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DeepSeekAdapter, DeepSeekFileId, DeepSeekFileStore, DeepSeekFilesClient, DeepSeekUploadIndex, MAX_FILE_EXPIRY_SECONDS, MAX_FILE_UPLOAD_BYTES, MAX_IMAGE_BYTES, MAX_STORED_FILE_BYTES, MAX_STORED_FILE_COUNT, MIN_FILE_EXPIRY_SECONDS, PUBLIC_BASE_URL, REQUEST_IMAGE_MAX_DIMENSION, catalogModelFields, catalogModelInfo, deepSeekConfigFields, deepSeekFileScope, deepSeekImageRequestPricing, deepSeekImageTokens, deepSeekRequestImageDimensions, plainOptions, registerDeepSeekProvider, resolveAdapterOptions, resolveRequestImageMaxBytes, resolveRequestImageTarget };

@@ -6,6 +6,8 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export declare const zh: {
     'defaultWorkspace.failed': string;
+    'draft.workspaceRequired': string;
+    'draft.initializationFailed': string;
     'group.ungrouped': string;
     'session.new': string;
     'session.untitled': string;
@@ -60,6 +62,9 @@ export declare const zh: {
     'menu.unarchiveSession': string;
     'menu.pinSession': string;
     'menu.unpinSession': string;
+    'menu.sessionId': string;
+    'toast.sessionIdCopied': string;
+    'toast.sessionIdCopyFailed': string;
     'row.archived': string;
     'row.pinned': string;
     'toast.archivedNotOpenable': string;
@@ -86,6 +91,8 @@ export declare const zh: {
     'toast.pinFailed': string;
     'toast.unpinFailed': string;
     'toast.createFailed': string;
+    'toast.forkRequiresOpen': string;
+    'toast.openForkSource': string;
     'sessions.count.one': string;
     'sessions.count.other': string;
     'actions.workspace.aria': string;
@@ -123,6 +130,8 @@ export type WorkspaceKey = keyof typeof zh;
 /** English dictionary, checked complete against the zh key set. */
 export declare const en: {
     'defaultWorkspace.failed': string;
+    'draft.workspaceRequired': string;
+    'draft.initializationFailed': string;
     'group.ungrouped': string;
     'session.new': string;
     'session.untitled': string;
@@ -177,6 +186,9 @@ export declare const en: {
     'menu.unarchiveSession': string;
     'menu.pinSession': string;
     'menu.unpinSession': string;
+    'menu.sessionId': string;
+    'toast.sessionIdCopied': string;
+    'toast.sessionIdCopyFailed': string;
     'row.archived': string;
     'row.pinned': string;
     'toast.archivedNotOpenable': string;
@@ -203,6 +215,8 @@ export declare const en: {
     'toast.pinFailed': string;
     'toast.unpinFailed': string;
     'toast.createFailed': string;
+    'toast.forkRequiresOpen': string;
+    'toast.openForkSource': string;
     'sessions.count.one': string;
     'sessions.count.other': string;
     'actions.workspace.aria': string;

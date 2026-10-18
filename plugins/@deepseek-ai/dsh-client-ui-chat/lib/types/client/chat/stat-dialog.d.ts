@@ -14,9 +14,7 @@ export interface StatDialogSeat {
 }
 /**
  * One trigger-anchored dialog seat: open state, viewport-clamped placement, outside-close.
- * @param controlled - external open state; when given the seat reads and writes
- * it instead of owning its own, letting sibling dialogs share one exclusive slot.
  * @returns the seat; spread `pos ?? MEASURE_STYLE` onto the portaled panel.
  */
-export declare function useStatDialog(controlled?: Pick<StatDialogSeat, 'open' | 'setOpen'>): StatDialogSeat;
+export declare function useStatDialog(): StatDialogSeat;
 //# sourceMappingURL=stat-dialog.d.ts.map

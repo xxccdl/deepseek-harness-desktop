@@ -57,13 +57,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.module.css.mjs
-		const css$6 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{inset:var(--dsh-frame-chrome-top,0px) 0 0;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
-		const tagId$6 = "@deepseek-ai/dsh-client-ui-settings-general/SettingsRoot.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
+		const css$7 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{inset:var(--dsh-frame-chrome-top,0px) 0 0;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const tagId$7 = "@deepseek-ai/dsh-client-ui-settings-general/SettingsRoot.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId$6;
-			tag.textContent = css$6;
+			tag.dataset.pluginCss = tagId$7;
+			tag.textContent = css$7;
 			document.head.appendChild(tag);
 		}
 		var SettingsRoot_module_css_default = {
@@ -91,13 +91,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/DesktopUpdateIndicator.module.css.mjs
-		const css$5 = ".DOUpOa_indicator{box-sizing:border-box;border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 20%, transparent);border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 8%, transparent);text-align:left;white-space:nowrap;cursor:pointer;flex:none;grid-template-columns:14px max-content;align-items:center;column-gap:4px;padding:0 8px;font-family:inherit;font-size:12px;font-weight:500;line-height:18px;display:inline-grid}.DOUpOa_icon{place-items:center;width:14px;height:14px;display:grid}.DOUpOa_badge{inset-inline-end:2px;corner-shape:round;background:var(--dsw-alias-brand-primary-new-colorprimary-new-color);border-radius:50%;width:6px;height:6px;position:absolute;top:2px}.DOUpOa_errorDot{corner-shape:round;background:currentColor;border-radius:50%;width:6px;height:6px}.DOUpOa_spinner{animation:1s linear infinite DOUpOa_spin}@keyframes DOUpOa_spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.DOUpOa_spinner{animation:none}}.DOUpOa_indicator[aria-disabled=true]{cursor:default}";
-		const tagId$5 = "@deepseek-ai/dsh-client-ui-settings-general/DesktopUpdateIndicator.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
+		const css$6 = ".DOUpOa_indicator{box-sizing:border-box;border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 20%, transparent);border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 8%, transparent);text-align:left;white-space:nowrap;cursor:pointer;flex:none;grid-template-columns:14px max-content;align-items:center;column-gap:4px;padding:0 8px;font-family:inherit;font-size:12px;font-weight:500;line-height:18px;display:inline-grid}.DOUpOa_icon{place-items:center;width:14px;height:14px;display:grid}.DOUpOa_badge{inset-inline-end:2px;corner-shape:round;background:var(--dsw-alias-brand-primary-new-colorprimary-new-color);border-radius:50%;width:6px;height:6px;position:absolute;top:2px}.DOUpOa_errorDot{corner-shape:round;background:currentColor;border-radius:50%;width:6px;height:6px}.DOUpOa_spinner{animation:1s linear infinite DOUpOa_spin}@keyframes DOUpOa_spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.DOUpOa_spinner{animation:none}}.DOUpOa_indicator[aria-disabled=true]{cursor:default}";
+		const tagId$6 = "@deepseek-ai/dsh-client-ui-settings-general/DesktopUpdateIndicator.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId$5;
-			tag.textContent = css$5;
+			tag.dataset.pluginCss = tagId$6;
+			tag.textContent = css$6;
 			document.head.appendChild(tag);
 		}
 		var DesktopUpdateIndicator_module_css_default = {
@@ -612,13 +612,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/chrome.module.css.mjs
-		const css$4 = ".UQsH_q_triggerLabel{white-space:nowrap;overflow:hidden}";
-		const tagId$4 = "@deepseek-ai/dsh-client-ui-settings-general/chrome.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
+		const css$5 = ".UQsH_q_triggerLabel{white-space:nowrap;overflow:hidden}";
+		const tagId$5 = "@deepseek-ai/dsh-client-ui-settings-general/chrome.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId$4;
-			tag.textContent = css$4;
+			tag.dataset.pluginCss = tagId$5;
+			tag.textContent = css$5;
 			document.head.appendChild(tag);
 		}
 		var chrome_module_css_default = { "triggerLabel": "UQsH_q_triggerLabel" };
@@ -659,13 +659,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/GeneralSection.module.css.mjs
-		const css$3 = "._WvWnq_section{flex-direction:column;width:100%;display:flex}._WvWnq_section>[data-slot=\"settings.general.item\"]>:last-child{border-bottom:none}";
-		const tagId$3 = "@deepseek-ai/dsh-client-ui-settings-general/GeneralSection.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
+		const css$4 = "._WvWnq_section{flex-direction:column;width:100%;display:flex}._WvWnq_section>[data-slot=\"settings.general.item\"]>:last-child{border-bottom:none}";
+		const tagId$4 = "@deepseek-ai/dsh-client-ui-settings-general/GeneralSection.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId$3;
-			tag.textContent = css$3;
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
 			document.head.appendChild(tag);
 		}
 		var GeneralSection_module_css_default = { "section": "_WvWnq_section" };
@@ -684,13 +684,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/CurrentVersionRow.module.css.mjs
-		const css$2 = ".yIbyla_row{color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;padding:16px 0;font-size:14px;line-height:22px}";
-		const tagId$2 = "@deepseek-ai/dsh-client-ui-settings-general/CurrentVersionRow.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+		const css$3 = ".yIbyla_row{color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;padding:16px 0;font-size:14px;line-height:22px}";
+		const tagId$3 = "@deepseek-ai/dsh-client-ui-settings-general/CurrentVersionRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId$2;
-			tag.textContent = css$2;
+			tag.dataset.pluginCss = tagId$3;
+			tag.textContent = css$3;
 			document.head.appendChild(tag);
 		}
 		var CurrentVersionRow_module_css_default = { "row": "yIbyla_row" };
@@ -704,18 +704,18 @@ window.__ModuleLoader__.load({
 		function CurrentVersionRow({ t }) {
 			return (0, react_jsx_runtime.jsx)("div", {
 				className: CurrentVersionRow_module_css_default.row,
-				children: t("general.currentVersion", { version: "0.2.0-rc.2" })
+				children: t("general.currentVersion", { version: "0.2.1-rc.2" })
 			});
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/DeveloperToolsRow.module.css.mjs
-		const css$1 = ".Pt1bsG_row{border-bottom:.5px solid var(--dsw-alias-border-l2);justify-content:space-between;align-items:center;gap:24px;padding:16px 0;display:flex}.Pt1bsG_title{font-size:14px;line-height:20px}.Pt1bsG_description{color:var(--dsw-alias-label-secondary);margin-top:4px;font-size:12px;line-height:18px}";
-		const tagId$1 = "@deepseek-ai/dsh-client-ui-settings-general/DeveloperToolsRow.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
+		const css$2 = ".Pt1bsG_row{border-bottom:.5px solid var(--dsw-alias-border-l2);justify-content:space-between;align-items:center;gap:24px;padding:16px 0;display:flex}.Pt1bsG_title{font-size:14px;line-height:20px}.Pt1bsG_description{color:var(--dsw-alias-label-secondary);margin-top:4px;font-size:12px;line-height:18px}";
+		const tagId$2 = "@deepseek-ai/dsh-client-ui-settings-general/DeveloperToolsRow.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId$1;
-			tag.textContent = css$1;
+			tag.dataset.pluginCss = tagId$2;
+			tag.textContent = css$2;
 			document.head.appendChild(tag);
 		}
 		var DeveloperToolsRow_module_css_default = {
@@ -768,13 +768,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsDocumentAction.module.css.mjs
-		const css = ".me01iq_action{align-items:center;gap:8px;min-width:0;display:flex}.me01iq_error{max-width:180px;color:var(--dsw-alias-state-error-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:18px;overflow:hidden}";
-		const tagId = "@deepseek-ai/dsh-client-ui-settings-general/SettingsDocumentAction.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+		const css$1 = ".me01iq_action{align-items:center;gap:8px;min-width:0;display:flex}.me01iq_error{max-width:180px;color:var(--dsw-alias-state-error-primary);text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:18px;overflow:hidden}";
+		const tagId$1 = "@deepseek-ai/dsh-client-ui-settings-general/SettingsDocumentAction.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
-			tag.dataset.pluginCss = tagId;
-			tag.textContent = css;
+			tag.dataset.pluginCss = tagId$1;
+			tag.textContent = css$1;
 			document.head.appendChild(tag);
 		}
 		var SettingsDocumentAction_module_css_default = {
@@ -898,6 +898,113 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
+		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/HostReleasePrompt.module.css.mjs
+		const css = "._64N1GW_dialog{width:min(480px,100%)}._64N1GW_transitions{grid-template-columns:max-content minmax(0,max-content) 56px minmax(0,max-content);justify-content:start;align-items:center;gap:8px 12px;font-size:13px;line-height:20px;display:grid}._64N1GW_label{color:var(--dsw-alias-label-secondary)}._64N1GW_release{font-family:var(--ds-font-family-code);overflow-wrap:anywhere}._64N1GW_solid{color:var(--dsw-alias-label-primary)}._64N1GW_faded{color:var(--dsw-alias-label-tertiary)}._64N1GW_line{border-top-width:1px;height:0;position:relative}._64N1GW_line:after{content:\"\";border-top:3px solid #0000;border-bottom:3px solid #0000;border-left:5px solid;position:absolute;top:-3.5px;right:-1px}._64N1GW_done{border-top-style:solid;border-top-color:var(--dsw-alias-state-success-primary);color:var(--dsw-alias-state-success-primary)}._64N1GW_pending{border-top-style:dashed;border-top-color:var(--dsw-alias-label-tertiary);color:var(--dsw-alias-label-tertiary)}";
+		const tagId = "@deepseek-ai/dsh-client-ui-settings-general/HostReleasePrompt.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@deepseek-ai/dsh-client-ui-settings-general";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var HostReleasePrompt_module_css_default = {
+			"dialog": "_64N1GW_dialog",
+			"done": "_64N1GW_done",
+			"faded": "_64N1GW_faded",
+			"label": "_64N1GW_label",
+			"line": "_64N1GW_line",
+			"pending": "_64N1GW_pending",
+			"release": "_64N1GW_release",
+			"solid": "_64N1GW_solid",
+			"transitions": "_64N1GW_transitions"
+		};
+		//#endregion
+		//#region lib/types/client/HostReleasePrompt.js
+		/** Confirmation shown when this page reconnects to a Host running another release. */
+		/**
+		* Name both ends of one release transition: their versions when those differ, otherwise their commits.
+		* @param from - release the transition starts at.
+		* @param to - release the transition ends at.
+		* @param unknown - text for a release or field the Host did not publish.
+		* @returns the start and end text.
+		*/
+		function transitionText(from, to, unknown) {
+			const field = from?.version !== to?.version ? "version" : "commit";
+			return [from?.[field] ?? unknown, to?.[field] ?? unknown];
+		}
+		/**
+		* One labelled transition line. A completed transition fades its start; a pending one fades its end.
+		* @param props - row label, both ends, and completion.
+		* @returns the row's cells for the shared transition grid.
+		*/
+		function Transition({ label, from, to, done }) {
+			return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+				(0, react_jsx_runtime.jsx)("span", {
+					className: HostReleasePrompt_module_css_default.label,
+					children: label
+				}),
+				(0, react_jsx_runtime.jsx)("span", {
+					className: clsx(HostReleasePrompt_module_css_default.release, done ? HostReleasePrompt_module_css_default.faded : HostReleasePrompt_module_css_default.solid),
+					children: from
+				}),
+				(0, react_jsx_runtime.jsx)("span", {
+					"aria-hidden": "true",
+					className: clsx(HostReleasePrompt_module_css_default.line, done ? HostReleasePrompt_module_css_default.done : HostReleasePrompt_module_css_default.pending)
+				}),
+				(0, react_jsx_runtime.jsx)("span", {
+					className: clsx(HostReleasePrompt_module_css_default.release, done ? HostReleasePrompt_module_css_default.solid : HostReleasePrompt_module_css_default.faded),
+					children: to
+				})
+			] });
+		}
+		/**
+		* Ask whether to reload after the Host changed releases; closing the dialog keeps the page.
+		* The service line shows the Host's completed switch from its previous release; the page line shows the
+		* switch from the page's boot release that only a reload completes.
+		* @param props - the release change, both decisions, and localized copy.
+		* @returns the dialog while a change is announced; otherwise nothing.
+		*/
+		function HostReleasePrompt({ useReleaseChange, dismissRelease, reloadPage, t }) {
+			const change = useReleaseChange((value) => value);
+			if (change === void 0) return null;
+			const unknown = t("hostRelease.unknown");
+			const [serviceFrom, serviceTo] = transitionText(change.previous, change.host, unknown);
+			const [pageFrom, pageTo] = transitionText(change.page, change.host, unknown);
+			return (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+				open: true,
+				title: t("hostRelease.title"),
+				description: t("hostRelease.description"),
+				closeLabel: t("hostRelease.later"),
+				onClose: dismissRelease,
+				className: clsx(HostReleasePrompt_module_css_default.dialog),
+				footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "outline",
+					"data-modal-autofocus": true,
+					onClick: dismissRelease,
+					children: t("hostRelease.later")
+				}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "primary",
+					onClick: reloadPage,
+					children: t("hostRelease.reload")
+				})] }),
+				children: (0, react_jsx_runtime.jsxs)("div", {
+					className: HostReleasePrompt_module_css_default.transitions,
+					children: [(0, react_jsx_runtime.jsx)(Transition, {
+						label: t("hostRelease.service"),
+						from: serviceFrom,
+						to: serviceTo,
+						done: true
+					}), (0, react_jsx_runtime.jsx)(Transition, {
+						label: t("hostRelease.page"),
+						from: pageFrom,
+						to: pageTo,
+						done: false
+					})]
+				})
+			});
+		}
+		//#endregion
 		//#region lib/types/client/locales.js
 		/** Shell chrome and General-nav dictionaries; feature rows own their copy. */
 		/** Simplified Chinese dictionary (the key-set source of truth). */
@@ -935,7 +1042,14 @@ window.__ModuleLoader__.load({
 			"connection.connecting": "重新连接中",
 			"connection.connected": "连接成功",
 			"connection.reconnect": "连接异常，点击立即重连",
-			"connection.restart": "连接中断，正在重试，点击立即重连"
+			"connection.restart": "连接中断，正在重试，点击立即重连",
+			"hostRelease.title": "服务版本变化",
+			"hostRelease.description": "服务版本已变化，本页面已暂停热更新，刷新后加载新版本。",
+			"hostRelease.service": "服务",
+			"hostRelease.page": "页面",
+			"hostRelease.unknown": "未解析",
+			"hostRelease.reload": "刷新以加载新版本",
+			"hostRelease.later": "暂不刷新"
 		};
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
@@ -972,7 +1086,14 @@ window.__ModuleLoader__.load({
 			"connection.connecting": "Reconnecting",
 			"connection.connected": "Connected",
 			"connection.reconnect": "Disconnected, reconnect now",
-			"connection.restart": "Reconnecting, reconnect now"
+			"connection.restart": "Reconnecting, reconnect now",
+			"hostRelease.title": "Service version changed",
+			"hostRelease.description": "The service version changed. This page paused live updates; reload to load the new version.",
+			"hostRelease.service": "Service",
+			"hostRelease.page": "Page",
+			"hostRelease.unknown": "Unknown",
+			"hostRelease.reload": "Reload to load the new version",
+			"hostRelease.later": "Not now"
 		};
 		//#endregion
 		//#region lib/types/client/index.js
@@ -990,7 +1111,8 @@ window.__ModuleLoader__.load({
 			"remote",
 			"remote.settings",
 			"configForms",
-			"shortcuts"
+			"shortcuts",
+			"modules"
 		];
 		/**
 		* Register the `settings` dictionaries, the chrome content, and the General
@@ -1223,6 +1345,21 @@ window.__ModuleLoader__.load({
 					scope: "root"
 				} }
 			}, GeneralSection));
+			const releasePromptInjected = () => ({
+				dismissRelease: () => {
+					ctx.modules.entries.dismissRelease();
+				},
+				reloadPage: () => {
+					globalThis.location.reload();
+				},
+				hooks: { releaseChange: ctx.modules.entries.releaseChange }
+			});
+			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+				name: "shell.overlay",
+				id: "host-release-change",
+				locale: NS,
+				inject: releasePromptInjected
+			}, HostReleasePrompt));
 		}
 		//#endregion
 		exports.SettingsDocumentStore = SettingsDocumentStore;

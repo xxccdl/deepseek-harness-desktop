@@ -36,4 +36,16 @@ export declare function PermissionIconFullAccessRegular(props: IconProps): React
  * @returns The medium decorative permission glyph.
  */
 export declare function PermissionIconFullAccessMedium(props: IconProps): ReactNode;
+/**
+ * Render the auto-review permission icon with a one-pixel stroke.
+ * @param props - Size and optional class.
+ * @returns The regular decorative permission glyph.
+ */
+export declare function PermissionIconAutoReviewRegular(props: IconProps): ReactNode;
+/**
+ * Render the auto-review permission icon with a 1.3px stroke.
+ * @param props - Size and optional class.
+ * @returns The medium decorative permission glyph.
+ */
+export declare function PermissionIconAutoReviewMedium(props: IconProps): ReactNode;
 //# sourceMappingURL=PermissionIcon.d.ts.map

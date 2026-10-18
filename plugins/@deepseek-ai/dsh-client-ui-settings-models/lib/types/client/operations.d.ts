@@ -5,7 +5,7 @@
  * failure codes and Remote namespaces stay in the apply world.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
-import type { CredentialInfo, LlmDiscoveredModel, LlmModelDiscoveryRequest, SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client';
+import type { LlmDiscoveredModel, LlmModelDiscoveryRequest, SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client';
 /** What one namespace write answered. */
 export type SettingsWriteOutcome = 
 /** Committed; the view carries the stored user subtree and the new revision. */
@@ -40,12 +40,6 @@ export type ModelDiscoveryOutcome =
 };
 /** The Host operations the Models page and its cards invoke. */
 export interface ModelsOperations {
-    /**
-     * Read one credential reference's state.
-     * @param ref - credential reference name.
-     * @returns the state, or undefined when the reference is unknown or the read was refused.
-     */
-    describeCredential(ref: string): Promise<CredentialInfo | undefined>;
     /**
      * Store one credential literal under its reference.
      * @param ref - credential reference name.

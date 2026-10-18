@@ -55,7 +55,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-models/src/client/ModelsSection.module.css.mjs
-		const css$3 = ".zGbnIq_section{max-width:720px;color:var(--dsw-alias-label-primary);flex-direction:column;gap:12px;display:flex}.zGbnIq_title{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:500;line-height:24px}.zGbnIq_intro{color:var(--dsw-alias-label-tertiary);margin:0;font-size:14px;line-height:22px}.zGbnIq_notice{color:var(--dsw-alias-state-warn-label);margin:0;font-size:12px;line-height:18px}.zGbnIq_savedNotice{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px;line-height:18px}.zGbnIq_rows{flex-direction:column;gap:8px;margin:12px 0 0;padding:0;list-style:none;display:flex}.zGbnIq_rowCard{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:12px;padding:12px 14px;display:flex}.zGbnIq_rowHead{align-items:center;gap:10px;display:flex}.zGbnIq_rowIdentity{align-items:center;gap:6px;min-width:0;display:inline-flex}.zGbnIq_rowName{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px}.zGbnIq_rowTag{border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-xs);color:var(--dsw-alias-label-secondary);flex:none;padding:1px 6px;font-size:11px;line-height:16px}.zGbnIq_credentialDot{box-sizing:border-box;corner-shape:round;border-radius:50%;flex:none;width:8px;height:8px;display:inline-block}.zGbnIq_credentialDotConfigured{background:var(--dsw-alias-state-success-primary)}.zGbnIq_credentialDotMissing{background:var(--dsw-alias-state-error-primary)}.zGbnIq_rowActions{align-items:center;gap:4px;margin-left:auto;display:inline-flex}.zGbnIq_primaryButton,.zGbnIq_secondaryButton,.zGbnIq_addButton{box-sizing:border-box;border-radius:var(--dsw-radius-md);height:36px;font:inherit;cursor:pointer;border:none;justify-content:center;align-items:center;gap:4px;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex}.zGbnIq_primaryButton{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.zGbnIq_primaryButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.zGbnIq_secondaryButton,.zGbnIq_addButton{border:.5px solid var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary);background:0 0}.zGbnIq_secondaryButton:hover:not(:disabled),.zGbnIq_addButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.zGbnIq_secondaryButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-solid)}.zGbnIq_dangerButton{box-sizing:border-box;border-radius:var(--dsw-radius-md);height:36px;color:var(--dsw-alias-state-error-primary);font:inherit;cursor:pointer;background:0 0;border:none;justify-content:center;align-items:center;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex}.zGbnIq_dangerButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger)}.zGbnIq_rowActions .zGbnIq_secondaryButton,.zGbnIq_rowActions .zGbnIq_dangerButton{border-radius:var(--dsw-radius-sm);height:28px;padding:0 10px;font-size:12px;line-height:18px}.zGbnIq_primaryButton:disabled,.zGbnIq_secondaryButton:disabled,.zGbnIq_dangerButton:disabled,.zGbnIq_addButton:disabled,.zGbnIq_linkButton:disabled,.zGbnIq_addModelButton:disabled{opacity:.4;cursor:default}.zGbnIq_primaryButton:focus-visible,.zGbnIq_secondaryButton:focus-visible,.zGbnIq_dangerButton:focus-visible,.zGbnIq_addButton:focus-visible,.zGbnIq_linkButton:focus-visible,.zGbnIq_addModelButton:focus-visible,.zGbnIq_iconButton:focus-visible,.zGbnIq_customizedSummary:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline:none}.zGbnIq_editor{border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-module-platform);flex-direction:column;gap:14px;padding:14px 16px;display:flex}.zGbnIq_editorHeader{align-items:baseline;gap:8px;display:flex}.zGbnIq_editorTitle{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px}.zGbnIq_editorRoute{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.zGbnIq_field{flex-direction:column;gap:6px;display:flex}.zGbnIq_fieldLabel{color:var(--dsw-alias-label-secondary);align-items:center;gap:10px;font-size:12px;font-weight:500;line-height:18px;display:inline-flex}.zGbnIq_linkButton{box-sizing:border-box;border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-label-tertiary);font:inherit;cursor:pointer;background:0 0;border:none;align-items:center;padding:0 10px;font-size:12px;line-height:18px;display:inline-flex}.zGbnIq_linkButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}.zGbnIq_advancedHint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px}.zGbnIq_editorActions{justify-content:flex-end;gap:8px;display:flex}.zGbnIq_addBlock{flex-direction:column;gap:12px;display:flex}.zGbnIq_addActions{display:flex}.zGbnIq_addButton{border:1px dashed var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-lg);flex:1 1 0;gap:6px;min-width:180px;height:44px}.zGbnIq_addModes{flex-direction:column;align-items:flex-start;gap:8px;display:flex}.zGbnIq_addPanel{flex-direction:column;gap:14px;display:flex}.zGbnIq_addPanel[hidden]{display:none}.zGbnIq_addCard,.zGbnIq_setupCard{border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-module-platform);flex-direction:column;gap:14px;padding:14px 16px;list-style:none;display:flex}.zGbnIq_addCard .zGbnIq_editor,.zGbnIq_setupCard .zGbnIq_editor{background:0 0;padding:0}.zGbnIq_customized{border-top:.5px solid var(--dsw-alias-border-l2);padding-top:10px}.zGbnIq_customizedSummary{border-radius:var(--dsw-radius-sm);cursor:pointer;width:fit-content;color:var(--dsw-alias-label-secondary);align-items:center;gap:6px;margin-left:-4px;padding:2px 4px;font-size:12px;font-weight:500;line-height:18px;list-style:none;display:flex}.zGbnIq_customizedSummary::-webkit-details-marker{display:none}.zGbnIq_customizedSummary:before{content:\"\";border-bottom:1.5px solid;border-right:1.5px solid;width:5px;height:5px;transition:transform .12s;transform:rotate(-45deg)translate(-1px,-1px)}.zGbnIq_customized[open]>.zGbnIq_customizedSummary:before{transform:rotate(45deg)translate(-1px,-1px)}.zGbnIq_customizedSummary:hover{color:var(--dsw-alias-label-primary)}.zGbnIq_customizedBody{flex-direction:column;gap:12px;padding-top:12px;display:flex}.zGbnIq_modelCatalog{border-top:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:12px;display:flex}.zGbnIq_modelCatalogHeading{flex-direction:column;gap:2px;display:flex}.zGbnIq_modelCatalogTitle{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500;line-height:18px}.zGbnIq_modelCatalogMeta,.zGbnIq_modelEmpty{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px}.zGbnIq_modelList{flex-direction:column;gap:8px;display:flex}.zGbnIq_modelListHead{justify-content:space-between;align-items:flex-start;gap:12px;display:flex}.zGbnIq_modelEntry{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg);padding:6px}.zGbnIq_modelRow{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto auto;align-items:center;gap:6px;display:grid}.zGbnIq_iconButton{box-sizing:border-box;border-radius:var(--dsw-radius-sm);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;justify-content:center;align-items:center;display:inline-flex}.zGbnIq_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.zGbnIq_iconButton:disabled{cursor:default;opacity:.4}.zGbnIq_iconButtonDanger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary)}.zGbnIq_modelAdvanced{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px 4px 2px;display:grid}.zGbnIq_modelField{flex-direction:column;gap:4px;min-width:0;display:flex}.zGbnIq_modelInputTypes{border:none;grid-column:1/-1;min-width:0;margin:0;padding:0}.zGbnIq_modelInputTypes legend{margin-bottom:4px;padding:0}.zGbnIq_modelInputChoices{flex-wrap:wrap;align-items:center;gap:16px;min-height:32px;display:flex}.zGbnIq_modelFieldLabel{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.zGbnIq_modelEmpty{border:1px dashed var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-lg);text-align:center;padding:12px}.zGbnIq_addModelButton{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;background:0 0;align-self:flex-start;align-items:center;gap:4px;padding:0 10px;font-size:12px;line-height:18px;display:inline-flex}.zGbnIq_addModelButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.zGbnIq_input{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);width:100%;height:32px;font:inherit;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);padding:0 10px;font-size:14px;line-height:22px}select.zGbnIq_input{cursor:pointer;max-width:240px}.zGbnIq_input:focus{border-color:var(--dsw-alias-state-business-primary);outline:none}.zGbnIq_input::placeholder{color:var(--dsw-alias-label-dimmed)}.zGbnIq_input:disabled{opacity:.6;cursor:default}.zGbnIq_selectInput{appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%2381858C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-position:right 12px center;background-repeat:no-repeat;background-size:12px 12px;padding-right:32px}.zGbnIq_error{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px;line-height:18px}.zGbnIq_deleteDialog{width:min(480px,100%)}.zGbnIq_deleteConfirm:not(:disabled){border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}.zGbnIq_deleteConfirm:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger)}.zGbnIq_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}@media (prefers-reduced-motion:reduce){.zGbnIq_customizedSummary:before,.zGbnIq_switchThumb{transition:none}}.zGbnIq_fetchDialog{--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);max-width:520px}.zGbnIq_candidateToolbar{align-items:center;gap:8px;margin-bottom:6px;display:flex}.zGbnIq_candidateSearch{flex:240px;min-width:0}.zGbnIq_candidateList{flex-direction:column;gap:2px;max-height:320px;margin:0;padding:0;list-style:none;display:flex;overflow-y:auto}.zGbnIq_candidate{border-radius:var(--dsw-radius-md)}.zGbnIq_candidateLabel{cursor:pointer;align-items:center;gap:8px;padding:6px 8px;display:flex}.zGbnIq_candidateId{min-width:0;font-family:var(--ds-font-family-code);text-overflow:ellipsis;white-space:nowrap;flex:auto;font-size:13px;overflow:hidden}.zGbnIq_candidateEmpty{color:var(--dsw-alias-label-secondary);text-align:center;margin:24px 0;font-size:13px;line-height:20px}";
+		const css$3 = ".zGbnIq_section{max-width:720px;color:var(--dsw-alias-label-primary);flex-direction:column;gap:12px;display:flex}.zGbnIq_title{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:500;line-height:24px}.zGbnIq_intro{color:var(--dsw-alias-label-tertiary);margin:0;font-size:14px;line-height:22px}.zGbnIq_notice{color:var(--dsw-alias-state-warn-label);margin:0;font-size:12px;line-height:18px}.zGbnIq_savedNotice{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px;line-height:18px}.zGbnIq_rows{flex-direction:column;gap:8px;margin:12px 0 0;padding:0;list-style:none;display:flex}.zGbnIq_rowCard{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:12px;padding:12px 14px;display:flex}.zGbnIq_rowHead{align-items:center;gap:10px;display:flex}.zGbnIq_rowIdentity{align-items:center;gap:6px;min-width:0;display:inline-flex}.zGbnIq_rowName{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px}.zGbnIq_rowTag{border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-xs);color:var(--dsw-alias-label-secondary);flex:none;padding:1px 6px;font-size:11px;line-height:16px}.zGbnIq_credentialDot{box-sizing:border-box;corner-shape:round;border-radius:50%;flex:none;width:8px;height:8px;display:inline-block}.zGbnIq_credentialDotConfigured{background:var(--dsw-alias-state-success-primary)}.zGbnIq_credentialDotMissing{background:var(--dsw-alias-state-error-primary)}.zGbnIq_accountStatus{color:var(--dsw-alias-state-success-primary);flex:none;align-items:center;gap:6px;font-size:13px;line-height:20px;display:inline-flex}.zGbnIq_rowActions{align-items:center;gap:4px;margin-left:auto;display:inline-flex}.zGbnIq_primaryButton,.zGbnIq_secondaryButton,.zGbnIq_addButton{box-sizing:border-box;border-radius:var(--dsw-radius-md);height:36px;font:inherit;cursor:pointer;border:none;justify-content:center;align-items:center;gap:4px;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex}.zGbnIq_primaryButton{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.zGbnIq_primaryButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.zGbnIq_secondaryButton,.zGbnIq_addButton{border:.5px solid var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary);background:0 0}.zGbnIq_secondaryButton:hover:not(:disabled),.zGbnIq_addButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.zGbnIq_secondaryButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-solid)}.zGbnIq_dangerButton{box-sizing:border-box;border-radius:var(--dsw-radius-md);height:36px;color:var(--dsw-alias-state-error-primary);font:inherit;cursor:pointer;background:0 0;border:none;justify-content:center;align-items:center;padding:0 14px;font-size:14px;line-height:22px;display:inline-flex}.zGbnIq_dangerButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger)}.zGbnIq_rowActions .zGbnIq_secondaryButton,.zGbnIq_rowActions .zGbnIq_dangerButton{border-radius:var(--dsw-radius-sm);height:28px;padding:0 10px;font-size:12px;line-height:18px}.zGbnIq_primaryButton:disabled,.zGbnIq_secondaryButton:disabled,.zGbnIq_dangerButton:disabled,.zGbnIq_addButton:disabled,.zGbnIq_linkButton:disabled,.zGbnIq_addModelButton:disabled{opacity:.4;cursor:default}.zGbnIq_primaryButton:focus-visible,.zGbnIq_secondaryButton:focus-visible,.zGbnIq_dangerButton:focus-visible,.zGbnIq_addButton:focus-visible,.zGbnIq_linkButton:focus-visible,.zGbnIq_addModelButton:focus-visible,.zGbnIq_iconButton:focus-visible,.zGbnIq_customizedSummary:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline:none}.zGbnIq_editor{border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-module-platform);flex-direction:column;gap:14px;padding:14px 16px;display:flex}.zGbnIq_editorHeader{align-items:baseline;gap:8px;display:flex}.zGbnIq_editorTitle{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px}.zGbnIq_editorRoute{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.zGbnIq_field{flex-direction:column;gap:6px;display:flex}.zGbnIq_fieldLabel{color:var(--dsw-alias-label-secondary);align-items:center;gap:10px;font-size:12px;font-weight:500;line-height:18px;display:inline-flex}.zGbnIq_helpButton{border:.5px solid var(--dsw-alias-border-l3);corner-shape:round;width:16px;height:16px;color:var(--dsw-alias-label-tertiary);font:inherit;text-align:center;cursor:help;background:0 0;border-radius:50%;padding:0;font-size:11px;line-height:15px}.zGbnIq_helpButton:hover,.zGbnIq_helpButton:focus-visible{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-tertiary)}.zGbnIq_linkButton{box-sizing:border-box;border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-label-tertiary);font:inherit;cursor:pointer;background:0 0;border:none;align-items:center;padding:0 10px;font-size:12px;line-height:18px;display:inline-flex}.zGbnIq_linkButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}.zGbnIq_advancedHint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px}.zGbnIq_editorActions{justify-content:flex-end;gap:8px;display:flex}.zGbnIq_addBlock{flex-direction:column;gap:12px;display:flex}.zGbnIq_addActions{display:flex}.zGbnIq_addButton{border:1px dashed var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-lg);flex:1 1 0;gap:6px;min-width:180px;height:44px}.zGbnIq_addModes{flex-direction:column;align-items:flex-start;gap:8px;display:flex}.zGbnIq_addPanel{flex-direction:column;gap:14px;display:flex}.zGbnIq_addPanel[hidden]{display:none}.zGbnIq_addCard,.zGbnIq_setupCard{border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-module-platform);flex-direction:column;gap:14px;padding:14px 16px;list-style:none;display:flex}.zGbnIq_addCard .zGbnIq_editor,.zGbnIq_setupCard .zGbnIq_editor{background:0 0;padding:0}.zGbnIq_customized{border-top:.5px solid var(--dsw-alias-border-l2);padding-top:10px}.zGbnIq_customizedSummary{border-radius:var(--dsw-radius-sm);cursor:pointer;width:fit-content;color:var(--dsw-alias-label-secondary);align-items:center;gap:6px;margin-left:-4px;padding:2px 4px;font-size:12px;font-weight:500;line-height:18px;list-style:none;display:flex}.zGbnIq_customizedSummary::-webkit-details-marker{display:none}.zGbnIq_customizedSummary:before{content:\"\";border-bottom:1.5px solid;border-right:1.5px solid;width:5px;height:5px;transition:transform .12s;transform:rotate(-45deg)translate(-1px,-1px)}.zGbnIq_customized[open]>.zGbnIq_customizedSummary:before{transform:rotate(45deg)translate(-1px,-1px)}.zGbnIq_customizedSummary:hover{color:var(--dsw-alias-label-primary)}.zGbnIq_customizedBody{flex-direction:column;gap:12px;padding-top:12px;display:flex}.zGbnIq_modelCatalog{border-top:.5px solid var(--dsw-alias-border-l2);flex-direction:column;gap:10px;padding-top:12px;display:flex}.zGbnIq_modelCatalogHeading{flex-direction:column;gap:2px;display:flex}.zGbnIq_modelCatalogTitle{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500;line-height:18px}.zGbnIq_modelCatalogMeta,.zGbnIq_modelEmpty{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px}.zGbnIq_modelList{flex-direction:column;gap:8px;display:flex}.zGbnIq_modelListHead{justify-content:space-between;align-items:flex-start;gap:12px;display:flex}.zGbnIq_modelEntry{border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-lg);padding:6px}.zGbnIq_modelRow{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto auto;align-items:center;gap:6px;display:grid}.zGbnIq_iconButton{box-sizing:border-box;border-radius:var(--dsw-radius-sm);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;justify-content:center;align-items:center;display:inline-flex}.zGbnIq_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.zGbnIq_iconButton:disabled{cursor:default;opacity:.4}.zGbnIq_iconButtonDanger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary)}.zGbnIq_modelAdvanced{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px 4px 2px;display:grid}.zGbnIq_modelField{flex-direction:column;gap:4px;min-width:0;display:flex}.zGbnIq_modelInputTypes{border:none;grid-column:1/-1;min-width:0;margin:0;padding:0}.zGbnIq_modelInputTypes legend{margin-bottom:4px;padding:0}.zGbnIq_modelInputChoices{flex-wrap:wrap;align-items:center;gap:16px;min-height:32px;display:flex}.zGbnIq_modelFieldLabel{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.zGbnIq_modelReasoning{flex-direction:column;grid-column:1/-1;gap:6px;min-width:0;display:flex}.zGbnIq_modelReasoningLabel{align-items:center;gap:6px;display:inline-flex}.zGbnIq_modelReasoningHead{justify-content:space-between;align-items:center;gap:8px;display:flex}.zGbnIq_modelReasoningRow{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:6px;display:grid}.zGbnIq_modelReasoningRow .zGbnIq_selectInput{max-width:none}.zGbnIq_modelReasoningValueInput{font-family:var(--ds-font-family-code);font-size:13px}.zGbnIq_modelEmpty{border:1px dashed var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-lg);text-align:center;padding:12px}.zGbnIq_addModelButton{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);height:28px;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;background:0 0;align-self:flex-start;align-items:center;gap:4px;padding:0 10px;font-size:12px;line-height:18px;display:inline-flex}.zGbnIq_addModelButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.zGbnIq_input{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);width:100%;height:32px;font:inherit;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);padding:0 10px;font-size:14px;line-height:22px}select.zGbnIq_input{cursor:pointer;max-width:240px}.zGbnIq_input:focus{border-color:var(--dsw-alias-state-business-primary);outline:none}.zGbnIq_input::placeholder{color:var(--dsw-alias-label-dimmed)}.zGbnIq_input:disabled{opacity:.6;cursor:default}.zGbnIq_keyInput{position:relative}.zGbnIq_keyInputFilled{padding-right:40px}.zGbnIq_keyToggle{border-radius:var(--dsw-radius-md);width:32px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex;position:absolute;inset:1px 1px 1px auto}.zGbnIq_keyToggle:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.zGbnIq_keyToggle:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}.zGbnIq_keyToggle:disabled{opacity:.6;cursor:default}.zGbnIq_selectInput{appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%2381858C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-position:right 12px center;background-repeat:no-repeat;background-size:12px 12px;padding-right:32px}.zGbnIq_error{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px;line-height:18px}.zGbnIq_deleteDialog{width:min(480px,100%)}.zGbnIq_deleteConfirm:not(:disabled){border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}.zGbnIq_deleteConfirm:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger)}.zGbnIq_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}@media (prefers-reduced-motion:reduce){.zGbnIq_customizedSummary:before,.zGbnIq_switchThumb{transition:none}}.zGbnIq_fetchDialog{--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);max-width:520px}.zGbnIq_candidateToolbar{align-items:center;gap:8px;margin-bottom:6px;display:flex}.zGbnIq_candidateSearch{flex:240px;min-width:0}.zGbnIq_candidateList{flex-direction:column;gap:2px;max-height:320px;margin:0;padding:0;list-style:none;display:flex;overflow-y:auto}.zGbnIq_candidate{border-radius:var(--dsw-radius-md)}.zGbnIq_candidateLabel{cursor:pointer;align-items:center;gap:8px;padding:6px 8px;display:flex}.zGbnIq_candidateId{min-width:0;font-family:var(--ds-font-family-code);text-overflow:ellipsis;white-space:nowrap;flex:auto;font-size:13px;overflow:hidden}.zGbnIq_candidateEmpty{color:var(--dsw-alias-label-secondary);text-align:center;margin:24px 0;font-size:13px;line-height:20px}";
 		const tagId$3 = "@deepseek-ai/dsh-client-ui-settings-models/ModelsSection.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -65,6 +65,7 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var ModelsSection_module_css_default = {
+			"accountStatus": "zGbnIq_accountStatus",
 			"addActions": "zGbnIq_addActions",
 			"addBlock": "zGbnIq_addBlock",
 			"addButton": "zGbnIq_addButton",
@@ -98,11 +99,15 @@ window.__ModuleLoader__.load({
 			"fetchDialog": "zGbnIq_fetchDialog",
 			"field": "zGbnIq_field",
 			"fieldLabel": "zGbnIq_fieldLabel",
+			"helpButton": "zGbnIq_helpButton",
 			"hiddenLabel": "zGbnIq_hiddenLabel",
 			"iconButton": "zGbnIq_iconButton",
 			"iconButtonDanger": "zGbnIq_iconButtonDanger",
 			"input": "zGbnIq_input",
 			"intro": "zGbnIq_intro",
+			"keyInput": "zGbnIq_keyInput",
+			"keyInputFilled": "zGbnIq_keyInputFilled",
+			"keyToggle": "zGbnIq_keyToggle",
 			"linkButton": "zGbnIq_linkButton",
 			"modelAdvanced": "zGbnIq_modelAdvanced",
 			"modelCatalog": "zGbnIq_modelCatalog",
@@ -117,6 +122,11 @@ window.__ModuleLoader__.load({
 			"modelInputTypes": "zGbnIq_modelInputTypes",
 			"modelList": "zGbnIq_modelList",
 			"modelListHead": "zGbnIq_modelListHead",
+			"modelReasoning": "zGbnIq_modelReasoning",
+			"modelReasoningHead": "zGbnIq_modelReasoningHead",
+			"modelReasoningLabel": "zGbnIq_modelReasoningLabel",
+			"modelReasoningRow": "zGbnIq_modelReasoningRow",
+			"modelReasoningValueInput": "zGbnIq_modelReasoningValueInput",
 			"modelRow": "zGbnIq_modelRow",
 			"notice": "zGbnIq_notice",
 			"primaryButton": "zGbnIq_primaryButton",
@@ -135,6 +145,55 @@ window.__ModuleLoader__.load({
 			"switchThumb": "zGbnIq_switchThumb",
 			"title": "zGbnIq_title"
 		};
+		//#endregion
+		//#region lib/types/client/ApiKeyInput.js
+		/** Write-only credential input with the same reveal behavior as masked conversation text. */
+		const EYE_CONTOUR = "M1.5 8C2.9 5.25 5.25 3.5 8 3.5C10.75 3.5 13.1 5.25 14.5 8C13.1 10.75 10.75 12.5 8 12.5C5.25 12.5 2.9 10.75 1.5 8Z";
+		const EYE_PATH = `${EYE_CONTOUR}M10 8C10 9.1 9.1 10 8 10C6.9 10 6 9.1 6 8C6 6.9 6.9 6 8 6C9.1 6 10 6.9 10 8Z`;
+		const EYE_OFF_PATH = `${EYE_CONTOUR}M2.5 2.5L13.5 13.5`;
+		/**
+		* Reveal only a nonempty draft; a different value starts masked, as in SecretText.
+		* @param props - current draft, input attributes, and translated control labels.
+		* @returns a password input with an optional reveal button.
+		*/
+		function ApiKeyInput({ value, t, ...props }) {
+			const [revealedValue, setRevealedValue] = (0, react.useState)();
+			const revealed = value.length > 0 && revealedValue === value;
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: ModelsSection_module_css_default["keyInput"],
+				children: [(0, react_jsx_runtime.jsx)("input", {
+					...props,
+					className: `${ModelsSection_module_css_default["input"]} ${value.length > 0 ? ModelsSection_module_css_default["keyInputFilled"] : ""}`,
+					type: revealed ? "text" : "password",
+					autoComplete: "new-password",
+					value,
+					onChange: (event) => {
+						setRevealedValue(void 0);
+						props.onChange?.(event);
+					}
+				}), value.length === 0 ? null : (0, react_jsx_runtime.jsx)("button", {
+					type: "button",
+					className: ModelsSection_module_css_default["keyToggle"],
+					"aria-label": t(revealed ? "keyHide" : "keyReveal"),
+					"aria-pressed": revealed,
+					disabled: props.disabled,
+					onClick: () => {
+						setRevealedValue(revealed ? void 0 : value);
+					},
+					children: (0, react_jsx_runtime.jsx)("svg", {
+						width: "16",
+						height: "16",
+						viewBox: "0 0 16 16",
+						fill: "none",
+						stroke: "currentColor",
+						strokeWidth: 1.3,
+						strokeLinecap: "round",
+						"aria-hidden": "true",
+						children: (0, react_jsx_runtime.jsx)("path", { d: revealed ? EYE_OFF_PATH : EYE_PATH })
+					})
+				})]
+			});
+		}
 		//#endregion
 		//#region lib/types/client/EditorFooter.js
 		/**
@@ -200,6 +259,224 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region lib/types/client/ModelReasoningEfforts.js
+		/** Reasoning-level declarations for a model on a hand-declared pi-ai route. */
+		/** Levels a model offers when the switch is turned on, where the schema lists them: Off plus the common OpenAI-compatible trio. */
+		const INITIAL_LEVELS = [
+			"off",
+			"low",
+			"medium",
+			"high"
+		];
+		/** The wire value a level sends unless its row says otherwise; `null` is the Off entry that sends nothing. */
+		function defaultValue(level) {
+			return level === "off" ? null : level;
+		}
+		/**
+		* Whether pi-ai accepts a stored value: a non-empty string, or nothing for Off.
+		* @param level - the declared level.
+		* @param wire - the value stored for it.
+		* @returns whether the adapter would resolve the entry.
+		*/
+		function acceptedValue(level, wire) {
+			return typeof wire === "string" ? wire.length > 0 : wire === null && level === "off";
+		}
+		/**
+		* Read the declared levels from a row in their stored order, including a key
+		* the offered levels do not name, so an edit never drops it.
+		* @param model - model row as drafted.
+		* @returns the entries; empty for a valueless field, which pi-ai refuses, and
+		* `undefined` when the field is absent or `false`.
+		*/
+		function readEfforts(model) {
+			const value = model["reasoningEfforts"];
+			if (value === null) return [];
+			if (typeof value !== "object" || Array.isArray(value)) return void 0;
+			return Object.entries(value);
+		}
+		/**
+		* Replace a row's declared levels, preserving every other field.
+		* @param model - model row as drafted.
+		* @param entries - the levels to write in row order, or `undefined` to remove the field.
+		* @returns the replacement row.
+		*/
+		function withEfforts(model, entries) {
+			const next = { ...model };
+			if (entries === void 0) {
+				Reflect.deleteProperty(next, "reasoningEfforts");
+				return next;
+			}
+			next["reasoningEfforts"] = Object.fromEntries(entries);
+			return next;
+		}
+		/**
+		* Mirror the pi-ai refusals of a hand-declared `reasoningEfforts`, so a card
+		* names the row instead of failing at the write.
+		* @param value - drafted `models` value, or `undefined` while inherited.
+		* @returns the first refused row, or `undefined` when the adapter will accept every row.
+		*/
+		function validateReasoningEfforts(value) {
+			for (const [index, model] of modelDrafts(value).entries()) {
+				const entries = readEfforts(model);
+				if (entries === void 0) continue;
+				if (entries.some(([level, wire]) => !acceptedValue(level, wire))) return {
+					index,
+					key: "modelReasoningValueRequired"
+				};
+				if (!entries.some(([level]) => level !== "off")) return {
+					index,
+					key: "modelReasoningNeedsLevel"
+				};
+			}
+		}
+		/**
+		* Edit the `reasoningEfforts` a hand-declared pi-ai model offers: a switch,
+		* then one row per level pairing the level with the value sent for it. Every
+		* row is read from the model, so a reused instance shows its new model.
+		* @param props - model declaration and row replacement action.
+		* @returns the reasoning-level group.
+		*/
+		function ModelReasoningEfforts({ model, levels, position, disabled, t, onChange }) {
+			const entries = readEfforts(model);
+			const [typing, setTyping] = (0, react.useState)(void 0);
+			const label = `${t("modelReasoning")} ${String(position)}`;
+			const used = entries?.map(([level]) => level) ?? [];
+			const write = (next) => {
+				onChange(withEfforts(model, next));
+			};
+			const replaceAt = (current, index, entry) => current.map((existing, at) => at === index ? entry : existing);
+			const changeLevel = (current, index, from, wire, to) => {
+				write(replaceAt(current, index, [to, typeof wire === "string" && wire.length > 0 && wire !== from && from !== "off" && to !== "off" ? wire : defaultValue(to)]));
+			};
+			const addLevel = (current) => {
+				const highest = Math.max(-1, ...used.map((level) => levels.indexOf(level)));
+				const level = levels.find((candidate, index) => index > highest && !used.includes(candidate)) ?? levels.find((candidate) => !used.includes(candidate));
+				/* v8 ignore next -- the add button is disabled once every level has a row */
+				if (level === void 0) return;
+				write([...current, [level, defaultValue(level)]]);
+			};
+			const editValue = (current, index, level, text) => {
+				setTyping({
+					level,
+					text
+				});
+				const trimmed = text.trim();
+				write(replaceAt(current, index, [level, trimmed.length === 0 ? defaultValue(level) : trimmed]));
+			};
+			const leaveValue = (current, index, level, wire) => {
+				setTyping(void 0);
+				if (!acceptedValue(level, wire)) write(replaceAt(current, index, [level, defaultValue(level)]));
+			};
+			const choicesFor = (level) => [...levels.includes(level) ? [] : [level], ...levels.filter((choice) => choice === level || !used.includes(choice))];
+			const initialEntries = INITIAL_LEVELS.filter((level) => levels.includes(level)).map((level) => [level, defaultValue(level)]);
+			const refused = entries?.some(([level, wire]) => !acceptedValue(level, wire)) === true;
+			const missingLevel = entries !== void 0 && !used.some((level) => level !== "off");
+			return (0, react_jsx_runtime.jsxs)("div", {
+				className: ModelsSection_module_css_default["modelReasoning"],
+				role: "group",
+				"aria-label": label,
+				children: [(0, react_jsx_runtime.jsxs)("div", {
+					className: ModelsSection_module_css_default["modelReasoningHead"],
+					children: [(0, react_jsx_runtime.jsxs)("span", {
+						className: `${ModelsSection_module_css_default["modelFieldLabel"]} ${ModelsSection_module_css_default["modelReasoningLabel"]}`,
+						children: [t("modelReasoning"), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+							label: t("modelReasoningHelpText"),
+							side: "right",
+							delayMs: 0,
+							focusDelayMs: 0,
+							portal: true,
+							openOnClick: true,
+							children: (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: ModelsSection_module_css_default["helpButton"],
+								"aria-label": t("modelReasoningHelp"),
+								children: "?"
+							})
+						})]
+					}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Switch, {
+						checked: entries !== void 0,
+						label,
+						disabled,
+						onChange: (on) => {
+							write(on ? initialEntries : void 0);
+						}
+					})]
+				}), entries === void 0 ? null : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+					entries.length > 0 ? (0, react_jsx_runtime.jsxs)("div", {
+						className: ModelsSection_module_css_default["modelReasoningRow"],
+						"aria-hidden": "true",
+						children: [(0, react_jsx_runtime.jsx)("span", {
+							className: ModelsSection_module_css_default["modelFieldLabel"],
+							children: t("modelReasoningLevel")
+						}), (0, react_jsx_runtime.jsx)("span", {
+							className: ModelsSection_module_css_default["modelFieldLabel"],
+							children: t("modelReasoningValue")
+						})]
+					}) : null,
+					entries.map(([level, wire], index) => (0, react_jsx_runtime.jsxs)("div", {
+						className: ModelsSection_module_css_default["modelReasoningRow"],
+						children: [
+							(0, react_jsx_runtime.jsx)("select", {
+								className: `${ModelsSection_module_css_default["input"]} ${ModelsSection_module_css_default["selectInput"]}`,
+								value: level,
+								"aria-label": `${t("modelReasoningLevel")} ${String(index + 1)}`,
+								disabled,
+								onChange: (event) => {
+									changeLevel(entries, index, level, wire, event.target.value);
+								},
+								children: choicesFor(level).map((choice) => (0, react_jsx_runtime.jsx)("option", {
+									value: choice,
+									children: choice
+								}, choice))
+							}),
+							(0, react_jsx_runtime.jsx)("input", {
+								className: `${ModelsSection_module_css_default["input"]} ${ModelsSection_module_css_default["modelReasoningValueInput"]}`,
+								type: "text",
+								value: typing?.level === level ? typing.text : typeof wire === "string" ? wire : "",
+								placeholder: level === "off" ? t("modelReasoningOffValuePlaceholder") : level,
+								"aria-label": `${level} ${t("modelReasoningValue")}`,
+								"aria-invalid": !acceptedValue(level, wire),
+								disabled: disabled || level === "off",
+								onChange: (event) => {
+									editValue(entries, index, level, event.target.value);
+								},
+								onBlur: () => {
+									leaveValue(entries, index, level, wire);
+								}
+							}),
+							(0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: `${ModelsSection_module_css_default["iconButton"]} ${ModelsSection_module_css_default["iconButtonDanger"]}`,
+								"aria-label": `${t("modelReasoningRemove")} ${level}`,
+								title: t("modelReasoningRemove"),
+								disabled,
+								onClick: () => {
+									write(entries.filter((_entry, at) => at !== index));
+								},
+								children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular, { size: 14 })
+							})
+						]
+					}, index)),
+					refused ? (0, react_jsx_runtime.jsx)("p", {
+						className: ModelsSection_module_css_default["error"],
+						children: t("modelReasoningValueRequired")
+					}) : missingLevel ? (0, react_jsx_runtime.jsx)("p", {
+						className: ModelsSection_module_css_default["error"],
+						children: t("modelReasoningNeedsLevel")
+					}) : null,
+					(0, react_jsx_runtime.jsxs)("button", {
+						type: "button",
+						className: ModelsSection_module_css_default["addModelButton"],
+						disabled: disabled || levels.every((level) => used.includes(level)),
+						onClick: () => {
+							addLevel(entries);
+						},
+						children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular, { size: 14 }), t("modelReasoningAdd")]
+					})
+				] })]
+			});
+		}
+		//#endregion
 		//#region lib/types/client/ModelRow.js
 		/**
 		* Render consistent model identity, capacity, and input-type controls.
@@ -247,33 +524,44 @@ window.__ModuleLoader__.load({
 					]
 				}), props.expanded ? (0, react_jsx_runtime.jsxs)("div", {
 					className: ModelsSection_module_css_default["modelAdvanced"],
-					children: [["contextWindow", "maxTokens"].map((field) => (0, react_jsx_runtime.jsxs)("label", {
-						className: ModelsSection_module_css_default["modelField"],
-						children: [(0, react_jsx_runtime.jsx)("span", {
-							className: ModelsSection_module_css_default["modelFieldLabel"],
-							children: t(field)
-						}), (0, react_jsx_runtime.jsx)("input", {
-							className: ModelsSection_module_css_default["input"],
-							type: "text",
-							inputMode: "numeric",
-							value: props[field].value,
-							placeholder: props[field].placeholder,
-							"aria-label": `${t(field)} ${String(position)}`,
+					children: [
+						["contextWindow", "maxTokens"].map((field) => (0, react_jsx_runtime.jsxs)("label", {
+							className: ModelsSection_module_css_default["modelField"],
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: ModelsSection_module_css_default["modelFieldLabel"],
+								children: t(field)
+							}), (0, react_jsx_runtime.jsx)("input", {
+								className: ModelsSection_module_css_default["input"],
+								type: "text",
+								inputMode: "numeric",
+								value: props[field].value,
+								placeholder: props[field].placeholder,
+								"aria-label": `${t(field)} ${String(position)}`,
+								disabled,
+								onChange: (event) => {
+									props[field].onChange(event.target.value);
+								},
+								onBlur: props[field].onBlur
+							})]
+						}, field)),
+						(0, react_jsx_runtime.jsx)(ModelInputTypes, {
+							model,
+							field: props.inputField,
+							position,
+							fallback: props.inputFallback,
+							disabled: disabled || props.inputLoading === true,
+							t,
+							onChange: props.onChange
+						}),
+						props.reasoningLevels !== void 0 && props.reasoningLevels.length > 0 ? (0, react_jsx_runtime.jsx)(ModelReasoningEfforts, {
+							model,
+							levels: props.reasoningLevels,
+							position,
 							disabled,
-							onChange: (event) => {
-								props[field].onChange(event.target.value);
-							},
-							onBlur: props[field].onBlur
-						})]
-					}, field)), (0, react_jsx_runtime.jsx)(ModelInputTypes, {
-						model,
-						field: props.inputField,
-						position,
-						fallback: props.inputFallback,
-						disabled: disabled || props.inputLoading === true,
-						t,
-						onChange: props.onChange
-					})]
+							t,
+							onChange: props.onChange
+						}) : null
+					]
 				}) : null]
 			});
 		}
@@ -770,6 +1058,7 @@ window.__ModuleLoader__.load({
 							inputField: "input",
 							inputFallback: inputDefaults.get(textOf(model, "id")) ?? props.defaultInput,
 							inputLoading: catalogProvider !== void 0 && catalog === void 0,
+							reasoningLevels: props.reasoningLevels,
 							expanded: expanded.has(index),
 							disabled,
 							t,
@@ -914,6 +1203,9 @@ window.__ModuleLoader__.load({
 				settingsPath: [...entry.settingsPath],
 				active: active.has(entry.provider),
 				...entry.declared === void 0 ? {} : { declared: entry.declared },
+				...entry.defaultBaseURL === void 0 ? {} : { defaultBaseURL: entry.defaultBaseURL },
+				...entry.baseURLEnv === void 0 ? {} : { baseURLEnv: entry.baseURLEnv },
+				...entry.nativeAuth === void 0 ? {} : { nativeAuth: entry.nativeAuth },
 				...entry.error === void 0 ? {} : { error: entry.error }
 			}));
 			for (const provider of registered) {
@@ -957,6 +1249,26 @@ window.__ModuleLoader__.load({
 			if (list?.type !== "union" || list.list === void 0) return [];
 			return list.list.map((entry) => entry.value).filter((value) => typeof value === "string");
 		}
+		/**
+		* The reasoning levels a hand-declared route's models may declare, read out of
+		* the owning namespace's own schema for the same reason as
+		* {@link protocolChoices}: the levels the page offers and the keys the
+		* adapter accepts in `reasoningEfforts` come from the same `Config`.
+		* @param namespace - the namespace view whose schema declares the profile shape.
+		* @param schema - settings schema operations.
+		* @returns the levels in the schema's escalation order, or an empty list when the schema has none.
+		*/
+		function reasoningLevelChoices(namespace, schema) {
+			if (namespace === void 0) return [];
+			const path = [
+				"providers",
+				PROBE_ROUTE,
+				"models",
+				"0",
+				"reasoningEfforts"
+			];
+			return (((schema.nodeAtPath(schema.rehydrate(namespace.schema), path)?.list ?? []).find((branch) => branch.type === "dict")?.sKey)?.list ?? []).map((entry) => entry.value).filter((value) => typeof value === "string");
+		}
 		/** The credential reference a resolved profile names (its `apiKeyEnv` field). */
 		function apiKeyEnvOf(namespace, path, schema) {
 			if (namespace === void 0) return void 0;
@@ -981,6 +1293,8 @@ window.__ModuleLoader__.load({
 			});
 			/** Latest load wins; an older response never overwrites a newer one. */
 			generation = 0;
+			/** Callers follow the current refresh's outcome, including callers whose read was superseded. */
+			pendingLoads = /* @__PURE__ */ new Set();
 			/**
 			* @param ctx - the page plugin's context, whose `remote.llm` and
 			* `remote.credentials` namespaces carry the directory and credential reads.
@@ -997,11 +1311,28 @@ window.__ModuleLoader__.load({
 			* settings answer in parallel, then one batched credential describe over
 			* every referenced ref. Provider failure or absence of an initial settings
 			* answer keeps the last good rows and surfaces an error; a failed settings
-			* refresh reuses the mirror's held view.
-			* @returns nothing; the snapshot carries the outcome.
+			* refresh reuses the mirror's held view. Concurrent callers resolve only
+			* after the current refresh publishes its ready or error snapshot.
+			* @returns resolution after the current snapshot is published.
+			* @throws the current read's unexpected rejection; superseded rejections are ignored.
 			*/
-			async load() {
+			load() {
+				const pending = Promise.withResolvers();
+				this.pendingLoads.add(pending);
 				const generation = ++this.generation;
+				this.read(generation).then(() => {
+					this.settleLoads(generation, (load) => {
+						load.resolve();
+					});
+				}, (error) => {
+					this.settleLoads(generation, (load) => {
+						load.reject(error);
+					});
+				});
+				return pending.promise;
+			}
+			/** Publish one joined answer; stale answers leave the current refresh in charge. */
+			async read(generation) {
 				this.store.update((s) => {
 					s.status = "loading";
 					s.error = null;
@@ -1011,17 +1342,20 @@ window.__ModuleLoader__.load({
 					this.ctx.remote.llm.listConfigurableProviders(),
 					this.describeFace.ensure()
 				]);
+				if (generation !== this.generation) return;
 				if (!registered.ok) {
-					this.failLoad(generation, registered.error.message);
+					this.failLoad(registered.error.message);
 					return;
 				}
 				if (!declared.ok) {
-					this.failLoad(generation, declared.error.message);
+					this.failLoad(declared.error.message);
 					return;
 				}
 				const mirrored = this.describeFace.getSnapshot();
 				if (mirrored.view === void 0) {
-					this.failLoad(generation, mirrored.error ?? "settings are unavailable in this browser");
+					/* v8 ignore next -- SettingsDescribeFace.ensure settles with a view or the read's error */
+					if (mirrored.error === null) throw new Error("settings describe settled with neither a view nor an error");
+					this.failLoad(mirrored.error);
 					return;
 				}
 				const providers = joinProviderDirectory(registered.value, declared.value);
@@ -1042,13 +1376,16 @@ window.__ModuleLoader__.load({
 					const catalog = await this.ctx.remote.session.modelCatalog();
 					for (const row of rows) if (row.entry.provider === "deepseek-account") row.accountAvailable = catalog.ok && catalog.value.groups.some((group) => group.id === "deepseek-account" && group.models.length > 0);
 				}
-				const refs = [...new Set(rows.filter((row) => row.entry.provider !== "deepseek-account").map((row) => row.apiKeyEnv ?? deriveKeyRef(row.entry.provider)))];
-				let credentials = {};
+				const refs = [...new Set(rows.filter((row) => row.entry.provider !== "deepseek-account").flatMap((row) => row.apiKeyEnv === void 0 ? [deriveKeyRef(row.entry.provider), ...row.entry.nativeAuth?.env ?? []] : [row.apiKeyEnv]))];
+				const credentials = {};
 				let credentialError = null;
-				if (refs.length > 0) {
-					const response = await this.ctx.remote.credentials.describe(refs);
-					if (response.ok) credentials = response.value;
-					else credentialError = response.error.message;
+				for (let index = 0; index < refs.length; index += 64) {
+					const response = await this.ctx.remote.credentials.describe(refs.slice(index, index + 64));
+					if (response.ok) Object.assign(credentials, response.value);
+					else {
+						credentialError = response.error.message;
+						break;
+					}
 				}
 				if (generation !== this.generation) return;
 				this.store.update((s) => {
@@ -1063,15 +1400,25 @@ window.__ModuleLoader__.load({
 						return {
 							...row,
 							...named === void 0 ? {} : { credential: named },
-							...derived === void 0 ? {} : { derivedCredential: derived }
+							...derived === void 0 ? {} : { derivedCredential: derived },
+							...credentialError === null ? { credentialChecks: Object.fromEntries((row.apiKeyEnv === void 0 ? row.entry.nativeAuth?.env ?? [] : [row.apiKeyEnv]).flatMap((ref) => {
+								const info = credentials[ref];
+								return info === void 0 ? [] : [[ref, info]];
+							})) } : {}
 						};
 					});
 					s.namespaces = namespaces;
 				});
 			}
-			/** Publish one load's failure text, unless a newer load already took over. */
-			failLoad(generation, message) {
+			/** Settle callers only while this read still owns the current refresh. */
+			settleLoads(generation, settle) {
 				if (generation !== this.generation) return;
+				const pending = [...this.pendingLoads];
+				this.pendingLoads.clear();
+				for (const load of pending) settle(load);
+			}
+			/** Publish the current joined read's failure text. */
+			failLoad(message) {
 				this.store.update((s) => {
 					s.status = "error";
 					s.error = message;
@@ -1177,11 +1524,12 @@ window.__ModuleLoader__.load({
 		* and at least one model — are required here rather than at load, so the
 		* failure names the field while the user is still looking at it.
 		*
-		* There is deliberately no reasoning-effort control, here or on the editor
-		* card: effort is a per-MODEL capability, and the models under one provider
-		* disagree about it, so a provider-scoped control can only be set to a value
-		* some of them reject. The composer's model picker offers each model its own
-		* levels instead.
+		* There is deliberately no provider-scoped reasoning-effort control, here or
+		* on the editor card: effort is a per-MODEL capability, and the models under
+		* one provider disagree about it, so a provider-scoped control can only be set
+		* to a value some of them reject. Each model row of a hand-declared route
+		* declares its own `reasoningEfforts` instead, and the composer's model picker
+		* offers each model those levels.
 		*/
 		/** The settings namespace a hand-declared provider is written into. */
 		const NS$1 = "llm-pi-ai";
@@ -1208,7 +1556,7 @@ window.__ModuleLoader__.load({
 		* @returns the creation card.
 		*/
 		function CustomProviderCard(props) {
-			const { taken, protocols, operations, t, onBusyChange } = props;
+			const { taken, protocols, reasoningLevels, operations, t, onBusyChange } = props;
 			const [openedAt] = (0, react.useState)(() => props.revision);
 			const [route, setRoute] = (0, react.useState)("");
 			const [displayName, setDisplayName] = (0, react.useState)("");
@@ -1239,7 +1587,7 @@ window.__ModuleLoader__.load({
 			const routeTaken = taken.includes(route);
 			const normalizedBaseURL = baseURL.trim();
 			const baseUrlInvalid = baseURL.length > 0 && !isHttpUrl(normalizedBaseURL);
-			const modelFailure = validateDeepSeekModels(models);
+			const modelFailure = validateDeepSeekModels(models) ?? validateReasoningEfforts(models);
 			const keyFailure = apiKeyFailure(keyDraft);
 			const keyValue = keyDraft.trim();
 			const ready = route.length > 0 && !routeInvalid && !routeTaken && normalizedBaseURL.length > 0 && !baseUrlInvalid && models.length > 0 && modelFailure === void 0 && keyFailure === void 0;
@@ -1375,10 +1723,8 @@ window.__ModuleLoader__.load({
 								className: ModelsSection_module_css_default["fieldLabel"],
 								children: t("keyInput")
 							}),
-							(0, react_jsx_runtime.jsx)("input", {
-								className: ModelsSection_module_css_default["input"],
-								type: "password",
-								autoComplete: "new-password",
+							(0, react_jsx_runtime.jsx)(ApiKeyInput, {
+								t,
 								value: keyDraft,
 								placeholder: t("keyPlaceholder"),
 								"aria-label": t("keyInput"),
@@ -1396,6 +1742,7 @@ window.__ModuleLoader__.load({
 					(0, react_jsx_runtime.jsx)(ModelListEditor, {
 						models,
 						onChange: setModels,
+						reasoningLevels,
 						probe: {
 							settingsNs: NS$1,
 							baseURL: normalizedBaseURL,
@@ -1510,7 +1857,6 @@ window.__ModuleLoader__.load({
 			const { namespace, schema, settingsPath, operations, t } = props;
 			const [draft, setDraft] = (0, react.useState)(() => draftAt(schema, namespace, settingsPath));
 			const [keyDraft, setKeyDraft] = (0, react.useState)("");
-			const [keyState, setKeyState] = (0, react.useState)(void 0);
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [listBusy, setListBusy] = (0, react.useState)(false);
 			const { onBusyChange } = props;
@@ -1532,29 +1878,12 @@ window.__ModuleLoader__.load({
 			]);
 			const fallback = schema.getPath(namespace.value, settingsPath);
 			const disabled = props.readOnly || busy;
-			const accountProvider = props.provider === "deepseek-account";
-			const layout = accountProvider ? "deepseek" : layoutOf(namespace.ns);
+			const layout = layoutOf(namespace.ns);
 			const keyRef = refFor(schema, namespace, settingsPath, props.provider);
 			const protocols = (0, react.useMemo)(() => layout === "pi-ai" ? protocolChoices(namespace, schema) : [], [
 				layout,
 				namespace,
 				schema
-			]);
-			(0, react.useEffect)(() => {
-				if (accountProvider) return;
-				let stale = false;
-				setKeyState(void 0);
-				operations.describeCredential(keyRef).then((described) => {
-					if (stale) return;
-					setKeyState(described);
-				});
-				return () => {
-					stale = true;
-				};
-			}, [
-				operations,
-				keyRef,
-				accountProvider
 			]);
 			const stringAt = (source, key) => {
 				const value = schema.getPath(source, [key]);
@@ -1564,7 +1893,15 @@ window.__ModuleLoader__.load({
 				const value = next === void 0 || next.trim().length === 0 ? void 0 : next;
 				setDraft((current) => value === void 0 ? schema.deletePath(current, [key]) : schema.setPath(current, [key], value));
 			};
-			const modelFailure = validateDeepSeekModels(schema.getPath(draft, ["models"]));
+			const reasoningLevels = (0, react.useMemo)(() => layout === "pi-ai" && props.declared === true ? reasoningLevelChoices(namespace, schema) : [], [
+				layout,
+				props.declared,
+				namespace,
+				schema
+			]);
+			const editsReasoning = reasoningLevels.length > 0;
+			const validateModels = (value) => validateDeepSeekModels(value) ?? (editsReasoning ? validateReasoningEfforts(value) : void 0);
+			const modelFailure = validateModels(schema.getPath(draft, ["models"]));
 			const keyFailure = apiKeyFailure(keyDraft);
 			const keyValue = keyDraft.trim();
 			const shownKeyFailure = (props.credentialRequired === true && keyDraft.length > 0 && keyValue.length === 0 ? "keyRequired" : void 0) ?? keyFailure;
@@ -1587,7 +1924,7 @@ window.__ModuleLoader__.load({
 				const ns = namespace.ns;
 				const next = layout === "pi-ai" && stringAt(draft, "apiKeyEnv") === void 0 && stringAt(fallback, "apiKeyEnv") === void 0 && keyValue.length > 0 ? schema.setPath(draft, ["apiKeyEnv"], keyRef) : draft;
 				if (props.credentialOnly !== true) {
-					const failure = validateDeepSeekModels(schema.getPath(next, ["models"]));
+					const failure = validateModels(schema.getPath(next, ["models"]));
 					/* v8 ignore next 3 -- unreachable from the card: the same failure disables submit */
 					if (failure !== void 0) return `${t("model")} ${String(failure.index + 1)}: ${t(failure.key)}`;
 				}
@@ -1637,7 +1974,6 @@ window.__ModuleLoader__.load({
 					props.t("settingsPathUnresolvable")
 				]
 			});
-			const keyLocked = keyState?.writable === false;
 			/**
 			* The catalog beneath the user layer: what the composition entry pinned, or
 			* else the schema default that `resolve` would supply. The effective value
@@ -1661,7 +1997,38 @@ window.__ModuleLoader__.load({
 				const defaultContextWindow = schema.getPath(fallback, ["defaultContextWindow"]);
 				const defaultMaxTokens = schema.getPath(fallback, ["maxTokens"]);
 				const defaultInput = schema.getPath(fallback, ["defaultInput"]);
-				const keyPlaceholder = keyLocked ? t("keyEnvLocked") : keyState?.configured === true && props.credentialRequired !== true ? t("keyStored") : family === "pi-ai" ? t("keyPlaceholderNative") : t("keyPlaceholder");
+				const baseURL = stringAt(fallback, "baseURL") ?? props.defaultBaseURL;
+				const endpointEnv = props.baseURLEnv ?? [];
+				const endpointHint = family === "deepseek" ? t("deepSeekEndpointHint") : baseURL === void 0 && endpointEnv.length > 0 ? t("baseUrlEnvironment").replace("{env}", () => endpointEnv.join(", ")) : void 0;
+				const namedRef = stringAt(fallback, "apiKeyEnv");
+				const nativeAuth = namedRef === void 0 ? props.nativeAuth : void 0;
+				const authRefs = namedRef === void 0 ? (nativeAuth?.env ?? []).filter((ref) => !endpointEnv.includes(ref)) : [namedRef];
+				const visibleRefs = authRefs.filter((ref) => !ref.toLowerCase().includes("oauth"));
+				const keyHint = visibleRefs[0];
+				const checkedRefs = authRefs.map((ref) => [ref, props.credentialChecks?.[ref] ?? (ref === namedRef ? props.credential : void 0)]);
+				const detected = checkedRefs.find(([, info]) => info?.configured === true);
+				const detectedRef = detected?.[0];
+				const detectedVisibleRef = detectedRef === void 0 || !visibleRefs.includes(detectedRef) ? void 0 : detectedRef;
+				const missingRefs = checkedRefs.length > 0 && checkedRefs.every(([, info]) => info?.configured === false);
+				const savedCredential = detected?.[1]?.source === "file";
+				const credentialHint = keyDraft.length > 0 || savedCredential || keyHint === void 0 || props.credentialRequired === true ? void 0 : t(detectedRef === void 0 ? missingRefs ? "keyFallbackMissing" : "keyFallbackUnchecked" : detectedVisibleRef === void 0 ? "keyFallbackDetectedHidden" : "keyFallbackDetected").replace("{hint}", () => detectedVisibleRef ?? keyHint);
+				const keyHelp = visibleRefs.length === 0 ? void 0 : t("keyHelp").replace("{env}", () => visibleRefs.join(" / "));
+				const authHelp = keyHelp === void 0 ? null : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+					label: keyHelp,
+					side: "right",
+					delayMs: 0,
+					focusDelayMs: 0,
+					portal: true,
+					openOnClick: true,
+					children: (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						className: ModelsSection_module_css_default["helpButton"],
+						"aria-label": t("authHelp"),
+						children: "?"
+					})
+				});
+				const keylessNativeAuth = nativeAuth?.env.length === 0 && nativeAuth.oauth;
+				const keyPlaceholder = keyHint === void 0 || props.credentialRequired === true ? t("keyPlaceholder") : t(savedCredential ? "keyPlaceholderSaved" : "keyPlaceholderFallback").replace("{hint}", () => keyHint);
 				/** What both family editors take: the rows, whose layer owns them, and the two writes. */
 				const catalogProps = {
 					models,
@@ -1675,32 +2042,31 @@ window.__ModuleLoader__.load({
 						setDraft((current) => schema.deletePath(current, ["models"]));
 					}
 				};
-				if (accountProvider) return (0, react_jsx_runtime.jsx)(DeepSeekModelsEditor, {
-					...catalogProps,
-					defaultContextWindow: typeof defaultContextWindow === "number" ? defaultContextWindow : void 0,
-					defaultMaxTokens: typeof defaultMaxTokens === "number" ? defaultMaxTokens : void 0
-				});
-				return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsxs)("div", {
+				return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [keylessNativeAuth ? null : (0, react_jsx_runtime.jsxs)("div", {
 					className: ModelsSection_module_css_default["field"],
 					children: [
-						(0, react_jsx_runtime.jsx)("span", {
+						(0, react_jsx_runtime.jsxs)("span", {
 							className: ModelsSection_module_css_default["fieldLabel"],
-							children: t("keyInput")
+							children: [t("keyInput"), authHelp]
 						}),
-						(0, react_jsx_runtime.jsx)("input", {
-							className: ModelsSection_module_css_default["input"],
-							type: "password",
-							autoComplete: "new-password",
+						(0, react_jsx_runtime.jsx)(ApiKeyInput, {
+							t,
 							value: keyDraft,
 							placeholder: keyPlaceholder,
 							"aria-label": t("keyInput"),
 							"aria-invalid": shownKeyFailure !== void 0,
+							"aria-describedby": credentialHint === void 0 ? void 0 : `${props.provider}-credential-hint`,
 							required: props.credentialRequired === true,
 							autoFocus: props.autoFocusCredential === true,
-							disabled: disabled || keyLocked,
+							disabled,
 							onChange: (event) => {
 								setKeyDraft(event.target.value);
 							}
+						}),
+						credentialHint === void 0 ? null : (0, react_jsx_runtime.jsx)("p", {
+							id: `${props.provider}-credential-hint`,
+							className: ModelsSection_module_css_default[missingRefs ? "notice" : detectedRef === void 0 ? "advancedHint" : "savedNotice"],
+							children: credentialHint
 						}),
 						shownKeyFailure === void 0 ? null : (0, react_jsx_runtime.jsx)("p", {
 							className: ModelsSection_module_css_default["error"],
@@ -1743,19 +2109,19 @@ window.__ModuleLoader__.load({
 										className: ModelsSection_module_css_default["input"],
 										type: "text",
 										value: stringAt(draft, "baseURL") ?? "",
-										placeholder: family === "deepseek" ? t("deepSeekBaseUrl") : stringAt(fallback, "baseURL") ?? t("baseUrlDefault"),
-										"aria-describedby": family === "deepseek" ? `${props.provider}-endpoint-hint` : void 0,
+										placeholder: family === "deepseek" ? t("deepSeekBaseUrl") : baseURL === void 0 ? t(endpointEnv.length > 0 ? "baseUrlConfigured" : "baseUrlDefault") : t("baseUrlPlaceholder").replace("{url}", () => baseURL),
+										"aria-describedby": endpointHint === void 0 ? void 0 : `${props.provider}-endpoint-hint`,
 										"aria-label": t("baseUrl"),
 										disabled,
 										onChange: (event) => {
 											setField("baseURL", event.target.value === "" ? void 0 : event.target.value);
 										}
 									}),
-									family === "deepseek" ? (0, react_jsx_runtime.jsx)("span", {
+									endpointHint === void 0 ? null : (0, react_jsx_runtime.jsx)("span", {
 										id: `${props.provider}-endpoint-hint`,
 										className: ModelsSection_module_css_default["advancedHint"],
-										children: t("deepSeekEndpointHint")
-									}) : null
+										children: endpointHint
+									})
 								]
 							}),
 							ownsIdentity ? (0, react_jsx_runtime.jsxs)("div", {
@@ -1787,6 +2153,7 @@ window.__ModuleLoader__.load({
 							}) : (0, react_jsx_runtime.jsx)(ModelListEditor, {
 								...catalogProps,
 								catalogProvider: props.declared === true ? void 0 : props.provider,
+								reasoningLevels,
 								defaultInput: Array.isArray(defaultInput) ? defaultInput : void 0,
 								probe,
 								probeBlocked: keyFailure,
@@ -1865,12 +2232,17 @@ window.__ModuleLoader__.load({
 		* post-apply reload.
 		*/
 		/** Render an editor for either the setup posture or an expanded provider row. */
-		function renderProviderEditor({ target, ...props }) {
+		function renderProviderEditor({ target, row, ...props }) {
 			return (0, react_jsx_runtime.jsx)(ProviderEditor, {
 				provider: target.provider,
 				displayName: target.displayName,
 				settingsPath: target.settingsPath,
 				...target.declared === true ? { declared: true } : {},
+				...target.defaultBaseURL === void 0 ? {} : { defaultBaseURL: target.defaultBaseURL },
+				...target.baseURLEnv === void 0 ? {} : { baseURLEnv: target.baseURLEnv },
+				...target.nativeAuth === void 0 ? {} : { nativeAuth: target.nativeAuth },
+				...row.credential === void 0 ? {} : { credential: row.credential },
+				...row.credentialChecks === void 0 ? {} : { credentialChecks: row.credentialChecks },
 				...props
 			});
 		}
@@ -1930,7 +2302,10 @@ window.__ModuleLoader__.load({
 				settingsNs: row.entry.settingsNs,
 				settingsPath: row.entry.settingsPath,
 				...credentialRef === void 0 ? {} : { credentialRef },
-				...row.entry.declared === true ? { declared: true } : {}
+				...row.entry.declared === true ? { declared: true } : {},
+				...row.entry.defaultBaseURL === void 0 ? {} : { defaultBaseURL: row.entry.defaultBaseURL },
+				...row.entry.baseURLEnv === void 0 ? {} : { baseURLEnv: row.entry.baseURLEnv },
+				...row.entry.nativeAuth === void 0 ? {} : { nativeAuth: row.entry.nativeAuth }
 			};
 		}
 		/** Stable visible and accessible identity for one provider target. */
@@ -1973,6 +2348,10 @@ window.__ModuleLoader__.load({
 					}
 				} : row)
 			};
+			/** A new or failed surface waits for a current snapshot; background refreshes preserve its drafts. */
+			const [hasReadySnapshot, setHasReadySnapshot] = (0, react.useState)(state.status === "ready");
+			if (state.status === "ready" && !hasReadySnapshot) setHasReadySnapshot(true);
+			if (state.status === "error" && hasReadySnapshot) setHasReadySnapshot(false);
 			const [editing, setEditing] = (0, react.useState)(void 0);
 			const [addOpen, setAddOpen] = (0, react.useState)(false);
 			const [addMode, setAddMode] = (0, react.useState)("catalog");
@@ -2060,6 +2439,16 @@ window.__ModuleLoader__.load({
 					})]
 				});
 			}
+			if (!hasReadySnapshot && state.status !== "ready") return (0, react_jsx_runtime.jsxs)("div", {
+				className: ModelsSection_module_css_default["section"],
+				children: [(0, react_jsx_runtime.jsx)("h2", {
+					className: ModelsSection_module_css_default["title"],
+					children: t("title")
+				}), (0, react_jsx_runtime.jsx)("p", {
+					className: ModelsSection_module_css_default["intro"],
+					children: t("intro")
+				})]
+			});
 			const savedRow = savedTarget === void 0 ? void 0 : state.rows.find((row) => row.entry.provider === savedTarget.provider);
 			const savedIdentity = savedRow === void 0 ? savedTarget : {
 				provider: savedRow.entry.provider,
@@ -2077,6 +2466,7 @@ window.__ModuleLoader__.load({
 			});
 			const piAi = state.namespaces.get("llm-pi-ai");
 			const protocols = protocolChoices(piAi, schema);
+			const reasoningLevels = reasoningLevelChoices(piAi, schema);
 			const catalogOffered = configurable.length > 0;
 			const catalogEnabled = addable.length > 0;
 			const customOffered = piAi !== void 0;
@@ -2138,6 +2528,7 @@ window.__ModuleLoader__.load({
 									error,
 									renderProviderEditor({
 										target,
+										row,
 										namespace,
 										schema,
 										operations,
@@ -2173,6 +2564,13 @@ window.__ModuleLoader__.load({
 													className: ModelsSection_module_css_default["rowTag"],
 													children: t("customTag")
 												}) : null,
+												row.entry.provider === "deepseek-account" ? (0, react_jsx_runtime.jsxs)("span", {
+													className: ModelsSection_module_css_default["accountStatus"],
+													children: [(0, react_jsx_runtime.jsx)("span", {
+														className: `${ModelsSection_module_css_default["credentialDot"]} ${ModelsSection_module_css_default["credentialDotConfigured"]}`,
+														"aria-hidden": "true"
+													}), t("accountSignedIn")]
+												}) : null,
 												credentialConfigured ? (0, react_jsx_runtime.jsx)("span", {
 													className: `${ModelsSection_module_css_default["credentialDot"]} ${ModelsSection_module_css_default["credentialDotConfigured"]}`,
 													role: "img",
@@ -2187,11 +2585,13 @@ window.__ModuleLoader__.load({
 											]
 										}), (0, react_jsx_runtime.jsxs)("span", {
 											className: ModelsSection_module_css_default["rowActions"],
-											children: [(0, react_jsx_runtime.jsx)("button", {
+											children: [row.entry.provider === "deepseek-account" ? null : (0, react_jsx_runtime.jsx)("button", {
 												type: "button",
 												className: ModelsSection_module_css_default["secondaryButton"],
 												"aria-label": providerCopy(t("editProvider"), target),
+												disabled: !open && state.status !== "ready",
 												onClick: () => {
+													if (!open && controller.store.getSnapshot().status !== "ready") return;
 													setSavedTarget(void 0);
 													setAddOpen(false);
 													setEditing(open ? void 0 : target);
@@ -2201,8 +2601,9 @@ window.__ModuleLoader__.load({
 												type: "button",
 												className: ModelsSection_module_css_default["dangerButton"],
 												"aria-label": providerCopy(t("removeProvider"), target),
-												disabled: !state.writable,
+												disabled: !state.writable || state.status !== "ready",
 												onClick: () => {
+													if (controller.store.getSnapshot().status !== "ready") return;
 													setSavedTarget(void 0);
 													setDeleteFailure(void 0);
 													setDeleteTarget(target);
@@ -2219,6 +2620,7 @@ window.__ModuleLoader__.load({
 									}, { entryKey: row.entry.settingsNs }),
 									open ? renderProviderEditor({
 										target,
+										row,
 										namespace,
 										schema,
 										operations,
@@ -2309,6 +2711,10 @@ window.__ModuleLoader__.load({
 											schema,
 											settingsPath: draft.target.settingsPath,
 											operations,
+											...draft.target.defaultBaseURL === void 0 ? {} : { defaultBaseURL: draft.target.defaultBaseURL },
+											...draft.target.baseURLEnv === void 0 ? {} : { baseURLEnv: draft.target.baseURLEnv },
+											...draft.target.nativeAuth === void 0 ? {} : { nativeAuth: draft.target.nativeAuth },
+											...addRow?.credentialChecks === void 0 ? {} : { credentialChecks: addRow.credentialChecks },
 											t,
 											readOnly: !state.writable,
 											onClose: (changed) => {
@@ -2334,6 +2740,7 @@ window.__ModuleLoader__.load({
 									children: (0, react_jsx_runtime.jsx)(CustomProviderCard, {
 										taken: state.rows.map((row) => row.entry.provider),
 										protocols,
+										reasoningLevels,
 										revision: piAi.revision,
 										operations,
 										t,
@@ -2351,8 +2758,9 @@ window.__ModuleLoader__.load({
 							children: (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
 								className: ModelsSection_module_css_default["addButton"],
-								disabled: !state.writable || !catalogEnabled && !customEnabled,
+								disabled: !state.writable || state.status !== "ready" || !catalogEnabled && !customEnabled,
 								onClick: () => {
+									if (controller.store.getSnapshot().status !== "ready") return;
 									const first = addable[0];
 									const initial = catalogEnabled ? "catalog" : "custom";
 									setSavedTarget(void 0);
@@ -2651,16 +3059,14 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/welcome-store.js
 		/**
-		* Welcome-notice state derived from the welcome settings scope. The scope is
-		* the transport: a loopback browser follows the durable Host section, while a
-		* remote browser's memory-mode scope never answers and the acknowledgement
-		* stays process-local here.
+		* Welcome-notice state derived from the welcome settings scope: the notice
+		* follows the Host section and records its acknowledgement through it.
 		*/
 		/* v8 ignore next 3 -- closed-union default only defends future source widening */
 		function assertNever(_value) {
 			throw new Error("unexpected welcome settings status");
 		}
-		/** Coordinates durable Host acknowledgement or a process-local remote fallback. */
+		/** Coordinates the durable Host acknowledgement. */
 		var WelcomeNoticeStore = class {
 			scope;
 			/** uSES-safe state source shared by the registered welcome step. */
@@ -2669,13 +3075,8 @@ window.__ModuleLoader__.load({
 				acknowledged: false,
 				error: null
 			});
-			localAcknowledged = false;
 			saving = false;
 			following;
-			/**
-			* @param scope - the welcome settings namespace scope; its memory mode is
-			* what keeps a remote browser process-local.
-			*/
 			constructor(scope) {
 				this.scope = scope;
 			}
@@ -2691,17 +3092,12 @@ window.__ModuleLoader__.load({
 				return Promise.resolve();
 			}
 			/**
-			* Persist this copy version, or advance only this process for a remote
-			* browser. Success is judged against the state the write left behind, so a
-			* refused or failed write reports false after its recovery read settles.
-			* @returns true when the selected persistence mode holds the acknowledgement.
+			* Persist this copy version through the scope. Success is judged against the
+			* state the write left behind, so a refused or failed write reports false
+			* after its recovery read settles.
+			* @returns true when the Host holds the acknowledgement.
 			*/
 			async acknowledge() {
-				if (this.scope.getSnapshot().mode === "memory") {
-					this.localAcknowledged = true;
-					this.derive();
-					return true;
-				}
 				this.saving = true;
 				this.store.update((state) => {
 					state.status = "saving";
@@ -2728,14 +3124,6 @@ window.__ModuleLoader__.load({
 			derive() {
 				if (this.saving) return;
 				const scope = this.scope.getSnapshot();
-				if (scope.mode === "memory") {
-					this.store.update((state) => {
-						state.status = "ready";
-						state.acknowledged = this.localAcknowledged;
-						state.error = null;
-					});
-					return;
-				}
 				switch (scope.status) {
 					case "loading":
 						this.store.update((state) => {
@@ -2780,10 +3168,6 @@ window.__ModuleLoader__.load({
 		*/
 		function createModelsOperations(ctx) {
 			return {
-				describeCredential: async (ref) => {
-					const response = await ctx.remote.credentials.describe([ref]);
-					return response.ok ? response.value[ref] : void 0;
-				},
 				storeCredential: async (ref, value) => {
 					const response = await ctx.remote.credentials.set(ref, value);
 					return response.ok ? void 0 : response.error.message;
@@ -2871,19 +3255,30 @@ window.__ModuleLoader__.load({
 			savedProvider: "Saved {provider}.",
 			credentialConfigured: "API key configured",
 			credentialMissing: "API key missing",
+			accountSignedIn: "Signed in",
 			readOnly: "The settings document is read-only in this deployment.",
 			loadFailed: "Loading the provider directory failed",
 			conflict: "Someone else changed these settings while this card was open. Close it and reopen to edit the current values.",
 			retry: "Retry",
 			keyInput: "API key",
+			keyReveal: "Show secret",
+			keyHide: "Hide secret",
 			keyPlaceholder: "Enter your API key",
-			keyPlaceholderNative: "Enter an API key, or leave blank to use environment authentication",
-			keyStored: "Configured — enter a new value to replace",
-			keyEnvLocked: "Provided by the launch environment (read-only)",
+			keyPlaceholderFallback: "Leave blank to use env as auth ({hint})",
+			keyPlaceholderSaved: "Leave blank to use saved credentials",
+			keyFallbackMissing: "Env var not detected. Enter an API key, or configure {hint} in your env.",
+			keyFallbackDetected: "Env var detected. ({hint})",
+			keyFallbackDetectedHidden: "Env var detected.",
+			keyFallbackUnchecked: "Environment credential status has not been confirmed.",
+			keyHelp: "Saved credentials are used first. Environment fallbacks shown here, in order: {env}. Sources are launch environment, $cwd/.env, then $DSH_HOME/.env.",
+			authHelp: "Authentication details",
 			customized: "Customized settings",
 			baseUrl: "Base URL",
-			baseUrlDefault: "Provider default",
-			deepSeekBaseUrl: "https://api.deepseek.com/anthropic",
+			baseUrlDefault: "No default endpoint",
+			baseUrlEnvironment: "Provider endpoint configuration: {env}",
+			baseUrlConfigured: "Provider-configured endpoint",
+			baseUrlPlaceholder: "{url}",
+			deepSeekBaseUrl: "https://api.deepseek.com/anthropic (Default to use DEEPSEEK_BASE_URL)",
 			deepSeekEndpointHint: "Use an API endpoint compatible with Anthropic Messages.",
 			models: "Models",
 			modelsInherited: "Using the adapter defaults",
@@ -2901,6 +3296,16 @@ window.__ModuleLoader__.load({
 			modelInputTypes: "Input types",
 			modelInputText: "Text",
 			modelInputImage: "Image",
+			modelReasoning: "Reasoning levels",
+			modelReasoningLevel: "Level",
+			modelReasoningValue: "API value",
+			modelReasoningHelp: "About reasoning levels",
+			modelReasoningHelpText: "The API value is sent in the request's reasoning-effort field, such as OpenAI's reasoning_effort. It defaults to the level name; where the model provider's API documentation specifies a different value, follow it. Off turns reasoning off and needs no value; a value already written in the configuration is kept and sent.",
+			modelReasoningNeedsLevel: "Add at least one level besides Off, or turn reasoning levels off.",
+			modelReasoningValueRequired: "Every level besides Off needs an API value, and no value can be empty.",
+			modelReasoningAdd: "Add level",
+			modelReasoningRemove: "Delete level",
+			modelReasoningOffValuePlaceholder: "Turns reasoning off",
 			addModel: "Add model",
 			removeModel: "Delete model",
 			modelsEmpty: "No models will be shown in the selector. Unlisted IDs can still be sent directly.",
@@ -2987,19 +3392,30 @@ window.__ModuleLoader__.load({
 			savedProvider: "已保存 {provider}。",
 			credentialConfigured: "API 密钥已配置",
 			credentialMissing: "API 密钥缺失",
+			accountSignedIn: "已登录",
 			readOnly: "当前部署的设置文档为只读。",
 			loadFailed: "加载提供商目录失败",
 			conflict: "这张卡片打开期间，这些设置已被其他地方改动。请关闭后重新打开，在当前值上编辑。",
 			retry: "重试",
 			keyInput: "API 密钥",
+			keyReveal: "显示密钥",
+			keyHide: "隐藏密钥",
 			keyPlaceholder: "输入 API 密钥",
-			keyPlaceholderNative: "输入 API 密钥，或留空使用环境认证",
-			keyStored: "已配置——输入新值可替换",
-			keyEnvLocked: "由启动环境提供（只读）",
+			keyPlaceholderFallback: "留空使用环境认证（{hint}）",
+			keyPlaceholderSaved: "留空使用已保存凭据",
+			keyFallbackMissing: "未检测到环境变量。请填写 API 密钥，或设置环境变量 {hint}。",
+			keyFallbackDetected: "已检测到环境变量（{hint}）",
+			keyFallbackDetectedHidden: "已检测到环境变量",
+			keyFallbackUnchecked: "环境凭据状态尚未确认",
+			keyHelp: "优先使用已保存的凭据。此处显示的环境后备按以下顺序排列：{env}。来源依次为启动环境、$cwd/.env、$DSH_HOME/.env。",
+			authHelp: "认证说明",
 			customized: "自定义设置",
 			baseUrl: "API 地址",
-			baseUrlDefault: "提供商默认",
-			deepSeekBaseUrl: "https://api.deepseek.com/anthropic",
+			baseUrlDefault: "没有默认地址",
+			baseUrlEnvironment: "提供方地址配置：{env}",
+			baseUrlConfigured: "由提供方配置地址",
+			baseUrlPlaceholder: "{url}",
+			deepSeekBaseUrl: "https://api.deepseek.com/anthropic（默认使用环境 DEEPSEEK_BASE_URL）",
 			deepSeekEndpointHint: "请填写兼容 Anthropic Messages 协议的 API 地址。",
 			models: "模型目录",
 			modelsInherited: "正在使用适配器默认模型",
@@ -3017,6 +3433,16 @@ window.__ModuleLoader__.load({
 			modelInputTypes: "输入类型",
 			modelInputText: "文本",
 			modelInputImage: "图片",
+			modelReasoning: "推理等级",
+			modelReasoningLevel: "档位",
+			modelReasoningValue: "API 参数值",
+			modelReasoningHelp: "推理等级说明",
+			modelReasoningHelpText: "API 参数值会写入请求的推理强度字段（如 OpenAI 的 reasoning_effort），默认与档位名相同；如有不同，以模型提供商的 API 文档为准。Off 表示关闭思考，不需要填写参数值；配置中已写入的值会保留并发送。",
+			modelReasoningNeedsLevel: "至少添加一个 Off 以外的档位；不需要思考请关闭推理等级。",
+			modelReasoningValueRequired: "Off 以外的档位都需要填写 API 参数值，且参数值不能为空字符串。",
+			modelReasoningAdd: "添加档位",
+			modelReasoningRemove: "删除档位",
+			modelReasoningOffValuePlaceholder: "关闭思考",
 			addModel: "添加模型",
 			removeModel: "删除模型",
 			modelsEmpty: "模型选择器中将不显示任何模型；目录外 ID 仍可直接发送。",

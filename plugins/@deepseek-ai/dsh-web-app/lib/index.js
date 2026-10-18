@@ -1,11 +1,11 @@
+import { t as parsePublicUrl } from "./public-url-D_dMK-yI.js";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
-import { networkInterfaces } from "node:os";
-import { fileURLToPath } from "node:url";
 import z from "@deepseek-ai/schemastery";
-import { addHarnessSourceSection, auditStartupEntries } from "@deepseek-ai/dsh-app-boot";
+import { auditStartupEntries } from "@deepseek-ai/dsh-app-boot";
 import * as FrontendStatic from "@deepseek-ai/dsh-host-frontend-static";
+import { bindUrlHost, isLoopbackHost } from "@deepseek-ai/dsh-host-webserver";
 import { launchEnvironmentOf, launchedThroughSsh } from "@deepseek-ai/dsh-launch-environment";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 //#region lib/types/index.js
@@ -15,32 +15,26 @@ import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 * manifest field). The plugin owns the browser-surface glue: it resolves
 * the built frontend dist (workspace knowledge of this bundle, never user
 * config), mounts the `frontend-static` fallback owner over it, registers the
-* harness-source and web-surface prompt sections, the bash-visible web runtime
-* variable, the process-token URL line, and the default-browser handoff. The
-* model and shell retain the clean URL. App command-line values arrive through
-* the `webStartup` service expressions in the bundle patch.
+* bash-visible web runtime variable, the process-token URL line, and the
+* default-browser handoff, and provides the `webApp` service. An advertised
+* `publicUrl` replaces the published bind-address URL. Non-loopback
+* HTTP binds trigger an exposure warning. App command-line values arrive
+* through the `webStartup` service expressions in the bundle patch.
 * @module @deepseek-ai/dsh-web-app
 */
 /** Stable Cordis plugin name. */
 const name = "web-app";
-/** This dsh installation's root, from either this package's source or built entry. */
-const SOURCE_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
 const ANNOUNCED_ROOTS = /* @__PURE__ */ new WeakSet();
-/** Runtime service that releases Web rows after bind-dependent values resolve. */
-const WEB_RUNTIME_SERVICE = "webRuntime";
 /** Services required before the web runtime can mount. */
 const inject = ["webServer"];
 const Config = z.object({
 	openBrowser: z.boolean().default(true),
 	printUrl: z.boolean().default(true),
 	surfaceContext: z.boolean().default(true),
-	trustedHosts: z.array(String).default([])
+	publicUrl: z.transform(z.string(), (value) => parsePublicUrl(value).href)
 });
-/** Environment variable naming the canonical local URL of this Web GUI. */
+/** Environment variable naming the advertised URL of this Web GUI. */
 const DSH_WEB_URL = "DSH_WEB_URL";
-const LOOPBACK_HOST = "127.0.0.1";
-/** The webserver schema's all-interfaces bind literal. */
-const ALL_INTERFACES_HOST = "0.0.0.0";
 const BROWSER_OPENER_MODULE = import.meta.resolve("open");
 const BROWSER_OPENER_PROGRAM = `
 try {
@@ -70,33 +64,6 @@ try {
   process.exitCode = 1
 }
 `;
-/**
-* Resolve one LAN-trust snapshot from the active server bind.
-*
-* Derived entries are port-less IP literals: DNS rebinding needs an
-* attacker-controlled name, while an IP-literal Host is safe on any port and
-* an OS-assigned port is unknowable before bind.
-* @param bindHost - the active webserver bind host.
-* @param extra - explicit `--trusted-host` values, in argument order.
-* @returns the LAN display addresses and invocation-derived fence authorities.
-*/
-function resolveLanTrust(bindHost, extra) {
-	const lanAddresses = bindHost === ALL_INTERFACES_HOST ? Object.values(networkInterfaces()).flat().filter((iface) => iface !== void 0 && iface.family === "IPv4" && !iface.internal).map((iface) => iface.address) : [];
-	return {
-		lanAddresses,
-		trustedHosts: [...lanAddresses, ...extra]
-	};
-}
-/** Model-visible orientation and acceptance boundary for sessions created through `dsh web`. */
-function webSurfacePrompt(webUrl) {
-	return `You are interacting with the user through the DeepSeek Harness Web GUI at ${webUrl}. When the user refers to "this page", "this GUI", or "this app" without naming another target, they mean this GUI. The browser provides no implicit DOM, route, or screenshot context. The client-plugin HMR receiver is active, but client-plugin changes reload without a refresh only while \`pnpm run dev:web\` is also running from this same checkout to rebuild their bundles; verify that watcher before promising automatic updates. Every other change — the apps/web shell and plain packages — requires rebuilding the affected Web artifacts and verifying this existing URL after a page refresh. Starting another server does not update this GUI. The apps/web Vite entry builds the shell but is not a standalone application because only dsh web injects window.__DSH_BOOT__. Do not start a replacement server unless the user asks; if one is needed, use a managed background job and verify its exact URL.`;
-}
-/** Resolve the canonical loopback URL from the active Web server. */
-function localWebUrl(ctx) {
-	const port = ctx.get("webServer")?.port;
-	if (port === void 0) throw new Error("web-app: webServer service missing while resolving Web runtime");
-	return `http://${LOOPBACK_HOST}:${String(port)}`;
-}
 /**
 * Dist location is workspace knowledge of this bundle: anchored on the
 * frontend package manifest, not configured. Existence is a request-time
@@ -169,43 +136,35 @@ const internals = {
 	openBrowser
 };
 /**
-* Mount the Web runtime: dist serving, surface prompt, the bash runtime
-* variable, the URL line, and the default-browser handoff.
+* Mount the Web runtime: dist serving, the bash runtime variable, the URL
+* line, and the default-browser handoff.
 * @param ctx - plugin context carrying the webServer service.
 * @param config - validated {@link Config}.
 */
 function apply(ctx, config) {
-	const runtime = resolveLanTrust(ctx.webServer.host, config.trustedHosts);
+	const publicUrl = config.publicUrl ?? void 0;
+	const boundHost = ctx.webServer.host;
+	if (publicUrl === void 0 && bindUrlHost(boundHost) === void 0) throw new Error(`web-app: bind address ${JSON.stringify(boundHost)} carries an interface zone id, which no URL can express; pass --public-url with the root browsers actually reach it through`);
+	if (ctx.webServer.protocol === "http:" && !isLoopbackHost(boundHost)) console.warn(`dsh web: listening on ${boundHost} over plain HTTP; restrict this port to a trusted proxy or network`);
 	const handoffBrowser = config.openBrowser && !launchedThroughSsh(launchEnvironmentOf(ctx));
-	ctx.provide(WEB_RUNTIME_SERVICE, runtime);
+	/** The advertised root: the canonical `publicUrl`, or the listener's own origin. */
+	const appRootUrl = () => publicUrl ?? ctx.webServer.getOrigin();
+	ctx.provide("webApp", { getAdvertisedUrl: appRootUrl });
 	ctx.plugin(FrontendStatic, { distIndex: internals.resolveDistIndex() });
-	if (config.surfaceContext) {
-		ctx.inject(["systemPrompt"], (promptCtx) => {
-			addHarnessSourceSection(promptCtx, SOURCE_ROOT);
-			promptCtx.systemPrompt.section({
-				name: "app:web-surface",
-				order: promptCtx.systemPrompt.getSectionOrder("WEB_SURFACE"),
-				text: () => webSurfacePrompt(localWebUrl(promptCtx))
-			});
+	if (config.surfaceContext) ctx.inject(["shellEnv"], (runtimeCtx) => {
+		runtimeCtx.shellEnv.register({
+			name: "web-runtime",
+			variables: { [DSH_WEB_URL]: { description: "Advertised URL of the DeepSeek Harness Web GUI serving this session." } },
+			resolve: () => ({ [DSH_WEB_URL]: appRootUrl() })
 		});
-		ctx.inject(["shellEnv"], (runtimeCtx) => {
-			runtimeCtx.shellEnv.register({
-				name: "web-runtime",
-				variables: { [DSH_WEB_URL]: { description: "Canonical local URL of the DeepSeek Harness Web GUI serving this session." } },
-				resolve: () => ({ [DSH_WEB_URL]: localWebUrl(runtimeCtx) })
-			});
-		});
-	}
+	});
 	if (config.printUrl || handoffBrowser) ctx.inject(["connection"], (connectionCtx) => {
 		const announceReady = () => {
 			if (ANNOUNCED_ROOTS.has(connectionCtx.root)) return;
-			const webUrl = localWebUrl(connectionCtx);
+			const webUrl = appRootUrl();
 			const authenticatedUrl = connectionCtx.connection.authenticatedUrl(webUrl);
-			const lanCandidate = runtime.lanAddresses[0];
-			const port = connectionCtx.webServer.port;
-			const lanUrl = lanCandidate === void 0 ? void 0 : connectionCtx.connection.authenticatedUrl(`http://${lanCandidate}:${String(port)}`);
 			ANNOUNCED_ROOTS.add(connectionCtx.root);
-			if (config.printUrl) console.log(`dsh web: ${authenticatedUrl}${lanUrl === void 0 ? "" : ` (LAN: ${lanUrl})`}`);
+			if (config.printUrl) console.log(`dsh web: ${authenticatedUrl}`);
 			if (handoffBrowser) {
 				console.log("dsh web: opening the default browser; pass --no-open to disable");
 				internals.openBrowser(authenticatedUrl).catch((error) => {
@@ -223,4 +182,4 @@ function apply(ctx, config) {
 	});
 }
 //#endregion
-export { Config, apply, inject, internals, name, resolveLanTrust };
+export { Config, apply, inject, internals, name };

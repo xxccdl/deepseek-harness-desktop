@@ -1,8 +1,8 @@
 /**
  * Pure row-model derivation for tool summary rows: variant classification,
  * one-line summary, expansion-time body input, and flattened result output
- * from the frozen call slice. Input material comes from the call ARGUMENTS;
- * output and error material from the settled result node. A supported terminal
+ * from the frozen call slice. Labels keep the call arguments; navigation,
+ * output, and errors use the settled result. A supported terminal
  * call gets its expanded body from `terminalCardModel` instead.
  */
 import type { ToolCallBlock, ToolResultNode } from '@deepseek-ai/dsh-client-ui-chat/client';
@@ -47,9 +47,9 @@ export interface ToolRowModel {
     /** Generic rows retain the wire tool name; available arguments append their summary. */
     summary: string;
     /**
-     * Filesystem path from args (`path` / `file_path`) when the row is a file
-     * tool; absent for URL reads and non-file tools. The chat view resolves
-     * relative values against the session cwd before opening.
+     * Operation-time absolute result path for file rows. Old results without
+     * location metadata retain their argument fallback; running relative paths
+     * stay unavailable until their result identifies the target.
      */
     filePath: string | undefined;
     /** Original argument JSON retained for expansion-time body formatting. */

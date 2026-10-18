@@ -18,11 +18,4 @@ export declare function parsedToolCall(block: ToolCallBlock): ParsedToolCall | n
  * @returns its text, or undefined for any other content layout.
  */
 export declare function singleResultText(block: ToolResultNode): string | undefined;
-/**
- * Validate the optional escalation pair shared by first-party shell and file
- * mutation tools.
- * @param args - parsed open-root Tool arguments.
- * @returns whether the declared escalation fields form a valid pair.
- */
-export declare function validEscalationFields(args: Record<string, unknown>): boolean;
 //# sourceMappingURL=raw-tool-call.d.ts.map

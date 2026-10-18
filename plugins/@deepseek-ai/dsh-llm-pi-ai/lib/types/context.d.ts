@@ -4,7 +4,7 @@
  * @module dsh-llm-pi-ai/context
  */
 import type { GenerateOptions, ImageAttachmentAccessResolver } from '@deepseek-ai/dsh-llm';
-import type { AttachmentStore } from '@deepseek-ai/dsh-attachment';
+import type { AttachmentStore, ImageAttachmentRef, ImageRequestTarget } from '@deepseek-ai/dsh-attachment';
 import type { Context as PiContext } from '@earendil-works/pi-ai';
 /** Inputs that bind deterministic request images to one current tool execution world. */
 export interface PiImageRequestContext {
@@ -25,9 +25,16 @@ export interface PiImageRequestBudget {
     maxBytes: number;
 }
 /**
+ * Resolve the request target for one source under the route budgets.
+ * @param ref - normalized source image.
+ * @param budget - resolved route pixel and byte limits.
+ * @returns dimensions and byte target shared by serialization and screenshot coordinate mapping.
+ */
+export declare function requestImageTarget(ref: ImageAttachmentRef, budget: PiImageRequestBudget): ImageRequestTarget;
+/**
  * Convert text-only harness history to a synchronous pi-ai Context. Tool
  * result names are recovered from preceding assistant tool calls.
- * @param options - the harness request; `options.system`, else a leading `system` message, maps to pi-ai's single `systemPrompt` slot.
+ * @param options - projected request; one-shot system text precedes the leading history prompt.
  * @param images - absent; selects the synchronous conversion.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.
  * @returns the pi-ai context; `tools` is omitted when the request declares none.
@@ -41,7 +48,7 @@ export declare function toPiContext(options: GenerateOptions, images?: undefined
  * retained occurrences' exact base64 payload still exceeds
  * `maxRequestImageBytes`, the call fails with `IMAGE_OFFLOAD_REQUIRED` naming
  * how many more oldest occurrences must be offloaded.
- * @param options - the harness request; `options.system`, else a leading `system` message, maps to pi-ai's single `systemPrompt` slot.
+ * @param options - projected request; one-shot system text precedes the leading history prompt.
  * @param images - attachment provider, current path resolver, and request limits.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.
  * @returns the asynchronously resolved pi-ai context.

@@ -21,7 +21,7 @@ export interface TerminalCardModel {
      * The locale-neutral props {@link TerminalBlock} draws. The render site adds
      * `command` after resolving {@link copy} through its locale seat.
      */
-    card: Pick<TerminalBlockProps, 'cwd' | 'output' | 'exitCode' | 'signal' | 'running'>;
+    card: Pick<TerminalBlockProps, 'cwd' | 'output' | 'exitCode' | 'signal' | 'running' | 'background'>;
     /**
      * Verbatim Tool data or semantic `terminal_send` data. Product copy stays
      * unresolved until a render site supplies its locale seat.
@@ -37,7 +37,7 @@ export interface TerminalCardModel {
     };
 }
 interface LocalizedTerminalCardModel {
-    readonly card: Pick<TerminalBlockProps, 'command' | 'cwd' | 'output' | 'exitCode' | 'signal' | 'running'>;
+    readonly card: Pick<TerminalBlockProps, 'command' | 'cwd' | 'output' | 'exitCode' | 'signal' | 'running' | 'background'>;
     readonly description: string | undefined;
 }
 /**
@@ -49,15 +49,27 @@ interface LocalizedTerminalCardModel {
  */
 export declare function localizeTerminalCardModel(model: TerminalCardModel, t: TranslateNS<'conversation'>): LocalizedTerminalCardModel;
 /**
- * True when a settled terminal card reports a failing exit — a non-zero code
- * or a terminating signal. The bash tool settles a failing command as a
- * completed call (`isError` stays false: the exit status is result data), so
- * this is the collapsed row's only failure signal; without it the red exit
- * pill would be visible only after expanding the card.
+ * True when a settled terminal card reports a failing exit — a non-zero code,
+ * an explicitly missing exit code, or a terminating signal. The bash tool settles
+ * a failing command as a completed call (`isError` stays false: the exit status is result data), so
+ * the row retains that failure state alongside its exit capsule.
  * @param model - a derived terminal card.
  * @returns whether the card's exit status is a failure.
  */
 export declare function terminalFailed(model: TerminalCardModel): boolean;
+/**
+ * Localize a settled foreground command's exit status without inventing a code.
+ * @param model - terminal card, absent for generic execution errors.
+ * @param t - conversation locale.
+ * @returns the capsule label, or null for running, background, or successful calls.
+ */
+export declare function terminalExitLabel(model: TerminalCardModel | null | undefined, t: TranslateNS<'conversation'>): string | null;
+/**
+ * Identify a background shell launch whose result acknowledges a job, not its exit.
+ * @param block - Tool block at any call stage.
+ * @returns whether the call requests a background shell job.
+ */
+export declare function isBackgroundShellCall(block: ToolCallBlock): boolean;
 /**
  * Identify a settled root call from the persistent Bash or PowerShell tool.
  * Its result stays on the generic input/output path because the persistent
@@ -75,11 +87,12 @@ export declare function isSpilledShellCall(block: ToolCallBlock): boolean;
 /**
  * Derive terminal props for supported shell and terminal-send calls, including
  * nested PTC dispatch calls. Standard shell results parse their final status
- * marker; persistent shell results, spill previews, background calls, errors,
- * and malformed input use the generic path. {@link isSettledPersistentShellCall} lets that generic
+ * marker. Successful background shell launches retain only their command after
+ * settlement; persistent shell results, spill previews, background terminal sends,
+ * errors, and malformed input use the generic path. {@link isSettledPersistentShellCall} lets that generic
  * persistent result remain expandable without inventing one process status.
  * @param block - running or settled Tool block.
- * @param sessionCwd - session workspace root used to resolve workdir.
+ * @param sessionCwd - original workspace root used only for old results without recorded cwd.
  * @returns locale-neutral terminal-card data, or null for the generic path.
  */
 export declare function terminalCardModel(block: ToolCallBlock, sessionCwd?: string): TerminalCardModel | null;

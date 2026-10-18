@@ -217,10 +217,10 @@ function persistentShells(ctx, config) {
 		const combinedSignal = AbortSignal.any([signal, lifecycle.signal]);
 		const tracked = (async () => {
 			try {
-				const cwd = owner.session.header.cwd;
+				const cwd = await ctx.workingDirectory.ensure(owner, combinedSignal);
 				const spawned = await ctx.terminals.spawn(owner, {
 					type: config.backendType,
-					...cwd === void 0 ? {} : { cwd }
+					cwd
 				}, combinedSignal);
 				live.set(owner, spawned.sessionId);
 				if (!ownerCleanupInstalled.has(owner)) {
@@ -369,7 +369,11 @@ function registerPersistentPwsh(ctx, config) {
 	}));
 }
 const name = "tool-pwsh-persistent";
-const inject = ["tools", "terminals"];
+const inject = [
+	"tools",
+	"terminals",
+	"workingDirectory"
+];
 /** Runtime configuration schema for the persistent pwsh tool. */
 const Config = z.object({
 	backendType: z.string().default("shell"),

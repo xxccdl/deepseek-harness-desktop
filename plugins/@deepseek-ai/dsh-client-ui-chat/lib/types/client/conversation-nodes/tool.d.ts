@@ -7,7 +7,8 @@ declare module '../contract/chat-nodes.ts' {
     }
 }
 interface ToolState {
-    readonly root: ToolCallBlock;
+    /** Absent until a named delta or `tool/call` identifies the call. */
+    readonly root: ToolCallBlock | undefined;
     readonly children: ReadonlyMap<string, readonly ToolCallBlock[]>;
     readonly parents: ReadonlyMap<string, string>;
 }

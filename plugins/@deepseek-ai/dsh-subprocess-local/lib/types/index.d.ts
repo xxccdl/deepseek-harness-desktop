@@ -30,8 +30,13 @@ export declare class LocalSubprocessRuntime extends SubprocessRuntime {
     internals: SpawnInternals;
     /** Provider-lifetime latch suppressing repeated weaker-containment warnings. */
     private fallbackWarningIssued;
-    /** Positive-only cache for the expensive Linux bootstrap and scope probe. */
-    private linuxDeepProbePassed;
+    /**
+     * Linux native containment decisions. Each probe is a spawnSync that blocks the event loop and forks the
+     * host, so the selector reruns it only after an event invalidates the previous verdict.
+     */
+    private readonly linuxScope;
+    /** Scope decision of the launch in progress; selectContainmentMode sets it immediately before the launch reads it. */
+    private linuxScopeDecision;
     /** Test hook for platform process inspection; production resolves lazily on terminal spawn. */
     terminalInspector: ProcessInspector | undefined;
     constructor(ctx: Context);
@@ -42,6 +47,8 @@ export declare class LocalSubprocessRuntime extends SubprocessRuntime {
     resolveExecutable(command: string, env?: Readonly<Record<string, string>>, signal?: AbortSignal): Promise<string>;
     private executableCandidates;
     spawn(spec: SubprocessSpawnSpec): SubprocessHandle;
+    /** Probe again before the next launch when a scope launched under generation never started its target. */
+    private watchLinuxScopeStart;
     private selectContainmentMode;
     private warnFallback;
     /** @inheritdoc */

@@ -6,7 +6,8 @@ import type { DeepSeekFileId } from './file-id.ts';
 import type { WireRequest } from './wire-types.ts';
 /** Serialize one complete request using already prepared image bytes.
  * User and tool-result content omits reasoning and tool-call blocks.
- * Empty user messages are skipped; empty tool results retain their call ids.
+ * Empty assistant text blocks and empty user/assistant messages are skipped;
+ * empty tool results retain their call ids.
  * Developer messages, already projected for this route by `LlmRuntime`, become
  * system-role updates after the preceding user turn, with tool changes as
  * `tool_addition` and `tool_removal` references to the declared tool.

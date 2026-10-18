@@ -7,7 +7,7 @@
  * re-renders from the next describe, pushed or refetched.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
-import type { CredentialInfo, LlmConfigurableProvider, LlmProviderInfo, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client';
+import type { CredentialInfo, LlmConfigurableProvider, LlmNativeAuth, LlmProviderInfo, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client';
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store';
 import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { SettingsSchemaOperations } from './schema-operations.ts';
@@ -19,6 +19,9 @@ export interface ProviderDirectoryEntry {
     readonly settingsPath: readonly string[];
     readonly active: boolean;
     readonly declared?: boolean;
+    readonly defaultBaseURL?: string;
+    readonly baseURLEnv?: readonly string[];
+    readonly nativeAuth?: LlmNativeAuth;
     readonly error?: string;
 }
 /**
@@ -49,6 +52,8 @@ export interface ProviderRow {
      * own derivation rule.
      */
     derivedCredential?: CredentialInfo;
+    /** Redacted checks for named or native references; absent when their read failed. */
+    credentialChecks?: Readonly<Record<string, CredentialInfo>>;
 }
 /** Page snapshot. */
 export interface ModelsSettingsState {
@@ -82,6 +87,16 @@ export declare function deriveKeyRef(provider: string): string;
  * @returns the protocol identifiers, or an empty list when the schema has none.
  */
 export declare function protocolChoices(namespace: SettingsNamespaceView | undefined, schema: SettingsSchemaOperations): string[];
+/**
+ * The reasoning levels a hand-declared route's models may declare, read out of
+ * the owning namespace's own schema for the same reason as
+ * {@link protocolChoices}: the levels the page offers and the keys the
+ * adapter accepts in `reasoningEfforts` come from the same `Config`.
+ * @param namespace - the namespace view whose schema declares the profile shape.
+ * @param schema - settings schema operations.
+ * @returns the levels in the schema's escalation order, or an empty list when the schema has none.
+ */
+export declare function reasoningLevelChoices(namespace: SettingsNamespaceView | undefined, schema: SettingsSchemaOperations): string[];
 /** The models settings page controller (one per settings surface). */
 export declare class ModelsSettingsStore {
     private readonly ctx;
@@ -91,6 +106,8 @@ export declare class ModelsSettingsStore {
     readonly store: SnapshotStore<ModelsSettingsState>;
     /** Latest load wins; an older response never overwrites a newer one. */
     private generation;
+    /** Callers follow the current refresh's outcome, including callers whose read was superseded. */
+    private readonly pendingLoads;
     /**
      * @param ctx - the page plugin's context, whose `remote.llm` and
      * `remote.credentials` namespaces carry the directory and credential reads.
@@ -103,11 +120,17 @@ export declare class ModelsSettingsStore {
      * settings answer in parallel, then one batched credential describe over
      * every referenced ref. Provider failure or absence of an initial settings
      * answer keeps the last good rows and surfaces an error; a failed settings
-     * refresh reuses the mirror's held view.
-     * @returns nothing; the snapshot carries the outcome.
+     * refresh reuses the mirror's held view. Concurrent callers resolve only
+     * after the current refresh publishes its ready or error snapshot.
+     * @returns resolution after the current snapshot is published.
+     * @throws the current read's unexpected rejection; superseded rejections are ignored.
      */
     load(): Promise<void>;
-    /** Publish one load's failure text, unless a newer load already took over. */
+    /** Publish one joined answer; stale answers leave the current refresh in charge. */
+    private read;
+    /** Settle callers only while this read still owns the current refresh. */
+    private settleLoads;
+    /** Publish the current joined read's failure text. */
     private failLoad;
 }
 /**

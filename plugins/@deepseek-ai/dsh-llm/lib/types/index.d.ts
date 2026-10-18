@@ -10,9 +10,9 @@ import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { GenerateOptions, LlmConfigurableProvider, LlmDiscoveredModel, LlmFailure, LlmImageRequestPricing, LlmModelContext, LlmModelDiscoveryRequest, LlmModelInfo, LlmResolvedModelInfo, LlmProviderInfo, ModelModality, StreamChunk, SystemPromptUpdate, ToolUpdate } from './types.ts';
 import type { ResolvedRetryPolicy } from './retry-policy.ts';
 import type { ProviderRequestId } from './brand.ts';
-import type { LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
+import type { ConfigureCall, LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
 import { HarnessError } from './error.ts';
-import type { FileAttachmentRef } from '@deepseek-ai/dsh-attachment';
+import type { FileAttachmentRef, ImageAttachmentRef, ImageRequestTarget } from '@deepseek-ai/dsh-attachment';
 export * from './attribution.ts';
 export * from './brand.ts';
 export * from './error.ts';
@@ -24,7 +24,7 @@ export * from './message.ts';
 export * from './retry-policy.ts';
 export { BlockAssembler } from './assembler.ts';
 export { callConfigEquals, isAgentLoopRequest, markAgentLoopRequest } from './call-config.ts';
-export type { LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts';
+export type { ConfigureCall, LlmCallConfig, LlmCallConfigAdapterDefaults, LlmCallControls } from './call-config.ts';
 declare module '@deepseek-ai/cordis' {
     interface Context {
         llm: LlmRuntime;
@@ -150,6 +150,15 @@ export declare abstract class LlmAdapter {
      * @returns route-owned image pricing, or `undefined` when the route declares none.
      */
     imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;
+    /**
+     * Resolve the image dimensions and byte target this adapter sends to the model.
+     * The default preserves normalized images; adapters that resize must override it.
+     * @param _provider - registered provider route.
+     * @param _model - exact model id.
+     * @param image - normalized image whose request projection is being resolved.
+     * @returns the same target used by request serialization, before provider-internal processing.
+     */
+    imageRequestTarget(_provider: string, _model: string, image: ImageAttachmentRef): ImageRequestTarget;
     /**
      * List models this adapter can currently advertise for one owned provider.
      * Core routing accepts unlisted model ids; catalog-driven entry points such
@@ -332,6 +341,14 @@ export declare class LlmRuntime extends TypertRemoteService {
      */
     imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;
     /**
+     * Resolve the image projection for an exact registered model route.
+     * @param provider - registered provider route.
+     * @param model - exact model id.
+     * @param image - normalized image reference.
+     * @returns dimensions and byte target used by the adapter's request serializer.
+     */
+    imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): ImageRequestTarget;
+    /**
      * Resolve the exact text one durable file occurrence contributes to every
      * provider request in the current execution environment.
      * @param ref - durable verbatim file reference from model history.
@@ -379,11 +396,15 @@ export declare class LlmRuntime extends TypertRemoteService {
      * Resolve one call under its current adapter registration. The returned
      * one-shot handle keeps that registration across header logging and dispatch,
      * so HMR cannot combine one adapter's capability result with another adapter.
-     * @param config - provider/model route and optional request controls.
+     * An optional synchronous callback selects concrete controls using captured
+     * model metadata. Defaults and validation apply to its result. Callback
+     * failures and cancellation reject preparation before dispatch.
+     * @param config - provider/model route and optional concrete request controls.
      * @param signal - optional cancellation for adapter-owned capability lookup.
+     * @param configure - pure control selection, called once before defaults and validation.
      * @returns a prepared config and its registration-bound stream entry point.
      */
-    prepareCall(config: LlmCallConfig, signal?: AbortSignal): Promise<PreparedLlmCall>;
+    prepareCall(config: LlmCallConfig, signal?: AbortSignal, configure?: ConfigureCall): Promise<PreparedLlmCall>;
     private registration;
     /** Remove replay state whose historical route is owned by another adapter. */
     private forAdapter;

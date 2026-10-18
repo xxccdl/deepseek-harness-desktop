@@ -1,4 +1,3 @@
-/** Tool-category and live-detail interpretation owned by Chat grouping. */
 import type { ProcessActivitySummary } from '../contract/process-groups.ts';
 import type { ChatNode } from '../contract/chat-nodes.ts';
 /**

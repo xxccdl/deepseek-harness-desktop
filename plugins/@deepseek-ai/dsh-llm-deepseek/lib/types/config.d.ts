@@ -16,7 +16,7 @@ export interface Config {
     maxTokens: Volatile<number>;
     /** Positive context capacity used when the selected model has no exact value (default 1,000,000). */
     defaultContextWindow: Volatile<number>;
-    /** Advisory models shown by discovery consumers; defaults to V41 Flash and V4 Pro. */
+    /** Advisory models shown by discovery consumers; defaults to V4.1 Flash and V4 Pro. */
     models: Volatile<DeepSeekCatalogModel[]>;
     /** Maximum provider idle time while one stream read is outstanding (default five minutes). */
     streamIdleTimeoutMs: Volatile<number>;
@@ -52,6 +52,21 @@ export type Options = {
  * @returns Plain options for the resolver.
  */
 export declare function plainOptions(config: Config): Options;
+/**
+ * Schemas of the catalog-entry fields other than `id` and `inputModalities`,
+ * whose requiredness and defaults differ between a `models` entry and a
+ * provider's per-model overrides.
+ */
+export declare const catalogModelFields: {
+    name: z<string, string, "plain">;
+    description: z<string, string, "plain">;
+    contextWindow: z<number, number, "plain">;
+    maxTokens: z<number, number, "plain">;
+    imagePixelBudget: z<number | "low", number | "low", "plain">;
+    imageMaxBytes: z<number, number, "plain">;
+    systemPromptUpdate: z<"in-history", "in-history", "plain">;
+    toolUpdate: z<"in-history" | "addition-only", "in-history" | "addition-only", "plain">;
+};
 /** Shared schema fields for Messages protocol options. */
 export declare const deepSeekConfigFields: {
     baseURL: z<string, string, "volatile">;
@@ -126,7 +141,8 @@ export type ResolvedDeepSeekOptions = DeepSeekConnectionOptions;
  * the product CLI. Every layer may supply an endpoint: the product trusts the
  * project it is launched in, so a checkout can point its own agent at the
  * gateway that checkout is meant to use.
- * @returns validated protocol settings.
+ * @returns validated protocol settings; `models` holds one resolved entry per
+ * input model in input order, or the built-in catalog when `models` is absent.
  */
 export declare function resolveAdapterOptions(config: Options, environment?: LaunchEnvironmentSnapshot): ResolvedDeepSeekOptions;
 //# sourceMappingURL=config.d.ts.map

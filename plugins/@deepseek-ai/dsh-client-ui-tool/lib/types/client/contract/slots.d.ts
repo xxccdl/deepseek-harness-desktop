@@ -1,7 +1,7 @@
 /** Tool UI slot declarations and their composed component props. */
-import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, SessionIdOf, SlotHookFactory } from '@deepseek-ai/dsh-client-ui-slots';
+import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, SessionIdOf } from '@deepseek-ai/dsh-client-ui-slots';
 import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client';
-import type { AssistantChatData, OpenFileOptions, PreparingToolCall, StartedToolCall, ToolResultNode, UseDisclosure } from '@deepseek-ai/dsh-client-ui-chat/client';
+import type { OpenFileOptions, PreparingToolCall, StartedToolCall, ToolResultNode, UseDisclosure } from '@deepseek-ai/dsh-client-ui-chat/client';
 import type { MessageImageLoader, MessageImageSource } from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type { AskUserQuestionAnswerItem, AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions/types';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -12,16 +12,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
          * `key: '<tool name>'`; a typo never renders.
          *
          * Registering an occupied key replaces its view; unclaimed keys use the
-         * generic row. The owner supplies the call identity and frozen running
-         * or settled node through explicit phase props. Preparing blocks have no dispatched
-         * arguments; useToolCallArgumentsPartial optionally subscribes to their raw prefix.
+         * generic row. The owner supplies the call identity and running
+         * or settled node through explicit phase props. Every stage supplies
+         * `name` and a lazy `args` view; preparing arguments may be incomplete.
          */
         'tool.call.toolview': {
             kind: 'keyed';
             scope: 'session';
             owner: ToolCallOwnerProps;
-            hookContext: ToolCallHookContext;
-            inject: ToolCallInjected;
         };
         /**
          * Durable images of a settled image-bearing Tool call, rendered through
@@ -42,20 +40,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
             owner: ToolImagesOwnerProps;
         };
     }
-}
-/** Subscribe to this preparing call's raw argument prefix; other phases return an empty string. */
-export type UseToolCallArgumentsPartial = () => string;
-/** Call-local sources supplied by the Tool tree to the slot's Hook binding. */
-export interface ToolCallHookContext {
-    readonly callId: string;
-    /** This call's Step source, present only while preparing. */
-    readonly assistant: HostObservable<Readonly<AssistantChatData> | undefined> | undefined;
-}
-/** Framework-bound subscriptions available to atomic Tool views on demand. */
-export interface ToolCallInjected {
-    hooks: {
-        toolCallArgumentsPartial: SlotHookFactory<'tool.call.toolview', UseToolCallArgumentsPartial>;
-    };
 }
 /** Owner currency of the Tool image gallery slot: references plus the loader. */
 export interface ToolImagesOwnerProps {

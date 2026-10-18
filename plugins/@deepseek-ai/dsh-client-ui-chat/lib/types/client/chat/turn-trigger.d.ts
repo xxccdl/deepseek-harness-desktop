@@ -4,7 +4,7 @@ import type { ChatKey } from '../locale.ts';
 /** Existing primitive glyph selected for a Turn trigger's source family. */
 export type TurnTriggerIcon = 'agent' | 'github' | 'goal' | 'job' | 'plugin' | 'request' | 'schedule' | 'subagent' | 'team' | 'webhook';
 /**
- * Describe a waking message using its source and recognized producer framing.
+ * Describe a waking message using its recorded source.
  * @param node - durable context, including the original notification body.
  * @returns localized title key and source-family icon.
  */

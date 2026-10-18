@@ -100,6 +100,10 @@ export declare const zh: {
     'settings.links.newTab': string;
     'settings.transcript.title': string;
     'settings.transcript.description': string;
+    'settings.collapse.title': string;
+    'settings.collapse.description': string;
+    'settings.collapse.completion': string;
+    'settings.collapse.nextInput': string;
     'settings.transcript.compact': string;
     'settings.transcript.standard': string;
     'settings.transcript.detailed': string;
@@ -159,8 +163,9 @@ export declare const zh: {
     'message.retry.delay': string;
     'message.retry.failure': string;
     'message.failure.auth': string;
-    'message.accountStopped': string;
+    'message.taskStopped': string;
     'message.failure.accountSignedOut': string;
+    'message.failure.interrupted': string;
     'message.failure.accountSignInRequired': string;
     'message.failure.quota': string;
     'message.turnError': string;
@@ -291,6 +296,10 @@ export declare const en: {
     'settings.links.newTab': string;
     'settings.transcript.title': string;
     'settings.transcript.description': string;
+    'settings.collapse.title': string;
+    'settings.collapse.description': string;
+    'settings.collapse.completion': string;
+    'settings.collapse.nextInput': string;
     'settings.transcript.compact': string;
     'settings.transcript.standard': string;
     'settings.transcript.detailed': string;
@@ -350,8 +359,9 @@ export declare const en: {
     'message.retry.delay': string;
     'message.retry.failure': string;
     'message.failure.auth': string;
-    'message.accountStopped': string;
+    'message.taskStopped': string;
     'message.failure.accountSignedOut': string;
+    'message.failure.interrupted': string;
     'message.failure.accountSignInRequired': string;
     'message.failure.quota': string;
     'message.turnError': string;

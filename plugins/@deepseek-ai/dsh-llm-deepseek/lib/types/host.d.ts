@@ -7,5 +7,5 @@ import type { DeepSeekAdapterOptions, DeepSeekConnectionOptions } from './types.
  * @param provider - exact route owned by this plugin.
  * @param dependencies - provider-owned discovery, credential, and configuration callbacks.
  */
-export declare function registerDeepSeekProvider<C extends DeepSeekConnectionOptions>(ctx: Context, provider: string, dependencies: Pick<DeepSeekAdapterOptions<C>, 'options' | 'resolveAuth' | 'providerName' | 'discoverModels'>): void;
+export declare function registerDeepSeekProvider<C extends DeepSeekConnectionOptions>(ctx: Context, provider: string, dependencies: Pick<DeepSeekAdapterOptions<C>, 'options' | 'resolveAuth' | 'providerName' | 'discoverModels' | 'connect' | 'admit'>): void;
 //# sourceMappingURL=host.d.ts.map

@@ -17,11 +17,12 @@
  * and at least one model — are required here rather than at load, so the
  * failure names the field while the user is still looking at it.
  *
- * There is deliberately no reasoning-effort control, here or on the editor
- * card: effort is a per-MODEL capability, and the models under one provider
- * disagree about it, so a provider-scoped control can only be set to a value
- * some of them reject. The composer's model picker offers each model its own
- * levels instead.
+ * There is deliberately no provider-scoped reasoning-effort control, here or
+ * on the editor card: effort is a per-MODEL capability, and the models under
+ * one provider disagree about it, so a provider-scoped control can only be set
+ * to a value some of them reject. Each model row of a hand-declared route
+ * declares its own `reasoningEfforts` instead, and the composer's model picker
+ * offers each model those levels.
  */
 import type { ReactNode } from 'react';
 import type { ModelsOperations } from './operations.ts';
@@ -32,6 +33,8 @@ export interface CustomProviderCardProps {
     taken: readonly string[];
     /** Wire protocols the adapter can serve, in the order it reports them. */
     protocols: readonly string[];
+    /** Reasoning levels the adapter's schema accepts, in escalation order; empty shows no reasoning control. */
+    reasoningLevels: readonly string[];
     /**
      * Revision of the `llm-pi-ai` user section this card opened at, sent with
      * the create so a route another tab declared meanwhile is a refusal rather

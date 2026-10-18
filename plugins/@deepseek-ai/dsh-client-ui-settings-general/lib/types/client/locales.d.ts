@@ -35,6 +35,13 @@ export declare const zh: {
     'connection.connected': string;
     'connection.reconnect': string;
     'connection.restart': string;
+    'hostRelease.title': string;
+    'hostRelease.description': string;
+    'hostRelease.service': string;
+    'hostRelease.page': string;
+    'hostRelease.unknown': string;
+    'hostRelease.reload': string;
+    'hostRelease.later': string;
 };
 /** The settings namespace key union. */
 export type SettingsKey = keyof typeof zh;
@@ -74,5 +81,12 @@ export declare const en: {
     'connection.connected': string;
     'connection.reconnect': string;
     'connection.restart': string;
+    'hostRelease.title': string;
+    'hostRelease.description': string;
+    'hostRelease.service': string;
+    'hostRelease.page': string;
+    'hostRelease.unknown': string;
+    'hostRelease.reload': string;
+    'hostRelease.later': string;
 };
 //# sourceMappingURL=locales.d.ts.map

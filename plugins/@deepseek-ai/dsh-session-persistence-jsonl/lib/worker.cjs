@@ -9,6 +9,630 @@ let node_util = require("node:util");
 let node_zlib = require("node:zlib");
 let node_module = require("node:module");
 let node_buffer = require("node:buffer");
+//#region ../../util/values/src/partial-json.ts
+/**
+* Lazily scanned view of one JSON object's top-level fields, built from text
+* that may still be streaming or from an already parsed object. Nothing is
+* scanned until a reader asks; the view remembers every question it answered
+* and reports changed answers when the owner refreshes for publication.
+* Used for model tool-call arguments: a row reads the fields it
+* cares about at whatever granularity it displays, at every stage of the call.
+* @module @deepseek-ai/dsh-util-values/src/partial-json
+*/
+const SIMPLE_ESCAPES = {
+	"\"": "\"",
+	"\\": "\\",
+	"/": "/",
+	b: "\b",
+	f: "\f",
+	n: "\n",
+	r: "\r",
+	t: "	"
+};
+const CONTENT_ESCAPE = /[\\\u0000-\u001f]/u;
+function isWhitespace(c) {
+	return c === " " || c === "\n" || c === "\r" || c === "	";
+}
+function isHex(c) {
+	return c >= "0" && c <= "9" || c >= "a" && c <= "f" || c >= "A" && c <= "F";
+}
+(class PartialArguments {
+	/** The view of a call with no arguments available. */
+	static EMPTY = PartialArguments.fromObject({});
+	/**
+	* View finished argument text without scanning it until a reader asks.
+	* @param text - the complete argument JSON text.
+	* @returns a sealed view.
+	*/
+	static fromText(text) {
+		const view = new PartialArguments();
+		view.append(text);
+		view.sealed = true;
+		return view;
+	}
+	/**
+	* View an already parsed argument payload, such as a PTC dispatch object.
+	* @param value - the parsed argument value.
+	* @returns a sealed view; a non-object payload has no fields.
+	*/
+	static fromObject(value) {
+		const view = new PartialArguments();
+		view.object = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+		view.sealed = true;
+		return view;
+	}
+	/**
+	* The source: text so far or a parsed object, plus whether it can still grow.
+	* These are the only enumerable fields, so two views over the same source
+	* compare equal structurally however far each has been read.
+	*/
+	chunks = [];
+	object;
+	sealed = false;
+	#ends = [];
+	#size = 0;
+	#consumed = 0;
+	#mode = "root";
+	#escape = false;
+	#keyStart = 0;
+	#keyEscaped = false;
+	#key = "";
+	#current = null;
+	#nestedEnds = [];
+	#nestedInString = false;
+	#invalidAt;
+	#invalidValue = false;
+	#entries = /* @__PURE__ */ new Map();
+	#order = [];
+	#reads = /* @__PURE__ */ new Map();
+	/** Whether this view rejects further appends; does not scan text or register reads. */
+	get isSealed() {
+		return this.sealed;
+	}
+	/** Whether indexing or a content read found invalid JSON; unread value contents are not validated. */
+	get invalid() {
+		this.scan();
+		return this.#mode === "invalid" || this.#invalidValue;
+	}
+	/**
+	* Retain streamed argument text without scanning or comparing observed answers.
+	* @param fragment - the text following every fragment appended before.
+	*/
+	append(fragment) {
+		if (this.sealed) throw new Error("PartialArguments: cannot append to a sealed view");
+		if (fragment.length === 0) return;
+		this.chunks.push(fragment);
+		this.#size += fragment.length;
+		this.#ends.push(this.#size);
+	}
+	/**
+	* Reconcile a streamed prefix with authoritative complete text without joining the fragments.
+	* @param text - the final argument text, which replaces missing or conflicting deltas.
+	* @returns this view sealed with its caches retained when every character matches; otherwise a new sealed view.
+	*/
+	settle(text) {
+		if (this.object !== void 0 || text.length !== this.#size) return PartialArguments.fromText(text);
+		let offset = 0;
+		for (const chunk of this.chunks) {
+			if (!text.startsWith(chunk, offset)) return PartialArguments.fromText(text);
+			offset += chunk.length;
+		}
+		this.chunks = text.length === 0 ? [] : [text];
+		this.#ends = text.length === 0 ? [] : [text.length];
+		this.sealed = true;
+		return this;
+	}
+	/**
+	* Compare observed answers and advance their publication baseline. Unread views remain unscanned.
+	* @returns whether any observed answer changed since its first read or the preceding refresh.
+	*/
+	refresh() {
+		if (this.#reads.size === 0) return false;
+		this.scan();
+		let changed = false;
+		let completions = false;
+		for (const read of this.#reads.values()) {
+			if (read.completion) {
+				completions = true;
+				continue;
+			}
+			changed = this.refreshRead(read) || changed;
+		}
+		if (completions) {
+			for (const read of this.#reads.values()) if (read.completion) changed = this.refreshRead(read) || changed;
+		}
+		if (this.sealed) this.#reads.clear();
+		return changed;
+	}
+	refreshRead(read) {
+		const now = read.answer();
+		if (Object.is(now, read.last)) return false;
+		read.last = now;
+		return true;
+	}
+	/**
+	* Check whether no further fields can arrive.
+	* @returns whether the outer object closed, indexing failed, or the view is sealed; unread values are not validated.
+	*/
+	closed() {
+		return this.remember("closed", "", () => this.closedNow());
+	}
+	/**
+	* List discovered fields in first-appearance order.
+	* @returns top-level keys seen so far, in first-appearance order.
+	*/
+	keys() {
+		return this.remember("keys", "", () => this.keysNow(), (keys) => keys.length);
+	}
+	/**
+	* Check whether a top-level field has appeared.
+	* @param key - argument name.
+	* @returns whether the field has appeared (a string opened or another value began).
+	*/
+	has(key) {
+		return this.remember("has", key, () => this.hasNow(key));
+	}
+	/**
+	* Check whether a field's closing delimiter has arrived, without validating its contents.
+	* @param key - argument name.
+	* @returns whether its delimiter arrived and no content reader has reported an error for this value.
+	*/
+	complete(key) {
+		return this.remember("complete", key, () => this.completeNow(key));
+	}
+	/**
+	* Read string length without materializing its text.
+	* @param key - argument name.
+	* @param options - change granularity for a streaming string.
+	* @returns decoded UTF-16 length of the string field so far; undefined when absent or not a string.
+	*/
+	stringLength(key, options) {
+		const step = Math.max(1, Math.floor(options?.step ?? 1));
+		const offset = options?.offset ?? 0;
+		return this.remember(`length:${step}:${offset}`, key, () => this.lengthNow(key), (length) => length === void 0 ? void 0 : Math.ceil((length + offset) / step));
+	}
+	/**
+	* Check a string against a decoded UTF-16 length limit without materializing it.
+	* @param key - argument name.
+	* @param maxLength - decoded UTF-16 limit, floored to at least zero.
+	* @returns whether the string is longer than the limit; false when absent or not a string.
+	*/
+	stringExceeds(key, maxLength) {
+		const limit = Math.max(0, Math.floor(maxLength));
+		return this.remember(`exceeds:${limit}`, key, () => (this.lengthNow(key, limit + 1) ?? 0) > limit);
+	}
+	/**
+	* Read a decoded string, including a streaming prefix.
+	* @param key - argument name.
+	* @returns the string field's decoded text so far; undefined when absent or not a string.
+	*/
+	text(key) {
+		return this.remember("text", key, () => this.textNow(key));
+	}
+	/**
+	* Read at most the first decoded UTF-16 units of a string.
+	* @param key - argument name.
+	* @param maxLength - maximum decoded UTF-16 length, floored to at least one.
+	* @returns the bounded string prefix; undefined when absent or not a string.
+	*/
+	textPrefix(key, maxLength) {
+		const limit = Math.max(1, Math.floor(maxLength));
+		return this.remember(`prefix:${limit}`, key, () => this.textPrefixNow(key, limit));
+	}
+	/**
+	* Read a completed non-string argument.
+	* @param key - argument name.
+	* @returns the parsed non-string value once it closed; undefined while open, absent, or a string.
+	*/
+	value(key) {
+		return this.remember("value", key, () => this.valueNow(key));
+	}
+	/** Answer a question and, on a streaming view, remember it for change detection. */
+	remember(kind, key, read, comparison) {
+		this.scan();
+		const result = read();
+		if (!this.sealed) {
+			const id = `${kind}/${key}`;
+			if (!this.#reads.has(id)) this.#reads.set(id, {
+				completion: kind === "complete",
+				answer: comparison === void 0 ? read : () => comparison(read()),
+				last: comparison === void 0 ? result : comparison(result)
+			});
+		}
+		return result;
+	}
+	closedNow() {
+		return this.sealed || this.#mode === "closed" || this.#mode === "invalid";
+	}
+	keysNow() {
+		return this.object === void 0 ? this.#order : Object.keys(this.object);
+	}
+	hasNow(key) {
+		return this.object === void 0 ? this.#entries.has(key) : Object.hasOwn(this.object, key);
+	}
+	completeNow(key) {
+		if (this.object !== void 0) return Object.hasOwn(this.object, key);
+		const entry = this.#entries.get(key);
+		return entry !== void 0 && entry.end >= 0 && (entry.kind === "string" ? entry.invalidAt === void 0 : !entry.invalid);
+	}
+	lengthNow(key, limit = Number.POSITIVE_INFINITY) {
+		if (this.object !== void 0) {
+			const field = Object.hasOwn(this.object, key) ? this.object[key] : void 0;
+			return typeof field === "string" ? field.length : void 0;
+		}
+		const entry = this.#entries.get(key);
+		if (entry?.kind !== "string") return void 0;
+		if (entry.text !== void 0 && entry.text.at === entry.end) return entry.text.length;
+		const read = entry.length ??= {
+			at: entry.start,
+			length: 0,
+			text: ""
+		};
+		this.readString(entry, read, limit, false);
+		return read.length;
+	}
+	textNow(key) {
+		if (this.object !== void 0) {
+			const field = Object.hasOwn(this.object, key) ? this.object[key] : void 0;
+			return typeof field === "string" ? field : void 0;
+		}
+		const entry = this.#entries.get(key);
+		if (entry?.kind !== "string") return void 0;
+		if (entry.text === void 0 && entry.end >= 0 && entry.needsDecoding && entry.invalidAt === void 0) {
+			let text;
+			try {
+				text = JSON.parse(`"${this.slice(entry.start, entry.end)}"`);
+			} catch (_error) {}
+			if (text !== void 0) entry.text = {
+				at: entry.end,
+				length: text.length,
+				text
+			};
+		}
+		const read = entry.text ??= {
+			at: entry.start,
+			length: 0,
+			text: ""
+		};
+		this.readString(entry, read, Number.POSITIVE_INFINITY, true);
+		return read.text;
+	}
+	textPrefixNow(key, maxLength) {
+		if (this.object !== void 0) {
+			const field = Object.hasOwn(this.object, key) ? this.object[key] : void 0;
+			return typeof field === "string" ? field.slice(0, maxLength) : void 0;
+		}
+		const entry = this.#entries.get(key);
+		if (entry?.kind !== "string") return void 0;
+		const prefixes = entry.prefixes ??= /* @__PURE__ */ new Map();
+		let read = prefixes.get(maxLength);
+		if (read === void 0) {
+			read = {
+				at: entry.start,
+				length: 0,
+				text: ""
+			};
+			prefixes.set(maxLength, read);
+		}
+		this.readString(entry, read, maxLength, true);
+		return read.text;
+	}
+	valueNow(key) {
+		if (this.object !== void 0) {
+			if (!Object.hasOwn(this.object, key)) return void 0;
+			const field = this.object[key];
+			return typeof field === "string" ? void 0 : field;
+		}
+		const entry = this.#entries.get(key);
+		if (entry?.kind !== "value" || entry.end < 0 || entry.invalid) return void 0;
+		if (entry.parsed === void 0) try {
+			entry.parsed = JSON.parse(this.slice(entry.start, entry.end));
+		} catch (_error) {
+			entry.invalid = true;
+			this.#invalidValue = true;
+		}
+		return entry.parsed;
+	}
+	chunkAt(at) {
+		let low = 0;
+		let high = this.#ends.length;
+		while (low < high) {
+			const mid = low + high >>> 1;
+			if (this.#ends[mid] <= at) low = mid + 1;
+			else high = mid;
+		}
+		return low;
+	}
+	/** Materialize only a requested range, never the cumulative source. */
+	slice(start, end) {
+		if (start >= end) return "";
+		const first = this.chunkAt(start);
+		const last = this.chunkAt(end - 1);
+		const base = first === 0 ? 0 : this.#ends[first - 1];
+		if (first === last) return this.chunks[first].slice(start - base, end - base);
+		const parts = [this.chunks[first].slice(start - base)];
+		for (let i = first + 1; i < last; i++) parts.push(this.chunks[i]);
+		parts.push(this.chunks[last].slice(0, end - this.#ends[last - 1]));
+		return parts.join("");
+	}
+	readString(entry, read, limit, materialize) {
+		const end = Math.min(entry.end < 0 ? this.#consumed : entry.end, entry.invalidAt ?? Number.POSITIVE_INFINITY, this.#invalidAt ?? Number.POSITIVE_INFINITY);
+		if (!entry.needsDecoding) {
+			const length = Math.min(end - read.at, limit - read.length);
+			if (length <= 0) return;
+			if (materialize) read.text += this.slice(read.at, read.at + length);
+			read.at += length;
+			read.length += length;
+			return;
+		}
+		let chunkIndex = this.chunkAt(read.at);
+		while (read.at < end && read.length < limit) {
+			const base = chunkIndex === 0 ? 0 : this.#ends[chunkIndex - 1];
+			const chunk = this.chunks[chunkIndex];
+			const remaining = chunk.slice(read.at - base, Math.min(chunk.length, end - base));
+			const boundary = remaining.search(CONTENT_ESCAPE);
+			const length = Math.min(boundary < 0 ? remaining.length : boundary, limit - read.length);
+			if (length > 0) {
+				if (materialize) read.text += remaining.slice(0, length);
+				read.at += length;
+				read.length += length;
+				if (read.at === base + chunk.length) chunkIndex++;
+				continue;
+			}
+			const type = remaining.length > 1 ? remaining[1] : read.at + 1 < end ? this.chunks[chunkIndex + 1][0] : void 0;
+			let decoded;
+			let width = 2;
+			if (remaining[0] === "\\" && type === void 0 && entry.end < 0) return;
+			if (remaining[0] === "\\" && type === "u") {
+				const hex = this.slice(read.at + 2, Math.min(end, read.at + 6));
+				let valid = true;
+				for (let i = 0; i < hex.length; i++) if (!isHex(hex[i])) valid = false;
+				if (valid) {
+					if (hex.length < 4 && entry.end < 0) return;
+					if (hex.length === 4) decoded = String.fromCharCode(Number.parseInt(hex, 16));
+				}
+				width = 6;
+			} else if (remaining[0] === "\\" && type !== void 0) decoded = SIMPLE_ESCAPES[type];
+			if (decoded === void 0) {
+				entry.invalidAt = read.at;
+				this.#invalidValue = true;
+				return;
+			}
+			if (materialize) read.text += decoded;
+			read.length++;
+			read.at += width;
+			while (chunkIndex < this.chunks.length && read.at >= this.#ends[chunkIndex]) chunkIndex++;
+		}
+	}
+	/** Locate new field ranges without decoding or parsing their contents. */
+	scan() {
+		if (this.object !== void 0 || this.#consumed === this.#size) return;
+		for (let i = this.chunkAt(this.#consumed); i < this.chunks.length && this.#invalidAt === void 0; i++) {
+			const pending = this.chunks[i];
+			const base = i === 0 ? 0 : this.#ends[i - 1];
+			for (let index = this.#consumed - base; index < pending.length && this.#mode !== "invalid"; index++) {
+				if (this.#mode === "string" || this.#mode === "nested" && this.#nestedInString) {
+					const end = this.stringBoundary(pending, index);
+					this.#consumed += end - index;
+					index = end;
+					if (index === pending.length) break;
+				}
+				this.step(pending[index], this.#consumed);
+				this.#consumed++;
+			}
+		}
+	}
+	/** Only raw quotes and their preceding backslash runs can terminate a string. */
+	stringBoundary(fragment, start) {
+		let at = start;
+		while (true) {
+			const quote = fragment.indexOf("\"", at);
+			const end = quote < 0 ? fragment.length : quote;
+			if (this.#mode === "string") {
+				const entry = this.#current;
+				if (!entry.needsDecoding && CONTENT_ESCAPE.test(fragment.slice(at, end))) entry.needsDecoding = true;
+			}
+			let slashStart = end;
+			while (slashStart > at && fragment[slashStart - 1] === "\\") slashStart--;
+			const escaped = (end - slashStart) % 2 === 1 !== (slashStart === at && this.#escape);
+			this.#escape = quote < 0 && escaped;
+			if (quote < 0 || !escaped) return end;
+			at = quote + 1;
+		}
+	}
+	step(c, at) {
+		switch (this.#mode) {
+			case "root":
+				if (isWhitespace(c)) return;
+				if (c === "{") {
+					this.#mode = "key-or-end";
+					return;
+				}
+				this.fail();
+				return;
+			case "key-or-end":
+				if (isWhitespace(c)) return;
+				if (c === "}") {
+					this.#mode = "closed";
+					return;
+				}
+				if (c === "\"") {
+					this.beginKey(at);
+					return;
+				}
+				this.fail();
+				return;
+			case "key-only":
+				if (isWhitespace(c)) return;
+				if (c === "\"") {
+					this.beginKey(at);
+					return;
+				}
+				this.fail();
+				return;
+			case "key":
+				this.stepKey(c, at);
+				return;
+			case "colon":
+				if (isWhitespace(c)) return;
+				if (c === ":") {
+					this.#mode = "value";
+					return;
+				}
+				this.fail();
+				return;
+			case "value":
+				this.beginValue(c, at);
+				return;
+			case "string": {
+				const entry = this.#current;
+				entry.end = at;
+				this.#current = null;
+				this.#mode = "comma-or-end";
+				return;
+			}
+			case "scalar":
+				this.stepScalar(c, at);
+				return;
+			case "nested":
+				this.stepNested(c, at);
+				return;
+			case "comma-or-end":
+				if (isWhitespace(c)) return;
+				if (c === ",") {
+					this.#mode = "key-only";
+					return;
+				}
+				if (c === "}") {
+					this.#mode = "closed";
+					return;
+				}
+				this.fail();
+				return;
+			case "closed":
+				if (isWhitespace(c)) return;
+				this.fail();
+				return;
+			/* v8 ignore next 2 -- scan() stops stepping once the view is invalid. */
+			case "invalid": return;
+			/* v8 ignore next 2 -- Every scanner mode has a handler above. */
+			default: assertNever(this.#mode);
+		}
+	}
+	fail() {
+		this.#invalidAt = this.#consumed;
+		this.#mode = "invalid";
+		this.#current = null;
+	}
+	beginKey(at) {
+		this.#mode = "key";
+		this.#keyStart = at + 1;
+		this.#keyEscaped = false;
+		this.#escape = false;
+	}
+	stepKey(c, at) {
+		if (c < " ") {
+			this.fail();
+			return;
+		}
+		if (this.#escape) {
+			this.#escape = false;
+			return;
+		}
+		if (c === "\\") {
+			this.#escape = true;
+			this.#keyEscaped = true;
+			return;
+		}
+		if (c !== "\"") return;
+		const raw = this.slice(this.#keyStart, at);
+		if (this.#keyEscaped) try {
+			this.#key = JSON.parse(`"${raw}"`);
+		} catch (_error) {
+			this.fail();
+			return;
+		}
+		else this.#key = raw;
+		this.#mode = "colon";
+	}
+	open(entry) {
+		if (!this.#entries.has(this.#key)) this.#order.push(this.#key);
+		this.#entries.set(this.#key, entry);
+		this.#current = entry;
+	}
+	beginValue(c, at) {
+		if (isWhitespace(c)) return;
+		if (c === "\"") {
+			this.open({
+				kind: "string",
+				start: at + 1,
+				end: -1,
+				needsDecoding: false,
+				invalidAt: void 0,
+				length: void 0,
+				text: void 0,
+				prefixes: void 0
+			});
+			this.#escape = false;
+			this.#mode = "string";
+			return;
+		}
+		if (c === "}" || c === "," || c === ":" || c === "]") {
+			this.fail();
+			return;
+		}
+		this.open({
+			kind: "value",
+			start: at,
+			end: -1,
+			parsed: void 0,
+			invalid: false
+		});
+		if (c === "{" || c === "[") {
+			this.#mode = "nested";
+			this.#nestedEnds = [c === "{" ? "}" : "]"];
+			this.#nestedInString = false;
+			this.#escape = false;
+			return;
+		}
+		this.#mode = "scalar";
+	}
+	stepScalar(c, at) {
+		if (c !== "," && c !== "}" && !isWhitespace(c)) return;
+		this.closeValue(at);
+		this.#mode = c === "," ? "key-only" : c === "}" ? "closed" : "comma-or-end";
+	}
+	stepNested(c, at) {
+		if (this.#nestedInString) {
+			this.#nestedInString = false;
+			return;
+		}
+		if (c === "\"") {
+			this.#nestedInString = true;
+			return;
+		}
+		if (c === "{" || c === "[") {
+			this.#nestedEnds.push(c === "{" ? "}" : "]");
+			return;
+		}
+		if (c === "}" || c === "]") {
+			if (this.#nestedEnds.pop() !== c) {
+				this.fail();
+				return;
+			}
+			if (this.#nestedEnds.length === 0) {
+				this.closeValue(at + 1);
+				this.#mode = "comma-or-end";
+			}
+		}
+	}
+	closeValue(end) {
+		const entry = this.#current;
+		entry.end = end;
+		this.#current = null;
+	}
+});
+//#endregion
 //#region ../../util/values/src/index.ts
 /**
 * Mark an unreachable closed-union branch.
@@ -2524,6 +3148,8 @@ const KNOWN_SESSION_EVENT_TYPES = new Set([
 	"hook/invoked",
 	"hook/result",
 	"image/offload",
+	"job/registered",
+	"job/settled",
 	"llm/retry",
 	"llm/retry-started",
 	"model/selection",
@@ -2560,6 +3186,7 @@ const KNOWN_SESSION_EVENT_TYPES = new Set([
 	"turn/start",
 	"user/message",
 	"web/deepseek-search-llm-request",
+	"working-directory/change",
 	"workspace/changes"
 ]);
 /** Event types whose model-visible effects require an explicit pure interpreter. */
@@ -2996,7 +3623,7 @@ const REMOTE_METHOD_DESCRIPTOR = "@deepseek-ai/dsh-typert-protocol/remote-method
 * a Host composition to read it.
 * @param service - owning Service instance, normally `this`.
 * @param serviceKey - exact Cordis service key.
-* @param options - optional distinct wire namespace.
+* @param options - optional wire namespace.
 * @returns a frozen, inspectable binding with no compiler-injected metadata.
 */
 function bindTypertRemote(service, serviceKey, options = {}) {
@@ -3004,7 +3631,7 @@ function bindTypertRemote(service, serviceKey, options = {}) {
 	const namespace = options.namespace ?? serviceKey;
 	validateName("namespace", namespace);
 	const ctx = Reflect.get(service, "ctx");
-	if (ctx instanceof Context) provideInvocationAccessor(ctx);
+	if (Context.is(ctx)) provideInvocationAccessor(ctx);
 	return Object.freeze({
 		service,
 		serviceKey,
@@ -3019,7 +3646,7 @@ var TypertRemoteService = class extends Service {
 	* Register the Service and bind the same key to Typert Gateway.
 	* @param ctx - owning Cordis Context.
 	* @param serviceKey - exact Cordis service key and default wire namespace.
-	* @param options - optional distinct wire namespace.
+	* @param options - optional wire namespace.
 	*/
 	constructor(ctx, serviceKey, options = {}) {
 		super(ctx, serviceKey);
@@ -3039,21 +3666,42 @@ function provideInvocationAccessor(ctx) {
 function Remote(methodExportOrOptions, context) {
 	if (typeof methodExportOrOptions === "string") {
 		validateName("Remote export name", methodExportOrOptions);
-		return remoteDecorator({ kind: "direct" }, void 0, methodExportOrOptions);
+		return remoteDecorator({ kind: "direct" }, { exportName: methodExportOrOptions });
 	}
-	if (typeof methodExportOrOptions === "object") {
-		if (remoteOptionMode(methodExportOrOptions) !== "stream" || Reflect.ownKeys(methodExportOrOptions).length !== 1) throw new TypeError("typert-protocol: Remote options must contain exactly mode: \"stream\"");
-		return remoteDecorator({ kind: "direct" }, "stream");
-	}
+	if (typeof methodExportOrOptions === "object") return remoteDecorator({ kind: "direct" }, markerOptions(methodExportOrOptions, REMOTE_OPTION_KEYS, "Remote options require name, mode: \"stream\", or resources"));
 	if (context === void 0) throw new TypeError("typert-protocol: Remote decorator context is missing");
 	addMarkerInitializer(context, { kind: "direct" });
 }
-function remoteOptionMode(options) {
-	return Reflect.get(options, "mode");
+const REMOTE_OPTION_KEYS = new Set([
+	"name",
+	"mode",
+	"resources"
+]);
+/** Validate one decorator options object against its accepted keys and select the marker fields. */
+function markerOptions(options, accepted, requirement) {
+	const keys = Reflect.ownKeys(options);
+	if (keys.length === 0 || keys.some((key) => typeof key !== "string" || !accepted.has(key)) || Object.hasOwn(options, "mode") && options.mode !== "stream") throw new TypeError(`typert-protocol: ${requirement}`);
+	const { mode, name, resources } = options;
+	if (name !== void 0) validateName("Remote export name", name);
+	return {
+		...mode === void 0 ? {} : { mode },
+		...name === void 0 ? {} : { exportName: name },
+		...resources === void 0 ? {} : { resources: resourceReaders(resources) }
+	};
 }
-function remoteDecorator(invocation, mode, exportName) {
+/** Freeze declared readers into the marker record; a misdeclared reader fails at decoration. */
+function resourceReaders(resources) {
+	const readers = {};
+	for (const [kind, reader] of Object.entries(resources)) {
+		if (typeof reader !== "function") throw new TypeError(`typert-protocol: Remote resource reader "${kind}" must be a function`);
+		readers[kind] = reader;
+	}
+	if (Object.keys(readers).length === 0) throw new TypeError("typert-protocol: Remote resources require at least one reader");
+	return Object.freeze(readers);
+}
+function remoteDecorator(invocation, options = {}) {
 	return function(_method, context) {
-		addMarkerInitializer(context, invocation, mode, exportName);
+		addMarkerInitializer(context, invocation, options);
 	};
 }
 function readRemoteMethodDescriptor(prototype) {
@@ -3067,26 +3715,27 @@ function readRemoteMethodDescriptor(prototype) {
 	if (!Array.isArray(methods)) throw new TypeError("typert-protocol: Remote method descriptor methods must be an array");
 	return descriptor;
 }
-function addMarkerInitializer(context, invocation, mode, exportName) {
+function addMarkerInitializer(context, invocation, options = {}) {
 	if (context.private || context.static || typeof context.name !== "string") throw new TypeError("typert-protocol: Remote decorators require a public instance method with a string name");
 	const method = context.name;
 	context.addInitializer(function() {
 		const prototype = Object.getPrototypeOf(this);
 		if (prototype === null) throw new TypeError(`typert-protocol: cannot mark Remote method "${method}" on an object without a prototype`);
-		mark(prototype, method, invocation, mode, exportName);
+		mark(prototype, method, invocation, options);
 	});
 }
-function mark(prototype, method, invocation, mode, exportName) {
+function mark(prototype, method, invocation, { mode, exportName, resources }) {
 	const descriptor = readRemoteMethodDescriptor(prototype);
 	const marker = Object.freeze({
 		method,
 		...exportName === void 0 || exportName === method ? {} : { exportName },
 		...mode === void 0 ? {} : { mode },
-		invocation: Object.freeze(invocation)
+		invocation: Object.freeze(invocation),
+		...resources === void 0 ? {} : { resources }
 	});
 	const current = descriptor?.methods.find((candidate) => candidate.method === method);
 	if (current !== void 0) {
-		if (current.exportName === marker.exportName && current.mode === marker.mode && sameInvocation(current.invocation, invocation)) return;
+		if (current.exportName === marker.exportName && current.mode === marker.mode && current.resources === marker.resources && sameInvocation(current.invocation, invocation)) return;
 		throw new Error(`typert-protocol: Remote method "${method}" has conflicting invocation markers`);
 	}
 	Object.defineProperty(prototype, REMOTE_METHOD_DESCRIPTOR, {
@@ -3801,7 +4450,7 @@ const MAX_TIMER_DELAY_MS = 2147483647;
 */
 /**
 * Base class for all harness errors. Carries a `code` (stable, programmatic —
-* e.g. `NO_ADAPTER`, `INVALID_ARGS`, `INVARIANT`) distinct from the
+* e.g. `NO_ADAPTER`, `INVALID_ARGS`) distinct from the
 * human-readable `message`, and supports `cause` chaining via the standard
 * `ErrorOptions`. `name` defaults to the subclass constructor name.
 */
@@ -4224,7 +4873,7 @@ function projectToolUpdates(messages, tools, toolUpdate, history) {
 /**
 * Centralize the non-secret product identity every provider request sends as `User-Agent`, keeping
 * adapters from drifting. See
-* `.agents/notes/implemented/architecture/2026-06-21-mandatory-app-attribution-headers.md`.
+* `docs/subsystems/llm-streaming.md#appidentity--app-attribution`.
 *
 * App-attribution vocabulary for provider requests.
 * @module @deepseek-ai/dsh-llm/attribution
@@ -4815,20 +5464,14 @@ var LlmError = class extends HarnessError {
 		}
 		/** Notify topology observers without letting one broken listener veto the commit. */
 		emitAdaptersUpdated() {
-			let invariantFailure;
 			for (const listener of this.ctx.events.dispatch("emit", ["llm/adapters-updated"])) try {
 				const returned = listener();
 				if (returned != null && typeof returned.then === "function") Promise.resolve(returned).then(void 0, (error) => {
 					this.warnAdaptersListenerFailure(error);
 				});
 			} catch (error) {
-				if (error?.code === "INVARIANT") {
-					invariantFailure ??= error;
-					continue;
-				}
 				this.warnAdaptersListenerFailure(error);
 			}
-			if (invariantFailure !== void 0) throw invariantFailure;
 		}
 		/** Contained-listener diagnostic shared by the sync and async failure paths. */
 		warnAdaptersListenerFailure(error) {
@@ -4937,10 +5580,7 @@ var LlmError = class extends HarnessError {
 					if (entry.provider.length === 0 || entry.displayName.length === 0 || entry.settingsNs.length === 0) throw new LlmError("configurable providers need a non-empty provider, displayName, and settingsNs", "INVALID_DIRECTORY");
 					if (entry.settingsPath.some((segment) => segment.length === 0)) throw new LlmError(`configurable provider "${entry.provider}" has an empty settingsPath segment`, "INVALID_DIRECTORY");
 					if (this.directory.has(entry.provider) && !own.has(entry.provider) || detached.some((seen) => seen.provider === entry.provider)) throw new LlmError(`configurable provider "${entry.provider}" is already declared`, "DUPLICATE_DIRECTORY");
-					detached.push({
-						...entry,
-						settingsPath: [...entry.settingsPath]
-					});
+					detached.push(detachDirectoryEntry(entry));
 				}
 				for (const entry of held) this.directory.delete(entry.provider);
 				for (const entry of detached) this.directory.set(entry.provider, entry);
@@ -4969,10 +5609,7 @@ var LlmError = class extends HarnessError {
 		* @returns detached directory entries in declaration order.
 		*/
 		listConfigurableProviders() {
-			return [...this.directory.values()].map((entry) => ({
-				...entry,
-				settingsPath: [...entry.settingsPath]
-			}));
+			return [...this.directory.values()].map(detachDirectoryEntry);
 		}
 		/**
 		* Offer to interrogate provider endpoints on behalf of the settings
@@ -5062,6 +5699,16 @@ var LlmError = class extends HarnessError {
 		*/
 		imageRequestPricing(provider, model) {
 			return this.adapters.get(provider)?.adapter.imageRequestPricing(provider, model);
+		}
+		/**
+		* Resolve the image projection for an exact registered model route.
+		* @param provider - registered provider route.
+		* @param model - exact model id.
+		* @param image - normalized image reference.
+		* @returns dimensions and byte target used by the adapter's request serializer.
+		*/
+		imageRequestTarget(provider, model, image) {
+			return this.registration(provider).adapter.imageRequestTarget(provider, model, image);
 		}
 		/**
 		* Resolve the exact text one durable file occurrence contributes to every
@@ -5209,20 +5856,33 @@ var LlmError = class extends HarnessError {
 		* Resolve one call under its current adapter registration. The returned
 		* one-shot handle keeps that registration across header logging and dispatch,
 		* so HMR cannot combine one adapter's capability result with another adapter.
-		* @param config - provider/model route and optional request controls.
+		* An optional synchronous callback selects concrete controls using captured
+		* model metadata. Defaults and validation apply to its result. Callback
+		* failures and cancellation reject preparation before dispatch.
+		* @param config - provider/model route and optional concrete request controls.
 		* @param signal - optional cancellation for adapter-owned capability lookup.
+		* @param configure - pure control selection, called once before defaults and validation.
 		* @returns a prepared config and its registration-bound stream entry point.
 		*/
-		async prepareCall(config, signal) {
-			const registration = this.registration(config.provider);
-			const adapterCall = await registration.adapter.prepareCall(config.provider, config.model, signal);
-			const modelInfo = this.normalizeModelInfo(registration, config.model, adapterCall.model);
-			const resolved = this.resolveCallWithInfo(config, modelInfo);
+		async prepareCall(config, signal, configure) {
+			signal?.throwIfAborted();
+			const { provider, model, ...controls } = config;
+			const registration = this.registration(provider);
+			const adapterCall = await registration.adapter.prepareCall(provider, model, signal);
+			signal?.throwIfAborted();
+			const modelInfo = this.normalizeModelInfo(registration, model, adapterCall.model);
+			const proposed = configure === void 0 ? config : {
+				...configure(deepFreeze(structuredClone(controls)), deepFreeze(modelInfo)),
+				provider,
+				model
+			};
+			signal?.throwIfAborted();
+			const resolved = this.resolveCallWithInfo(proposed, modelInfo);
 			const resolvedConfig = deepFreeze(structuredClone(resolved.config));
 			const context = resolved.context === void 0 ? void 0 : deepFreeze(structuredClone(resolved.context));
 			const adapterDefaults = deepFreeze({
-				...config.reasoningEffort === void 0 && resolvedConfig.reasoningEffort !== void 0 ? { reasoningEffort: true } : {},
-				...config.maxTokens === void 0 && resolvedConfig.maxTokens !== void 0 ? { maxTokens: true } : {}
+				...proposed.reasoningEffort === void 0 && resolvedConfig.reasoningEffort !== void 0 ? { reasoningEffort: true } : {},
+				...proposed.maxTokens === void 0 && resolvedConfig.maxTokens !== void 0 ? { maxTokens: true } : {}
 			});
 			let dispatched = false;
 			return Object.freeze({
@@ -5397,6 +6057,19 @@ function adapterFailureChunk(error, signal) {
 			kind: "error",
 			failure
 		}
+	};
+}
+/** Copy a directory entry, including its arrays, so neither side can mutate the other's copy. */
+function detachDirectoryEntry(entry) {
+	const { nativeAuth } = entry;
+	return {
+		...entry,
+		settingsPath: [...entry.settingsPath],
+		...entry.baseURLEnv === void 0 ? {} : { baseURLEnv: [...entry.baseURLEnv] },
+		...nativeAuth === void 0 ? {} : { nativeAuth: {
+			...nativeAuth,
+			env: [...nativeAuth.env]
+		} }
 	};
 }
 //#endregion
@@ -5703,6 +6376,32 @@ function invokeContainedSessionObservers(ctx, name, id, args, callbacks) {
 /** Store attachment for the append path; module-private to keep Session store-agnostic publicly. */
 const attachments = /* @__PURE__ */ new WeakMap();
 /**
+* Grammar of a {@link PluginRecordType}: `plugin:` followed by
+* slash-separated segments of lowercase letters, digits, `.`, `_`, and `-`,
+* each segment starting with a letter or digit.
+*/
+const PLUGIN_RECORD_TYPE = /^plugin:[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/u;
+/**
+* Whether one event type name follows the plugin record grammar.
+* @param type - an event type name.
+* @returns whether the name is a {@link PluginRecordType}.
+*/
+function isPluginRecordType(type) {
+	return PLUGIN_RECORD_TYPE.test(type);
+}
+/**
+* Type one constructed plugin record as a log event after checking its type
+* against the plugin record grammar. A restored Session already holds events
+* whose types are outside `SessionEventMap` when they are marked ignorable;
+* a plugin record is such an event.
+* @param value - the frozen record envelope built by {@link Session}.
+* @throws when the record type is outside the plugin record grammar.
+*/
+function assertPluginRecordEvent(value) {
+	const { type } = value;
+	if (!isPluginRecordType(type)) throw new Error(`plugin record type "${type}" must be "plugin:" followed by lowercase slash-separated segments`);
+}
+/**
 * An event-sourced session: an append-only log of {@link SessionEvent}s.
 *
 * Plain class (not a Service) — create live instances via
@@ -5913,8 +6612,7 @@ var Session = class Session {
 		if (dataSnapshot === void 0) throw new Error(`session event "${type}" carries non-JSON-serializable data`);
 		const surfaceMetadataSnapshot = snapshotJsonValue(surfaceMetadata);
 		if (surfaceMetadataSnapshot === void 0) throw new Error(`session event "${type}" carries non-JSON-serializable surface metadata`);
-		const entry = attachments.get(this);
-		if (entry?.appending) throw new Error("session append cannot reenter while another append is being published");
+		const entry = this.publicationEntry();
 		const event = deepFreeze({
 			type,
 			seq: SessionSeq(this.log.length),
@@ -5923,6 +6621,48 @@ var Session = class Session {
 			...surfaceMetadataSnapshot
 		});
 		validateSessionEventData(event, `session event "${type}" at seq ${event.seq}`);
+		this.commit(event, entry);
+		return event;
+	}
+	static {}
+	/**
+	* Commit one plugin record; {@link appendPluginRecord} is the only caller.
+	* @param type - record type, checked against the plugin record grammar.
+	* @param data - JSON payload, snapshotted before it enters the log.
+	* @returns the record's sequence number.
+	*/
+	#appendRecord(type, data) {
+		const dataSnapshot = snapshotJsonValue(data);
+		if (dataSnapshot === void 0) throw new Error(`plugin record "${type}" carries non-JSON-serializable data`);
+		const entry = this.publicationEntry();
+		const record = deepFreeze({
+			type,
+			seq: SessionSeq(this.log.length),
+			time: Date.now(),
+			data: dataSnapshot,
+			ignorable: true
+		});
+		assertPluginRecordEvent(record);
+		this.commit(record, entry);
+		return record.seq;
+	}
+	/**
+	* Read the store attachment for one append, refusing an append that
+	* reenters while another append is being published.
+	* @returns the attachment, or undefined for a detached Session.
+	*/
+	publicationEntry() {
+		const entry = attachments.get(this);
+		if (entry?.appending) throw new Error("session append cannot reenter while another append is being published");
+		return entry;
+	}
+	/**
+	* Accept one frozen candidate at the next sequence number, enter it into the
+	* log, and notify `session/event` observers with per-listener containment.
+	* @param event - the candidate built at the current log length.
+	* @param entry - the attachment read before the candidate was built.
+	*/
+	commit(event, entry) {
 		this.surfaceManager.validateNext(event);
 		if (entry !== void 0) entry.appending = true;
 		try {
@@ -5936,7 +6676,6 @@ var Session = class Session {
 			this.log.push(event);
 			this.eventsSnapshot = void 0;
 			if (callbacks !== void 0 && entry !== void 0) invokeContainedSessionObservers(entry.emitCtx, "session/event", entry.id, callbackArgs, callbacks);
-			return event;
 		} finally {
 			if (entry !== void 0) {
 				entry.appending = false;
@@ -11583,7 +12322,7 @@ function assertV4LifecycleRelationships(artifact, knownEventTypes) {
 * @returns validated catalog payload.
 */
 function catalogFact(value, subject = "subagent/catalog") {
-	if (!isSessionFormatJsonObject(value) || value["version"] !== 0 && value["version"] !== 1 || typeof value["childId"] !== "string" || value["mode"] !== "continuable" && value["mode"] !== "one-shot" && value["mode"] !== "unknown" || value["version"] === 0 && value["mode"] === "unknown" || value["mode"] === "continuable" && typeof value["label"] !== "string" || value["label"] !== void 0 && typeof value["label"] !== "string") throw new SessionFormatError(`${subject} requires a supported versioned catalog fact`);
+	if (!isSessionFormatJsonObject(value) || value["version"] !== 0 && value["version"] !== 1 && value["version"] !== 2 || typeof value["childId"] !== "string" || value["mode"] !== "continuable" && value["mode"] !== "one-shot" && value["mode"] !== "external" && value["mode"] !== "unknown" || value["version"] === 2 !== (value["mode"] === "external") || value["version"] === 0 && value["mode"] === "unknown" || value["mode"] === "continuable" && typeof value["label"] !== "string" || value["label"] !== void 0 && typeof value["label"] !== "string") throw new SessionFormatError(`${subject} requires a supported versioned catalog fact`);
 	sessionFormatCount(value["childCreatedAt"], "catalog child creation time");
 	return value;
 }

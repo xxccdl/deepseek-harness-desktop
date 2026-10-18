@@ -17,9 +17,20 @@ export interface ViewportLanding {
 }
 interface ViewportEvents {
     scroll: (event: ViewportScroll) => void;
-    scrollEnd: () => void;
+    scrollEnd: (outer: boolean) => void;
     resize: () => void;
     interact: () => void;
+    /** Any reading gesture, before paging ownership is consulted. */
+    intent?: () => void;
+}
+/** Reading policy that fold batches consult and report tail landings to. */
+export interface FoldReader {
+    /** Follow intent at batch start selects the tail landing; tail landings commit it. */
+    readonly follow: ScrollFollow;
+    /** @param landing - the actual geometry after a batch landed at the tail. */
+    readonly landedAtTail: (landing: ViewportLanding) => void;
+    /** @returns whether reader movement awaits sampling; until then follow intent is undecided. */
+    readonly pending: () => boolean;
 }
 /** Owns one Chat scrollport's DOM operations, event listeners, and size observer. */
 export declare class ChatViewport {
@@ -29,6 +40,13 @@ export declare class ChatViewport {
     private turns;
     private observation;
     private paging;
+    private reader;
+    /** The pending or running fold batch lands at the tail. */
+    private tailRequested;
+    /** Switches the running batch to a tail landing; null while no batch runs. */
+    private retarget;
+    /** Transition state and row callbacks owned by this viewport's attachment. */
+    readonly motion: import("./flow-motion.ts").FlowMotion;
     /**
      * Bind to the containing scrollport and observe content and viewport sizes.
      * @param list - Chat root inside an optional shared conversation scrollport.
@@ -55,6 +73,45 @@ export declare class ChatViewport {
     get latestTurn(): number | null;
     /** Discard geometry-dependent landing knowledge while retaining scroll attribution. */
     invalidate(): void;
+    private spacerHeight;
+    private setSpacer;
+    /**
+     * Connect the reading policy that fold batches consult.
+     * @param reader - follow intent and the tail-landing commit.
+     * @returns a disposer that disconnects only this reader.
+     */
+    bindReader(reader: FoldReader): () => void;
+    /**
+     * Land the pending or running fold batch at the tail instead of starting a separate scroll.
+     * @param follow - follow controller whose native animation yields to the batch.
+     * @returns whether a fold owns the tail movement.
+     */
+    followInputFold(follow: ScrollFollow): boolean;
+    /**
+     * Drive one fold batch on its frame clock. A tail landing ends at the floor, never above the reader's
+     * compensated position; a reader landing keeps the visible content still. Both install only the room
+     * the landing lacks.
+     * @returns the batch driver, or null while detached or without a reading policy.
+     */
+    private foldDriver;
+    /**
+     * Find the first visible top-level row at or below the scrollport top that holds no batch box.
+     * Binary search over the ordered top-level rows reads O(log n) boxes.
+     * @returns the reference row, or null when every visible row folds.
+     */
+    private readingReference;
+    /** Clear fold reservations after a display-mode change, allowing the scroll range to shrink. */
+    resetBelow(): void;
+    /**
+     * Give reserved room back after acknowledged scrolling or content growth without clamping the reader.
+     * Holds still during folds and unsampled movement; following includes the room that remains.
+     */
+    reclaimBelow(): void;
+    /**
+     * Stop an outstanding native follow animation at its current position before a reading gesture.
+     * @param follow - follow controller bound to this scrollport.
+     */
+    interruptFollow(follow: ScrollFollow): void;
     /**
      * Accept a sampled reader position without retaining a known landing.
      * @param metrics - settled reader position used as the next attribution baseline.
@@ -121,11 +178,13 @@ export declare class ChatViewport {
      */
     preserve(): ViewportLanding | null;
     /**
-     * Align the scrollport with its current floor.
+     * Align with the physical floor, including fold room that newer content has not yet filled.
      * @param follow - independent follow intent and scrolling controller.
-     * @returns the actual floor landing, or null while detached.
+     * @param behavior - immediate positioning, or one native animation for a reader-caused tail change.
+     * @returns the actual floor landing, or null while detached. A smooth landing reports the starting
+     * position; native scroll delivery moves it.
      */
-    scrollToBottom(follow: ScrollFollow): ViewportLanding | null;
+    scrollToBottom(follow: ScrollFollow, behavior?: 'instant' | 'smooth'): ViewportLanding | null;
     private align;
     private write;
     private readonly onScroll;

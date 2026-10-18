@@ -36,7 +36,8 @@ export interface PiAiAdapterOptions {
     profiles: () => ReadonlyMap<string, ResolvedPiAiProviderProfile>;
     /**
      * Resolve the credential for one already-resolved profile; called once per
-     * stream call and frozen for that call. `undefined` defers to the route's own
+     * stream call and frozen for that call, and by `listModels`, which offers no
+     * models while it throws `MISSING_CREDENTIAL`. `undefined` defers to the route's own
      * pi-ai auth, which for an installed catalog route is its provider-native
      * ambient discovery; the plugin allows that only for a profile naming no
      * credential at all, because a named reference that misses throws `LlmError`
@@ -82,6 +83,7 @@ export declare class PiAiAdapter extends LlmAdapter {
     private readonly config;
     private snapshot;
     constructor(config: PiAiAdapterOptions);
+    imageRequestTarget(provider: string, model: string, image: ImageAttachmentRef): import("@deepseek-ai/dsh-attachment").ImageRequestTarget;
     /**
      * The snapshot for the current profiles. Resolution memoizes its result, so
      * an unchanged configuration is recognized by identity; a changed one gets a

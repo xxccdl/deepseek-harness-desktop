@@ -1,5 +1,6 @@
 /** pi-ai model helpers assembled from public narrow entry points. */
 import type { Api, CreateModelsOptions, Model, ModelThinkingLevel, MutableModels, Provider, ProviderAuth, ProviderStreams } from '@earendil-works/pi-ai';
+import type { LlmResolvedModelInfo } from '@deepseek-ai/dsh-llm';
 /** Input accepted by the static, single-protocol providers this package builds. */
 interface StaticProviderOptions {
     id: string;
@@ -27,5 +28,11 @@ export declare function createProvider(input: StaticProviderOptions): Provider;
  * @returns supported levels in pi-ai's escalation order.
  */
 export declare function getSupportedThinkingLevels(model: Model<Api>): ModelThinkingLevel[];
+/**
+ * Resolve transcript update modes from the exact model's protocol capabilities.
+ * @param model - Materialized pi-ai model, including catalog compatibility flags.
+ * @returns Update modes consumed by prompt admission and tool-history projection.
+ */
+export declare function conversationUpdates(model: Model<Api>): Pick<LlmResolvedModelInfo, 'systemPromptUpdate' | 'toolUpdate'>;
 export {};
 //# sourceMappingURL=models.d.ts.map

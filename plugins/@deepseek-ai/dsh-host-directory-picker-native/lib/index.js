@@ -115,7 +115,7 @@ function spawnDialogWorker(data) {
 * surface is injectable so every driver path is testable on any platform.
 */
 /** The dialog title every host shows. */
-const DIALOG_TITLE = "Select Workspace Directory";
+const DIALOG_TITLE$1 = "Select Workspace Directory";
 /** `WM_CLOSE` re-post cadence while an abort waits for the worker to unwind. */
 const CLOSE_RETRY_MS = 150;
 /** Abort-service attempts before force-terminating the worker. */
@@ -137,7 +137,7 @@ async function pickWin32Directory(signal, internals = {}) {
 	const spawnWorker = internals.spawnWorker ?? spawnDialogWorker;
 	const closeWindows = internals.closeThreadWindows ?? closeThreadWindows;
 	const closeRetryMs = internals.closeRetryMs ?? CLOSE_RETRY_MS;
-	const worker = spawnWorker({ title: DIALOG_TITLE });
+	const worker = spawnWorker({ title: DIALOG_TITLE$1 });
 	let dialogThreadId;
 	let closeTimer;
 	let settled = false;
@@ -208,6 +208,51 @@ async function pickWin32Directory(signal, internals = {}) {
 //#endregion
 //#region lib/types/native-picker.js
 /** Cross-platform native single-directory chooser behind the native backend's capability. */
+/** The prompt every native chooser shows. */
+const DIALOG_TITLE = "Select Workspace Directory";
+/**
+* macOS panel source, run by the system JXA host (`osascript -l JavaScript`).
+*
+* A native panel resolves ⌘C/⌘V/⌘A/⌘X as main-menu key equivalents rather than
+* as focused-field behavior, so the script installs that menu before opening
+* `NSOpenPanel`; AppleScript's `choose folder` runs in a helper that has no
+* menu, which leaves every text field of its panel (Go to Folder, Search,
+* Tags) un-pastable. Menu items stay untargeted, so AppKit enables them
+* against the responder chain that owns the panel's field editor. The prompt
+* arrives as argv, never as executable source, and a cancel prints an empty
+* line instead of failing. A cancelled panel still reports its highlighted or
+* current directory in `URLs`, so only an OK response reads the selection.
+*/
+const MAC_PANEL = `
+ObjC.import('AppKit');
+function run(argv) {
+  var app = $.NSApplication.sharedApplication;
+  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
+  var mainMenu = $.NSMenu.alloc.init;
+  mainMenu.addItem($.NSMenuItem.alloc.init);
+  var editMenu = $.NSMenu.alloc.initWithTitle('Edit');
+  var editItem = $.NSMenuItem.alloc.init;
+  editItem.submenu = editMenu;
+  mainMenu.addItem(editItem);
+  editMenu.addItemWithTitleActionKeyEquivalent('Undo', 'undo:', 'z');
+  editMenu.addItemWithTitleActionKeyEquivalent('Redo', 'redo:', 'Z');
+  editMenu.addItemWithTitleActionKeyEquivalent('Cut', 'cut:', 'x');
+  editMenu.addItemWithTitleActionKeyEquivalent('Copy', 'copy:', 'c');
+  editMenu.addItemWithTitleActionKeyEquivalent('Paste', 'paste:', 'v');
+  editMenu.addItemWithTitleActionKeyEquivalent('Select All', 'selectAll:', 'a');
+  app.mainMenu = mainMenu;
+  app.activateIgnoringOtherApps(true);
+  var panel = $.NSOpenPanel.openPanel;
+  panel.canChooseFiles = false;
+  panel.canChooseDirectories = true;
+  panel.canCreateDirectories = true;
+  panel.allowsMultipleSelection = false;
+  panel.message = argv[0];
+  if (panel.runModal !== $.NSModalResponseOK) return '';
+  var urls = panel.URLs;
+  if (urls.count < 1) return '';
+  return ObjC.unwrap(urls.objectAtIndex(0).path);
+}`;
 function outputPath(stdout) {
 	const path = stdout.replace(/[\r\n]+$/, "");
 	return path === "" ? null : path;
@@ -216,11 +261,6 @@ function errorCode(error) {
 	if (typeof error !== "object" || error === null || !("code" in error)) return void 0;
 	const code = error.code;
 	return typeof code === "string" || typeof code === "number" ? code : void 0;
-}
-function errorStderr(error) {
-	if (typeof error !== "object" || error === null || !("stderr" in error)) return "";
-	const stderr = error.stderr;
-	return typeof stderr === "string" ? stderr : "";
 }
 function isMissingCommand(error) {
 	return errorCode(error) === "ENOENT";
@@ -237,24 +277,20 @@ function rethrowIfAborted(signal, error) {
 async function pickNativeDirectory(signal, internals = {}) {
 	const platform = internals.platform ?? process.platform;
 	const run = internals.run ?? runNativeCommand;
-	if (platform === "darwin") try {
-		return outputPath((await run("osascript", [
-			"-e",
-			"set selectedFolder to choose folder with prompt \"Select Workspace Directory\"",
-			"-e",
-			"POSIX path of selectedFolder"
-		], signal, "hidden")).stdout);
-	} catch (error) {
-		if (!signal.aborted && errorCode(error) === 1 && /(?:User canceled|-128)/i.test(errorStderr(error))) return null;
-		throw error;
-	}
+	if (platform === "darwin") return outputPath((await run("osascript", [
+		"-l",
+		"JavaScript",
+		"-e",
+		MAC_PANEL,
+		DIALOG_TITLE
+	], signal, "hidden")).stdout);
 	if (platform === "win32") return await (internals.pickWin32Dialog ?? pickWin32Directory)(signal);
 	if (platform === "linux") {
 		try {
 			return outputPath((await run("zenity", [
 				"--file-selection",
 				"--directory",
-				"--title=Select Workspace Directory"
+				`--title=${DIALOG_TITLE}`
 			], signal, "hidden")).stdout);
 		} catch (error) {
 			rethrowIfAborted(signal, error);
@@ -266,7 +302,7 @@ async function pickNativeDirectory(signal, internals = {}) {
 				"--getexistingdirectory",
 				".",
 				"--title",
-				"Select Workspace Directory"
+				DIALOG_TITLE
 			], signal, "hidden")).stdout);
 		} catch (error) {
 			rethrowIfAborted(signal, error);
@@ -282,7 +318,8 @@ async function pickNativeDirectory(signal, internals = {}) {
 /**
 * Native backend of the directory-picker seam: registers `ctx.directoryPicker`
 * with the `native` capability, opening one native OS chooser on the host
-* display per pick (macOS `osascript`, Linux Zenity with a KDialog fallback;
+* display per pick (macOS a scripted AppKit panel that installs the standard
+* Edit menu before opening `NSOpenPanel`, Linux Zenity with a KDialog fallback;
 * Windows opens the modern `IFileOpenDialog` in a spawned child process — a
 * koffi-driven COM conversation on the child's main thread, preceded by a
 * synthesized Alt press so the dialog activates as foreground even when a

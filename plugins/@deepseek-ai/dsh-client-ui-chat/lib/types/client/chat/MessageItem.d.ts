@@ -1,32 +1,33 @@
 import type { ReactNode } from 'react';
 import type { PendingSubmission } from '@deepseek-ai/dsh-api-session-controller/client';
+import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots';
 import type { ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts';
 /**
  * Render one Host-authoritative pending steering item with the same visual
  * language as its eventual durable transcript node.
- * @param props - Pending message content and conversation translator.
+ * @param props - pending content, authorized image loader, and Factory/locale seats.
  * @returns the pending steering bubble.
  */
-export declare function PendingSteeringBubble({ content, renderMessageImages, t }: {
+export declare function PendingSteeringBubble({ content, loadImage, renderFactorySlot, t }: {
     content: readonly unknown[];
-    renderMessageImages: ChatNodeOwnerProps['renderMessageImages'];
+    renderFactorySlot: PropsRenderFactories['renderFactorySlot'];
     t: ChatViewSlotProps['t'];
-}): ReactNode;
+} & Pick<ChatNodeOwnerProps, 'loadImage'>): ReactNode;
 /**
  * Render one local transcript or steering submission echo with the same
  * visual language and surface marker as the Host occurrence that replaces
  * it: draft text plus object-URL previews, visible from the submit click
  * until the durable `user/message` or steering occurrence renders.
- * @param props - the session snapshot's pending submission and render seats.
+ * @param props - the pending submission, authorized image loader, and render seats.
  * @returns the echoed user bubble.
  */
-export declare function PendingSubmissionBubble({ submission, renderMessageImages, t }: {
+export declare function PendingSubmissionBubble({ submission, loadImage, renderFactorySlot, t }: {
     submission: PendingSubmission;
-    renderMessageImages: ChatNodeOwnerProps['renderMessageImages'];
+    renderFactorySlot: PropsRenderFactories['renderFactorySlot'];
     t: ChatViewSlotProps['t'];
-}): ReactNode;
+} & Pick<ChatNodeOwnerProps, 'loadImage'>): ReactNode;
 /** User and admitted-steering keyed Chat renderer. */
-export declare const UserMessageNodeView: import("react").MemoExoticComponent<({ node, renderMessageImages, openFile, openSkill, t, }: ChatNodeViewProps<"user" | "steering">) => import("react").JSX.Element>;
+export declare const UserMessageNodeView: import("react").MemoExoticComponent<({ node, renderFactorySlot, loadImage, t, }: ChatNodeViewProps<"user" | "steering">) => import("react").JSX.Element>;
 /** Injected-context keyed Chat renderer. */
 export declare const ContextMessageNodeView: import("react").MemoExoticComponent<({ node, t }: ChatNodeViewProps<"context">) => import("react").JSX.Element>;
 /** Automatic compaction keyed Chat renderer. */

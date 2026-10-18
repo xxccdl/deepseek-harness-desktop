@@ -22,6 +22,7 @@ const Config = z$1.object({
 	vadThreshold: z$1.number().min(0).max(1).default(.5),
 	minSpeechSeconds: z$1.number().min(0).default(.25),
 	minSilenceSeconds: z$1.number().min(.01).default(.5),
+	vadOnsetPaddingSeconds: z$1.number().min(0).max(1).default(.3),
 	maxAudioBytes: z$1.natural().min(46).default(4 * 1024 * 1024),
 	prepareTimeoutMs: z$1.natural().min(1).max(MAX_TIMER_DELAY_MS).default(36e5),
 	inferenceTimeoutMs: z$1.natural().min(1).max(MAX_TIMER_DELAY_MS).default(12e4),
@@ -112,13 +113,26 @@ function createTranscriber(config) {
 		recognizer.setConfig(nativeConfig);
 		detector.reset();
 		const started = performance.now(), texts = [];
+		const onsetPadding = Math.round(config.vadOnsetPaddingSeconds * 16e3);
+		let isFirstSegment = true;
 		const drain = () => {
 			while (!detector.isEmpty()) {
 				const segment = detector.front(false);
+				let speech = segment.samples;
+				if (isFirstSegment) {
+					isFirstSegment = false;
+					const from = Math.max(0, segment.start - onsetPadding);
+					if (from < segment.start) {
+						const restored = new Float32Array(segment.start - from + speech.length);
+						restored.set(samples.subarray(from, segment.start));
+						restored.set(speech, segment.start - from);
+						speech = restored;
+					}
+				}
 				const stream = recognizer.createStream();
 				stream.acceptWaveform({
 					sampleRate: 16e3,
-					samples: segment.samples
+					samples: speech
 				});
 				recognizer.decode(stream);
 				texts.push(recognizer.getResult(stream).text.trim());
@@ -205,17 +219,31 @@ async function startRecognitionServer(token, maxAudioBytes, transcribe) {
 }
 //#endregion
 //#region lib/types/worker.js
-/** Private child entry; the Host owns termination, and stdout carries only readiness. */
-const raw = JSON.parse(z.string().parse(process.argv[2]));
-const paths = z.object({
-	model: z.string().min(1),
-	tokens: z.string().min(1),
-	vad: z.string().min(1)
-}).parse(raw);
-const config = Object.assign(Config(z.record(z.string(), z.unknown()).parse(raw)), paths);
-const token = z.string().regex(/^[a-f0-9]{64}$/).parse(process.env.DSH_SPEECH_TOKEN);
-delete process.env.DSH_SPEECH_TOKEN;
-const { port } = await startRecognitionServer(token, config.maxAudioBytes, createTranscriber(config));
-process.stdout.write(`${JSON.stringify({ port })}\n`);
+/**
+* Private child process entry: load the native recognizer, listen on loopback, then print
+* `{"port":N}` and a newline as the only stdout output. The Host passes the configuration and
+* model paths as JSON in `argv[2]` and the bearer secret in `DSH_SPEECH_TOKEN`, which is removed
+* from the environment once read. A failure before readiness writes only its message to stderr,
+* which the Host includes in the preparation error, and exits with code 1. After readiness the
+* loopback listener keeps the process alive until the Host terminates it.
+*/
+async function main() {
+	const raw = JSON.parse(z.string().parse(process.argv[2]));
+	const paths = z.object({
+		model: z.string().min(1),
+		tokens: z.string().min(1),
+		vad: z.string().min(1)
+	}).parse(raw);
+	const config = Object.assign(Config(z.record(z.string(), z.unknown()).parse(raw)), paths);
+	const token = z.string().regex(/^[a-f0-9]{64}$/).parse(process.env.DSH_SPEECH_TOKEN);
+	delete process.env.DSH_SPEECH_TOKEN;
+	const { port } = await startRecognitionServer(token, config.maxAudioBytes, createTranscriber(config));
+	process.stdout.write(`${JSON.stringify({ port })}\n`);
+}
+main().catch((error) => {
+	process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`, () => {
+		process.exit(1);
+	});
+});
 //#endregion
 export {};

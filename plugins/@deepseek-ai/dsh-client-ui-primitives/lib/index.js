@@ -14,12 +14,12 @@ import css$8 from "./Switch.module.css";
 import css$9 from "./SegmentedControl.module.css";
 import css$10 from "./Checkbox.module.css";
 import css$11 from "./Input.module.css";
+import css$12 from "./InlineEditor.module.css";
 import { createPortal } from "react-dom";
-import css$12 from "./ShortcutKeys.module.css";
-import css$13 from "./MenuSurface.module.css";
-import css$14 from "./Menu.module.css";
-import css$15 from "./MenuGroup.module.css";
-import css$16 from "./Tooltip.module.css";
+import css$13 from "./ShortcutKeys.module.css";
+import css$14 from "./MenuSurface.module.css";
+import css$15 from "./Menu.module.css";
+import css$16 from "./MenuGroup.module.css";
 import css$17 from "./HoverCard.module.css";
 import css$18 from "./Modal.module.css";
 import css$19 from "./RiskConfirmation.module.css";
@@ -28,9 +28,10 @@ import css$21 from "./FileTypeIcon.module.css";
 import { siAliexpress, siApple, siBaidu, siBilibili, siCsdn, siDuckduckgo, siEbay, siFacebook, siGithub, siGitlab, siGoogle, siInstagram, siJuejin, siMdnwebdocs, siNetflix, siNpm, siPypi, siQq, siQuora, siReddit, siSinaweibo, siSpotify, siStackoverflow, siTaobao, siTelegram, siTiktok, siV2ex, siWechat, siWhatsapp, siWikipedia, siX, siYcombinator, siYoutube, siZhihu } from "simple-icons";
 import css$22 from "./user-text.module.css";
 import markdownCss from "./markdown/MarkdownText.module.css";
-import css$23 from "./Toast.module.css";
-import css$24 from "./settings-form/SettingsForm.module.css";
-import css$25 from "./settings-form/fields.module.css";
+import css$23 from "./Tooltip.module.css";
+import css$24 from "./Toast.module.css";
+import css$25 from "./settings-form/SettingsForm.module.css";
+import css$26 from "./settings-form/fields.module.css";
 import { createSnapshotStore } from "@deepseek-ai/dsh-client-store";
 import { createCssVariablesTheme, createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine, defaultJavaScriptRegexConstructor } from "shiki/engine/javascript";
@@ -38,14 +39,15 @@ import langTs from "@shikijs/langs/typescript";
 import langBash from "@shikijs/langs/shellscript";
 import langJson from "@shikijs/langs/json";
 import { CODE_HIGHLIGHT_EXTENSIONS, languageForPath } from "@deepseek-ai/dsh-util-code-language";
-import css$26 from "./JsonTree.module.css";
+import css$27 from "./JsonTree.module.css";
 import Anser from "anser";
-import css$27 from "./TerminalBlock.module.css";
+import css$28 from "./TerminalBlock.module.css";
+import css$29 from "./CommandText.module.css";
 import cardCss from "./CodeCard.module.css";
-import css$28 from "./ReadBlock.module.css";
+import css$30 from "./ReadBlock.module.css";
 import { structuredPatch } from "diff";
-import css$29 from "./DiffBlock.module.css";
-import css$30 from "./SearchBlock.module.css";
+import css$31 from "./DiffBlock.module.css";
+import css$32 from "./SearchBlock.module.css";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { mathFromMarkdown } from "mdast-util-math";
@@ -57,13 +59,13 @@ import { classifyCharacter } from "micromark-util-classify-character";
 import { codes, constants, types } from "micromark-util-symbol";
 import { factorySpace } from "micromark-factory-space";
 import { normalizeUri } from "micromark-util-sanitize-uri";
-import css$31 from "./markdown/CodeBlock.module.css";
+import css$33 from "./markdown/CodeBlock.module.css";
 import katex from "katex";
-import css$32 from "./ImageLightbox.module.css";
-import css$33 from "./ImagePreview.module.css";
+import css$34 from "./ImageLightbox.module.css";
+import css$35 from "./ImagePreview.module.css";
 import "katex/dist/katex.min.css";
-import css$34 from "./WebBlock.module.css";
-import css$35 from "./markdown/JsonBlock.module.css";
+import css$36 from "./WebBlock.module.css";
+import css$37 from "./markdown/JsonBlock.module.css";
 //#region lib/types/icons/shared-artwork.js
 /**
 * Render new-conversation geometry — the bubble around a plus — for product icons.
@@ -3040,12 +3042,24 @@ const IconMicrophoneOutlineMedium = (props) => jsx(IconMicrophoneOutlineArtwork,
 //#region lib/types/StateDot.js
 /**
 * Pin the loader's CSS animations to document time zero. A CSS animation starts
-* when its element is inserted, so loaders mounted at different moments rotate
-* out of phase; one shared start time keeps every visible loader in step.
+* when its element is inserted and restarts when the element is moved or shown
+* again, so loaders started at different moments rotate out of phase; one shared
+* start time keeps every visible loader in step. Mount pins the first start; the
+* element's own `animationstart` listener pins each restart.
 * @param element - the mounted loader, or null on unmount.
 */
 function syncSpinner(element) {
 	if (element === null) return;
+	pinSpinner(element);
+	element.addEventListener("animationstart", () => {
+		pinSpinner(element);
+	});
+}
+/**
+* Set every CSS animation in the loader's subtree to start at document time zero.
+* @param element - the mounted loader.
+*/
+function pinSpinner(element) {
 	const spinner = element;
 	for (const animation of spinner.getAnimations?.({ subtree: true }) ?? []) animation.startTime = 0;
 }
@@ -3153,7 +3167,7 @@ const TextShimmer = memo(function TextShimmer({ children, active = false, classN
 * @param props - Visual content, controlled state, and interaction policy.
 * @returns the disclosure row.
 */
-const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandable, onToggle, running = false, expandOnRowClick = false, previewChevron = expandable, keepContentWhenOpen = false, collapsedContent, children, className, rowClassName, contentClassName, contentLayoutClassName, leadingClassName, chevronClassName, titleClassName }) {
+const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandable, onToggle, running = false, expandOnRowClick = false, previewChevron = expandable, keepContentWhenOpen = false, collapsedContent, headerAccessory, children, className, rowClassName, contentClassName, contentLayoutClassName, leadingClassName, chevronClassName, titleClassName }) {
 	const rowExpands = expandable && expandOnRowClick;
 	const toggleFromLeading = (event) => {
 		event.stopPropagation();
@@ -3173,33 +3187,38 @@ const DisclosureRow = memo(function DisclosureRow({ icon, title, open, expandabl
 		className: clsx(css$2.root, className),
 		"data-open": open || void 0,
 		children: [jsxs("div", {
-			className: clsx(css$2.row, rowClassName),
-			"data-disclosure-row": true,
-			"data-expandable": rowExpands || void 0,
-			role: rowExpands ? "button" : void 0,
-			tabIndex: rowExpands ? 0 : void 0,
-			"aria-expanded": rowExpands ? open : void 0,
-			onClick: rowExpands ? onToggle : void 0,
-			onKeyDown: rowExpands ? toggleFromKeyboard : void 0,
-			children: [expandable && !rowExpands ? jsx("button", {
-				type: "button",
-				className: clsx(css$2.leading, leadingClassName),
-				"aria-label": title,
-				"aria-expanded": open,
-				onClick: toggleFromLeading,
-				children: leading
-			}) : jsx("span", {
-				className: clsx(css$2.leading, leadingClassName),
-				children: leading
-			}), jsxs(TextShimmer, {
-				active: running,
-				className: contentClassName,
-				contentClassName: contentLayoutClassName,
-				children: [jsx(TextShimmer, {
-					className: clsx(css$2.title, titleClassName),
-					children: title
-				}), (keepContentWhenOpen || !open) && collapsedContent]
-			})]
+			className: css$2.header,
+			"data-disclosure-header": true,
+			"data-has-accessory": !!headerAccessory || void 0,
+			children: [jsxs("div", {
+				className: clsx(css$2.row, rowClassName),
+				"data-disclosure-row": true,
+				"data-expandable": rowExpands || void 0,
+				role: rowExpands ? "button" : void 0,
+				tabIndex: rowExpands ? 0 : void 0,
+				"aria-expanded": rowExpands ? open : void 0,
+				onClick: rowExpands ? onToggle : void 0,
+				onKeyDown: rowExpands ? toggleFromKeyboard : void 0,
+				children: [expandable && !rowExpands ? jsx("button", {
+					type: "button",
+					className: clsx(css$2.leading, leadingClassName),
+					"aria-label": title,
+					"aria-expanded": open,
+					onClick: toggleFromLeading,
+					children: leading
+				}) : jsx("span", {
+					className: clsx(css$2.leading, leadingClassName),
+					children: leading
+				}), jsxs(TextShimmer, {
+					active: running,
+					className: contentClassName,
+					contentClassName: contentLayoutClassName,
+					children: [jsx(TextShimmer, {
+						className: clsx(css$2.title, titleClassName),
+						children: title
+					}), (keepContentWhenOpen || !open) && collapsedContent]
+				})]
+			}), headerAccessory]
 		}), open && children]
 	});
 });
@@ -3540,6 +3559,60 @@ const Input = forwardRef(function Input({ icon, className, ...rest }, ref) {
 	});
 });
 //#endregion
+//#region lib/types/InlineEditor.js
+/** Multi-line inline editor for short saved-on-Enter drafts such as queued messages and goals. */
+/**
+* Render an autofocused textarea that grows with its text up to six lines, then scrolls.
+* A textarea rather than an input: HTML strips newlines from single-line input values.
+* Enter saves, Shift+Enter breaks the line, Enter during IME composition does nothing,
+* and Escape cancels.
+* @param props.value - current draft text.
+* @param props.label - localized accessible name.
+* @param props.onChange - receives the edited text.
+* @param props.onSave - called for a plain Enter.
+* @param props.onCancel - called for Escape.
+* @param props.className - extra class for the editor's placement.
+* @returns the textarea.
+*/
+function InlineEditor({ value, label, onChange, onSave, onCancel, className }) {
+	const ref = useRef(null);
+	useLayoutEffect(() => {
+		const node = ref.current;
+		const fit = () => {
+			node.style.height = "auto";
+			node.style.height = `${node.scrollHeight + node.offsetHeight - node.clientHeight}px`;
+		};
+		fit();
+		const observer = new ResizeObserver(fit);
+		observer.observe(node);
+		return () => {
+			observer.disconnect();
+		};
+	}, [value]);
+	const onKeyDown = (event) => {
+		if (event.key === "Escape") {
+			onCancel();
+			return;
+		}
+		const composing = event.nativeEvent.isComposing || Reflect.get(event.nativeEvent, "keyCode") === 229;
+		if (event.key !== "Enter" || event.shiftKey || composing) return;
+		event.preventDefault();
+		onSave();
+	};
+	return jsx("textarea", {
+		ref,
+		autoFocus: true,
+		rows: 1,
+		className: clsx(css$12.editor, className),
+		"aria-label": label,
+		value,
+		onChange: (event) => {
+			onChange(event.currentTarget.value);
+		},
+		onKeyDown
+	});
+}
+//#endregion
 //#region lib/types/overlay-top-margin.js
 /** Shared viewport inset for overlays, derived from the desktop frame's reserved top strip. */
 /**
@@ -3762,9 +3835,9 @@ function useModalLayer(dialog, open, onClose) {
 */
 function ShortcutKeys({ keys, variant = "plain", className }) {
 	return jsx("span", {
-		className: clsx(css$12.keys, variant === "tooltip" && css$12.tooltip, variant === "tooltip" && keys.includes("+") && css$12.joined, className),
+		className: clsx(css$13.keys, variant === "tooltip" && css$13.tooltip, variant === "tooltip" && keys.includes("+") && css$13.joined, className),
 		children: keys.map((key, index) => jsx("kbd", {
-			className: key === "+" ? css$12.separator : css$12.key,
+			className: key === "+" ? css$13.separator : css$13.key,
 			children: key
 		}, index))
 	});
@@ -3790,20 +3863,20 @@ const MenuSurface = forwardRef(function MenuSurface({ compact = false, className
 		...props,
 		ref,
 		"data-menu-material": "translucent",
-		className: clsx(css$13.surface, compact && css$13.compact, className),
+		className: clsx(css$14.surface, compact && css$14.compact, className),
 		style: {
 			...style,
 			...anchorStyle
 		},
 		children: [jsx("div", {
 			"aria-hidden": "true",
-			className: css$13.material
+			className: css$14.material
 		}), children]
 	}), createPortal(jsx("div", {
 		ref: backingRef,
 		"aria-hidden": "true",
 		"data-menu-backing": "",
-		className: clsx(css$13.backing, compact && css$13.compact),
+		className: clsx(css$14.backing, compact && css$14.compact),
 		style: {
 			...anchorStyle,
 			visibility: style?.visibility
@@ -3829,32 +3902,32 @@ const MenuSurface = forwardRef(function MenuSurface({ compact = false, className
 */
 function MenuItemButton({ children, shortcut, icon, disabled = false, danger = false, separatorBefore = false, onSelect }) {
 	return jsxs("div", {
-		className: css$14.itemWrap,
+		className: css$15.itemWrap,
 		children: [separatorBefore && jsx("div", {
-			className: css$14.separator,
+			className: css$15.separator,
 			role: "separator"
 		}), jsxs("button", {
 			type: "button",
 			role: "menuitem",
-			className: clsx(css$14.item, danger && css$14.danger),
+			className: clsx(css$15.item, danger && css$15.danger),
 			disabled,
 			"aria-keyshortcuts": shortcut?.aria,
 			onClick: onSelect,
 			children: [
 				icon !== void 0 && jsx("span", {
-					className: css$14.itemIcon,
+					className: css$15.itemIcon,
 					children: icon
 				}),
 				jsx("span", {
-					className: css$14.itemLabel,
+					className: css$15.itemLabel,
 					children
 				}),
 				shortcut !== void 0 && jsx("span", {
 					"aria-hidden": "true",
-					className: css$14.shortcut,
+					className: css$15.shortcut,
 					children: jsx(ShortcutKeys, {
 						keys: shortcut.keys,
-						className: css$14.shortcutKeys
+						className: css$15.shortcutKeys
 					})
 				})
 			]
@@ -4141,11 +4214,11 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 	const scrollable = !items.some((entry) => !isSeparator(entry) && !isLabel(entry) && entry.submenu !== void 0 && entry.submenu.length > 0);
 	const renderEntry = (entry) => {
 		if (isSeparator(entry)) return jsx("div", {
-			className: css$14.separator,
+			className: css$15.separator,
 			role: "separator"
 		}, entry.id);
 		if (isLabel(entry)) return jsx("div", {
-			className: css$14.label,
+			className: css$15.label,
 			role: "presentation",
 			children: entry.text
 		}, entry.id);
@@ -4153,7 +4226,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		const subOpen = hasSub && openSubmenuId === entry.id;
 		const selected = entry.id === selectedId || selectedIds?.includes(entry.id) === true;
 		return jsxs("div", {
-			className: css$14.itemWrap,
+			className: css$15.itemWrap,
 			onMouseEnter: hasSub ? () => {
 				setOpenSubmenuId(entry.id);
 			} : void 0,
@@ -4163,7 +4236,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			children: [jsxs("button", {
 				type: "button",
 				role: "menuitem",
-				className: clsx(css$14.item, selected && (selection === "fill" ? css$14.selectedFill : css$14.selected), entry.danger === true && css$14.danger),
+				className: clsx(css$15.item, selected && (selection === "fill" ? css$15.selectedFill : css$15.selected), entry.danger === true && css$15.danger),
 				disabled: entry.disabled,
 				"aria-keyshortcuts": entry.shortcut?.aria,
 				"aria-haspopup": hasSub ? "menu" : void 0,
@@ -4180,31 +4253,31 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 				},
 				children: [
 					entry.icon !== void 0 && jsx("span", {
-						className: css$14.itemIcon,
+						className: css$15.itemIcon,
 						children: entry.icon
 					}),
 					jsx("span", {
-						className: css$14.itemLabel,
+						className: css$15.itemLabel,
 						children: entry.label
 					}),
 					entry.shortcut !== void 0 && jsx("span", {
 						"aria-hidden": "true",
-						className: css$14.shortcut,
+						className: css$15.shortcut,
 						children: jsx(ShortcutKeys, {
 							keys: entry.shortcut.keys,
-							className: css$14.shortcutKeys
+							className: css$15.shortcutKeys
 						})
 					}),
-					selected && selection === "check" && jsx(IconCheckOutlineRegular, { className: css$14.check })
+					selected && selection === "check" && jsx(IconCheckOutlineRegular, { className: css$15.check })
 				]
 			}), subOpen && entry.submenu !== void 0 && jsx(MenuSurface, {
 				compact,
-				className: clsx(css$14.submenu, compact && css$14.compactList),
+				className: clsx(css$15.submenu, compact && css$15.compactList),
 				role: "menu",
 				children: entry.submenu.map((sub) => jsxs("button", {
 					type: "button",
 					role: "menuitem",
-					className: css$14.item,
+					className: css$15.item,
 					disabled: sub.disabled,
 					"aria-keyshortcuts": sub.shortcut?.aria,
 					onClick: () => {
@@ -4213,19 +4286,19 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 					},
 					children: [
 						sub.icon !== void 0 && jsx("span", {
-							className: css$14.itemIcon,
+							className: css$15.itemIcon,
 							children: sub.icon
 						}),
 						jsx("span", {
-							className: css$14.itemLabel,
+							className: css$15.itemLabel,
 							children: sub.label
 						}),
 						sub.shortcut !== void 0 && jsx("span", {
 							"aria-hidden": "true",
-							className: css$14.shortcut,
+							className: css$15.shortcut,
 							children: jsx(ShortcutKeys, {
 								keys: sub.shortcut.keys,
-								className: css$14.shortcutKeys
+								className: css$15.shortcutKeys
 							})
 						})
 					]
@@ -4242,7 +4315,7 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 	const list = open && jsxs(MenuSurface, {
 		compact,
 		ref: listRef,
-		className: clsx(css$14.list, listClassName, dense && css$14.denseList, compact && css$14.compactList, scrollable && css$14.scrollable, portal && css$14.portal, side === "top" && !portal && css$14.sideTop, align === "end" && !portal && css$14.alignEnd),
+		className: clsx(css$15.list, listClassName, dense && css$15.denseList, compact && css$15.compactList, scrollable && css$15.scrollable, portal && css$15.portal, side === "top" && !portal && css$15.sideTop, align === "end" && !portal && css$15.alignEnd),
 		style: portal ? fixedPos ?? MEASURE_STYLE : void 0,
 		role: "menu",
 		onClick: (e) => {
@@ -4253,18 +4326,18 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		onMouseOver: collapseSubmenuFrom,
 		onFocus: collapseSubmenuFrom,
 		children: [jsxs("div", {
-			className: css$14.viewport,
+			className: css$15.viewport,
 			role: "presentation",
 			children: [items.map(renderEntry), children]
 		}), footer !== void 0 && footer.length > 0 && jsx("div", {
-			className: css$14.footer,
+			className: css$15.footer,
 			role: "presentation",
 			children: footer.map(renderEntry)
 		})]
 	});
 	return jsxs("span", {
 		ref: rootRef,
-		className: clsx(css$14.root, className),
+		className: clsx(css$15.root, className),
 		onPointerEnter: closeOnPointerLeave ? cancelClose : void 0,
 		onPointerLeave: closeOnPointerLeave ? () => {
 			if (open) armClose();
@@ -4286,17 +4359,17 @@ function MenuGroup({ label, children }) {
 		role: "group",
 		"aria-labelledby": headingId,
 		"data-menu-group": "",
-		className: css$15.group,
+		className: css$16.group,
 		children: [
 			jsx("span", {
 				"aria-hidden": "true",
 				"data-menu-group-start": "",
-				className: css$15.start
+				className: css$16.start
 			}),
 			jsx("div", {
 				id: headingId,
 				"data-menu-group-heading": "",
-				className: css$15.heading,
+				className: css$16.heading,
 				children: label
 			}),
 			children
@@ -4573,318 +4646,70 @@ async function writeClipboard(text) {
 	}
 }
 //#endregion
-//#region lib/types/input-modality.js
+//#region lib/types/HoverCardGroup.js
+/** Private coordination shared only by opted-in HoverCards inside one mounted group. */
+const HoverCardGroupContext = createContext(null);
 /**
-* Document-wide input tracking shared by tooltips and focus-ring styles.
-* Tooltips follow the last input; rings follow navigation or a key followed by
-* focus on a different control. Modifiers and refocusing alone keep rings silent.
-* Module-level listeners live for the document lifetime; Node imports are inert.
+* Share first-display dwell across a list and its active portal, including the card's existing pointer grace.
+* @param props.children - list contents, including opted-in HoverCards.
+* @param props.className - classes for the physical list container.
+* @returns the list container and its private hover coordinator.
 */
-/** Modality values published on the document element. */
-const INPUT_MODALITY = {
-	pointer: "pointer",
-	keyboard: "keyboard"
-};
-/** Attribute carrying whether focus navigation last owned focus. */
-const INPUT_MODALITY_ATTRIBUTE = "data-input-modality";
-const FOCUS_NAVIGATION = new Set([
-	"Tab",
-	"Home",
-	"End",
-	"PageUp",
-	"PageDown"
-]);
-let pointer = false;
-let pointerOwnsFocus = false;
-let keyFocusOrigin;
-function publish() {
-	document.documentElement.setAttribute(INPUT_MODALITY_ATTRIBUTE, pointerOwnsFocus ? INPUT_MODALITY.pointer : INPUT_MODALITY.keyboard);
-}
-/**
-* Whether the last input came from a pointer, independently of ring visibility.
-* @returns True after pointer input; false after any key.
-*/
-function pointerModality() {
-	return pointer;
-}
-if (typeof window !== "undefined") {
-	window.addEventListener("pointerdown", () => {
-		pointer = true;
-		pointerOwnsFocus = true;
-		keyFocusOrigin = void 0;
-		publish();
-	}, true);
-	window.addEventListener("keydown", (event) => {
-		pointer = false;
-		if (event.isComposing) {
-			keyFocusOrigin = void 0;
-			return;
-		}
-		keyFocusOrigin = event.composedPath()[0];
-		if (!FOCUS_NAVIGATION.has(event.key) && !event.key.startsWith("Arrow")) return;
-		pointerOwnsFocus = false;
-		publish();
-	}, true);
-	window.addEventListener("focusin", (event) => {
-		if (keyFocusOrigin === void 0 || event.composedPath()[0] === keyFocusOrigin) return;
-		keyFocusOrigin = void 0;
-		if (!pointerOwnsFocus) return;
-		pointerOwnsFocus = false;
-		publish();
-	}, true);
-	window.addEventListener("blur", () => {
-		keyFocusOrigin = void 0;
-	});
-}
-//#endregion
-//#region lib/types/Tooltip.js
-/** Anchor-preserving tooltips; an optional body portal escapes clipping containers and stacking contexts that cap the bubble's z-index. */
-/**
-* Suppression channel for enclosing tooltip and hover-card anchors: a visible
-* tooltip within an anchor withdraws the enclosing preview while its bubble is shown.
-*/
-const TooltipSuppression = createContext(null);
-/**
-* Attach a hover/focus tooltip to an anchor element.
-* @param props.label - bubble text, or a resolver evaluated only while visible; an empty string shows only shortcut keys.
-* @param props.shortcutKeys - effective key labels rendered as platform-formatted keycaps after optional text.
-* @param props.side - placement relative to the anchor (default 'right').
-* @param props.align - horizontal anchor-edge alignment for 'bottom'/'top' bubbles: 'end' pins
-* the bubble's right edge to the anchor's (for anchors beside other hover surfaces the centered
-* bubble would overlap); default 'center'. Ignored for side 'right'.
-* @param props.portal - render the bubble under document.body, so an ancestor's clipping or its
-* stacking context (which confines the bubble's z-index to that context) cannot hide it.
-* @param props.delayMs - hover delay in milliseconds (default 0).
-* @param props.focusDelayMs - keyboard focus delay in milliseconds (default 0); blur, click,
-* mouse leave, disabling, and unmount cancel a pending show.
-* @param props.gap - anchor-to-bubble distance in pixels for 'bottom'/'top' bubbles (default 8);
-* ignored for side 'right'.
-* @param props.disabled - suppress the bubble while true; the anchor renders identically so
-* toggling never remounts it (which would cut its CSS transitions).
-* @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
-* half-viewport cap would render a slab wider than the surface the anchor sits on.
-* @param props.openOnClick - clicking also pins the bubble for reading; another click, Escape,
-* Tab, or an outside pointerdown dismisses it. Defaults to false for ordinary action tooltips.
-* @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
-* @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body.
-* The bubble stays hidden until ResizeObserver supplies its size for viewport fitting; clicking the
-* anchor dismisses the bubble unless openOnClick is enabled, and focus arriving after a pointer
-* interaction (a closing menu refocusing its trigger) never raises it.
-*/
-function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayMs = 0, focusDelayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, openOnClick = false, children }) {
-	const id = useId();
-	const [pinned, setPinned] = useState(false);
-	const anchor = useRef(null);
-	const childRef = children.ref;
-	const mergedRef = useCallback((el) => {
-		anchor.current = el;
-		if (typeof childRef === "function") childRef(el);
-		else if (childRef != null) childRef.current = el;
-	}, [childRef]);
-	const [pos, setPos] = useState(null);
-	const bubble = useRef(null);
-	const resolvedLabel = pos === null ? null : typeof label === "function" ? label() : label;
-	const y = pos === null ? 0 : side === "right" ? pos.top + (pos.bottom - pos.top) / 2 : side === "top" ? pos.top - gap : pos.bottom + gap;
-	const showTimer = useRef(null);
-	const triggers = useRef({
-		hover: false,
-		focus: false
-	});
-	const suppressAncestors = useContext(TooltipSuppression);
-	const [suppressed, setSuppressed] = useState(false);
-	const announce = useCallback((active) => {
-		suppressAncestors?.(active);
-	}, [suppressAncestors]);
-	const visible = pos !== null && !disabled;
-	useEffect(() => {
-		const el = bubble.current;
-		if (pos === null || !visible || suppressed || el === null) return;
-		const edgeMargin = 12;
-		let size;
-		let placement = side;
-		const fit = () => {
-			if (size === void 0) return;
-			const { inlineSize: width, blockSize: height } = size;
-			const offset = side === "right" ? 0 : align === "end" ? width : width / 2;
-			const left = Math.max(edgeMargin, Math.min(pos.x - offset, window.innerWidth - edgeMargin - width));
-			const fitsBelow = pos.bottom + gap + height <= window.innerHeight - edgeMargin;
-			const fitsAbove = pos.top - gap - height >= edgeMargin;
-			if (placement === "bottom" && !fitsBelow && fitsAbove) placement = "top";
-			else if (placement === "top" && !fitsAbove && fitsBelow) placement = "bottom";
-			el.style.left = `${left + offset}px`;
-			el.style.top = `${placement === "right" ? (pos.top + pos.bottom) / 2 : placement === "top" ? pos.top - gap : pos.bottom + gap}px`;
-			el.dataset.side = placement;
-			el.style.visibility = "visible";
-		};
-		const observer = new ResizeObserver((entries) => {
-			size = entries[0]?.borderBoxSize[0];
-			fit();
-		});
-		observer.observe(el, { box: "border-box" });
-		window.addEventListener("resize", fit);
-		return () => {
-			observer.disconnect();
-			window.removeEventListener("resize", fit);
-		};
-	}, [
-		align,
-		gap,
-		pos,
-		side,
-		suppressed,
-		visible
-	]);
-	useEffect(() => {
-		announce(visible);
-		return () => {
-			announce(false);
-		};
-	}, [announce, visible]);
-	const cancelShow = useCallback(() => {
-		if (showTimer.current === null) return;
-		clearTimeout(showTimer.current);
-		showTimer.current = null;
-	}, []);
-	useEffect(() => {
-		if (pinned && (disabled || !openOnClick)) setPinned(false);
-		if (disabled) {
-			cancelShow();
-			triggers.current = {
-				hover: false,
-				focus: false
-			};
-			setPos(null);
-		}
-		return cancelShow;
-	}, [
-		cancelShow,
-		disabled,
-		openOnClick,
-		pinned
-	]);
-	const show = () => {
-		if (disabled) return;
-		const el = anchor.current;
-		/* v8 ignore next -- the ref is attached by event time: events fire on the cloned anchor. */
-		if (el === null) return;
-		const r = el.getBoundingClientRect();
-		setPos({
-			x: side === "right" ? r.right + 10 : align === "end" ? r.right : r.left + r.width / 2,
-			top: r.top,
-			bottom: r.bottom
-		});
-		announce(true);
-	};
-	const showAfterDelay = (delay) => {
-		cancelShow();
-		if (delay <= 0) {
-			show();
-			return;
-		}
-		showTimer.current = setTimeout(() => {
-			showTimer.current = null;
-			show();
-		}, delay);
-	};
-	const withdraw = useCallback(() => {
-		setPinned(false);
-		setPos(null);
-		announce(false);
-	}, [announce]);
-	const hide = () => {
-		cancelShow();
-		if (!triggers.current.hover && !triggers.current.focus && !pinned) withdraw();
-	};
-	const dismiss = useCallback(() => {
-		cancelShow();
-		triggers.current = {
-			hover: false,
-			focus: false
-		};
-		withdraw();
-	}, [cancelShow, withdraw]);
-	useDismissOnOutsidePointer(anchor, openOnClick && visible, dismiss, bubble);
-	useEffect(() => {
-		if (!openOnClick || !visible) return;
-		const onKeyDown = (event) => {
-			if (event.key !== "Escape" && event.key !== "Tab") return;
-			if (event.key === "Escape") {
-				event.preventDefault();
-				event.stopPropagation();
+function HoverCardGroup({ children, className }) {
+	const [group] = useState(() => {
+		let pointer = "outside";
+		let warm = false;
+		let active = null;
+		return {
+			isWarm: () => warm,
+			enter: (overCard) => {
+				pointer = overCard ? "card" : "list";
+				if (overCard) warm = true;
+			},
+			leave: () => {
+				pointer = "outside";
+				if (active === null) warm = false;
+			},
+			containsCard: (target) => target instanceof Node && active !== null && active.element.contains(target),
+			shown: (owner, dismiss, element) => {
+				if (pointer === "card") {
+					pointer = "outside";
+					warm = false;
+				}
+				if (pointer === "list") warm = true;
+				const previous = active;
+				active = {
+					owner,
+					dismiss,
+					element
+				};
+				if (previous !== null && previous.owner !== owner) previous.dismiss();
+			},
+			release: (owner) => {
+				if (active?.owner !== owner) return;
+				active = null;
+				if (pointer !== "list") {
+					pointer = "outside";
+					warm = false;
+				}
 			}
-			dismiss();
 		};
-		document.addEventListener("keydown", onKeyDown, true);
-		return () => {
-			document.removeEventListener("keydown", onKeyDown, true);
-		};
-	}, [
-		dismiss,
-		openOnClick,
-		visible
-	]);
-	const content = visible && !suppressed && jsxs("span", {
-		ref: bubble,
-		id: openOnClick ? id : void 0,
-		className: css$16.bubble,
-		"data-side": side,
-		"data-portal": portal || void 0,
-		"data-pinned": pinned || void 0,
-		"data-align": align,
-		"data-has-shortcut": shortcutKeys?.length ? true : void 0,
-		style: {
-			left: pos.x,
-			top: y,
-			visibility: "hidden",
-			...maxWidth === void 0 ? {} : { maxWidth }
-		},
-		role: "tooltip",
-		"aria-label": shortcutKeys?.length ? [resolvedLabel, shortcutKeys.join(" ")].filter(Boolean).join(" ") : void 0,
-		children: [resolvedLabel && jsx("span", {
-			className: css$16.label,
-			children: resolvedLabel
-		}), shortcutKeys !== void 0 && shortcutKeys.length > 0 && jsx(ShortcutKeys, {
-			keys: shortcutKeys,
-			variant: "tooltip"
-		})]
 	});
-	return jsxs(TooltipSuppression.Provider, {
-		value: setSuppressed,
-		children: [cloneElement(children, {
-			ref: mergedRef,
-			"aria-describedby": openOnClick && visible ? [children.props["aria-describedby"], id].filter(Boolean).join(" ") : children.props["aria-describedby"],
-			onMouseEnter: (e) => {
-				children.props.onMouseEnter?.(e);
-				triggers.current.hover = true;
-				showAfterDelay(delayMs);
+	return jsx(HoverCardGroupContext.Provider, {
+		value: group,
+		children: jsx("div", {
+			className,
+			onPointerOverCapture: (event) => {
+				const overCard = group.containsCard(event.target);
+				if (event.currentTarget.contains(event.target) || overCard) group.enter(overCard);
 			},
-			onMouseLeave: (e) => {
-				children.props.onMouseLeave?.(e);
-				triggers.current.hover = false;
-				cancelShow();
-				if (!pinned) withdraw();
+			onPointerOutCapture: (event) => {
+				const fromGroup = event.currentTarget.contains(event.target) || group.containsCard(event.target);
+				const intoGroup = event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget) || group.containsCard(event.relatedTarget);
+				if (fromGroup && !intoGroup) group.leave();
 			},
-			onClick: (e) => {
-				children.props.onClick?.(e);
-				triggers.current.focus = false;
-				cancelShow();
-				if (openOnClick && !disabled && !pinned) {
-					setPinned(true);
-					show();
-				} else withdraw();
-			},
-			onFocus: (e) => {
-				children.props.onFocus?.(e);
-				if (pointerModality()) return;
-				triggers.current.focus = true;
-				showAfterDelay(focusDelayMs);
-			},
-			onBlur: (e) => {
-				children.props.onBlur?.(e);
-				triggers.current.focus = false;
-				hide();
-			}
-		}), portal ? content !== false && createPortal(content, document.body) : content]
+			children
+		})
 	});
 }
 //#endregion
@@ -4897,7 +4722,7 @@ const INLINE_PREVIEW_WIDTH = 300;
 const ANCHOR_GAP = 8;
 const VIEWPORT_MARGIN = 8;
 /**
-* Render an anchor with a hover-triggered preview card, hidden while a tooltip within the anchor is visible.
+* Render an anchor with a hover-triggered preview card independently of nested tooltips.
 * @param props.anchor - the hover target (rendered in place inside a wrapper span).
 * @param props.content - card content; the pointer may rest on it, so it is
 * readable and selectable, but it carries no dismissal affordance of its own.
@@ -4907,13 +4732,15 @@ const VIEWPORT_MARGIN = 8;
 * @param props.widthAnchorRef - optional element whose width and horizontal position size the preview.
 * @param props.inline - keep the anchor in prose; show a contained preview on hover or keyboard focus.
 * @param props.disabled - suppress opening; turning true dismisses an open card.
+* @param props.grouped - share first-display dwell across the surrounding list and active portal.
+* Group replacement removes the previous card immediately, including a fading preview.
 * @param props.copyText - optional primary value copied by activation and
 * included in the card's accessible name.
 * @param props.copyLabel - localized accessible activation-label prefix.
 * @param props.copiedLabel - localized visible success label.
 * @returns anchor wrapper with the conditional portaled card.
 */
-function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyText, copyLabel, copiedLabel, variant = "compact", widthAnchorRef, inline = false }) {
+function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, grouped = false, copyText, copyLabel, copiedLabel, variant = "compact", widthAnchorRef, inline = false }) {
 	const rootRef = useRef(null);
 	const cardRef = useRef(null);
 	const timerRef = useRef(null);
@@ -4928,7 +4755,9 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 	const [pos, setPos] = useState(null);
 	const positioned = pos !== null;
 	const [copied, setCopied] = useState(false);
-	const [suppressed, setSuppressed] = useState(false);
+	const parentGroup = useContext(HoverCardGroupContext);
+	const group = grouped ? parentGroup : null;
+	const [groupOwner] = useState(() => Symbol("hover-card"));
 	const clearCopied = useCallback(() => {
 		if (copyTimerRef.current !== null) {
 			clearTimeout(copyTimerRef.current);
@@ -4943,12 +4772,36 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		setPhase((current) => variant === "preview" && current !== "closed" ? "closing" : "closed");
 	}, [clearCopied, variant]);
 	const { arm: armClose, cancel: cancelClose } = usePointerGrace(close);
-	const clearTimer = () => {
+	const clearTimer = useCallback(() => {
 		if (timerRef.current !== null) {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
-	};
+	}, []);
+	const dismissImmediately = useCallback(() => {
+		clearTimer();
+		cancelClose();
+		copyEpochRef.current += 1;
+		clearCopied();
+		setPhase("closed");
+	}, [
+		clearTimer,
+		cancelClose,
+		clearCopied
+	]);
+	const groupVisible = open && positioned;
+	useLayoutEffect(() => {
+		if (!groupVisible || group === null) return;
+		group.shown(groupOwner, dismissImmediately, cardRef.current);
+		return () => {
+			group.release(groupOwner);
+		};
+	}, [
+		group,
+		groupOwner,
+		groupVisible,
+		dismissImmediately
+	]);
 	useEffect(() => {
 		if (!closing) return;
 		const timer = setTimeout(() => {
@@ -5073,7 +4926,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		inline
 	]);
 	useLayoutEffect(() => {
-		if (!open || pos === null || variant === "preview" || inline || suppressed) return;
+		if (!open || pos === null || variant === "preview" || inline) return;
 		/* v8 ignore next -- the card is mounted whenever pos is set, so the ref is attached here. */
 		const h = cardRef.current?.offsetHeight ?? 0;
 		if (pos.top + h > window.innerHeight - VIEWPORT_MARGIN) setPos({
@@ -5084,8 +4937,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		open,
 		pos,
 		variant,
-		inline,
-		suppressed
+		inline
 	]);
 	const copy = async (text) => {
 		if (copied || copyingRef.current) return;
@@ -5107,7 +4959,7 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		cancelClose();
 		close();
 	};
-	const card = open && pos !== null && !suppressed && jsx("div", {
+	const card = open && pos !== null && jsx("div", {
 		ref: cardRef,
 		className: clsx(css$17.card, variant === "preview" && css$17.preview, inline && css$17.media, copyable && css$17.copyable, copied && css$17.feedback),
 		"data-closing": closing || void 0,
@@ -5161,7 +5013,8 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 				return;
 			}
 			clearTimer();
-			timerRef.current = setTimeout(() => {
+			if (group?.isWarm()) setPhase("open");
+			else timerRef.current = setTimeout(() => {
 				setPhase("open");
 			}, openDelayMs);
 		},
@@ -5172,11 +5025,8 @@ function HoverCard({ anchor, content, openDelayMs = 500, disabled = false, copyT
 		onPointerDownCapture: dismissFromAnchor,
 		onClickCapture: dismissFromAnchor,
 		children: [
-			jsx(TooltipSuppression.Provider, {
-				value: setSuppressed,
-				children: anchor
-			}),
-			open && !suppressed && copyable && jsx("span", {
+			anchor,
+			open && copyable && jsx("span", {
 				className: css$17.status,
 				role: "status",
 				children: copied ? copiedLabel : ""
@@ -5624,6 +5474,28 @@ function FullAccessArtwork({ size = 16, className, strokeWidth }) {
 		]
 	});
 }
+function AutoReviewArtwork({ size = 16, className, strokeWidth }) {
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		className,
+		viewBox: "0 0 16 16",
+		fill: "none",
+		xmlns: "http://www.w3.org/2000/svg",
+		"aria-hidden": "true",
+		strokeWidth,
+		children: [jsx("path", {
+			d: "M6.59624 2.14853C7.50155 1.80917 8.49914 1.80919 9.40444 2.14859L13.9245 3.84317V7.11961C13.9245 11.6089 10.5565 13.5975 8.00035 14.5779C5.44423 13.5975 2.07544 11.6089 2.07544 7.11961V3.84317L6.59624 2.14853Z",
+			stroke: "currentColor",
+			strokeLinejoin: "round"
+		}), jsx("path", {
+			d: "M5.75 10.15L8 4.95L10.25 10.15M6.43 8.59H9.57",
+			stroke: "currentColor",
+			strokeLinecap: "round",
+			strokeLinejoin: "round"
+		})]
+	});
+}
 /**
 * Render the read-only permission icon with a one-pixel stroke.
 * @param props - Size and optional class.
@@ -5686,6 +5558,28 @@ function PermissionIconFullAccessRegular(props) {
 */
 function PermissionIconFullAccessMedium(props) {
 	return jsx(FullAccessArtwork, {
+		...props,
+		strokeWidth: ICON_MEDIUM_STROKE
+	});
+}
+/**
+* Render the auto-review permission icon with a one-pixel stroke.
+* @param props - Size and optional class.
+* @returns The regular decorative permission glyph.
+*/
+function PermissionIconAutoReviewRegular(props) {
+	return jsx(AutoReviewArtwork, {
+		...props,
+		strokeWidth: 1
+	});
+}
+/**
+* Render the auto-review permission icon with a 1.3px stroke.
+* @param props - Size and optional class.
+* @returns The medium decorative permission glyph.
+*/
+function PermissionIconAutoReviewMedium(props) {
+	return jsx(AutoReviewArtwork, {
 		...props,
 		strokeWidth: ICON_MEDIUM_STROKE
 	});
@@ -6682,111 +6576,362 @@ function LinkIconMedium(props) {
 }
 //#endregion
 //#region lib/types/user-text.js
-/** The wire form a session chip serializes to; label is the display text. */
-const SESSION_WIRE_RE = /@\[([^\]\n]+)\]\(dsh-session:[^)\s]+\)/gu;
-/** Sentence punctuation a bare `@name` token may carry without being part of the reference. */
-const TRAILING_PUNCTUATION_RE = /[.,;:!?，。；：！？]+$/u;
 /**
-* Split one sent text into inline plain runs and reference chips.
-* @param text - the logged model text of the message or queue row.
-* @param sessionLabels - exact session mention labels associated by an adjacent recall.
-* @param slashNames - names a `/name` token may decorate as: the skills the
-* host loaded for this message, or the command a command bubble echoes
-* (unsent queue rows pass none).
-* @param slashKind - the chip kind those tokens render as.
-* @param references - optional file and skill preview actions; session and command tokens stay labels.
-* @returns inline nodes covering the whole text.
+* Render an uninterpreted inline text run.
+* @param props - text retained verbatim from the caller's document.
+* @returns one inline run without Markdown or reference recognition.
 */
-function projectUserText(text, sessionLabels, slashNames = [], slashKind = "skill", references) {
-	const ranges = [];
-	SESSION_WIRE_RE.lastIndex = 0;
-	let wire;
-	while ((wire = SESSION_WIRE_RE.exec(text)) !== null) ranges.push({
-		start: wire.index,
-		end: wire.index + wire[0].length,
-		label: wire[0],
-		kind: "session",
-		display: wire[1]
-	});
-	for (const rawLabel of [...new Set(sessionLabels)].sort((a, b) => b.length - a.length)) {
-		const label = `@${rawLabel}`;
-		let start = text.indexOf(label);
-		while (start >= 0) {
-			ranges.push({
-				start,
-				end: start + label.length,
-				label,
-				kind: "session"
-			});
-			start = text.indexOf(label, start + label.length);
-		}
-	}
-	const re = /(^|\s)(\/[\w-]+(?=\s|$)|@"[^"\n]+"|@[^\s]+)/gu;
-	let m;
-	while ((m = re.exec(text)) !== null) {
-		const tokenStart = m.index + m[1].length;
-		const rawLabel = m[2];
-		const label = rawLabel.startsWith("@\"") ? rawLabel : rawLabel.replace(TRAILING_PUNCTUATION_RE, "");
-		if (label.length <= 1) continue;
-		if (label.startsWith("/") && !slashNames.includes(label.slice(1))) continue;
-		ranges.push({
-			start: tokenStart,
-			end: tokenStart + label.length,
-			label,
-			kind: "plain"
-		});
-	}
-	const rankOf = (range) => range.kind === "session" ? 0 : 1;
-	ranges.sort((a, b) => a.start - b.start || rankOf(a) - rankOf(b) || b.end - a.end);
-	const parts = [];
-	let cursor = 0;
-	const pushPlain = (from, to) => {
-		parts.push(jsx("span", {
-			className: css$22.plainRun,
-			children: text.slice(from, to)
-		}, `t${from}`));
-	};
-	for (const range of ranges) {
-		if (range.start < cursor) continue;
-		const { start: tokenStart, end, label, kind } = range;
-		if (tokenStart > cursor) pushPlain(cursor, tokenStart);
-		const referenceKind = kind === "session" ? "session" : label.startsWith("@") ? label.replace(/^@"|"$/gu, "").endsWith("/") ? "folder" : "file" : void 0;
-		const displayLabel = range.display ?? (referenceKind === void 0 ? label : referenceKind === "session" ? label.slice(1) : label.slice(1).replace(/^"|"$/gu, "").split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1));
-		const contents = jsxs(Fragment, { children: [referenceKind !== void 0 && jsx(ReferenceIconRegular, {
-			kind: referenceKind,
-			size: 16,
-			className: css$22.refIcon
-		}), displayLabel] });
-		const open = references === void 0 ? void 0 : referenceKind === "file" ? () => {
-			references.openFile(label.slice(1).replace(/^"|"$/gu, ""));
-		} : referenceKind === void 0 && slashKind === "skill" ? () => {
-			references.openSkill(label.slice(1));
-		} : void 0;
-		const className = clsx(css$22.refChip, referenceKind === void 0 && css$22.slashChip);
-		parts.push(open === void 0 ? jsx("span", {
-			className,
-			"data-ref-chip": referenceKind ?? slashKind,
-			title: label,
-			children: contents
-		}, tokenStart) : jsx("button", {
-			type: "button",
-			className: clsx(className, markdownCss.fileMention),
-			"data-ref-chip": referenceKind ?? slashKind,
-			title: label,
-			onClick: (event) => {
-				if (event.detail > 1 || event.detail !== 0 && event.currentTarget.ownerDocument.getSelection()?.isCollapsed === false) return;
-				open();
-			},
-			children: contents
-		}, tokenStart));
-		cursor = end;
-	}
-	if (parts.length === 0) return jsx("span", {
+function UserTextRun({ text }) {
+	return jsx("span", {
 		className: css$22.plainRun,
 		children: text
 	});
-	if (cursor < text.length) pushPlain(cursor, text.length);
-	return jsx(Fragment, { children: parts });
+}
+/**
+* Render a reference label or its explicitly supplied activation action.
+* Text selection and repeated pointer clicks do not activate the reference.
+* @param props - resolved visual fields and optional action from the owning renderer.
+* @returns an inline label, or a keyboard-accessible button when activation is supplied.
+*/
+function ReferenceChip({ appearance, label, title, onActivate }) {
+	const slash = appearance === "skill" || appearance === "command";
+	const contents = jsxs(Fragment, { children: [!slash && jsx(ReferenceIconRegular, {
+		kind: appearance,
+		size: 16,
+		className: css$22.refIcon
+	}), label] });
+	const className = clsx(css$22.refChip, slash && css$22.slashChip);
+	return onActivate === void 0 ? jsx("span", {
+		className,
+		"data-ref-chip": appearance,
+		title,
+		children: contents
+	}) : jsx("button", {
+		type: "button",
+		className: clsx(className, markdownCss.fileMention),
+		"data-ref-chip": appearance,
+		title,
+		onClick: (event) => {
+			if (event.detail > 1 || event.detail !== 0 && event.currentTarget.ownerDocument.getSelection()?.isCollapsed === false) return;
+			onActivate();
+		},
+		children: contents
+	});
+}
+//#endregion
+//#region lib/types/input-modality.js
+/**
+* Document-wide input tracking shared by tooltips and focus-ring styles.
+* Tooltips follow the last input; rings follow navigation or a key followed by
+* focus on a different control. Modifiers and refocusing alone keep rings silent.
+* Module-level listeners live for the document lifetime; Node imports are inert.
+*/
+/** Modality values published on the document element. */
+const INPUT_MODALITY = {
+	pointer: "pointer",
+	keyboard: "keyboard"
+};
+/** Attribute carrying whether focus navigation last owned focus. */
+const INPUT_MODALITY_ATTRIBUTE = "data-input-modality";
+const FOCUS_NAVIGATION = new Set([
+	"Tab",
+	"Home",
+	"End",
+	"PageUp",
+	"PageDown"
+]);
+let pointer = false;
+let pointerOwnsFocus = false;
+let keyFocusOrigin;
+function publish() {
+	document.documentElement.setAttribute(INPUT_MODALITY_ATTRIBUTE, pointerOwnsFocus ? INPUT_MODALITY.pointer : INPUT_MODALITY.keyboard);
+}
+/**
+* Whether the last input came from a pointer, independently of ring visibility.
+* @returns True after pointer input; false after any key.
+*/
+function pointerModality() {
+	return pointer;
+}
+if (typeof window !== "undefined") {
+	window.addEventListener("pointerdown", () => {
+		pointer = true;
+		pointerOwnsFocus = true;
+		keyFocusOrigin = void 0;
+		publish();
+	}, true);
+	window.addEventListener("keydown", (event) => {
+		pointer = false;
+		if (event.isComposing) {
+			keyFocusOrigin = void 0;
+			return;
+		}
+		keyFocusOrigin = event.composedPath()[0];
+		if (!FOCUS_NAVIGATION.has(event.key) && !event.key.startsWith("Arrow")) return;
+		pointerOwnsFocus = false;
+		publish();
+	}, true);
+	window.addEventListener("focusin", (event) => {
+		if (keyFocusOrigin === void 0 || event.composedPath()[0] === keyFocusOrigin) return;
+		keyFocusOrigin = void 0;
+		if (!pointerOwnsFocus) return;
+		pointerOwnsFocus = false;
+		publish();
+	}, true);
+	window.addEventListener("blur", () => {
+		keyFocusOrigin = void 0;
+	});
+}
+//#endregion
+//#region lib/types/Tooltip.js
+/** Anchor-preserving tooltips; an optional body portal escapes clipping containers and stacking contexts that cap the bubble's z-index. */
+/**
+* Suppression channel for nested tooltips: a visible descendant tooltip
+* withdraws the enclosing tooltip while its bubble is shown.
+*/
+const TooltipSuppression = createContext(null);
+/**
+* Attach a hover/focus tooltip to an anchor element.
+* @param props.label - bubble text, or a resolver evaluated only while visible; an empty string shows only shortcut keys.
+* @param props.shortcutKeys - effective key labels rendered as platform-formatted keycaps after optional text.
+* @param props.side - placement relative to the anchor (default 'right').
+* @param props.align - horizontal anchor-edge alignment for 'bottom'/'top' bubbles: 'end' pins
+* the bubble's right edge to the anchor's (for anchors beside other hover surfaces the centered
+* bubble would overlap); default 'center'. Ignored for side 'right'.
+* @param props.portal - render the bubble under document.body, so an ancestor's clipping or its
+* stacking context (which confines the bubble's z-index to that context) cannot hide it.
+* @param props.delayMs - hover delay in milliseconds (default 0).
+* @param props.focusDelayMs - keyboard focus delay in milliseconds (default 0); blur, click,
+* mouse leave, disabling, and unmount cancel a pending show.
+* @param props.gap - anchor-to-bubble distance in pixels for 'bottom'/'top' bubbles (default 8);
+* ignored for side 'right'.
+* @param props.disabled - suppress the bubble while true; the anchor renders identically so
+* toggling never remounts it (which would cut its CSS transitions).
+* @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
+* half-viewport cap would render a slab wider than the surface the anchor sits on.
+* @param props.openOnClick - clicking also pins the bubble for reading; another click, Escape,
+* Tab, or an outside pointerdown dismisses it. Defaults to false for ordinary action tooltips.
+* @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
+* @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body.
+* The bubble stays hidden until ResizeObserver supplies its size for viewport fitting; clicking the
+* anchor dismisses the bubble unless openOnClick is enabled, and focus arriving after a pointer
+* interaction (a closing menu refocusing its trigger) never raises it.
+*/
+function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayMs = 0, focusDelayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, openOnClick = false, children }) {
+	const id = useId();
+	const [pinned, setPinned] = useState(false);
+	const anchor = useRef(null);
+	const childRef = children.ref;
+	const mergedRef = useCallback((el) => {
+		anchor.current = el;
+		if (typeof childRef === "function") childRef(el);
+		else if (childRef != null) childRef.current = el;
+	}, [childRef]);
+	const [pos, setPos] = useState(null);
+	const bubble = useRef(null);
+	const resolvedLabel = pos === null ? null : typeof label === "function" ? label() : label;
+	const y = pos === null ? 0 : side === "right" ? pos.top + (pos.bottom - pos.top) / 2 : side === "top" ? pos.top - gap : pos.bottom + gap;
+	const showTimer = useRef(null);
+	const triggers = useRef({
+		hover: false,
+		focus: false
+	});
+	const suppressAncestors = useContext(TooltipSuppression);
+	const [suppressed, setSuppressed] = useState(false);
+	const announce = useCallback((active) => {
+		suppressAncestors?.(active);
+	}, [suppressAncestors]);
+	const visible = pos !== null && !disabled;
+	useEffect(() => {
+		const el = bubble.current;
+		if (pos === null || !visible || suppressed || el === null) return;
+		const edgeMargin = 12;
+		let size;
+		let placement = side;
+		const fit = () => {
+			if (size === void 0) return;
+			const { inlineSize: width, blockSize: height } = size;
+			const offset = side === "right" ? 0 : align === "end" ? width : width / 2;
+			const left = Math.max(edgeMargin, Math.min(pos.x - offset, window.innerWidth - edgeMargin - width));
+			const fitsBelow = pos.bottom + gap + height <= window.innerHeight - edgeMargin;
+			const fitsAbove = pos.top - gap - height >= edgeMargin;
+			if (placement === "bottom" && !fitsBelow && fitsAbove) placement = "top";
+			else if (placement === "top" && !fitsAbove && fitsBelow) placement = "bottom";
+			el.style.left = `${left + offset}px`;
+			el.style.top = `${placement === "right" ? (pos.top + pos.bottom) / 2 : placement === "top" ? pos.top - gap : pos.bottom + gap}px`;
+			el.dataset.side = placement;
+			el.style.visibility = "visible";
+		};
+		const observer = new ResizeObserver((entries) => {
+			size = entries[0]?.borderBoxSize[0];
+			fit();
+		});
+		observer.observe(el, { box: "border-box" });
+		window.addEventListener("resize", fit);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", fit);
+		};
+	}, [
+		align,
+		gap,
+		pos,
+		side,
+		suppressed,
+		visible
+	]);
+	useEffect(() => {
+		announce(visible);
+		return () => {
+			announce(false);
+		};
+	}, [announce, visible]);
+	const cancelShow = useCallback(() => {
+		if (showTimer.current === null) return;
+		clearTimeout(showTimer.current);
+		showTimer.current = null;
+	}, []);
+	useEffect(() => {
+		if (pinned && (disabled || !openOnClick)) setPinned(false);
+		if (disabled) {
+			cancelShow();
+			triggers.current = {
+				hover: false,
+				focus: false
+			};
+			setPos(null);
+		}
+		return cancelShow;
+	}, [
+		cancelShow,
+		disabled,
+		openOnClick,
+		pinned
+	]);
+	const show = () => {
+		if (disabled) return;
+		const el = anchor.current;
+		/* v8 ignore next -- the ref is attached by event time: events fire on the cloned anchor. */
+		if (el === null) return;
+		const r = el.getBoundingClientRect();
+		setPos({
+			x: side === "right" ? r.right + 10 : align === "end" ? r.right : r.left + r.width / 2,
+			top: r.top,
+			bottom: r.bottom
+		});
+		announce(true);
+	};
+	const showAfterDelay = (delay) => {
+		cancelShow();
+		if (delay <= 0) {
+			show();
+			return;
+		}
+		showTimer.current = setTimeout(() => {
+			showTimer.current = null;
+			show();
+		}, delay);
+	};
+	const withdraw = useCallback(() => {
+		setPinned(false);
+		setPos(null);
+		announce(false);
+	}, [announce]);
+	const hide = () => {
+		cancelShow();
+		if (!triggers.current.hover && !triggers.current.focus && !pinned) withdraw();
+	};
+	const dismiss = useCallback(() => {
+		cancelShow();
+		triggers.current = {
+			hover: false,
+			focus: false
+		};
+		withdraw();
+	}, [cancelShow, withdraw]);
+	useDismissOnOutsidePointer(anchor, openOnClick && visible, dismiss, bubble);
+	useEffect(() => {
+		if (!openOnClick || !visible) return;
+		const onKeyDown = (event) => {
+			if (event.key !== "Escape" && event.key !== "Tab") return;
+			if (event.key === "Escape") {
+				event.preventDefault();
+				event.stopPropagation();
+			}
+			dismiss();
+		};
+		document.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [
+		dismiss,
+		openOnClick,
+		visible
+	]);
+	const content = visible && !suppressed && jsxs("span", {
+		ref: bubble,
+		id: openOnClick ? id : void 0,
+		className: css$23.bubble,
+		"data-side": side,
+		"data-portal": portal || void 0,
+		"data-pinned": pinned || void 0,
+		"data-align": align,
+		"data-has-shortcut": shortcutKeys?.length ? true : void 0,
+		style: {
+			left: pos.x,
+			top: y,
+			visibility: "hidden",
+			...maxWidth === void 0 ? {} : { maxWidth }
+		},
+		role: "tooltip",
+		"aria-label": shortcutKeys?.length ? [resolvedLabel, shortcutKeys.join(" ")].filter(Boolean).join(" ") : void 0,
+		children: [resolvedLabel && jsx("span", {
+			className: css$23.label,
+			children: resolvedLabel
+		}), shortcutKeys !== void 0 && shortcutKeys.length > 0 && jsx(ShortcutKeys, {
+			keys: shortcutKeys,
+			variant: "tooltip"
+		})]
+	});
+	return jsxs(TooltipSuppression.Provider, {
+		value: setSuppressed,
+		children: [cloneElement(children, {
+			ref: mergedRef,
+			"aria-describedby": openOnClick && visible ? [children.props["aria-describedby"], id].filter(Boolean).join(" ") : children.props["aria-describedby"],
+			onMouseEnter: (e) => {
+				children.props.onMouseEnter?.(e);
+				triggers.current.hover = true;
+				showAfterDelay(delayMs);
+			},
+			onMouseLeave: (e) => {
+				children.props.onMouseLeave?.(e);
+				triggers.current.hover = false;
+				cancelShow();
+				if (!pinned) withdraw();
+			},
+			onClick: (e) => {
+				children.props.onClick?.(e);
+				triggers.current.focus = false;
+				cancelShow();
+				if (openOnClick && !disabled && !pinned) {
+					setPinned(true);
+					show();
+				} else withdraw();
+			},
+			onFocus: (e) => {
+				children.props.onFocus?.(e);
+				if (pointerModality()) return;
+				triggers.current.focus = true;
+				showAfterDelay(focusDelayMs);
+			},
+			onBlur: (e) => {
+				children.props.onBlur?.(e);
+				triggers.current.focus = false;
+				hide();
+			}
+		}), portal ? content !== false && createPortal(content, document.body) : content]
+	});
 }
 //#endregion
 //#region lib/types/Toast.js
@@ -6855,25 +7000,25 @@ function Toast({ text, icon, tone, anchor, holdMs = HOLD_MS, actions, onDone }) 
 		};
 	}, [anchor]);
 	return createPortal(jsxs("div", {
-		className: css$23.toast,
+		className: css$24.toast,
 		role: "alert",
 		style: {
 			...left === null ? {} : { left },
 			"--dsh-toast-hold": `${String(holdMs)}ms`
 		},
 		children: [tone === "success" ? jsx("span", {
-			className: `${css$23.icon} ${css$23.success}`,
+			className: `${css$24.icon} ${css$24.success}`,
 			"aria-hidden": true,
 			children: jsx(IconCheckCircleOutlineRegular, {})
 		}) : icon !== void 0 && jsx("span", {
-			className: css$23.icon,
+			className: css$24.icon,
 			"aria-hidden": true,
 			children: icon
 		}), jsxs("span", {
-			className: css$23.text,
+			className: css$24.text,
 			children: [text, actions?.map((action) => jsxs(Fragment$1, { children: [action.prefix, jsx("button", {
 				type: "button",
-				className: css$23.action,
+				className: css$24.action,
 				onClick: action.onClick,
 				children: action.label
 			})] }, action.label))]
@@ -6923,29 +7068,29 @@ function SettingsForm(props) {
 		discard.current();
 	}, []);
 	if (!state.available) return jsx("p", {
-		className: css$24.unavailable,
+		className: css$25.unavailable,
 		role: "status",
 		children: labels.unavailable
 	});
 	const blocked = !state.dirty || state.invalid || state.saving;
 	return jsxs("div", {
-		className: css$24.form,
+		className: css$25.form,
 		children: [
 			!state.writable ? jsx("p", {
-				className: css$24.readOnly,
+				className: css$25.readOnly,
 				role: "status",
 				children: labels.readOnly
 			}) : null,
 			props.children,
 			jsxs("div", {
-				className: css$24.footer,
+				className: css$25.footer,
 				children: [state.failed ? jsx("p", {
-					className: css$24.failed,
+					className: css$25.failed,
 					role: "status",
 					children: labels.saveFailed
 				}) : null, jsx("button", {
 					type: "button",
-					className: css$24.save,
+					className: css$25.save,
 					disabled: blocked,
 					onClick: props.onSave,
 					children: state.saving ? labels.saving : labels.save
@@ -6977,19 +7122,19 @@ function SettingsValueField(props) {
 	const hasMessage = props.invalid || Boolean(props.hint);
 	const description = [hasMessage ? messageId : "", helpOpen ? helpId : ""].filter(Boolean).join(" ");
 	return jsxs("div", {
-		className: css$25.field,
+		className: css$26.field,
 		children: [
 			jsxs("div", {
-				className: css$25.head,
+				className: css$26.head,
 				children: [jsxs("div", {
-					className: css$25.labelGroup,
+					className: css$26.labelGroup,
 					children: [jsx("label", {
-						className: css$25.label,
+						className: css$26.label,
 						htmlFor: props.id,
 						children: props.label
 					}), props.help !== void 0 ? jsx("button", {
 						type: "button",
-						className: css$25.helpButton,
+						className: css$26.helpButton,
 						"aria-label": props.help.label,
 						"aria-expanded": helpOpen,
 						"aria-controls": helpId,
@@ -6999,13 +7144,13 @@ function SettingsValueField(props) {
 						children: jsx(IconInfoOutlineRegular, { size: 12 })
 					}) : null]
 				}), props.overridden ? jsxs("span", {
-					className: css$25.badges,
+					className: css$26.badges,
 					children: [jsx(Tag, {
 						tone: "neutral",
 						children: props.overriddenLabel
 					}), jsx("button", {
 						type: "button",
-						className: css$25.reset,
+						className: css$26.reset,
 						disabled: props.disabled,
 						onClick: props.onReset,
 						children: props.resetLabel
@@ -7014,7 +7159,7 @@ function SettingsValueField(props) {
 			}),
 			jsx("input", {
 				id: props.id,
-				className: css$25.input,
+				className: css$26.input,
 				type: "text",
 				...props.numeric === true ? { inputMode: "numeric" } : {},
 				...props.invalid ? { "aria-invalid": true } : {},
@@ -7028,12 +7173,12 @@ function SettingsValueField(props) {
 			}),
 			hasMessage ? jsx("p", {
 				id: messageId,
-				className: props.invalid ? css$25.invalid : css$25.hint,
+				className: props.invalid ? css$26.invalid : css$26.hint,
 				children: props.invalid ? props.invalidLabel : props.hint
 			}) : null,
 			props.help !== void 0 && helpOpen ? jsx("div", {
 				id: helpId,
-				className: css$25.help,
+				className: css$26.help,
 				role: "region",
 				"aria-label": props.help.label,
 				children: props.help.content
@@ -7051,16 +7196,16 @@ function SettingsValueField(props) {
 */
 function SettingsSecretField(props) {
 	return jsxs("div", {
-		className: css$25.field,
+		className: css$26.field,
 		children: [
 			jsxs("div", {
-				className: css$25.head,
+				className: css$26.head,
 				children: [jsx("label", {
-					className: css$25.label,
+					className: css$26.label,
 					htmlFor: props.id,
 					children: props.label
 				}), jsx("span", {
-					className: css$25.badges,
+					className: css$26.badges,
 					children: jsx(Tag, {
 						tone: props.configured ? "neutral" : "quiet",
 						children: props.stateLabel
@@ -7069,7 +7214,7 @@ function SettingsSecretField(props) {
 			}),
 			jsx("input", {
 				id: props.id,
-				className: css$25.input,
+				className: css$26.input,
 				type: "password",
 				autoComplete: "new-password",
 				value: props.text,
@@ -7079,7 +7224,7 @@ function SettingsSecretField(props) {
 				}
 			}),
 			jsx("p", {
-				className: css$25.hint,
+				className: css$26.hint,
 				children: props.hint
 			})
 		]
@@ -7633,6 +7778,15 @@ const regexEngine = createJavaScriptRegexEngine({
 	forgiving: true,
 	regexConstructor: (pattern) => defaultJavaScriptRegexConstructor(pattern, { lazyCompileLength: Number.POSITIVE_INFINITY })
 });
+/**
+* Lines at least this many UTF-16 units long render as one uncolored token.
+* With the JavaScript regex engine, scanning one JavaScript string-literal
+* line costs about 70 ms at 1,000 units, 300 ms at 2,000, 600 ms at 5,000 and
+* 2.5 s at 10,000, so this cap keeps one line within a few frames. A skipped
+* line leaves the grammar state unchanged: a multi-line construct that opens
+* or closes on it colors the following lines as if the line were absent.
+*/
+const TOKENIZE_MAX_LINE_LENGTH = 1e3;
 let singleton;
 /** Representative paths through every boot grammar, compiled before user content is timed. */
 const BOOT_GRAMMAR_WARMUPS = [
@@ -7740,7 +7894,8 @@ function highlightToHtml(code, lang) {
 	if (!ensureGrammar(resolved)) return void 0;
 	return highlighter().codeToHtml(code, {
 		lang: resolved,
-		theme: "css-variables"
+		theme: "css-variables",
+		tokenizeMaxLineLength: TOKENIZE_MAX_LINE_LENGTH
 	});
 }
 /** vscode-textmate FontStyle bits shiki folds into `text-decoration` values. */
@@ -7833,6 +7988,7 @@ var StreamingHighlightSession = class {
 		return highlighter().codeToTokensBase(text, {
 			lang: resolved,
 			theme: "css-variables",
+			tokenizeMaxLineLength: TOKENIZE_MAX_LINE_LENGTH,
 			...this.state === void 0 ? {} : { grammarState: this.state }
 		});
 	}
@@ -7912,7 +8068,8 @@ function highlightLines(code, lang) {
 	if (!ensureGrammar(resolved)) return void 0;
 	const { tokens } = highlighter().codeToTokens(code, {
 		lang: resolved,
-		theme: "css-variables"
+		theme: "css-variables",
+		tokenizeMaxLineLength: TOKENIZE_MAX_LINE_LENGTH
 	});
 	const last = tokens[tokens.length - 1];
 	return (tokens.length > 1 && last !== void 0 && last.length === 0 ? tokens.slice(0, -1) : tokens).map((line) => line.map((token) => ({
@@ -8145,7 +8302,7 @@ function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) 
 	const object = typeof target.value === "object" && target.value !== null;
 	const copyTitle = state === "copied" ? labels.copied : state === "failed" ? labels.copyFailed : object ? labels.copyPrettyJson : labels.copyValue;
 	return jsx("span", {
-		className: css$26.copySlot,
+		className: css$27.copySlot,
 		children: (persistent || snapshot !== void 0) && jsx(Menu, {
 			open: snapshot?.menuOpen === true,
 			compact: true,
@@ -8154,7 +8311,7 @@ function JsonCopyAction({ store, target, persistent, labels, onCopy, onClose }) 
 			anchor: jsx("button", {
 				ref: buttonRef,
 				type: "button",
-				className: css$26.actionButton,
+				className: css$27.actionButton,
 				"data-json-copy-button": true,
 				"data-state": state,
 				"aria-label": copyTitle,
@@ -8193,35 +8350,35 @@ function bracketOf(value) {
 }
 function previewPrimitive(value) {
 	if (value === null) return jsx("span", {
-		className: css$26.keywordValue,
+		className: css$27.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$26.stringValue,
+		className: css$27.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$26.numberValue,
+		className: css$27.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$26.keywordValue,
+		className: css$27.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: value.toString()
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: "undefined"
 	});
 	if (typeof value === "symbol") return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: value.description ?? "Symbol"
 	});
 	if (typeof value === "function") return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: value.name || "Function"
 	});
 	return null;
@@ -8235,71 +8392,71 @@ function previewValue(value, depth) {
 	const [open, close] = bracketOf(value);
 	return jsxs(Fragment, { children: [
 		jsx("span", {
-			className: css$26.punctuation,
+			className: css$27.punctuation,
 			children: open
 		}),
 		depth >= PREVIEW_DEPTH_LIMIT ? jsx("span", {
-			className: css$26.previewEllipsis,
+			className: css$27.previewEllipsis,
 			children: "…"
 		}) : visible.map(([key, item], index) => jsxs("span", { children: [
 			index > 0 && jsx("span", {
-				className: css$26.punctuation,
+				className: css$27.punctuation,
 				children: ", "
 			}),
 			!array && jsxs(Fragment, { children: [jsx("span", {
-				className: css$26.previewProperty,
+				className: css$27.previewProperty,
 				children: key
 			}), jsx("span", {
-				className: css$26.punctuation,
+				className: css$27.punctuation,
 				children: ": "
 			})] }),
 			previewValue(item, depth + 1)
 		] }, key)),
 		depth < PREVIEW_DEPTH_LIMIT && entries.length > limit && jsx("span", {
-			className: css$26.previewEllipsis,
+			className: css$27.previewEllipsis,
 			children: ", …"
 		}),
 		jsx("span", {
-			className: css$26.punctuation,
+			className: css$27.punctuation,
 			children: close
 		})
 	] });
 }
 function primitiveValue(value) {
 	if (value === null) return jsx("span", {
-		className: css$26.keywordValue,
+		className: css$27.keywordValue,
 		children: "null"
 	});
 	if (typeof value === "string") return jsx("span", {
-		className: css$26.stringValue,
+		className: css$27.stringValue,
 		children: JSON.stringify(value)
 	});
 	if (typeof value === "boolean") return jsx("span", {
-		className: css$26.keywordValue,
+		className: css$27.keywordValue,
 		children: String(value)
 	});
 	if (typeof value === "number") return jsx("span", {
-		className: css$26.numberValue,
+		className: css$27.numberValue,
 		children: String(value)
 	});
 	if (typeof value === "bigint") return jsx("span", {
-		className: css$26.numberValue,
+		className: css$27.numberValue,
 		children: `${value.toString()}n`
 	});
 	if (value instanceof Date) return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: value.toISOString()
 	});
 	if (typeof value === "function") return jsxs("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: ["function() ", "{ }"]
 	});
 	if (typeof value === "undefined") return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: "undefined"
 	});
 	return jsx("span", {
-		className: css$26.otherValue,
+		className: css$27.otherValue,
 		children: value.toString()
 	});
 }
@@ -8327,7 +8484,7 @@ function moveFocus(button, direction) {
 function NodeField({ field, expandable, onToggle }) {
 	if (field === void 0) return null;
 	return jsxs("span", {
-		className: clsx(css$26.label, expandable && css$26.clickableLabel),
+		className: clsx(css$27.label, expandable && css$27.clickableLabel),
 		onClick: expandable ? onToggle : void 0,
 		children: [fieldText(field), ":"]
 	});
@@ -8364,7 +8521,7 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 		if (!expanded) return;
 		const raw = rawRef.current;
 		const clips = [];
-		const tree = raw.closest(`.${css$26.root}`);
+		const tree = raw.closest(`.${css$27.root}`);
 		for (let parent = tree.parentElement; parent !== null; parent = parent.parentElement) if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowY)) clips.push(parent);
 		const measure = () => {
 			let top = 0;
@@ -8393,33 +8550,33 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 	if (expanded) {
 		const fieldId = `${contentsId}-field`;
 		return jsxs("div", {
-			className: css$26.stringField,
+			className: css$27.stringField,
 			"data-expanded": true,
 			children: [
 				field !== void 0 && jsxs("span", {
 					id: fieldId,
-					className: css$26.label,
+					className: css$27.label,
 					children: [fieldText(field), ":"]
 				}),
 				jsx("pre", {
 					ref: rawRef,
 					id: contentsId,
-					className: css$26.stringRaw,
+					className: css$27.stringRaw,
 					"data-wrap": wrapped,
 					tabIndex: 0,
 					"aria-labelledby": field === void 0 ? void 0 : fieldId,
 					children: value
 				}),
 				!lastElement && jsx("span", {
-					className: css$26.punctuation,
+					className: css$27.punctuation,
 					children: ","
 				}),
 				jsxs("div", {
-					className: css$26.stringActions,
+					className: css$27.stringActions,
 					children: [
 						stringWrapping !== void 0 && jsx("button", {
 							type: "button",
-							className: css$26.actionButton,
+							className: css$27.actionButton,
 							"aria-label": stringWrapping.label,
 							title: stringWrapping.label,
 							"aria-pressed": wrapped,
@@ -8433,7 +8590,7 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 						}),
 						jsx("button", {
 							type: "button",
-							className: css$26.actionButton,
+							className: css$27.actionButton,
 							"aria-label": labels.collapseNode,
 							title: labels.collapseNode,
 							"aria-expanded": true,
@@ -8458,18 +8615,18 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 		});
 	}
 	return jsxs(Fragment, { children: [renderCopy?.(), jsx("span", {
-		className: css$26.stringField,
+		className: css$27.stringField,
 		"data-expanded": expanded,
 		children: jsxs("span", {
 			ref: contentRef,
 			id: contentsId,
-			className: css$26.stringText,
+			className: css$27.stringText,
 			children: [
 				truncated && jsx("span", {
-					className: css$26.stringToggleSlot,
+					className: css$27.stringToggleSlot,
 					children: jsxs("button", {
 						type: "button",
-						className: css$26.stringToggle,
+						className: css$27.stringToggle,
 						"aria-label": labels.expandNode,
 						"aria-expanded": false,
 						"aria-controls": contentsId,
@@ -8484,12 +8641,12 @@ function JsonString({ collapsedStringLines, stringWrapping, field, labels, lastE
 					})
 				}),
 				field !== void 0 && jsxs("span", {
-					className: css$26.label,
+					className: css$27.label,
 					children: [fieldText(field), ":"]
 				}),
 				primitiveValue(value),
 				!lastElement && jsx("span", {
-					className: css$26.punctuation,
+					className: css$27.punctuation,
 					children: ","
 				})
 			]
@@ -8520,7 +8677,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		}
 	};
 	const row = (children, ariaExpanded) => jsxs("div", {
-		className: css$26.row,
+		className: css$27.row,
 		role: "treeitem",
 		"aria-expanded": ariaExpanded,
 		onMouseOver: (event) => {
@@ -8555,7 +8712,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		}),
 		primitiveValue(value),
 		!lastElement && jsx("span", {
-			className: css$26.punctuation,
+			className: css$27.punctuation,
 			children: ","
 		})
 	] }));
@@ -8567,22 +8724,22 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 			onToggle: toggle
 		}),
 		jsx("span", {
-			className: css$26.punctuation,
+			className: css$27.punctuation,
 			children: open
 		}),
 		jsx("span", {
-			className: css$26.punctuation,
+			className: css$27.punctuation,
 			children: close
 		}),
 		!lastElement && jsx("span", {
-			className: css$26.punctuation,
+			className: css$27.punctuation,
 			children: ","
 		})
 	] }));
 	return row(jsxs(Fragment, { children: [
 		jsx("span", {
 			ref: expanderRef,
-			className: clsx(css$26.expander, expanded ? css$26.collapseIcon : css$26.expandIcon),
+			className: clsx(css$27.expander, expanded ? css$27.collapseIcon : css$27.expandIcon),
 			"data-json-expander": true,
 			role: "button",
 			"aria-label": expanded ? labels.collapseNode : labels.expandNode,
@@ -8596,7 +8753,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 			onKeyDown: onExpanderKeyDown
 		}),
 		jsxs("span", {
-			className: css$26.summary,
+			className: css$27.summary,
 			children: [
 				jsx(NodeField, {
 					field,
@@ -8604,11 +8761,11 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 					onToggle: toggle
 				}),
 				jsx("span", {
-					className: css$26.preview,
+					className: css$27.preview,
 					children: previewValue(value, 0)
 				}),
 				!lastElement && jsx("span", {
-					className: css$26.punctuation,
+					className: css$27.punctuation,
 					children: ","
 				})
 			]
@@ -8616,7 +8773,7 @@ function JsonTreeNode({ collapsedStringLines, stringWrapping, field, initialExpa
 		expanded && jsx("ul", {
 			id: contentsId,
 			role: "group",
-			className: css$26.children,
+			className: css$27.children,
 			children: entries.map(([key, item], index) => jsx(JsonTreeNode, {
 				collapsedStringLines,
 				stringWrapping,
@@ -8748,17 +8905,17 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 		onClose: clearCopyTarget
 	}) : void 0;
 	return jsx("div", {
-		className: clsx(css$26.root, className),
+		className: clsx(css$27.root, className),
 		style: { "--json-tree-collapsed-lines": collapsedStringLines },
 		onMouseOver: handleRootMouseOver,
 		onMouseLeave: () => {
 			if (!copyStore.get()?.menuOpen) clearCopyTarget();
 		},
 		children: expandTopLevel ? jsxs("div", {
-			className: css$26.expandedTopLevel,
+			className: css$27.expandedTopLevel,
 			children: [
 				jsxs("div", {
-					className: clsx(css$26.row, css$26.topLevelBracket),
+					className: clsx(css$27.row, css$27.topLevelBracket),
 					"data-json-root-row": true,
 					onMouseOver: (event) => {
 						event.stopPropagation();
@@ -8771,13 +8928,13 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 						path: [],
 						value: data
 					}), jsx("span", {
-						className: css$26.punctuation,
+						className: css$27.punctuation,
 						children: rootOpen
 					})]
 				}),
 				jsx("div", {
 					"aria-label": label,
-					className: clsx(css$26.container, css$26.expandedTopLevelContainer),
+					className: clsx(css$27.container, css$27.expandedTopLevelContainer),
 					role: "tree",
 					children: rootEntries.map(([key, value], index) => jsx(JsonTreeNode, {
 						collapsedStringLines,
@@ -8795,16 +8952,16 @@ function JsonTree({ data, label, className, collapsedStringLines = 3, stringWrap
 					}, key))
 				}),
 				jsx("div", {
-					className: clsx(css$26.row, css$26.topLevelBracket),
+					className: clsx(css$27.row, css$27.topLevelBracket),
 					children: jsx("span", {
-						className: css$26.punctuation,
+						className: css$27.punctuation,
 						children: rootClose
 					})
 				})
 			]
 		}) : jsx("div", {
 			"aria-label": label,
-			className: css$26.container,
+			className: css$27.container,
 			role: "tree",
 			children: jsx(JsonTreeNode, {
 				collapsedStringLines,
@@ -9266,6 +9423,44 @@ function useCopyFeedback(text) {
 	};
 }
 //#endregion
+//#region lib/types/CommandText.js
+/** Selectable command text with keyboard access while horizontally overflowing. */
+/**
+* Render command text without adding Tab stops for content that fits.
+* @param props - Text, localized scrollport name, and owner styling.
+* @returns A horizontal text scrollport, named and keyboard-focusable only when overflowing.
+*/
+function CommandText({ text, label, className }) {
+	const ref = useRef(null);
+	const [overflow, setOverflow] = useState(false);
+	useLayoutEffect(() => {
+		const element = ref.current;
+		/* v8 ignore next -- the span is rendered unconditionally. */
+		if (element === null) return void 0;
+		const measure = () => {
+			setOverflow(element.scrollWidth > element.clientWidth);
+		};
+		measure();
+		const observer = typeof ResizeObserver === "undefined" ? void 0 : new ResizeObserver(measure);
+		observer?.observe(element);
+		const fonts = "fonts" in element.ownerDocument ? element.ownerDocument.fonts : void 0;
+		fonts?.addEventListener("loadingdone", measure);
+		return () => {
+			observer?.disconnect();
+			fonts?.removeEventListener("loadingdone", measure);
+		};
+	}, [text]);
+	return jsx("span", {
+		ref,
+		className: clsx(css$29.text, className),
+		"data-command-text": true,
+		tabIndex: overflow ? 0 : void 0,
+		role: overflow ? "group" : void 0,
+		"aria-label": overflow ? label : void 0,
+		children: text
+	});
+}
+//#endregion
 //#region lib/types/TerminalBlock.js
 /** Output lines shown before the height cap collapses the middle. */
 const DEFAULT_TERMINAL_MAX_LINES = 16;
@@ -9345,7 +9540,7 @@ function renderLine$1(line) {
 * @param props - see {@link TerminalBlockProps}.
 * @returns the terminal block element.
 */
-function TerminalBlock({ command, cwd, home, output, exitCode, signal, running = false, maxLines = 16, copyText, runStateDot = true, className, labels }) {
+function TerminalBlock({ command, cwd, home, output, exitCode, signal, running = false, background = false, maxLines = 16, copyText, runStateDot = true, className, labels }) {
 	const copy = labels;
 	const text = output ?? "";
 	const lines = useMemo(() => {
@@ -9358,76 +9553,78 @@ function TerminalBlock({ command, cwd, home, output, exitCode, signal, running =
 	const onToggle = useCallback(() => {
 		setExpanded((value) => !value);
 	}, []);
-	const status = statusText(exitCode, signal, copy);
+	const status = background ? void 0 : statusText(exitCode, signal, copy);
 	const state = runState(running, exitCode, signal, copy);
+	const showState = runStateDot && (!background || running);
 	const commandLines = useMemo(() => {
 		return (command.endsWith("\n") ? command.slice(0, -1) : command).split("\n");
 	}, [command]);
 	const empty = lines.every((line) => line.every((span) => span.text.trim() === ""));
 	const { hidden, capped, headLines, tailLines } = headTailCap(lines.length, maxLines, expanded);
-	const body = !running || !empty;
+	const body = !background && (!running || !empty);
 	return jsxs("div", {
-		className: clsx(css$27.block, className),
+		className: clsx(css$28.block, className),
 		"data-terminal": "",
 		"data-running": running ? "" : void 0,
 		"data-body": body ? "" : void 0,
 		children: [jsxs("div", {
-			className: css$27.header,
+			className: css$28.header,
 			children: [
 				jsxs("div", {
-					className: css$27.prompt,
-					children: [runStateDot && jsx("span", {
-						className: css$27.runStateLabel,
+					className: css$28.prompt,
+					children: [showState && jsx("span", {
+						className: css$28.runStateLabel,
 						children: state.label
 					}), commandLines.map((line, index) => jsxs("div", {
-						className: css$27.promptLine,
+						className: css$28.promptLine,
 						children: [
-							index === 0 && runStateDot && jsx(StateDot, {
+							index === 0 && showState && jsx(StateDot, {
 								state: state.state,
-								className: css$27.runState
+								className: css$28.runState
 							}),
 							jsx("span", {
-								className: css$27.cwd,
+								className: css$28.cwd,
 								children: index > 0 || cwd === void 0 ? "$" : promptLabel(cwd, home)
 							}),
-							jsx("span", {
-								className: css$27.command,
-								children: line
+							jsx(CommandText, {
+								className: css$28.command,
+								text: line,
+								label: copy.commandLine(index + 1)
 							})
 						]
 					}, index))]
 				}),
 				status !== void 0 && jsx(Pill, {
-					className: css$27.status,
+					className: css$28.status,
 					children: status
 				}),
-				(copyText !== void 0 || !running && !empty) && jsx("button", {
+				(copyText !== void 0 || !background && !running && !empty) && jsx("button", {
 					type: "button",
-					className: css$27.copyButton,
+					className: css$28.copyButton,
 					onClick: onCopy,
 					children: copied ? copy.copied : copy.copy
 				})
 			]
 		}), body && (empty ? jsx("div", {
-			className: css$27.empty,
+			className: css$28.empty,
 			children: copy.noOutput
 		}) : jsxs("div", {
-			className: css$27.output,
+			className: css$28.output,
 			children: [
 				(capped ? lines.slice(0, headLines) : lines).map((line, index) => jsx("div", {
-					className: css$27.line,
+					className: css$28.line,
 					children: renderLine$1(line)
 				}, index)),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$27.expand,
+					className: css$28.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? copy.collapseAria : copy.expandAria(hidden),
 					onClick: onToggle,
 					children: expanded ? copy.collapse : copy.expand(hidden)
 				}),
 				capped && lines.slice(lines.length - tailLines).map((line, index) => jsx("div", {
-					className: css$27.line,
+					className: css$28.line,
 					children: renderLine$1(line)
 				}, index))
 			]
@@ -9630,13 +9827,13 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	const tailLines = maxLines - headLines;
 	const windowed = lines.length < totalLines;
 	const rows = (slice) => slice.map(([line, spans]) => jsxs("div", {
-		className: css$28.line,
+		className: css$30.line,
 		children: [jsx("span", {
-			className: css$28.gutter,
+			className: css$30.gutter,
 			"aria-hidden": true,
 			children: line.number
 		}), jsx("span", {
-			className: css$28.content,
+			className: css$30.content,
 			children: spans === void 0 ? line.text : renderSpans(spans)
 		})]
 	}, line.number));
@@ -9644,7 +9841,7 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 	const paired = lines.map((line, index) => [line, highlighted?.[index]]);
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(cardCss.card, css$28.block, className),
+		className: clsx(cardCss.card, css$30.block, className),
 		"data-read": "",
 		"data-code-wrap": wrapped,
 		style: gutterStyle,
@@ -9666,7 +9863,7 @@ function ReadBlock({ label, labels, lines, totalLines, lang, maxLines = 16, clas
 			children: [
 				rows(capped ? paired.slice(0, headLines) : paired),
 				hidden > 0 && jsx(FoldToggle, {
-					className: css$28.expand,
+					className: css$30.expand,
 					expanded,
 					hidden,
 					labels,
@@ -9688,11 +9885,11 @@ function assertNever(value) {
 }
 /** The dim class per row kind (path/gap chrome vs the diff's own +/- colors). */
 const ROW_CLASS = {
-	path: css$29.path,
-	del: css$29.del,
-	add: css$29.add,
-	context: css$29.context,
-	gap: css$29.gap
+	path: css$31.path,
+	del: css$31.del,
+	add: css$31.add,
+	context: css$31.context,
+	gap: css$31.gap
 };
 /** Bound synchronous edit-graph search; one replacement consumes two edits. */
 const MAX_DIFF_EDIT_LENGTH = 256;
@@ -9826,7 +10023,7 @@ function DiffBlock({ diffs, labels, maxLines = 16, className }) {
 	const head = capped ? rows.slice(0, headLines) : rows;
 	const tail = capped ? rows.slice(rows.length - tailLines) : [];
 	return jsxs("div", {
-		className: clsx(cardCss.card, css$29.block, className),
+		className: clsx(cardCss.card, css$31.block, className),
 		"data-diff": "",
 		"data-code-wrap": wrapped,
 		children: [jsx(CodeToolbar, {
@@ -9841,21 +10038,21 @@ function DiffBlock({ diffs, labels, maxLines = 16, className }) {
 				setWrapped((value) => !value);
 			}
 		}), jsxs("div", {
-			className: css$29.body,
+			className: css$31.body,
 			children: [
 				head.map((row, index) => jsx("div", {
-					className: clsx(css$29.line, ROW_CLASS[row.kind]),
+					className: clsx(css$31.line, ROW_CLASS[row.kind]),
 					children: row.text
 				}, index)),
 				hidden > 0 && jsx(FoldToggle, {
-					className: css$29.expand,
+					className: css$31.expand,
 					expanded,
 					hidden,
 					labels,
 					onToggle
 				}),
 				tail.map((row, index) => jsx("div", {
-					className: clsx(css$29.line, ROW_CLASS[row.kind]),
+					className: clsx(css$31.line, ROW_CLASS[row.kind]),
 					children: row.text
 				}, index))
 			]
@@ -9985,56 +10182,56 @@ function SearchBlock(props) {
 	const tail = tailHeader === void 0 ? naturalTail : naturalTail.slice(1);
 	const renderRow = (row) => {
 		if (row.type === "path") return jsx("div", {
-			className: css$30.line,
+			className: css$32.line,
 			children: row.path
 		});
 		if (row.type === "match") return jsxs("div", {
-			className: css$30.line,
+			className: css$32.line,
 			children: [jsxs("span", {
-				className: css$30.lineNumber,
+				className: css$32.lineNumber,
 				children: [row.lineNumber, ": "]
 			}), row.line]
 		});
 		return jsxs("button", {
 			type: "button",
-			className: css$30.fileHeader,
+			className: css$32.fileHeader,
 			"aria-expanded": !row.collapsed,
 			onClick: () => {
 				toggleFile(row.index);
 			},
 			children: [jsx("span", {
-				className: css$30.filePath,
+				className: css$32.filePath,
 				children: row.path
 			}), jsx("span", {
-				className: css$30.fileCount,
+				className: css$32.fileCount,
 				children: row.count
 			})]
 		});
 	};
 	return jsxs("div", {
-		className: clsx(css$30.block, className),
+		className: clsx(css$32.block, className),
 		"data-search": props.kind,
 		children: [jsxs("div", {
-			className: css$30.header,
+			className: css$32.header,
 			children: [jsx("span", {
-				className: css$30.summary,
+				className: css$32.summary,
 				children: summaryText(props, shown, truncated, total)
 			}), !empty && jsx("button", {
 				type: "button",
-				className: css$30.copyButton,
+				className: css$32.copyButton,
 				onClick: onCopy,
 				children: copied ? props.labels.copied : props.labels.copy
 			})]
 		}), empty ? jsx("div", {
-			className: css$30.empty,
+			className: css$32.empty,
 			children: props.labels.noResults
 		}) : jsxs("div", {
-			className: css$30.body,
+			className: css$32.body,
 			children: [
 				head.map((row) => jsx("div", { children: renderRow(row) }, rowKey(row))),
 				hidden > 0 && jsx("button", {
 					type: "button",
-					className: css$30.expand,
+					className: css$32.expand,
 					"aria-expanded": expanded,
 					"aria-label": expanded ? props.labels.collapseAria : props.labels.expandAria(hidden),
 					onClick: onToggle,
@@ -10864,7 +11061,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 		});
 	}, [copied, trimmed]);
 	const body = streamedBody !== void 0 ? streamedBody : html === void 0 ? jsx("pre", {
-		className: css$31.plain,
+		className: css$33.plain,
 		children: jsx("code", { children: sourceLines === void 0 ? trimmed : sourceLines.map((line, index) => jsxs(Fragment$1, { children: [index > 0 && "\n", jsx("span", {
 			className: "line",
 			children: line
@@ -10872,12 +11069,12 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 	}) : jsx("div", { dangerouslySetInnerHTML: { __html: html } });
 	return jsxs("div", {
 		ref: rootRef,
-		className: clsx(css$31.block, "md-code-block", lineNumbers && css$31.numbered, toolbarLabels !== void 0 && css$31.card, className),
+		className: clsx(css$33.block, "md-code-block", lineNumbers && css$33.numbered, toolbarLabels !== void 0 && css$33.card, className),
 		"data-line-numbers": lineNumbers || void 0,
 		"data-code-wrap": toolbarLabels === void 0 ? void 0 : wrapped,
 		style: sourceLines === void 0 ? void 0 : { "--dsl-code-block-line-number-width": `${Math.max(2, String(sourceLines.length).length)}ch` },
 		children: [showHeader && jsx("div", {
-			className: css$31.bannerWrap,
+			className: css$33.bannerWrap,
 			children: toolbarLabels !== void 0 ? jsx(CodeToolbar, {
 				lang,
 				labels: toolbarLabels,
@@ -10890,16 +11087,16 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 					setWrapped((value) => !value);
 				} : void 0
 			}) : jsxs("div", {
-				className: css$31.banner,
+				className: css$33.banner,
 				"data-code-block-banner": true,
 				children: [jsx("div", {
-					className: css$31.infostring,
+					className: css$33.infostring,
 					children: lang ?? ""
 				}), jsx("div", {
-					className: css$31.action,
+					className: css$33.action,
 					children: jsx("button", {
 						type: "button",
-						className: css$31.copyButton,
+						className: css$33.copyButton,
 						onClick: onCopy,
 						children: copied ? copiedLabel : copyLabel
 					})
@@ -10907,7 +11104,7 @@ function CodeBlock({ code, lang, streaming, className, contentRef, lineNumbers =
 			})
 		}), jsx("div", {
 			ref: contentRef,
-			className: css$31.content,
+			className: css$33.content,
 			"data-code-block-content": true,
 			children: body
 		})]
@@ -11096,31 +11293,34 @@ function ImageLightbox({ src, alt, labels, onClose }) {
 			restoreRef.current?.focus();
 		};
 	}, [onClose]);
-	return createPortal(jsxs("div", {
-		className: css$32.backdrop,
+	return createPortal(jsx("div", {
+		className: css$34.backdrop,
 		role: "dialog",
 		"aria-modal": "true",
 		"aria-label": labels.dialog,
-		children: [
-			jsx("div", {
-				className: css$32.mask,
-				"aria-hidden": "true",
-				onMouseDown: onClose
-			}),
-			jsx("img", {
-				className: css$32.image,
-				src,
-				alt
-			}),
-			jsx("button", {
-				ref: closeRef,
-				type: "button",
-				className: css$32.close,
-				"aria-label": labels.close,
-				onClick: onClose,
-				children: jsx(IconCloseOutlineRegular, { size: 16 })
-			})
-		]
+		children: jsxs("div", {
+			className: css$34.stage,
+			children: [
+				jsx("div", {
+					className: css$34.mask,
+					"aria-hidden": "true",
+					onMouseDown: onClose
+				}),
+				jsx("img", {
+					className: css$34.image,
+					src,
+					alt
+				}),
+				jsx("button", {
+					ref: closeRef,
+					type: "button",
+					className: css$34.close,
+					"aria-label": labels.close,
+					onClick: onClose,
+					children: jsx(IconCloseOutlineRegular, { size: 16 })
+				})
+			]
+		})
 	}), document.body);
 }
 //#endregion
@@ -11142,14 +11342,14 @@ function ImagePreview({ src, alt, loadingLabel, failedLabel }) {
 function Preview({ src, alt, loadingLabel, failedLabel }) {
 	const [state, setState] = useState("loading");
 	return jsxs("span", {
-		className: css$33.frame,
+		className: css$35.frame,
 		children: [state !== "failed" && jsx("img", {
 			src,
 			alt,
 			loading: "lazy",
 			decoding: "async",
 			referrerPolicy: "no-referrer",
-			className: css$33.image,
+			className: css$35.image,
 			"data-ready": state === "ready" || void 0,
 			onLoad: () => {
 				setState("ready");
@@ -11158,7 +11358,7 @@ function Preview({ src, alt, loadingLabel, failedLabel }) {
 				setState("failed");
 			}
 		}), state !== "ready" && jsxs("span", {
-			className: css$33.status,
+			className: css$35.status,
 			role: "status",
 			children: [state === "loading" && jsx(IconLoadingOutlineRegular, { size: 16 }), jsx("span", { children: state === "loading" ? loadingLabel : failedLabel })]
 		})]
@@ -11897,7 +12097,7 @@ function SafeLink({ url, label, className }) {
 		children: [jsx(LinkIconMedium, {
 			kind: "url",
 			href,
-			className: css$34.linkIcon
+			className: css$36.linkIcon
 		}), label]
 	});
 }
@@ -11912,20 +12112,20 @@ function SafeLink({ url, label, className }) {
 */
 function SourceItem({ source, ordinal }) {
 	return jsxs("li", {
-		className: css$34.source,
+		className: css$36.source,
 		value: ordinal,
 		children: [
 			jsx(SafeLink, {
 				url: source.url,
 				label: linkLabel(source.url, source.title),
-				className: css$34.sourceLink
+				className: css$36.sourceLink
 			}),
 			source.snippet !== void 0 && source.snippet !== "" && jsx("div", {
-				className: css$34.snippet,
+				className: css$36.snippet,
 				children: source.snippet
 			}),
 			source.publishedAt !== void 0 && source.publishedAt !== "" && jsx("div", {
-				className: css$34.published,
+				className: css$36.published,
 				children: source.publishedAt
 			})
 		]
@@ -11940,28 +12140,28 @@ function SourceItem({ source, ordinal }) {
 function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 	const empty = (answer === void 0 || answer === "") && sources.length === 0;
 	return jsxs("div", {
-		className: clsx(css$34.block, className),
+		className: clsx(css$36.block, className),
 		"data-web": "search",
 		children: [
 			answer !== void 0 && answer !== "" && jsx("div", {
-				className: css$34.answer,
+				className: css$36.answer,
 				children: jsx(MarkdownText, {
 					text: answer,
 					labels: labels.markdown
 				})
 			}),
 			empty ? jsx("div", {
-				className: css$34.empty,
+				className: css$36.empty,
 				children: labels.noResults
 			}) : jsx("ol", {
-				className: css$34.sources,
+				className: css$36.sources,
 				children: sources.map((source, index) => jsx(SourceItem, {
 					source,
 					ordinal: index + 1
 				}, index))
 			}),
 			truncated && jsx("div", {
-				className: css$34.truncated,
+				className: css$36.truncated,
 				children: labels.sourcesTruncated
 			})
 		]
@@ -11974,23 +12174,23 @@ function WebSearchBlock({ answer, sources, truncated, labels, className }) {
 */
 function WebFetchBlock({ url, statusCode, truncated, labels, className }) {
 	return jsxs("div", {
-		className: clsx(css$34.block, css$34.fetch, className),
+		className: clsx(css$36.block, css$36.fetch, className),
 		"data-web": "fetch",
 		children: [jsx(SafeLink, {
 			url,
 			label: url,
-			className: css$34.fetchUrl
+			className: css$36.fetchUrl
 		}), jsxs("div", {
-			className: css$34.fetchMeta,
+			className: css$36.fetchMeta,
 			children: [jsxs("span", {
-				className: css$34.status,
+				className: css$36.status,
 				children: [
 					labels.http,
 					" ",
 					statusCode
 				]
 			}), truncated && jsx("span", {
-				className: css$34.truncated,
+				className: css$36.truncated,
 				children: labels.contentTruncated
 			})]
 		})]
@@ -12024,10 +12224,10 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 		truncatedLabel
 	]);
 	return jsxs("div", {
-		className: css$35.root,
+		className: css$37.root,
 		children: [jsxs("button", {
 			type: "button",
-			className: css$35.toggle,
+			className: css$37.toggle,
 			onClick: () => {
 				setOpen((v) => !v);
 			},
@@ -12037,7 +12237,7 @@ function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel }) {
 				label
 			]
 		}), open && jsx("pre", {
-			className: css$35.body,
+			className: css$37.body,
 			children: body
 		})]
 	});
@@ -12378,6 +12578,6 @@ function GuideArtworkFiles({ size = 36, className }) {
 	});
 }
 //#endregion
-export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuGroup, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, observeStickyMenuGroups, pointerModality, projectUserText, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
+export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, CommandText, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, HoverCardGroup, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, InlineEditor, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuGroup, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconAutoReviewMedium, PermissionIconAutoReviewRegular, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceChip, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, UserTextRun, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, observeStickyMenuGroups, pointerModality, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
 
 //# sourceMappingURL=index.js.map

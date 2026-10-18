@@ -5,6 +5,12 @@ import z from "@deepseek-ai/schemastery";
 const CHAT_SETTINGS_NAMESPACE = "ui-chat";
 /** Field carrying the work-details presentation mode. */
 const TRANSCRIPT_VIEW_FIELD = "transcriptView";
+/** Field carrying the independent work-details collapse timing. */
+const COLLAPSE_TIMING_FIELD = "collapseTiming";
+/** Available points when a completed Turn returns to its historical presentation. */
+const COLLAPSE_TIMINGS = ["completion", "next-input"];
+/** Preserve completion-time folding when no timing preference is saved. */
+const DEFAULT_COLLAPSE_TIMING = "completion";
 /** Work-details presentation modes a user can choose. */
 const TRANSCRIPT_VIEW_MODES = [
 	"compact",
@@ -31,9 +37,12 @@ const DEFAULT_TRANSCRIPT_VIEW_MODE = "detailed";
 const PERFORMANCE_USAGE_MODES = ["compact", "detailed"];
 /** Preserve detailed accounting for users without an explicit preference. */
 const DEFAULT_PERFORMANCE_USAGE = "detailed";
+/** Preserve the built-in browser for users without an explicit preference. */
+const DEFAULT_LINK_OPENING = "sidebar";
 /** Durable Chat schema; also the wire envelope the browser scope validates against. */
 const ChatSettingsFields = {
-	linkOpening: z.union(["sidebar", "new-tab"]).default("sidebar"),
+	[COLLAPSE_TIMING_FIELD]: z.union([...COLLAPSE_TIMINGS]).default(DEFAULT_COLLAPSE_TIMING),
+	linkOpening: z.union(["sidebar", "new-tab"]).default(DEFAULT_LINK_OPENING),
 	performanceUsage: z.union([...PERFORMANCE_USAGE_MODES]).default(DEFAULT_PERFORMANCE_USAGE),
 	[TRANSCRIPT_VIEW_FIELD]: z.union([...TRANSCRIPT_VIEW_SETTING_VALUES]).loose()
 };
@@ -43,6 +52,7 @@ z.object(ChatSettingsFields);
 /** Live preferences projected to the browser. */
 const Config = z.object({
 	[TRANSCRIPT_VIEW_FIELD]: ChatSettingsFields[TRANSCRIPT_VIEW_FIELD].volatile(),
+	collapseTiming: ChatSettingsFields.collapseTiming.volatile(),
 	performanceUsage: ChatSettingsFields["performanceUsage"].volatile(),
 	linkOpening: ChatSettingsFields.linkOpening.volatile()
 });

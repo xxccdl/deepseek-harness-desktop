@@ -241,9 +241,10 @@ export declare class JsonlBackendTracker {
      * sessions' events by id; the teardown effect closes every open handle —
      * close drains the routed buffer — and aggregates failures. This provider
      * owns no separate storage connection, so closing handles is the complete
-     * teardown. Registrations are effects of the current fiber.
-     * @param ctx - the backend's context.
+     * teardown. The returned effect removes listeners before closing handles.
+     * @param ctx - the backend's resource-owning context.
+     * @returns the disposer to run after persistence consumers finish unloading.
      */
-    install(ctx: Context): void;
+    install(ctx: Context): () => Promise<void>;
 }
 //# sourceMappingURL=storage.d.ts.map

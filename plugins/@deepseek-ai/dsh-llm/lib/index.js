@@ -119,7 +119,7 @@ function createToolResultMessage(input) {
 */
 /**
 * Base class for all harness errors. Carries a `code` (stable, programmatic —
-* e.g. `NO_ADAPTER`, `INVALID_ARGS`, `INVARIANT`) distinct from the
+* e.g. `NO_ADAPTER`, `INVALID_ARGS`) distinct from the
 * human-readable `message`, and supports `cause` chaining via the standard
 * `ErrorOptions`. `name` defaults to the subclass constructor name.
 */
@@ -840,7 +840,7 @@ function projectToolUpdates(messages, tools, toolUpdate, history) {
 /**
 * Centralize the non-secret product identity every provider request sends as `User-Agent`, keeping
 * adapters from drifting. See
-* `.agents/notes/implemented/architecture/2026-06-21-mandatory-app-attribution-headers.md`.
+* `docs/subsystems/llm-streaming.md#appidentity--app-attribution`.
 *
 * App-attribution vocabulary for provider requests.
 * @module @deepseek-ai/dsh-llm/attribution
@@ -1696,6 +1696,21 @@ var LlmAdapter = class {
 	*/
 	imageRequestPricing(_provider, _model) {}
 	/**
+	* Resolve the image dimensions and byte target this adapter sends to the model.
+	* The default preserves normalized images; adapters that resize must override it.
+	* @param _provider - registered provider route.
+	* @param _model - exact model id.
+	* @param image - normalized image whose request projection is being resolved.
+	* @returns the same target used by request serialization, before provider-internal processing.
+	*/
+	imageRequestTarget(_provider, _model, image) {
+		return {
+			width: image.width,
+			height: image.height,
+			maxBytes: image.bytes
+		};
+	}
+	/**
 	* List models this adapter can currently advertise for one owned provider.
 	* Core routing accepts unlisted model ids; catalog-driven entry points such
 	* as the GUI may require membership. Adapters used there must advertise
@@ -1802,20 +1817,14 @@ let LlmRuntime = (() => {
 		}
 		/** Notify topology observers without letting one broken listener veto the commit. */
 		emitAdaptersUpdated() {
-			let invariantFailure;
 			for (const listener of this.ctx.events.dispatch("emit", ["llm/adapters-updated"])) try {
 				const returned = listener();
 				if (returned != null && typeof returned.then === "function") Promise.resolve(returned).then(void 0, (error) => {
 					this.warnAdaptersListenerFailure(error);
 				});
 			} catch (error) {
-				if (error?.code === "INVARIANT") {
-					invariantFailure ??= error;
-					continue;
-				}
 				this.warnAdaptersListenerFailure(error);
 			}
-			if (invariantFailure !== void 0) throw invariantFailure;
 		}
 		/** Contained-listener diagnostic shared by the sync and async failure paths. */
 		warnAdaptersListenerFailure(error) {
@@ -1924,10 +1933,7 @@ let LlmRuntime = (() => {
 					if (entry.provider.length === 0 || entry.displayName.length === 0 || entry.settingsNs.length === 0) throw new LlmError("configurable providers need a non-empty provider, displayName, and settingsNs", "INVALID_DIRECTORY");
 					if (entry.settingsPath.some((segment) => segment.length === 0)) throw new LlmError(`configurable provider "${entry.provider}" has an empty settingsPath segment`, "INVALID_DIRECTORY");
 					if (this.directory.has(entry.provider) && !own.has(entry.provider) || detached.some((seen) => seen.provider === entry.provider)) throw new LlmError(`configurable provider "${entry.provider}" is already declared`, "DUPLICATE_DIRECTORY");
-					detached.push({
-						...entry,
-						settingsPath: [...entry.settingsPath]
-					});
+					detached.push(detachDirectoryEntry(entry));
 				}
 				for (const entry of held) this.directory.delete(entry.provider);
 				for (const entry of detached) this.directory.set(entry.provider, entry);
@@ -1956,10 +1962,7 @@ let LlmRuntime = (() => {
 		* @returns detached directory entries in declaration order.
 		*/
 		listConfigurableProviders() {
-			return [...this.directory.values()].map((entry) => ({
-				...entry,
-				settingsPath: [...entry.settingsPath]
-			}));
+			return [...this.directory.values()].map(detachDirectoryEntry);
 		}
 		/**
 		* Offer to interrogate provider endpoints on behalf of the settings
@@ -2049,6 +2052,16 @@ let LlmRuntime = (() => {
 		*/
 		imageRequestPricing(provider, model) {
 			return this.adapters.get(provider)?.adapter.imageRequestPricing(provider, model);
+		}
+		/**
+		* Resolve the image projection for an exact registered model route.
+		* @param provider - registered provider route.
+		* @param model - exact model id.
+		* @param image - normalized image reference.
+		* @returns dimensions and byte target used by the adapter's request serializer.
+		*/
+		imageRequestTarget(provider, model, image) {
+			return this.registration(provider).adapter.imageRequestTarget(provider, model, image);
 		}
 		/**
 		* Resolve the exact text one durable file occurrence contributes to every
@@ -2196,20 +2209,33 @@ let LlmRuntime = (() => {
 		* Resolve one call under its current adapter registration. The returned
 		* one-shot handle keeps that registration across header logging and dispatch,
 		* so HMR cannot combine one adapter's capability result with another adapter.
-		* @param config - provider/model route and optional request controls.
+		* An optional synchronous callback selects concrete controls using captured
+		* model metadata. Defaults and validation apply to its result. Callback
+		* failures and cancellation reject preparation before dispatch.
+		* @param config - provider/model route and optional concrete request controls.
 		* @param signal - optional cancellation for adapter-owned capability lookup.
+		* @param configure - pure control selection, called once before defaults and validation.
 		* @returns a prepared config and its registration-bound stream entry point.
 		*/
-		async prepareCall(config, signal) {
-			const registration = this.registration(config.provider);
-			const adapterCall = await registration.adapter.prepareCall(config.provider, config.model, signal);
-			const modelInfo = this.normalizeModelInfo(registration, config.model, adapterCall.model);
-			const resolved = this.resolveCallWithInfo(config, modelInfo);
+		async prepareCall(config, signal, configure) {
+			signal?.throwIfAborted();
+			const { provider, model, ...controls } = config;
+			const registration = this.registration(provider);
+			const adapterCall = await registration.adapter.prepareCall(provider, model, signal);
+			signal?.throwIfAborted();
+			const modelInfo = this.normalizeModelInfo(registration, model, adapterCall.model);
+			const proposed = configure === void 0 ? config : {
+				...configure(deepFreeze(structuredClone(controls)), deepFreeze(modelInfo)),
+				provider,
+				model
+			};
+			signal?.throwIfAborted();
+			const resolved = this.resolveCallWithInfo(proposed, modelInfo);
 			const resolvedConfig = deepFreeze(structuredClone(resolved.config));
 			const context = resolved.context === void 0 ? void 0 : deepFreeze(structuredClone(resolved.context));
 			const adapterDefaults = deepFreeze({
-				...config.reasoningEffort === void 0 && resolvedConfig.reasoningEffort !== void 0 ? { reasoningEffort: true } : {},
-				...config.maxTokens === void 0 && resolvedConfig.maxTokens !== void 0 ? { maxTokens: true } : {}
+				...proposed.reasoningEffort === void 0 && resolvedConfig.reasoningEffort !== void 0 ? { reasoningEffort: true } : {},
+				...proposed.maxTokens === void 0 && resolvedConfig.maxTokens !== void 0 ? { maxTokens: true } : {}
 			});
 			let dispatched = false;
 			return Object.freeze({
@@ -2384,6 +2410,19 @@ function adapterFailureChunk(error, signal) {
 			kind: "error",
 			failure
 		}
+	};
+}
+/** Copy a directory entry, including its arrays, so neither side can mutate the other's copy. */
+function detachDirectoryEntry(entry) {
+	const { nativeAuth } = entry;
+	return {
+		...entry,
+		settingsPath: [...entry.settingsPath],
+		...entry.baseURLEnv === void 0 ? {} : { baseURLEnv: [...entry.baseURLEnv] },
+		...nativeAuth === void 0 ? {} : { nativeAuth: {
+			...nativeAuth,
+			env: [...nativeAuth.env]
+		} }
 	};
 }
 //#endregion

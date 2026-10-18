@@ -1,5 +1,6 @@
 import type { ConversationLocation, ConversationNodeContext } from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type { ChatNode, ChatNodeDataMap, ChatNodeKind } from '../contract/chat-nodes.ts';
+import type { ChatGroupTree } from '../contract/group-tree.ts';
 /**
  * Relative positions in one durable event's seq neighborhood: interrupted
  * Assistant, its follow-up Nodes, then follow-ups to an ordinary final. The
@@ -20,17 +21,27 @@ export declare const CHAT_SYNTHETIC_SEQ_OFFSETS: {
  */
 export declare function contextLocation(context: ConversationNodeContext): ConversationLocation;
 /**
+ * Read the Turn and Step a Location resolves to.
+ * @param location - engine-owned Location.
+ * @returns resolved coordinates; Session-level and unresolved Locations have none.
+ */
+export declare function locationCoordinates(location: ConversationLocation): {
+    turn?: number;
+    step?: number;
+};
+/**
  * Build one final Chat target Node with the engine-owned stable key.
  * @param context - assembled business Context.
  * @param kind - Chat renderer dispatch key.
  * @param anchorSeq - sortable render position.
  * @param data - renderer-owned payload.
- * @param options - optional Location and visibility overrides.
+ * @param options - optional Location, visibility, and group-tree overrides.
  * @returns final Chat view Node.
  */
 export declare function chatNode<Kind extends ChatNodeKind>(context: ConversationNodeContext, kind: Kind, anchorSeq: number, data: ChatNodeDataMap[Kind], options?: {
     readonly location?: ConversationLocation;
     readonly visibility?: 'visible' | 'hidden';
+    readonly groupTree?: ChatGroupTree | undefined;
 }): ChatNode<Kind>;
 /**
  * Read a finite non-negative integer from a structurally narrowed payload.

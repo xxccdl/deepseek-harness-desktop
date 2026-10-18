@@ -168,6 +168,17 @@ export class LlmAdapter {
         return undefined;
     }
     /**
+     * Resolve the image dimensions and byte target this adapter sends to the model.
+     * The default preserves normalized images; adapters that resize must override it.
+     * @param _provider - registered provider route.
+     * @param _model - exact model id.
+     * @param image - normalized image whose request projection is being resolved.
+     * @returns the same target used by request serialization, before provider-internal processing.
+     */
+    imageRequestTarget(_provider, _model, image) {
+        return { width: image.width, height: image.height, maxBytes: image.bytes };
+    }
+    /**
      * List models this adapter can currently advertise for one owned provider.
      * Core routing accepts unlisted model ids; catalog-driven entry points such
      * as the GUI may require membership. Adapters used there must advertise
@@ -237,30 +248,22 @@ let LlmRuntime = (() => {
         emitAdaptersUpdated() {
             // Cordis emit uses Array.map: one synchronous throw starves later
             // listeners. Registry notifications are non-vetoing, so contain each
-            // callback independently; INVARIANT-coded failures still surface.
-            let invariantFailure;
+            // callback independently.
             for (const listener of this.ctx.events.dispatch('emit', ['llm/adapters-updated'])) {
                 try {
                     const returned = listener();
                     if (returned != null && typeof returned.then === 'function') {
                         // An emit listener may still be an async function; its rejection
-                        // cannot reach the synchronous INVARIANT rethrow below, so it is
-                        // contained here instead of becoming an unhandled rejection.
+                        // is contained here instead of becoming an unhandled rejection.
                         void Promise.resolve(returned).then(undefined, (error) => {
                             this.warnAdaptersListenerFailure(error);
                         });
                     }
                 }
                 catch (error) {
-                    if (error?.code === 'INVARIANT') {
-                        invariantFailure ??= error;
-                        continue;
-                    }
                     this.warnAdaptersListenerFailure(error);
                 }
             }
-            if (invariantFailure !== undefined)
-                throw invariantFailure;
         }
         /** Contained-listener diagnostic shared by the sync and async failure paths. */
         warnAdaptersListenerFailure(error) {
@@ -392,7 +395,7 @@ let LlmRuntime = (() => {
                         || detached.some(seen => seen.provider === entry.provider)) {
                         throw new LlmError(`configurable provider "${entry.provider}" is already declared`, 'DUPLICATE_DIRECTORY');
                     }
-                    detached.push({ ...entry, settingsPath: [...entry.settingsPath] });
+                    detached.push(detachDirectoryEntry(entry));
                 }
                 for (const entry of held)
                     this.directory.delete(entry.provider);
@@ -428,7 +431,7 @@ let LlmRuntime = (() => {
          * @returns detached directory entries in declaration order.
          */
         listConfigurableProviders() {
-            return [...this.directory.values()].map(entry => ({ ...entry, settingsPath: [...entry.settingsPath] }));
+            return [...this.directory.values()].map(detachDirectoryEntry);
         }
         /**
          * Offer to interrogate provider endpoints on behalf of the settings
@@ -532,6 +535,16 @@ let LlmRuntime = (() => {
          */
         imageRequestPricing(provider, model) {
             return this.adapters.get(provider)?.adapter.imageRequestPricing(provider, model);
+        }
+        /**
+         * Resolve the image projection for an exact registered model route.
+         * @param provider - registered provider route.
+         * @param model - exact model id.
+         * @param image - normalized image reference.
+         * @returns dimensions and byte target used by the adapter's request serializer.
+         */
+        imageRequestTarget(provider, model, image) {
+            return this.registration(provider).adapter.imageRequestTarget(provider, model, image);
         }
         /**
          * Resolve the exact text one durable file occurrence contributes to every
@@ -724,24 +737,35 @@ let LlmRuntime = (() => {
          * Resolve one call under its current adapter registration. The returned
          * one-shot handle keeps that registration across header logging and dispatch,
          * so HMR cannot combine one adapter's capability result with another adapter.
-         * @param config - provider/model route and optional request controls.
+         * An optional synchronous callback selects concrete controls using captured
+         * model metadata. Defaults and validation apply to its result. Callback
+         * failures and cancellation reject preparation before dispatch.
+         * @param config - provider/model route and optional concrete request controls.
          * @param signal - optional cancellation for adapter-owned capability lookup.
+         * @param configure - pure control selection, called once before defaults and validation.
          * @returns a prepared config and its registration-bound stream entry point.
          */
-        async prepareCall(config, signal) {
-            const registration = this.registration(config.provider);
-            const adapterCall = await registration.adapter.prepareCall(config.provider, config.model, signal);
-            const modelInfo = this.normalizeModelInfo(registration, config.model, adapterCall.model);
-            const resolved = this.resolveCallWithInfo(config, modelInfo);
+        async prepareCall(config, signal, configure) {
+            signal?.throwIfAborted();
+            const { provider, model, ...controls } = config;
+            const registration = this.registration(provider);
+            const adapterCall = await registration.adapter.prepareCall(provider, model, signal);
+            signal?.throwIfAborted();
+            const modelInfo = this.normalizeModelInfo(registration, model, adapterCall.model);
+            const proposed = configure === undefined
+                ? config
+                : { ...configure(deepFreeze(structuredClone(controls)), deepFreeze(modelInfo)), provider, model };
+            signal?.throwIfAborted();
+            const resolved = this.resolveCallWithInfo(proposed, modelInfo);
             const resolvedConfig = deepFreeze(structuredClone(resolved.config));
             const context = resolved.context === undefined
                 ? undefined
                 : deepFreeze(structuredClone(resolved.context));
             const adapterDefaults = deepFreeze({
-                ...config.reasoningEffort === undefined && resolvedConfig.reasoningEffort !== undefined
+                ...proposed.reasoningEffort === undefined && resolvedConfig.reasoningEffort !== undefined
                     ? { reasoningEffort: true }
                     : {},
-                ...config.maxTokens === undefined && resolvedConfig.maxTokens !== undefined
+                ...proposed.maxTokens === undefined && resolvedConfig.maxTokens !== undefined
                     ? { maxTokens: true }
                     : {},
             });
@@ -942,6 +966,16 @@ function adapterFailureChunk(error, signal) {
         reason: signal?.aborted || failure.code === 'ABORTED'
             ? { kind: 'aborted', failure }
             : { kind: 'error', failure },
+    };
+}
+/** Copy a directory entry, including its arrays, so neither side can mutate the other's copy. */
+function detachDirectoryEntry(entry) {
+    const { nativeAuth } = entry;
+    return {
+        ...entry,
+        settingsPath: [...entry.settingsPath],
+        ...entry.baseURLEnv === undefined ? {} : { baseURLEnv: [...entry.baseURLEnv] },
+        ...(nativeAuth === undefined ? {} : { nativeAuth: { ...nativeAuth, env: [...nativeAuth.env] } }),
     };
 }
 export default LlmRuntime;

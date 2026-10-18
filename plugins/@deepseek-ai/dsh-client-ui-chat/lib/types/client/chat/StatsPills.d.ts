@@ -52,13 +52,20 @@ export declare function cacheHitPercent(usage: TokenUsageProjection): string | n
  * @returns billed input tokens.
  */
 export declare function billedInputTokens(usage: TokenUsageProjection): number;
-/** Props: the conversation-snapshot selector plus the projection read seat. */
-export interface StatsPillsProps extends InjectFace<PerformanceUsageInjected> {
+type Translate = ChatViewSlotProps['t'];
+/** Props shared by every composer stats pill: the conversation-snapshot selector plus the projection read seat. */
+export interface StatPillProps extends InjectFace<PerformanceUsageInjected> {
     useChat: SnapshotSelectorHook<ChatSnapshot>;
     useProjection: UseProjection;
     /** The owning dock's locale seat. */
-    t: ChatViewSlotProps['t'];
+    t: Translate;
 }
-export declare const StatsPills: import("react").MemoExoticComponent<({ useChat, useProjection, usePerformanceUsage, t }: StatsPillsProps) => import("react").JSX.Element | null>;
+/**
+ * Turn and step counts with whole-session speed, opening the time and speed
+ * dialog; Compact keeps only the speed reading.
+ */
+export declare const ActivityPill: import("react").MemoExoticComponent<({ useChat, useProjection, usePerformanceUsage, t }: StatPillProps) => import("react").JSX.Element | null>;
+/** Whole-log token total and cache hit; Compact keeps only the cache hit. */
+export declare const UsagePill: import("react").MemoExoticComponent<({ useProjection, usePerformanceUsage, t }: StatPillProps) => import("react").JSX.Element | null>;
 export {};
 //# sourceMappingURL=StatsPills.d.ts.map

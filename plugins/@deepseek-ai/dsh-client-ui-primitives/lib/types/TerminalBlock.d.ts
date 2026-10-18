@@ -5,6 +5,8 @@ export declare const DEFAULT_TERMINAL_MAX_LINES = 16;
  * (this package is cordis-free, so copy arrives via props).
  */
 export interface TerminalBlockLabels {
+    /** Accessible name for an overflowing authored command line, numbered from one. */
+    commandLine: (line: number) => string;
     /** Status pill text for a signal-terminated command. */
     signal: (signal: string) => string;
     /** Status pill text for a non-zero exit code. */
@@ -33,7 +35,7 @@ export interface TerminalBlockLabels {
     expand: (hidden: number) => string;
 }
 export interface TerminalBlockProps {
-    /** The command line, rendered verbatim after the prompt label. */
+    /** The command, rendered verbatim after the prompt label; long lines scroll horizontally unless the host enables wrapping. */
     command: string;
     /** Working directory for the prompt label; absent renders a plain `$`. */
     cwd?: string | undefined;
@@ -50,6 +52,12 @@ export interface TerminalBlockProps {
      * line alone; with output it renders the live text under the running state.
      */
     running?: boolean | undefined;
+    /**
+     * The call launches background work (default false). `running` describes the
+     * launch call only; after it returns, retain the command without job status
+     * or output. An explicit `copyText` override remains available.
+     */
+    background?: boolean | undefined;
     /** Height cap in output lines before the middle collapses (default {@link DEFAULT_TERMINAL_MAX_LINES}); Infinity disables the cap. */
     maxLines?: number | undefined;
     /**
@@ -74,5 +82,5 @@ export interface TerminalBlockProps {
  * @param props - see {@link TerminalBlockProps}.
  * @returns the terminal block element.
  */
-export declare function TerminalBlock({ command, cwd, home, output, exitCode, signal, running, maxLines, copyText, runStateDot, className, labels, }: TerminalBlockProps): import("react").JSX.Element;
+export declare function TerminalBlock({ command, cwd, home, output, exitCode, signal, running, background, maxLines, copyText, runStateDot, className, labels, }: TerminalBlockProps): import("react").JSX.Element;
 //# sourceMappingURL=TerminalBlock.d.ts.map

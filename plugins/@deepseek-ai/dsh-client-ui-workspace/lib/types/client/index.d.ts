@@ -1,14 +1,17 @@
 import type { Context } from '@deepseek-ai/cordis';
-import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client';
+import type { WorkspaceId, WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client';
+import type { RemoteEndpoint } from '@deepseek-ai/dsh-api-remote-access/client';
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots';
 import { type WorkspaceKey } from './locales.ts';
-export type { UiWorkspace } from './navigation.ts';
+export type { StartSessionOptions, UiWorkspace } from './navigation.ts';
 export type { DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected, MenuOpenState, RowToast, SessionRenameTarget, SessionRowOwnerProps, UseMenuOpenState, WorkspaceBrowserInjected, SessionRowScheduleOwnerProps, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps, } from './contract/slots.ts';
 export type { WorkspaceKey } from './locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface GlobalStandardProps {
         /** Selector hook over the pure Workspace Controller snapshot. */
         useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>;
+        /** Whether the current Peer may call `action` on one Workspace resource. */
+        useWorkspaceAccess: (workspaceId: WorkspaceId, action: RemoteEndpoint) => boolean;
     }
     interface LocaleNamespaceMap {
         /** The workspace browsing region and pick/create flow copy. */

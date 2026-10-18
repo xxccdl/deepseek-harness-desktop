@@ -907,7 +907,8 @@ const inject = [
 	"terminals",
 	"sandboxPolicy",
 	"sessionProjections",
-	"subprocess"
+	"subprocess",
+	"workingDirectory"
 ];
 const sandboxModeFences = /* @__PURE__ */ new WeakMap();
 function ensureSandboxModeFence(ctx, owner) {
@@ -1084,7 +1085,7 @@ var BashTerminalBackend = class {
 		if (argv[0] === void 0) throw new Error("terminal-bash: sandbox returned empty argv");
 		const terminal = await this.spawnTerminal({
 			argv,
-			cwd: spec.cwd ?? policy.workspaceRoot,
+			cwd: spec.cwd ?? await this.ctx.workingDirectory.ensure(spec.owner, spec.signal),
 			env: childEnvironment(spec, this.config.shellDialect),
 			rows: this.config.rows,
 			cols: this.config.cols,

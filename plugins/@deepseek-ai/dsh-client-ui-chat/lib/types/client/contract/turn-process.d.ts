@@ -15,8 +15,6 @@ export interface TurnProcessSpec {
     /** Tool calls whose configured name identifies a subagent delegation. */
     readonly subagentCount: number;
 }
-/** Chat Node kinds that remain independent of a Turn's process disclosure. */
-export declare const TURN_PROCESS_INDEPENDENT_KINDS: ReadonlySet<string>;
 /**
  * Compare immutable Turn-process specifications by their published fields.
  * @param left - previous specification.

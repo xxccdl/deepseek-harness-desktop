@@ -41,20 +41,23 @@ export type PiAiChatTemplateVar = Extract<ChatTemplateKwargValue, {
 /** The request-state placeholders a profile may name. */
 export declare const CHAT_TEMPLATE_VARS: readonly PiAiChatTemplateVar[];
 /**
- * The installed catalog provider for one route, when pi-ai ships one.
+ * The installed catalog provider for one route, when pi-ai ships one this
+ * adapter serves.
  * @param provider - provider route key.
- * @returns the catalog provider, or `undefined` for a route pi-ai does not ship.
+ * @returns the catalog provider, or `undefined` for a route pi-ai does not ship
+ *   or ships without a chat model.
  */
 export declare function catalogProvider(provider: string): Provider | undefined;
 /**
- * Every provider route the installed pi-ai catalog ships.
- * @returns the catalog provider ids.
+ * Every provider route the installed pi-ai catalog ships and this adapter
+ * serves: a provider whose catalog lists models but no chat model is left out.
+ * @returns the catalog provider ids, in catalog order.
  */
 export declare function catalogProviderIds(): readonly string[];
 /**
  * The installed catalog models for one route, indexed by model id.
  * @param provider - provider route key.
- * @returns catalog models by id; empty for a route pi-ai does not ship.
+ * @returns catalog models by id; empty for a route {@link catalogProvider} does not return.
  */
 export declare function catalogModels(provider: string): Map<string, Model<Api>>;
 /**

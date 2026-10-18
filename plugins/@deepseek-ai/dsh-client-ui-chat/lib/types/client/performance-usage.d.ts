@@ -6,12 +6,12 @@ export declare class PerformanceUsagePolicy {
     private readonly unsubscribe;
     /** Current choice, reconciled with accepted Host settings when available. */
     readonly mode: import("@deepseek-ai/dsh-client-store").SnapshotStore<"compact" | "detailed">;
-    /** @param host - Chat settings scope, durable on loopback and memory-only elsewhere. */
+    /** @param host - Chat settings scope persisted through the Host. */
     constructor(host: ConfigForm<ChatSettings>);
     /** Release the accepted-value subscription. */
     dispose(): void;
     /**
-     * Publish a choice immediately and persist it when the scope supports writes.
+     * Publish a choice immediately and queue its Host write.
      * @param mode - Statistics detail selected by the user.
      */
     setMode(mode: PerformanceUsageMode): void;

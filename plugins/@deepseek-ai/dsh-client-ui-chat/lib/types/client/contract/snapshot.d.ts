@@ -2,7 +2,7 @@ import type { ConversationNode, ConversationTimelineSnapshot, PartialAssistant, 
 import type { ChatConversationViewNode, ChatNodeDataMap, ChatNodeKind } from './chat-nodes.ts';
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store';
 import type { TurnProcessSpec } from './turn-process.ts';
-export type { AssistantBlock, AssistantMessageNode, AssistantProviderMetadataView, AssistantRequestConfig, AssistantTiming, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode, ModelRetryNode, PartialAssistant, PreparingToolCall, RunningToolCall, StartedToolCall, SteeringMessageNode, TodoItem, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UnknownSurfaceNode, UserMessageNode, } from '@deepseek-ai/dsh-client-ui-conversation/client';
+export type { AssistantBlock, AssistantMessageNode, AssistantProviderMetadataView, AssistantRequestConfig, AssistantTiming, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode, ModelRetryNode, PartialAssistant, PreparingToolCall, RunningToolCall, StartedToolCall, SteeringMessageNode, TodoItem, ToolArgs, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode, UnknownSurfaceNode, UserMessageNode, } from '@deepseek-ai/dsh-client-ui-conversation/client';
 /** Per-key observable used by one mounted Chat Node Seat. */
 export interface ChatNodeSource {
     /** @returns the current Node for this source's stable key. */
@@ -23,6 +23,11 @@ export interface ChatNodeStore {
     get(key: string): ChatConversationViewNode | undefined;
     /** @param key - stable Conversation Context key. @returns its identity-stable observable source. */
     source(key: string): ChatNodeSource;
+    /**
+     * @param key - Chat Node identity.
+     * @returns whether the visible Node belongs to the latest loaded exchange (see `ChatConversationViewNode.groupTree`).
+     */
+    bottomSource(key: string): ObservableSnapshot<boolean>;
     /**
      * Observe one Turn's data for a single Node kind, including hidden Nodes, in anchor order.
      * Other Turns and kinds do not notify this source.
@@ -75,7 +80,7 @@ export interface ChatTurnProcessPresentation {
     readonly hasInterleavedInput: boolean;
     readonly compactAnswer: boolean;
 }
-/** Compatibility projection backing StatsPills and the legacy top-level snapshot fields. */
+/** Compatibility projection backing the composer stats pills (StatsPills.tsx) and the legacy top-level snapshot fields. */
 export interface LegacyConversationSlice {
     readonly nodes: readonly ConversationNode[];
     readonly turnTimings: ReadonlyMap<number, {

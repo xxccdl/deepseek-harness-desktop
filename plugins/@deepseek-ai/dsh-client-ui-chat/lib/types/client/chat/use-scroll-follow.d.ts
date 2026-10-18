@@ -1,4 +1,4 @@
-/** Scroll position, maximum top, and viewport height from one geometry read. */
+/** Scroll position, caller-supplied floor, and viewport height; raw measurements use the physical floor. */
 export interface ViewportMetrics {
     readonly top: number;
     readonly floor: number;
@@ -80,11 +80,12 @@ export declare class ScrollFollow {
     jump(element: HTMLElement, metrics: ViewportMetrics, top: number): ViewportMetrics;
     /**
      * Follow the measured floor, respecting reduced motion for smooth requests.
-     * An outstanding smooth target finishes before another is issued.
+     * Smooth requests preserve an outstanding target; immediate follow updates
+     * retarget active motion when content changes the floor.
      * Within-tolerance positioning is immediate while no animation is outstanding.
      * @param element - scrolling element.
      * @param metrics - current geometry.
-     * @param behavior - native animation for growth, or immediate positioning.
+     * @param behavior - native animation for growth, or immediate positioning unless motion is already active.
      * @returns current geometry; smooth requests retain their starting position until native scroll delivery.
      */
     toBottom(element: HTMLElement, metrics: ViewportMetrics, behavior: 'instant' | 'smooth'): ViewportMetrics;

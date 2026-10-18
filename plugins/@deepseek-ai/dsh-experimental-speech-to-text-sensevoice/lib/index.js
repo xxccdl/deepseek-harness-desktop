@@ -916,6 +916,7 @@ const Config = z$1.object({
 	vadThreshold: z$1.number().min(0).max(1).default(.5),
 	minSpeechSeconds: z$1.number().min(0).default(.25),
 	minSilenceSeconds: z$1.number().min(.01).default(.5),
+	vadOnsetPaddingSeconds: z$1.number().min(0).max(1).default(.3),
 	maxAudioBytes: z$1.natural().min(46).default(4 * 1024 * 1024),
 	prepareTimeoutMs: z$1.natural().min(1).max(MAX_TIMER_DELAY_MS).default(36e5),
 	inferenceTimeoutMs: z$1.natural().min(1).max(MAX_TIMER_DELAY_MS).default(12e4),

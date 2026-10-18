@@ -21,7 +21,7 @@
  * see instead of rebuilding the whole subtree from a partial descriptor.
  */
 import type { ReactNode } from 'react';
-import type { SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client';
+import type { CredentialInfo, LlmNativeAuth, SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client';
 import type { ModelsOperations } from './operations.ts';
 import type { SettingsSchemaOperations } from './schema-operations.ts';
 import type { en } from './locales.ts';
@@ -49,6 +49,16 @@ export interface ProviderEditorProps {
     settingsPath: readonly string[];
     /** The Host operations this card writes and interrogates through. */
     operations: ModelsOperations;
+    /** Endpoint the route uses when its profile sets no `baseURL`; absent when the adapter reports none. */
+    defaultBaseURL?: string;
+    /** Environment variables used by the provider to construct its endpoint. */
+    baseURLEnv?: readonly string[];
+    /** Authentication the route performs when its profile names no credential reference; absent when the adapter reports none. */
+    nativeAuth?: LlmNativeAuth;
+    /** Redacted state of the profile's named credential reference, from the page snapshot. */
+    credential?: CredentialInfo;
+    /** Redacted checks for the profile's named reference or the provider's native variables. */
+    credentialChecks?: Readonly<Record<string, CredentialInfo>>;
     /** Section copy. */
     t: (key: keyof typeof en) => string;
     /** Disable writes (read-only settings provider). */
