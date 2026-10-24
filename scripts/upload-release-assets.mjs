@@ -13,17 +13,31 @@
 //   - TEMP/TMP point into the repo, because the 32-bit NSIS compiler maps a
 //     ~254 MB file in the temp directory and the system drive does not always
 //     have that much room.
-// NODE_OPTIONS=--use-system-ca is required for the API calls: this Node only
-// ships the builtin root certificates and every GitHub request fails with
-// "unable to verify the first certificate" without it.
+// The system trust store is merged in at startup (see below): this Node only
+// ships the builtin root certificates, so GitHub requests fail with
+// "unable to verify the first certificate" otherwise.
 import { execSync, spawnSync } from "node:child_process";
 import { createReadStream, mkdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import tls from "node:tls";
 
 const owner = "xxccdl";
 const repo = "deepseek-harness-desktop";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+// This Node only ships the builtin root certificates, so every GitHub request
+// fails with "unable to verify the first certificate" unless the system trust
+// store is merged in. NODE_OPTIONS=--use-system-ca has to be set before the
+// process starts — assigning it here is too late for this process's own fetch —
+// so the stores are merged at runtime instead, the same way src/main.js does.
+if (typeof tls.getCACertificates === "function" && typeof tls.setDefaultCACertificates === "function") {
+  try {
+    tls.setDefaultCACertificates([...tls.getCACertificates("bundled"), ...tls.getCACertificates("system")]);
+  } catch {
+    // Leave Node's default store in force; the fetch will fail loudly.
+  }
+}
 
 const args = process.argv.slice(2);
 const tag = args[0] ?? "v1.3.0";
@@ -113,13 +127,12 @@ if (release === undefined) {
       tag_name: tag,
       name: `DeepSeek Harness Desktop ${tag.replace(/^v/, "")}`,
       body: [
-        "## 1.10.2",
+        "## 1.10.3",
         "",
-        "本次把 fork 重基到上游 **dsh 0.2.1-rc.3**，并补上桌面端的几处改动。",
-        "- **重基：dsh 0.2.1-rc.2 → 0.2.1-rc.3**。上游这一版带来插件包解析的新组合方式、更多内置插件与设置项。fork 相对 rc.2 的 24 个上游包改动用三方合并逐个套回 rc.3（基线 rc.2），只有两处重叠需要手工解决：侧栏的 CSS 单行块与 DeepSeek 模型目录名。fork 自有的 43 个包原样保留，版本钉到 rc.3",
-        "- **标题栏新增 Windows 风格菜单栏**（「应用」「编辑」等），入口不再只能从设置面板里找",
-        "- **界面打磨**：首次使用引导、思考强度滑块、可读性与标题栏的适配",
-        "- **新增通勤回收站页面**（`src/commute.html`，随安装包一起带上）",
+        "- **安装速度大幅提升**：安装包里的文件数从 25,132 降到 12,256。打包时会剥掉运行时从不读取的 source map、TypeScript 源码与类型声明、README/许可证，以及插件目录里重复的嵌套依赖（8 份 zod）。写入磁盘的文件少了一半，杀软逐文件扫描的等待也随之少了一半",
+        "- **新增 FixerMode**：插件加载失败时自动进入修复页面（Win11 首次开机风格：居中提示、流光「请稍后」、底部进度条），由 **deepseek-flash** 自动定位并修复损坏的插件",
+        "- **API Key 缺失时自动接管**：检测到没有可用的 DeepSeek API Key 时弹出填写界面，保存后继续修复，无需手动重启",
+        "- **修复完成自动重启进入应用**；修不好则自动停用该插件并回退到可用状态，同一插件最多自动修复 2 次，不会反复卡住启动",
         "",
         "升级安装前请先退出正在运行的 DeepSeek Harness。"
       ].join("\n"),

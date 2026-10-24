@@ -302,17 +302,20 @@ function attributeClientFailures(root, failures) {
 }
 
 /**
- * The repair brief the agent receives for one boot's failed plugins.
- * @param plugins - the inactive entries being quarantined.
+ * The repair brief the agent receives in FixerMode.
+ *
+ * A client-side failure is already attributed to a bundle, so it states the
+ * package and the directory the file lives in; a host failure states the row
+ * the composition mounts it through. The turn is the only thing the person
+ * sees — the app restarts the moment it ends — so the brief asks for a fix that
+ * holds on the next boot rather than a description of the failure.
+ * @param plugins - the inactive entries being repaired.
  * @returns the prompt text.
  */
-function repairPrompt(plugins) {
+function fixerPrompt(plugins) {
   return [
-    "以下插件在启动时加载失败，应用已自动停用它们（下次启动不再加载）。请修复。",
+    "你是应用内置的插件修复器。以下插件在启动时加载失败，应用已自动进入修复模式，用户正等待重启后进入应用。请直接修复它们。",
     "",
-    // A client-side failure is already attributed to a bundle, so it states the
-    // package and the directory the file lives in; a host failure states the row
-    // the composition mounts it through.
     ...plugins.flatMap((plugin) => [
       ...(plugin.id === undefined || plugin.id === plugin.name
         ? [`- 包名：${plugin.name}`]
@@ -321,36 +324,12 @@ function repairPrompt(plugins) {
       `  失败信息：${plugin.detail}`
     ]),
     "",
-    `停用记录（JSON）：${quarantinePath()}`,
-    "",
     "请按这个顺序做：",
     "1. 定位每个插件的包目录：profile 的 package.json 里指向它的 `link:`/路径依赖，或 $DSH_HOME/profiles/node_modules 下的同名目录。",
     "2. 复现并修掉加载失败的原因（缺依赖、语法/导出错误、引用了不存在的包等）。只改这些插件自己的文件，不要改 dsh 本体或别的插件。",
-    `3. 修好后，从上面那个停用记录里删掉对应 id 的条目——插件会在下次启动时自动恢复。`,
-    "4. 判断修不了就说明原因，并保留停用记录；不要为了绕过报错去改动无关的东西。"
+    "3. 修好后不要改动停用记录，也不要尝试重启应用：应用在这一轮对话结束后会自动重启并重新加载这些插件。",
+    "4. 判断修不了就说明原因并结束这一轮；不要为了绕过报错去改动无关的东西。"
   ].join("\n");
-}
-
-/**
- * Wait until the served app has loaded once, so the RPC below can authenticate.
- *
- * The launch-token URL mints the session cookie when the document loads, and
- * {@link harnessRpc} rides that cookie — the same contract the quick-chat pill
- * relies on. A repair that runs before the first document load has no cookie and
- * is rejected with 401, so this waits it out. The wait is bounded: a page that
- * never loads must cost the repair, never the fallback that already happened.
- */
-async function waitForAppPage() {
-  const main = BrowserWindow.getAllWindows().find((window) => !window.isDestroyed() && window !== quickChatWindow);
-  if (main === undefined || serverOrigin === undefined) return;
-  if (!main.webContents.isLoading() && main.webContents.getURL().startsWith(serverOrigin)) return;
-  await new Promise((done) => {
-    const timer = setTimeout(done, 30000);
-    main.webContents.once("did-finish-load", () => {
-      clearTimeout(timer);
-      done();
-    });
-  });
 }
 
 /**
@@ -372,8 +351,9 @@ async function waitForAppPage() {
  * @param root - the booted context.
  * @param failures - this boot's failed entries, from either half.
  * @param clientSide - whether the failures came from the page rather than the host tree.
+ * @param repair - run FixerMode; a silent (auto-launched) start only records.
  */
-async function quarantineAndRepair(root, failures, clientSide = false) {
+async function quarantineAndRepair(root, failures, clientSide = false, repair = true) {
   if (failures.length === 0) return;
   const record = readQuarantine();
   const repairable = [];
@@ -396,58 +376,344 @@ async function quarantineAndRepair(root, failures, clientSide = false) {
   writeQuarantine(record);
   // One line naming the file: clearing an entry there is the whole re-enable.
   console.warn(`dsh-desktop: ${String(failures.length)} plugin(s) failed to load and are now disabled; ${quarantinePath()} records why`);
-  if (repairable.length === 0) return;
+  if (repairable.length === 0 || !repair) return;
+  for (const plugin of repairable) record[plugin.id ?? plugin.name].attempts += 1;
+  writeQuarantine(record);
+  const main = appWindow();
+  if (main === undefined) return;
+  // FixerMode owns the window from here: it collects the key if there is none,
+  // runs the repair on deepseek-flash, and restarts into the app when done.
+  await runFixerMode(main, repairable, clientSide);
+}
+
+// ── FixerMode ────────────────────────────────────────────────────────────────
+// The repair page: a Win11 first-boot style screen the app switches to whenever
+// a plugin fails to load. It replaces the old "open a chat session and hope"
+// recovery with one the person can watch — the model runs the repair while the
+// page shows what is happening, the key form appears if there is nothing to
+// authenticate with, and a restart drops straight back into the app.
+/** Model the repair conversation runs on. */
+const FIXER_MODEL = "deepseek-flash";
+/** How long a repair may run before the app falls back to its usable state. */
+const FIXER_TIMEOUT_MS = 15 * 60 * 1000;
+/** Progress ceiling while the agent works — only the finish may reach 100. */
+const FIXER_CREEP_CEILING = 92;
+/** How long the agent may stay silent before the repair is given up on. */
+const FIXER_START_GRACE_MS = 90 * 1000;
+/** Idle window that ends the repair: a follow-up turn would start before it. */
+const FIXER_SETTLE_MS = 4000;
+/** Resolver of the key the page submitted; set only while a repair waits for one. */
+let fixerKeyWaiter;
+
+/**
+ * Push one state to the repair page.
+ * @param win - the window showing FixerMode.
+ * @param state - `{ stage, progress?, detail? }`.
+ */
+function fixerState(win, state) {
+  if (win === undefined || win.isDestroyed()) return;
   try {
-    await waitForAppPage();
+    win.webContents.send("dsh:fixer-state", state);
+  } catch {
+    /* the page is gone */
+  }
+}
+
+/**
+ * Whether a DeepSeek API key is stored, asked of the running harness first.
+ *
+ * The credentials service is authoritative — it is what the repair conversation
+ * resolves — but it answers over the loopback RPC, and a boot that fell over
+ * before that path was ready still has the file to read.
+ * @returns true when a key is configured.
+ */
+async function deepseekKeyConfigured() {
+  try {
+    const described = await harnessRpc("credentials/describe", { refs: ["DEEPSEEK_API_KEY"] });
+    const info = described?.DEEPSEEK_API_KEY;
+    if (info !== undefined) return info.configured === true;
+  } catch {
+    /* fall through to the credentials document */
+  }
+  try {
+    const text = readFileSync(join(resolveDshHome(), ".credentials.yaml"), "utf8");
+    return /^\s*DEEPSEEK_API_KEY\s*:\s*\S/m.test(text);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Write the key into `$DSH_HOME/.credentials.yaml` when the RPC cannot.
+ * @param key - the secret to store under `DEEPSEEK_API_KEY`.
+ */
+function writeDeepseekKeyFile(key) {
+  const file = join(resolveDshHome(), ".credentials.yaml");
+  let text = "";
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    /* absent: the whole document is written below */
+  }
+  const quoted = JSON.stringify(key);
+  const lines = text.trim() === ""
+    ? ["version: 1", "records:", "refs:"]
+    : text.replace(/\r\n/g, "\n").replace(/\s+$/, "").split("\n");
+  const refsAt = lines.findIndex((line) => /^refs:\s*$/.test(line));
+  if (refsAt === -1) {
+    lines.push("refs:", `  DEEPSEEK_API_KEY: ${quoted}`);
+  } else {
+    let at = refsAt + 1;
+    let replaced = false;
+    while (at < lines.length && (lines[at].startsWith(" ") || lines[at].trim() === "")) {
+      if (/^\s+DEEPSEEK_API_KEY\s*:/.test(lines[at])) {
+        lines[at] = `  DEEPSEEK_API_KEY: ${quoted}`;
+        replaced = true;
+      }
+      at += 1;
+    }
+    if (!replaced) lines.splice(refsAt + 1, 0, `  DEEPSEEK_API_KEY: ${quoted}`);
+  }
+  writeFileSync(file, `${lines.join("\n")}\n`, "utf8");
+}
+
+/**
+ * Store the key the repair page collected.
+ * @param key - the secret as typed.
+ * @returns `{ ok: true }` or `{ ok: false, error }`.
+ */
+async function storeFixerKey(key) {
+  const value = key.trim();
+  if (value.length < 8) return { ok: false, error: "API Key 太短，看起来不像有效的密钥" };
+  try {
+    await harnessRpc("credentials/set", { ref: "DEEPSEEK_API_KEY", value });
+    return { ok: true };
+  } catch (error) {
+    // The RPC is the clean path (it takes the file lock and updates the live
+    // service), but the document is watched, so writing it is still a valid
+    // way in when the loopback is not answering yet.
+    try {
+      writeDeepseekKeyFile(value);
+      console.warn("dsh-desktop: stored the fixer API key in the credentials document", error);
+      return { ok: true };
+    } catch (writeError) {
+      return { ok: false, error: writeError instanceof Error ? writeError.message : String(writeError) };
+    }
+  }
+}
+
+/** Wait for the page to submit a key, or for its window to go away. */
+function awaitFixerKey(win) {
+  return new Promise((done) => {
+    fixerKeyWaiter = done;
+    win.once("closed", () => {
+      if (fixerKeyWaiter !== done) return;
+      fixerKeyWaiter = undefined;
+      done(false);
+    });
+  });
+}
+
+/**
+ * Mint the harness session cookie without loading the app page.
+ *
+ * Every Remote call rides the cookie the launch-token URL sets, and on the boot
+ * path that page has not been loaded yet. A plain GET of the token URL is the
+ * same exchange the page performs — `Set-Cookie` lands in the default session,
+ * which `net.fetch` then carries — so the repair can start on the splash.
+ */
+async function mintHarnessCookie() {
+  if (serverUrl === undefined) return;
+  try {
+    // Default redirect handling: the token URL answers 302 with the session
+    // cookie and a redirect to the clean origin. `manual` is rejected by
+    // Electron's net stack ("Redirect was cancelled").
+    await net.fetch(serverUrl);
+  } catch (error) {
+    console.warn("dsh-desktop: could not mint the harness cookie for the repair", error);
+  }
+}
+
+/**
+ * Resolve the provider that serves {@link FIXER_MODEL}.
+ * @returns `{ provider, model }`, or undefined when no provider lists it.
+ */
+async function fixerSelection() {
+  try {
+    const catalog = await harnessRpc("session/modelCatalog", {});
+    for (const group of Array.isArray(catalog?.groups) ? catalog.groups : []) {
+      const models = Array.isArray(group?.models) ? group.models : [];
+      if (models.some((model) => model?.id === FIXER_MODEL)) {
+        return { provider: group.id, model: FIXER_MODEL };
+      }
+    }
+  } catch (error) {
+    console.warn("dsh-desktop: could not read the model catalog for the repair", error);
+  }
+  return undefined;
+}
+
+/**
+ * The agent driving a session, when the host tree has one.
+ * @param sessionId - the session to look up.
+ * @returns its agent, or undefined while it has not been created yet.
+ */
+function agentOf(sessionId) {
+  const agents = ctx?.get("agents", false);
+  return typeof agents?.get === "function" ? agents.get(sessionId) : undefined;
+}
+
+/**
+ * Wait for one repair turn to settle.
+ *
+ * The loop exposes a live `status` on each agent — running while it works
+ * across tool calls, idle when the turn is over — and that is what is polled
+ * here. The event route (`agent/status` on the root context) is not usable: the
+ * payload is published by the loop's own dispatch, so the root only sees
+ * `{ status }` and cannot tell which session it belongs to. The settle window
+ * keeps a follow-up turn from being read as the end; the start grace keeps a
+ * prompt that never woke the agent from holding the window.
+ * @param sessionId - the repair session.
+ * @param onProgress - receives the creep value while the turn runs.
+ * @returns true when the turn finished, false on timeout or no start.
+ */
+function waitForRepairTurn(sessionId, onProgress) {
+  return new Promise((done) => {
+    let running = false;
+    let idleSince = 0;
+    let finished = false;
+    const startedAt = Date.now();
+    const poll = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      onProgress(Math.min(FIXER_CREEP_CEILING, 30 + Math.round((elapsed / FIXER_TIMEOUT_MS) * 60)));
+      if (finished) return;
+      let status;
+      try {
+        status = agentOf(sessionId)?.status;
+      } catch {
+        status = undefined;
+      }
+      if (status === "running") {
+        running = true;
+        idleSince = 0;
+      } else if (running) {
+        idleSince ||= Date.now();
+        if (Date.now() - idleSince >= FIXER_SETTLE_MS) finish(true);
+      } else if (elapsed > FIXER_START_GRACE_MS) {
+        finish(false);
+      }
+      if (elapsed > FIXER_TIMEOUT_MS) finish(false);
+    }, 1500);
+    function finish(ok) {
+      if (finished) return;
+      finished = true;
+      clearInterval(poll);
+      done(ok);
+    }
+  });
+}
+
+/**
+ * Run the repair for this boot's failed plugins, then restart into the app.
+ *
+ * Everything the person sees comes from here: the page is told which stage it
+ * is in and how far along it is, the key form interrupts the flow only when
+ * there is no credential to repair with, and a completed repair hands the
+ * quarantine entries back to the next boot (marked `retry`) and restarts the
+ * app. A repair that cannot run or does not finish leaves the app usable
+ * instead — the failure is already recorded, so nothing is lost.
+ * @param win - the window to host the page.
+ * @param plugins - the failed entries to repair.
+ * @param clientSide - whether the failure was the page's own.
+ */
+async function runFixerMode(win, plugins, clientSide) {
+  console.warn(`dsh-desktop: plugin failure detected — entering FixerMode for ${String(plugins.length)} plugin(s)`);
+  try {
+    // The page registers its listener as it loads, so the first push has to
+    // wait for it — a state sent before that is simply dropped.
+    await win.loadURL(fixerUrl());
+  } catch (error) {
+    console.warn("dsh-desktop: could not show the FixerMode page", error);
+    return;
+  }
+  fixerState(win, { stage: "checking", progress: 6, detail: "正在读取插件错误信息" });
+  await mintHarnessCookie();
+  fixerState(win, { stage: "checking", progress: 10, detail: "正在检查 DeepSeek API Key" });
+  if (!await deepseekKeyConfigured()) {
+    fixerState(win, { stage: "apikey" });
+    const submitted = await awaitFixerKey(win);
+    if (submitted !== true) {
+      // The window went away: nothing left to repair into.
+      return;
+    }
+  }
+  fixerState(win, { stage: "preparing", progress: 20, detail: "正在准备修复会话" });
+  let sessionId;
+  try {
+    const selection = await fixerSelection();
     const created = await harnessRpc("session/create", { request: {} });
-    const sessionId = created?.sessionId;
+    sessionId = created?.sessionId;
     if (typeof sessionId !== "string") throw new Error("session/create returned no session");
+    if (selection !== undefined) {
+      await harnessRpc("session/selectModel", {
+        request: { sessionId, provider: selection.provider, model: selection.model }
+      });
+    } else {
+      console.warn(`dsh-desktop: no provider lists ${FIXER_MODEL}; the repair runs on the default model`);
+    }
     await harnessRpc("session/prompt", {
       request: {
         requestId: randomUUID(),
         sessionId,
         mode: "queue",
-        content: [{ type: "text", text: repairPrompt(repairable) }]
+        content: [{ type: "text", text: fixerPrompt(plugins) }]
       }
     });
-    for (const plugin of repairable) {
-      const key = plugin.id ?? plugin.name;
-      record[key].attempts += 1;
-      record[key].sessionId = sessionId;
-    }
-    writeQuarantine(record);
-    console.warn(`dsh-desktop: opened a repair conversation for the disabled plugin(s): ${sessionId}`);
-    notifyRepairStarted(repairable, clientSide);
-    // The turn does not wait for this — admission wakes the driver on its own —
-    // but a repair the person cannot see is a repair they will not trust, so the
-    // window follows the conversation the way the quick-chat pill does.
-    const main = appWindow();
-    if (main !== undefined) await selectSession(main, sessionId);
+    console.warn(`dsh-desktop: fixer prompt accepted on session ${sessionId}`);
   } catch (error) {
-    console.warn("dsh-desktop: could not start the plugin repair conversation", error);
+    console.warn("dsh-desktop: could not start the FixerMode repair", error);
+    fixerState(win, { stage: "repairing", progress: 0, detail: `无法启动修复：${error instanceof Error ? error.message : String(error)}` });
+    // The entry is already recorded, so the app is what is left to hand over.
+    fallbackToApp(win);
+    return;
   }
+  fixerState(win, { stage: "repairing", progress: 30, detail: "DeepSeek Flash 正在分析并修复受损的插件" });
+  const ok = await waitForRepairTurn(sessionId, (progress) => {
+    fixerState(win, { stage: "repairing", progress, detail: "DeepSeek Flash 正在分析并修复受损的插件" });
+  });
+  const record = readQuarantine();
+  for (const plugin of plugins) {
+    const entry = record[plugin.id ?? plugin.name];
+    // `retry` keeps the attempts count but lets the row load on the next boot,
+    // so the restart is what actually proves the repair.
+    if (entry !== undefined && ok) entry.retry = true;
+  }
+  writeQuarantine(record);
+  console.warn(`dsh-desktop: FixerMode repair ${ok ? "finished" : "timed out"}${clientSide ? " (client side)" : ""}`);
+  fixerState(win, { stage: "restarting", progress: 100, detail: ok ? "修复完成，正在重启并进入" : "正在重启应用" });
+  await new Promise((done) => setTimeout(done, 900));
+  restartIntoApp();
 }
 
 /**
- * Tell the person that a repair is running, since it starts without being asked.
- * @param plugins - the entries the repair conversation covers.
- * @param clientSide - whether the failure left the window on its boot page.
+ * Hand the window back to the app when the repair cannot run.
+ * @param win - the window that showed FixerMode.
  */
-function notifyRepairStarted(plugins, clientSide) {
-  if (!Notification.isSupported()) return;
+function fallbackToApp(win) {
+  if (win === undefined || win.isDestroyed() || serverUrl === undefined) return;
+  void win.loadURL(serverUrl);
+}
+
+/** Relaunch the app, dropping this process and its half-repaired tree. */
+function restartIntoApp() {
+  if (quitting) return;
+  quitting = true;
   try {
-    const names = plugins.map((plugin) => plugin.name).join("、");
-    new Notification({
-      title: "插件加载失败，已自动停用并开始修复",
-      // A client-side failure takes the whole window with it, so the recovery is
-      // a restart rather than something the person can already be looking at.
-      body: clientSide
-        ? `${names} 无法加载，界面因此没能挂载。已自动停用该插件并让 AI 在新对话里尝试修复；重启应用即可恢复界面。`
-        : `${names} 无法加载。应用已回退启动，并在新对话里让 AI 尝试修复；修好后会在下次启动自动恢复。`
-    }).show();
+    app.relaunch();
   } catch (error) {
-    console.warn("dsh-desktop: could not show the repair notification", error);
+    console.warn("dsh-desktop: could not schedule the restart", error);
   }
+  void disposeHarness().finally(() => app.exit(0));
 }
 
 /**
@@ -595,7 +861,10 @@ async function composeWebProfile() {
   // when the page did, so both are resolved here; matching on the composed rows
   // keeps a key for a plugin this deployment no longer mounts from emitting an
   // overlay of its own.
-  for (const key of Object.keys(readQuarantine())) {
+  for (const [key, entry] of Object.entries(readQuarantine())) {
+    // A `retry` entry is one FixerMode handed back after a repair: the next boot
+    // has to load it to prove the fix, so it is deliberately not switched off.
+    if (entry?.retry === true) continue;
     for (const row of rows.values()) {
       if (row.id !== key && row.name !== key && !String(row.name).startsWith(`${key}/`)) continue;
       overlays.push({ id: row.id, disabled: true });
@@ -946,6 +1215,11 @@ function splashUrl() {
 
 function commuteUrl() {
   return pathToFileURL(fileURLToPath(new URL("./commute.html", import.meta.url))).href;
+}
+
+/** The repair page: a standalone file:// document, like the splash. */
+function fixerUrl() {
+  return pathToFileURL(fileURLToPath(new URL("./fixer.html", import.meta.url))).href;
 }
 
 /**
@@ -1516,6 +1790,18 @@ function registerIpc() {
   }));
   // The canonical GUI URL; resolved lazily so a listener can never race the boot.
   ipcMain.handle("dsh:server-url", () => serverUrl);
+  // FixerMode's key form: store the secret, then release the repair that is
+  // waiting on it. The value never leaves this process again.
+  ipcMain.handle("dsh:fixer-key", async (_event, key) => {
+    if (typeof key !== "string") return { ok: false, error: "API Key 格式不正确" };
+    const result = await storeFixerKey(key);
+    if (result.ok === true) {
+      const release = fixerKeyWaiter;
+      fixerKeyWaiter = undefined;
+      if (typeof release === "function") release(true);
+    }
+    return result;
+  });
   // Custom title-bar window controls.
   ipcMain.on("dsh:window-control", (event, action) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -1708,16 +1994,16 @@ if (!gotLock) {
       if (!startHidden) await firstPaint(win);
       serverUrl = await bootHarness();
       stopAccountSignInWatch = watchAccountSignIn();
+      // A plugin that failed to load is a warning, not a stop — the app is up and
+      // usable without it. The failure is recorded first, so the broken entry is
+      // switched off on the next boot whatever happens below, and then FixerMode
+      // takes the window over: it collects the API key when there is none, lets
+      // deepseek-flash repair the plugin, and restarts straight into the app.
+      // A silent start has no window to show, so it only records.
+      const hostFailures = ctx === undefined ? [] : await inactivePlugins(ctx);
+      if (hostFailures.length !== 0) await quarantineAndRepair(ctx, hostFailures, false, !startHidden);
       if (startHidden) void win.loadURL(serverUrl);
       else revealApp(win, serverUrl);
-      // A plugin that failed to load is a warning, not a stop — the app is up and
-      // usable without it. This is what turns that warning into the two things it
-      // cannot do by itself: a record that keeps the broken entry out of the next
-      // boot, and a repair conversation for the agent. It runs after the app is
-      // revealed, on the same authenticated RPC path the quick-chat pill uses.
-      // Only the host half is settled here; the page's half arrives later, on the
-      // console report the window listens for.
-      if (ctx !== undefined) void quarantineAndRepair(ctx, await inactivePlugins(ctx));
     } catch (error) {
       console.error("dsh-desktop: boot failed", error);
       await disposeHarness();

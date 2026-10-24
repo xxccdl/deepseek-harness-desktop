@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'" />
+  <title>FixerMode</title>
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --ink: #f2f4f8;
+      --muted: #8b93a1;
+      --accent: #4f8cff;
+      --accent-2: #8b5cf6;
+      --line: rgba(255, 255, 255, .09);
+      --card: rgba(255, 255, 255, .035);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(120% 90% at 50% 0%, #131722 0%, var(--bg) 62%);
+      color: var(--ink);
+      font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    /* The page owns the drag region: the window is frameless. */
+    .drag { position: fixed; inset: 0 0 auto; height: 46px; -webkit-app-region: drag; }
+
+    .stage {
+      width: min(760px, calc(100% - 64px));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      text-align: center;
+      animation: rise .45s ease both;
+    }
+    .stage[hidden] { display: none; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* ── Win11-style ring ─────────────────────────────────────────────── */
+    .ring {
+      width: 62px;
+      height: 62px;
+      margin-bottom: 34px;
+      border-radius: 50%;
+      background:
+        conic-gradient(from 90deg,
+          transparent 0deg,
+          rgba(79, 140, 255, 0) 90deg,
+          var(--accent) 300deg,
+          transparent 360deg);
+      mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+      animation: spin 1.15s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 2.5vw, 32px);
+      font-weight: 350;
+      letter-spacing: .5px;
+      line-height: 1.35;
+    }
+
+    /* The flowing line under the title: a gradient swept across clipped text. */
+    .please {
+      margin: 18px 0 0;
+      font-size: 13px;
+      letter-spacing: 3px;
+      color: transparent;
+      background: linear-gradient(100deg,
+        rgba(139, 147, 161, .45) 20%,
+        #ffffff 46%,
+        #9fc3ff 54%,
+        rgba(139, 147, 161, .45) 80%);
+      background-size: 260% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: flow 3.4s ease-in-out infinite;
+    }
+    @keyframes flow {
+      0% { background-position: 130% 0; }
+      100% { background-position: -30% 0; }
+    }
+
+    .detail {
+      margin: 26px 0 0;
+      max-width: 620px;
+      font-size: 12.5px;
+      line-height: 22px;
+      color: var(--muted);
+      min-height: 22px;
+    }
+
+    /* ── bottom progress, Win11 OOBE placement ───────────────────────── */
+    .tray {
+      position: fixed;
+      left: 50%;
+      bottom: 46px;
+      width: min(520px, calc(100% - 96px));
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bar {
+      position: relative;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+      overflow: hidden;
+    }
+    .bar > i {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 6%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width .55s cubic-bezier(.22, .61, .36, 1);
+    }
+    .bar > i::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+      transform: translateX(-100%);
+      animation: sheen 1.6s ease-in-out infinite;
+    }
+    @keyframes sheen { to { transform: translateX(100%); } }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: var(--muted);
+      letter-spacing: .3px;
+    }
+
+    /* ── API key stage ───────────────────────────────────────────────── */
+    .card {
+      width: min(480px, 100%);
+      padding: 30px 30px 26px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+      text-align: left;
+      animation: rise .35s ease both;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 500;
+      letter-spacing: .2px;
+    }
+    .card p {
+      margin: 10px 0 0;
+      font-size: 12.5px;
+      line-height: 21px;
+      color: var(--muted);
+    }
+    .field {
+      margin-top: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 46px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, .28);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .field:focus-within {
+      border-color: rgba(79, 140, 255, .65);
+      box-shadow: 0 0 0 4px rgba(79, 140, 255, .12);
+    }
+    .field input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font: 13.5px/1 ui-monospace, "Cascadia Mono", Consolas, monospace;
+      letter-spacing: .2px;
+    }
+    .field input::placeholder { color: rgba(139, 147, 161, .55); }
+    .eye {
+      flex: none;
+      min-width: 40px;
+      height: 28px;
+      padding: 0 9px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .eye:hover { background: rgba(255, 255, 255, .07); color: var(--ink); }
+
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .hint:hover { color: var(--ink); }
+
+    button.primary {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 22px;
+      font: 600 13px/1 "Segoe UI Variable", "Microsoft YaHei", system-ui, sans-serif;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      cursor: pointer;
+      transition: filter .15s ease, transform .1s ease, opacity .15s ease;
+      box-shadow: 0 8px 24px rgba(79, 140, 255, .28);
+    }
+    button.primary:hover:not(:disabled) { filter: brightness(1.07); }
+    button.primary:active:not(:disabled) { transform: translateY(1px); }
+    button.primary:disabled { opacity: .5; cursor: default; box-shadow: none; }
+
+    .error {
+      margin-top: 12px;
+      min-height: 18px;
+      font-size: 12px;
+      color: #ff7a7a;
+    }
+
+    .brand {
+      position: fixed;
+      top: 40px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 11.5px;
+      letter-spacing: 4px;
+      color: rgba(139, 147, 161, .5);
+      text-transform: uppercase;
+    }
+
+    .win {
+      position: fixed;
+      top: 0;
+      right: 0;
+      display: flex;
+      -webkit-app-region: no-drag;
+    }
+    .win button {
+      width: 46px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: rgba(242, 244, 248, .55);
+      font: 13px/1 "Segoe UI", system-ui, sans-serif;
+      cursor: default;
+      transition: background-color .12s ease, color .12s ease;
+    }
+    .win button:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+    .win button.close:hover { background: #c42b1c; }
+  </style>
+</head>
+<body>
+  <div class="drag"></div>
+  <div class="win">
+    <button id="min" type="button" title="最小化">&#x2013;</button>
+    <button id="close" class="close" type="button" title="关闭">&#x2715;</button>
+  </div>
+  <div class="brand">FixerMode</div>
+
+  <main id="loading" class="stage">
+    <div class="ring"></div>
+    <h1>检测到插件报错，正在为您修复</h1>
+    <p class="please">请稍后</p>
+    <p class="detail" id="detail"></p>
+  </main>
+
+  <main id="keys" class="stage" hidden>
+    <section class="card">
+      <h2>需要 DeepSeek API Key</h2>
+      <p>修复插件需要一个可用的 DeepSeek API Key。填入后将自动继续修复，修好后应用会自动重启并进入。</p>
+      <label class="field">
+        <input id="key" type="password" spellcheck="false" autocomplete="off" placeholder="sk-..." />
+        <button class="eye" id="eye" type="button" title="显示 / 隐藏">显示</button>
+      </label>
+      <div class="error" id="err"></div>
+      <div class="actions">
+        <button class="hint" id="get" type="button">去 platform.deepseek.com 获取</button>
+        <button class="primary" id="save" type="button" disabled>保存并继续修复</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="tray" id="tray">
+    <div class="bar"><i id="fill"></i></div>
+    <div class="meta">
+      <span id="pct">0%</span>
+      <span id="phase">正在准备</span>
+    </div>
+  </div>
+
+  <script>
+    const loading = document.getElementById("loading");
+    const keys = document.getElementById("keys");
+    const detail = document.getElementById("detail");
+    const fill = document.getElementById("fill");
+    const pct = document.getElementById("pct");
+    const phase = document.getElementById("phase");
+    const tray = document.getElementById("tray");
+    const input = document.getElementById("key");
+    const save = document.getElementById("save");
+    const err = document.getElementById("err");
+    const eye = document.getElementById("eye");
+    const get = document.getElementById("get");
+
+    const PHASES = {
+      checking: "正在检查运行环境",
+      preparing: "正在准备修复会话",
+      repairing: "正在分析与修复插件",
+      restarting: "修复完成，正在重启"
+    };
+
+    let shown = 0;
+
+    function paint(progress) {
+      const next = Math.max(shown, Math.min(100, Math.round(progress)));
+      shown = next;
+      fill.style.width = (next === 0 ? 6 : next) + "%";
+      pct.textContent = next + "%";
+    }
+
+    function setStage(stage) {
+      const wantsKey = stage === "apikey";
+      loading.hidden = wantsKey;
+      keys.hidden = !wantsKey;
+      tray.style.display = wantsKey ? "none" : "";
+      if (wantsKey) {
+        setTimeout(() => input.focus(), 60);
+      }
+    }
+
+    // The main process drives everything; the page only renders.
+    window.dshFixer.onState((state) => {
+      if (!state || typeof state !== "object") return;
+      if (state.stage === "apikey") {
+        setStage("apikey");
+        return;
+      }
+      setStage("loading");
+      if (typeof state.progress === "number") paint(state.progress);
+      phase.textContent = PHASES[state.stage] || "正在修复";
+      if (typeof state.detail === "string") detail.textContent = state.detail;
+    });
+
+    function sync() {
+      save.disabled = input.value.trim().length < 8;
+    }
+    input.addEventListener("input", sync);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !save.disabled) submit();
+    });
+    eye.addEventListener("click", () => {
+      const hidden = input.type === "password";
+      input.type = hidden ? "text" : "password";
+      eye.textContent = hidden ? "隐藏" : "显示";
+    });
+    get.addEventListener("click", () => window.dshFixer.openKeyPage());
+    save.addEventListener("click", submit);
+    document.getElementById("min").addEventListener("click", () => window.dshFixer.windowControl("minimize"));
+    document.getElementById("close").addEventListener("click", () => window.dshFixer.windowControl("close"));
+
+    async function submit() {
+      const value = input.value.trim();
+      if (value.length < 8) return;
+      save.disabled = true;
+      save.textContent = "正在保存…";
+      err.textContent = "";
+      const result = await window.dshFixer.submitKey(value);
+      if (result && result.ok === true) {
+        // Back to the loading stage; the main process continues on its own.
+        setStage("loading");
+        paint(14);
+        phase.textContent = PHASES.checking;
+        fill.style.width = "14%";
+        return;
+      }
+      err.textContent = (result && result.error) || "保存失败，请重试";
+      save.disabled = false;
+      save.textContent = "保存并继续修复";
+    }
+
+    paint(0);
+  </script>
+</body>
+</html>

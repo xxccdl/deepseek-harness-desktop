@@ -577,6 +577,21 @@ contextBridge.exposeInMainWorld("dshDesktop", {
   getClipboardHistory: () => ipcRenderer.invoke("dsh:clipboard-history-get")
 });
 
+// FixerMode bridge: the repair page is a plain file:// document with no #root
+// and no harness behind it, so the main process is its only source of state.
+contextBridge.exposeInMainWorld("dshFixer", {
+  /** Subscribe to the repair state pushes → { stage, progress, detail }. */
+  onState: (callback) => {
+    ipcRenderer.on("dsh:fixer-state", (_event, state) => callback(state));
+  },
+  /** Store the API key the user typed → { ok } or { ok: false, error }. */
+  submitKey: (key) => ipcRenderer.invoke("dsh:fixer-key", key),
+  /** Open the DeepSeek platform's key page in the system browser. */
+  openKeyPage: () => ipcRenderer.invoke("dsh:open-external", "https://platform.deepseek.com/api_keys"),
+  /** Frameless window controls for the page's own close/minimize buttons. */
+  windowControl: (action) => ipcRenderer.send("dsh:window-control", action)
+});
+
 // Quick-input bridge: the main process forwards the Ctrl+D+S global shortcut
 // to the pill window (a standalone HTML file with no #root).
 const IS_MINI = typeof document !== "undefined" && document.getElementById("root") === null;
