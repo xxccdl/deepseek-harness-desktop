@@ -34,3 +34,7 @@ gitee-release-resp.json
 gitee-upload-resp.json
 .dsh-video-home/
 .trae/
+
+# Build scratch space (the NSIS compiler needs a large temp file) and probes
+.build-tmp/
+.probe-release.mjs

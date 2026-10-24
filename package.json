@@ -9,6 +9,7 @@
     "license": "MIT",
     "scripts": {
         "start": "electron .",
+        "commute": "electron . --commute",
         "icon": "node scripts/make-icon.mjs",
         "dist": "electron-builder --win",
         "dist:portable": "electron-builder --win portable"

@@ -944,6 +944,10 @@ function splashUrl() {
   return pathToFileURL(fileURLToPath(new URL("./splash.html", import.meta.url))).href;
 }
 
+function commuteUrl() {
+  return pathToFileURL(fileURLToPath(new URL("./commute.html", import.meta.url))).href;
+}
+
 /**
  * Swap the splash for the served app. The splash is already on screen, so this
  * only waits out whatever is left of its minimum airing — the harness boot it

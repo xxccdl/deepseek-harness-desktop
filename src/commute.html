@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+  <title>通勤回收站 · 五毛钱特效版</title>
+  <style>
+    :root {
+      --ink: #1e2630;
+      --muted: #66727d;
+      --paper: #f6f0df;
+      --paper-2: #fffaf0;
+      --yellow: #ffd72f;
+      --yellow-deep: #e7a900;
+      --red: #f04444;
+      --blue: #45c8ef;
+      --green: #73cf78;
+      --purple: #9d7bea;
+      --line: #1e2630;
+      --shadow: 5px 5px 0 var(--line);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(30,38,48,.05) 25%, transparent 25%) 0 0 / 18px 18px,
+        linear-gradient(315deg, rgba(30,38,48,.04) 25%, transparent 25%) 0 0 / 18px 18px,
+        var(--paper);
+      font-family: "Arial Black", "Microsoft YaHei", "PingFang SC", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    button { font: inherit; cursor: pointer; }
+    .app {
+      width: min(1460px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 28px 34px 42px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border: 4px solid var(--line);
+      border-radius: 50%;
+      background: var(--yellow);
+      box-shadow: var(--shadow);
+      font-size: 31px;
+      transform: rotate(-7deg);
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: .95;
+      letter-spacing: -2px;
+      text-transform: uppercase;
+    }
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .date-stamp {
+      padding: 11px 14px;
+      border: 3px solid var(--line);
+      background: var(--red);
+      box-shadow: 4px 4px 0 var(--line);
+      color: #fff;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      font-weight: 900;
+      transform: rotate(2deg);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(420px, 1fr) 290px;
+      gap: 22px;
+      align-items: stretch;
+    }
+    .panel {
+      border: 4px solid var(--line);
+      background: var(--paper-2);
+      box-shadow: var(--shadow);
+    }
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 17px;
+      border-bottom: 4px solid var(--line);
+      background: var(--blue);
+    }
+    .panel-heading h2 {
+      font-size: 17px;
+      letter-spacing: .5px;
+    }
+    .counter {
+      display: inline-grid;
+      place-items: center;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 7px;
+      border: 2px solid var(--line);
+      background: #fff;
+      font-size: 13px;
+    }
+
+    .filters { padding: 15px; }
+    .filter {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      min-height: 47px;
+      margin-bottom: 10px;
+      padding: 0 12px;
+      border: 3px solid var(--line);
+      background: #fff;
+      text-align: left;
+      transition: transform .12s ease, background .12s ease;
+    }
+    .filter:last-child { margin-bottom: 0; }
+    .filter:hover { transform: translateX(3px); }
+    .filter.active {
+      background: var(--yellow);
+      box-shadow: 3px 3px 0 var(--line);
+      transform: translate(-2px, -2px);
+    }
+    .filter-icon {
+      display: grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      border: 2px solid var(--line);
+      border-radius: 50%;
+      background: var(--color, #fff);
+      font-size: 14px;
+    }
+    .filter span:nth-child(2) {
+      flex: 1;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .filter-count { font-size: 12px; }
+    .tiny-note {
+      margin: 18px 3px 0;
+      color: var(--muted);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .main-stage {
+      position: relative;
+      min-height: 660px;
+      overflow: hidden;
+      border: 4px solid var(--line);
+      background:
+        radial-gradient(circle at 50% 43%, rgba(255, 215, 47, .36), transparent 31%),
+        repeating-linear-gradient(0deg, rgba(30,38,48,.06) 0 2px, transparent 2px 8px),
+        #e9f7f3;
+      box-shadow: var(--shadow);
+    }
+    .stage-copy {
+      position: relative;
+      z-index: 2;
+      padding: 24px 26px 0;
+    }
+    .stage-kicker {
+      display: inline-block;
+      padding: 5px 9px;
+      border: 3px solid var(--line);
+      background: var(--purple);
+      color: #fff;
+      font-size: 11px;
+      transform: rotate(-2deg);
+    }
+    .stage-title {
+      max-width: 500px;
+      margin-top: 13px;
+      font-size: clamp(29px, 4vw, 53px);
+      line-height: .96;
+      letter-spacing: -2px;
+      text-shadow: 3px 3px 0 #fff;
+    }
+    .stage-help {
+      margin-top: 10px;
+      color: var(--muted);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 16px;
+    }
+    .action {
+      min-height: 38px;
+      padding: 0 13px;
+      border: 3px solid var(--line);
+      background: #fff;
+      box-shadow: 3px 3px 0 var(--line);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .action:hover { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+    .action.primary { background: var(--yellow); }
+
+    .bin-zone {
+      position: absolute;
+      inset: 220px 0 0;
+      display: grid;
+      place-items: center;
+      transition: background .2s ease;
+    }
+    .bin-zone.drag-over {
+      background: rgba(255, 215, 47, .24);
+    }
+    .burst {
+      position: absolute;
+      width: min(390px, 80%);
+      aspect-ratio: 1;
+      border: 4px dashed var(--line);
+      border-radius: 50%;
+      opacity: .17;
+      animation: spin 28s linear infinite;
+    }
+    .burst::before, .burst::after {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border: 4px dotted var(--line);
+      border-radius: 50%;
+    }
+    .burst::after { inset: 52px; border-style: solid; transform: rotate(22deg); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .bin {
+      position: relative;
+      z-index: 1;
+      width: min(290px, 62%);
+      aspect-ratio: .84;
+      border: 5px solid var(--line);
+      border-radius: 18px 18px 31px 31px;
+      background: linear-gradient(90deg, #eebc20 0 13%, var(--yellow) 13% 88%, #d69e12 88%);
+      box-shadow: 9px 11px 0 var(--line);
+      transform: rotate(-2deg);
+      transition: transform .18s ease;
+    }
+    .bin::before {
+      content: "";
+      position: absolute;
+      top: -30px;
+      left: -23px;
+      width: calc(100% + 46px);
+      height: 33px;
+      border: 5px solid var(--line);
+      border-radius: 12px;
+      background: #f4c629;
+      box-shadow: 5px 5px 0 var(--line);
+    }
+    .bin::after {
+      content: "通勤垃圾";
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-90deg);
+      color: rgba(30,38,48,.76);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .bin-zone.drag-over .bin { transform: rotate(2deg) scale(1.06); }
+    .bin-status {
+      position: absolute;
+      bottom: 30px;
+      padding: 9px 12px;
+      border: 3px solid var(--line);
+      background: #fff;
+      box-shadow: 3px 3px 0 var(--line);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .drop-flash {
+      position: absolute;
+      z-index: 4;
+      top: 37%;
+      left: 50%;
+      pointer-events: none;
+      color: var(--red);
+      font-size: 34px;
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(-10deg) scale(.5);
+    }
+    .drop-flash.show { animation: flash .75s ease-out; }
+    @keyframes flash {
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(-10deg) scale(.5); }
+      30% { opacity: 1; transform: translate(-50%, -50%) rotate(-10deg) scale(1.15); }
+      100% { opacity: 0; transform: translate(-50%, -90%) rotate(8deg) scale(1); }
+    }
+
+    .stats { padding: 16px; }
+    .stat-big {
+      padding: 15px;
+      border: 3px solid var(--line);
+      background: var(--yellow);
+      box-shadow: 4px 4px 0 var(--line);
+    }
+    .stat-label {
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .stat-number {
+      margin-top: 3px;
+      font-size: 48px;
+      line-height: 1;
+    }
+    .stat-sub {
+      margin-top: 5px;
+      color: #5d4a00;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .rank-title {
+      margin: 23px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 3px solid var(--line);
+      font-size: 15px;
+    }
+    .rank {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      border-bottom: 2px dotted #9aa1a7;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .rank:last-child { border-bottom: 0; }
+    .rank b {
+      display: grid;
+      place-items: center;
+      width: 23px;
+      height: 23px;
+      border: 2px solid var(--line);
+      background: #fff;
+      font-size: 11px;
+    }
+    .rank:first-of-type b { background: var(--red); color: #fff; }
+    .rank .bar {
+      display: block;
+      height: 7px;
+      margin-top: 4px;
+      background: #d7dadd;
+    }
+    .rank .bar i { display: block; height: 100%; background: var(--purple); }
+    .motto {
+      margin-top: 22px;
+      padding: 12px;
+      border: 3px solid var(--line);
+      background: var(--green);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      line-height: 1.55;
+      font-weight: 900;
+      transform: rotate(1deg);
+    }
+
+    .trash-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 27px;
+    }
+    .trash-card {
+      position: relative;
+      min-height: 168px;
+      padding: 15px;
+      border: 4px solid var(--line);
+      background: var(--card, #fff);
+      box-shadow: 4px 4px 0 var(--line);
+      cursor: grab;
+      transition: transform .14s ease, opacity .14s ease;
+    }
+    .trash-card:hover { transform: translate(-3px, -5px) rotate(var(--tilt)); }
+    .trash-card:active { cursor: grabbing; }
+    .trash-card.removing { animation: toss .62s ease-in forwards; pointer-events: none; }
+    @keyframes toss {
+      40% { transform: translate(0, -100px) rotate(22deg) scale(1.08); opacity: 1; }
+      100% { transform: translate(90px, 240px) rotate(70deg) scale(.2); opacity: 0; }
+    }
+    .trash-emoji {
+      display: block;
+      font-size: 31px;
+      filter: drop-shadow(2px 2px 0 rgba(30,38,48,.22));
+    }
+    .trash-name {
+      display: block;
+      margin-top: 12px;
+      font-size: 15px;
+      line-height: 1.15;
+    }
+    .trash-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 12px;
+      color: #53606a;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .tag {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 3px 6px;
+      border: 2px solid var(--line);
+      background: #fff;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+    }
+    .empty {
+      grid-column: 1 / -1;
+      padding: 32px;
+      border: 3px dashed var(--line);
+      color: var(--muted);
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 5;
+      padding: 12px 17px;
+      border: 3px solid var(--line);
+      background: var(--red);
+      box-shadow: 4px 4px 0 var(--line);
+      color: #fff;
+      font-family: "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      font-weight: 900;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 20px) rotate(-2deg);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0) rotate(-2deg); }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 220px minmax(360px, 1fr); }
+      .stats { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 20px; }
+      .rank-title { margin-top: 0; }
+      .motto { margin-top: 0; }
+    }
+    @media (max-width: 760px) {
+      .app { padding: 19px 15px 30px; }
+      .topbar { align-items: flex-start; }
+      .date-stamp { font-size: 11px; }
+      .layout { display: block; }
+      .filters { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .filter { margin: 0; }
+      .tiny-note { grid-column: 1 / -1; }
+      .main-stage { min-height: 590px; margin-top: 20px; }
+      .stats { display: block; margin-top: 20px; }
+      .rank-title { margin-top: 23px; }
+      .motto { margin-top: 22px; }
+      .trash-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 470px) {
+      h1 { font-size: 32px; }
+      .logo { width: 50px; height: 50px; font-size: 25px; }
+      .date-stamp { display: none; }
+      .trash-list { grid-template-columns: 1fr; }
+      .stage-title { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">♻</div>
+        <div>
+          <h1>通勤回收站</h1>
+          <p class="subtitle">把今天路上浪费掉的东西，分类投进五毛钱特效回收站</p>
+        </div>
+      </div>
+      <div class="date-stamp">今日营业<br />07:30 — 19:30</div>
+    </header>
+
+    <section class="layout">
+      <aside class="panel">
+        <div class="panel-heading">
+          <h2>垃圾分类</h2>
+          <span id="totalCount" class="counter">0</span>
+        </div>
+        <div id="filters" class="filters">
+          <button class="filter active" data-filter="all">
+            <span class="filter-icon" style="--color: #ffd72f">✦</span>
+            <span>全部损耗</span>
+            <span class="filter-count"></span>
+          </button>
+          <button class="filter" data-filter="time">
+            <span class="filter-icon" style="--color: #9d7bea">⌛</span>
+            <span>时间黑洞</span>
+            <span class="filter-count"></span>
+          </button>
+          <button class="filter" data-filter="mood">
+            <span class="filter-icon" style="--color: #f04444">☹</span>
+            <span>情绪废料</span>
+            <span class="filter-count"></span>
+          </button>
+          <button class="filter" data-filter="money">
+            <span class="filter-icon" style="--color: #73cf78">¥</span>
+            <span>钱包瘦身</span>
+            <span class="filter-count"></span>
+          </button>
+          <button class="filter" data-filter="body">
+            <span class="filter-icon" style="--color: #45c8ef">⚡</span>
+            <span>体力电量</span>
+            <span class="filter-count"></span>
+          </button>
+          <p class="tiny-note">提示：点击任意垃圾，或把它拖进中央回收站。没有什么是回收不了的，除了早高峰的座位。</p>
+        </div>
+      </aside>
+
+      <section>
+        <div id="binZone" class="main-stage">
+          <div class="stage-copy">
+            <span class="stage-kicker">特效预算：¥0.50</span>
+            <h2 class="stage-title">把通勤<br />一键回收</h2>
+            <p class="stage-help">点击卡片投放 · 拖拽卡片投放 · 今天也要减少一点精神污染</p>
+            <div class="action-row">
+              <button id="randomBtn" class="action primary">🎲 随机捡一条</button>
+              <button id="clearBtn" class="action">🧹 清空回收站</button>
+            </div>
+          </div>
+          <div class="bin-zone">
+            <div class="burst" aria-hidden="true"></div>
+            <div class="bin" aria-label="通勤回收站"></div>
+            <div class="bin-status">当前已回收：<strong id="recycledCount">0</strong> 件</div>
+          </div>
+          <div id="dropFlash" class="drop-flash">回收成功！</div>
+        </div>
+        <div id="trashList" class="trash-list"></div>
+      </section>
+
+      <aside class="panel stats">
+        <div class="stat-big">
+          <div class="stat-label">今日通勤损耗指数</div>
+          <div id="lossNumber" class="stat-number">87</div>
+          <div class="stat-sub">比昨天多浪费了 13 分钟</div>
+        </div>
+        <h2 class="rank-title">今日最强损耗</h2>
+        <div id="ranking">
+          <div class="rank"><b>1</b><span>等红灯发呆<span class="bar"><i style="width: 92%"></i></span></span><strong>92</strong></div>
+          <div class="rank"><b>2</b><span>找耳机<span class="bar"><i style="width: 78%"></i></span></span><strong>78</strong></div>
+          <div class="rank"><b>3</b><span>排队买咖啡<span class="bar"><i style="width: 65%"></i></span></span><strong>65</strong></div>
+          <div class="rank"><b>4</b><span>挤不上地铁<span class="bar"><i style="width: 53%"></i></span></span><strong>53</strong></div>
+        </div>
+        <p class="motto">今日宣言：<br />能坐就不站，能走就不等，能回收就别憋着。</p>
+      </aside>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    (() => {
+      const seed = [
+        { id: 1, type: "time", emoji: "⌛", name: "等电梯等到怀疑人生", meta: "耗时 12 分钟", score: 12, color: "#eadfff", tilt: "-2deg" },
+        { id: 2, type: "mood", emoji: "😑", name: "被前车喇叭创飞的心情", meta: "心情 -18", score: 18, color: "#ffd9d9", tilt: "1deg" },
+        { id: 3, type: "money", emoji: "☕", name: "续命咖啡第 2 杯", meta: "支出 ¥26", score: 26, color: "#d9f4de", tilt: "-1deg" },
+        { id: 4, type: "body", emoji: "🫠", name: "挤地铁挤没的灵魂", meta: "电量 -23%", score: 23, color: "#d5f4fc", tilt: "2deg" },
+        { id: 5, type: "time", emoji: "🧭", name: "导航带我绕远的 800 米", meta: "多走 11 分钟", score: 11, color: "#fff0c2", tilt: "-3deg" },
+        { id: 6, type: "mood", emoji: "📣", name: "早高峰突然外放视频", meta: "血压 +30", score: 30, color: "#ffe0ec", tilt: "2deg" },
+        { id: 7, type: "money", emoji: "🛵", name: "临时打车的尊严税", meta: "支出 ¥42", score: 42, color: "#dcf0ff", tilt: "-2deg" },
+        { id: 8, type: "body", emoji: "🥵", name: "办公室空调前的汗", meta: "体感 +7℃", score: 17, color: "#ffe1c7", tilt: "1deg" }
+      ];
+      const extra = [
+        { type: "time", emoji: "🕳️", name: "红灯读完半章小说", meta: "耗时 9 分钟", score: 9, color: "#e9e0ff", tilt: "1deg" },
+        { type: "mood", emoji: "🙃", name: "同事一句“你也迟到啊”", meta: "心情 -12", score: 12, color: "#ffdcdc", tilt: "-2deg" },
+        { type: "money", emoji: "🥐", name: "便利店冲动早餐", meta: "支出 ¥19", score: 19, color: "#e0f5dc", tilt: "2deg" },
+        { type: "body", emoji: "🫥", name: "站着睡着的 3 站路", meta: "电量 -16%", score: 16, color: "#d9f6fb", tilt: "-1deg" }
+      ];
+      let items = [...seed];
+      let recycled = 0;
+      let activeFilter = "all";
+
+      const list = document.getElementById("trashList");
+      const totalCount = document.getElementById("totalCount");
+      const recycledCount = document.getElementById("recycledCount");
+      const lossNumber = document.getElementById("lossNumber");
+      const binZone = document.getElementById("binZone");
+      const dropFlash = document.getElementById("dropFlash");
+      const toast = document.getElementById("toast");
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      function countByType(type) {
+        return items.filter(item => type === "all" || item.type === type).length;
+      }
+
+      function renderFilters() {
+        document.querySelectorAll(".filter").forEach(button => {
+          const type = button.dataset.filter;
+          button.classList.toggle("active", type === activeFilter);
+          button.querySelector(".filter-count").textContent = countByType(type);
+        });
+        totalCount.textContent = items.length;
+      }
+
+      function render() {
+        renderFilters();
+        recycledCount.textContent = recycled;
+        lossNumber.textContent = String(Math.min(99, 87 + recycled * 2));
+        const visible = items.filter(item => activeFilter === "all" || item.type === activeFilter);
+        list.innerHTML = "";
+        if (!visible.length) {
+          list.innerHTML = '<div class="empty">这类通勤垃圾已经被回收干净了，今天表现得像个成年人。</div>';
+          return;
+        }
+        visible.forEach(item => {
+          const card = document.createElement("article");
+          card.className = "trash-card";
+          card.draggable = true;
+          card.dataset.id = String(item.id);
+          card.style.setProperty("--card", item.color);
+          card.style.setProperty("--tilt", item.tilt);
+          card.innerHTML = `
+            <span class="tag">${item.type === "time" ? "时间" : item.type === "mood" ? "情绪" : item.type === "money" ? "钱包" : "体力"}</span>
+            <span class="trash-emoji">${item.emoji}</span>
+            <strong class="trash-name">${item.name}</strong>
+            <span class="trash-meta"><span>${item.meta}</span><span>点击投放 →</span></span>
+          `;
+          card.addEventListener("click", () => recycle(item.id, card));
+          card.addEventListener("dragstart", (event) => {
+            event.dataTransfer.setData("text/plain", String(item.id));
+            card.classList.add("dragging");
+          });
+          card.addEventListener("dragend", () => card.classList.remove("dragging"));
+          list.appendChild(card);
+        });
+      }
+
+      function recycle(id, card) {
+        const item = items.find(value => value.id === id);
+        if (!item || card.classList.contains("removing")) return;
+        card.classList.add("removing");
+        setTimeout(() => {
+          items = items.filter(value => value.id !== id);
+          recycled += 1;
+          render();
+        }, 470);
+        dropFlash.classList.remove("show");
+        void dropFlash.offsetWidth;
+        dropFlash.classList.add("show");
+        showToast(`已回收「${item.name}」，精神污染 -${item.score}`);
+      }
+
+      binZone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        binZone.classList.add("drag-over");
+      });
+      binZone.addEventListener("dragleave", (event) => {
+        if (!binZone.contains(event.relatedTarget)) binZone.classList.remove("drag-over");
+      });
+      binZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        binZone.classList.remove("drag-over");
+        const id = Number(event.dataTransfer.getData("text/plain"));
+        const card = list.querySelector(`[data-id="${id}"]`);
+        recycle(id, card);
+      });
+
+      document.querySelectorAll(".filter").forEach(button => {
+        button.addEventListener("click", () => {
+          activeFilter = button.dataset.filter;
+          render();
+        });
+      });
+
+      document.getElementById("clearBtn").addEventListener("click", () => {
+        if (!items.length) {
+          showToast("回收站已经空了，连焦虑都没有剩下。");
+          return;
+        }
+        const count = items.length;
+        recycled += count;
+        items = [];
+        render();
+        showToast(`全员回收完毕！一次处理 ${count} 件通勤损耗`);
+      });
+
+      document.getElementById("randomBtn").addEventListener("click", () => {
+        const template = extra[Math.floor(Math.random() * extra.length)];
+        const item = { ...template, id: Date.now() };
+        items.push(item);
+        render();
+        showToast(`发现新垃圾：「${item.name}」`);
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
