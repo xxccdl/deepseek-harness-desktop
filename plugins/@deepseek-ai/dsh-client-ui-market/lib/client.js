@@ -105,6 +105,11 @@ window.__ModuleLoader__.load({
 			   loud: everything else about the market can wait to be opened. */
 			".dspm-entry-badge{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:var(--dsw-alias-brand-primary);color:#fff;font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums}",
 			".dspm-entry[data-updates='true']{color:var(--dsw-alias-brand-primary);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--dsw-alias-brand-primary) 42%,transparent)}",
+			// Narrow windows: the header already carries the session title, agent
+			// team, model mode and tabs, and measured 712px of content in a 620px
+			// column. Dropping the word leaves the icon (still labelled for screen
+			// readers) and hands the row back ~63px.
+			"@media (max-width:1100px){.dspm-entry{padding:0 7px;gap:0;justify-content:center}.dspm-entry-label{display:none}.dspm-entry-badge{margin-left:3px}}",
 			".dspm-icon-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
 			".dspm-icon-btn[data-active='true']{color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-interactive-bg-hover)}",
 			".dspm-icon-btn:active{transform:scale(.92)}",
@@ -811,7 +816,7 @@ window.__ModuleLoader__.load({
 				onClick: () => windowStore.set(!open),
 				children: [
 					jsx(MarketIcon, {}),
-					jsx("span", { children: label }),
+					jsx("span", { className: "dspm-entry-label", children: label }),
 					updates > 0 ? jsx("span", { className: "dspm-entry-badge", children: String(updates) }) : null
 				]
 			});

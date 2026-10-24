@@ -59,12 +59,14 @@ const TITLE_BAR_CSS = `
 #dsh-titlebar .dsh-market {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   flex: none;
   align-self: center;
+  width: 28px;
   height: 24px;
-  margin: 0 8px 0 0;
-  padding: 0 10px;
+  margin: 0 6px 0 0;
+  padding: 0;
   box-sizing: border-box;
   border: 0;
   border-radius: 7px;
@@ -176,7 +178,7 @@ function injectTitleBar() {
       <span>DeepSeek Harness</span>
     </span>
     <div class="dsh-controls">
-      <button class="dsh-market" data-action="market" title="打开插件市场" aria-label="插件市场">${ICONS.market}<span>插件市场</span></button>
+      <button class="dsh-market" data-action="market" title="打开插件市场" aria-label="插件市场">${ICONS.market}</button>
       <button class="dsh-btn" data-action="minimize" title="最小化" aria-label="最小化">${ICONS.minimize}</button>
       <button class="dsh-btn" data-action="toggle-maximize" title="最大化" aria-label="最大化">${ICONS.maximize}</button>
       <button class="dsh-btn dsh-close" data-action="close" title="关闭" aria-label="关闭">${ICONS.close}</button>

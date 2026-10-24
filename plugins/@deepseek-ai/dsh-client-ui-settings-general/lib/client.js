@@ -27,8 +27,10 @@ window.__ModuleLoader__.load({
 						d.open = true;
 					},
 					close: (d) => {
+						// The pane keeps its section across visits: settings are
+						// usually revisited in a burst, and reopening on the first
+						// row makes every second visit a re-navigation.
 						d.open = false;
-						d.activeId = void 0;
 					},
 					select: (d, id) => {
 						d.activeId = id;
@@ -57,7 +59,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.module.css.mjs
-		const css$7 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{inset:var(--dsh-frame-chrome-top,0px) 0 0;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
+		const css$7 = ".VOzbGW_triggerRow{flex:none;align-items:center;gap:8px;width:calc(100% + 4px);margin:4px -2px;display:flex;position:relative}.VOzbGW_triggerRow.VOzbGW_railRow{width:36px;margin:8px 0 10px}.VOzbGW_trigger{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;width:auto;min-width:0;height:42px;color:var(--dsw-alias-label-primary);background:0 0;border:none;flex:1;align-items:center;gap:8px;margin:0;padding:0 10px 0 8px;font-family:inherit;font-size:14px;line-height:22px;display:flex;overflow:hidden}.VOzbGW_trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_trigger.VOzbGW_rail{flex:none;justify-content:center;gap:0;width:36px;height:36px;margin:0;padding:0}.VOzbGW_triggerLabel{white-space:nowrap;overflow:hidden}.VOzbGW_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.VOzbGW_mask{inset:var(--dsh-frame-chrome-top,0px) 0 0;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute}.VOzbGW_panel{z-index:1;width:800px;height:min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))));border-radius:var(--dsw-radius-panel);background:var(--dsw-alias-bg-layer-2);max-width:calc(100vw - 48px);box-shadow:var(--dsw-elevation-prominent);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);display:flex;position:relative;overflow:hidden}.VOzbGW_panel:focus{outline:none}.VOzbGW_nav{box-sizing:border-box;flex-direction:column;flex:none;gap:18px;width:188px;padding:22px 12px 0;display:flex}.VOzbGW_search{padding:0 4px}.VOzbGW_searchInput{box-sizing:border-box;appearance:none;width:100%;height:32px;padding:0 10px;border-radius:calc(var(--dsw-radius-md) - 2px);border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:13px/1.4 inherit;outline:none}.VOzbGW_searchInput::placeholder{color:var(--dsw-alias-label-secondary)}.VOzbGW_searchInput:focus{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-alias-state-business-primary) 18%,transparent)}.VOzbGW_empty{padding:10px 12px;font-size:12.5px;line-height:1.55;color:var(--dsw-alias-label-secondary)}.VOzbGW_navTitle{color:var(--dsw-alias-label-primary);padding:0 12px;font-size:16px;font-weight:500;line-height:24px}.VOzbGW_navList{flex-direction:column;gap:4px;display:flex;overflow-y:auto}.VOzbGW_navCell{box-sizing:border-box;border-radius:var(--dsw-radius-md);cursor:pointer;height:40px;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;align-items:center;gap:8px;padding:9px 16px 9px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:22px;display:flex}.VOzbGW_navCell:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}.VOzbGW_navCell.VOzbGW_active{background:var(--dsw-specific-sidebar-nav-item-active)}.VOzbGW_navIcon{flex:none}.VOzbGW_navLabel{white-space:nowrap;text-overflow:ellipsis;flex:1;min-width:0;overflow:hidden}.VOzbGW_content{flex-direction:column;flex:1;min-width:0;display:flex}.VOzbGW_header{box-sizing:border-box;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;height:54px;padding:20px 14px 8px 10px;display:flex}.VOzbGW_actions{justify-content:flex-end;align-items:center;gap:8px;min-width:0;margin-left:auto;display:flex}.VOzbGW_close{border-radius:var(--dsw-radius-sm);cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.VOzbGW_close:hover{background:var(--dsw-alias-interactive-bg-hover)}.VOzbGW_options{flex:1;min-height:0;padding:0 24px 24px;overflow-y:auto}.VOzbGW_hiddenLabel{clip:rect(0 0 0 0);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}";
 		const tagId$7 = "@deepseek-ai/dsh-client-ui-settings-general/SettingsRoot.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
 			const tag = document.createElement("style");
@@ -71,6 +73,7 @@ window.__ModuleLoader__.load({
 			"active": "VOzbGW_active",
 			"close": "VOzbGW_close",
 			"content": "VOzbGW_content",
+			"empty": "VOzbGW_empty",
 			"header": "VOzbGW_header",
 			"hiddenLabel": "VOzbGW_hiddenLabel",
 			"mask": "VOzbGW_mask",
@@ -85,6 +88,8 @@ window.__ModuleLoader__.load({
 			"panel": "VOzbGW_panel",
 			"rail": "VOzbGW_rail",
 			"railRow": "VOzbGW_railRow",
+			"search": "VOzbGW_search",
+			"searchInput": "VOzbGW_searchInput",
 			"trigger": "VOzbGW_trigger",
 			"triggerLabel": "VOzbGW_triggerLabel",
 			"triggerRow": "VOzbGW_triggerRow"
@@ -316,11 +321,33 @@ window.__ModuleLoader__.load({
 		* header button, a mask click, and document-level Escape (mounted only while
 		* open, so the listener lifetime is the panel's).
 		*/
-		function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }) {
-			const active = rows.find((r) => r.id === activeId)?.id ?? rows[0]?.id;
+		function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose, t }) {
+			const [query, setQuery] = (0, react.useState)("");
+			const needle = query.trim().toLowerCase();
+			const visibleRows = needle.length === 0 ? rows : rows.filter((row) => String(row.label ?? "").toLowerCase().includes(needle));
+			// A filtered-out section must not stay on screen behind a nav that no
+			// longer lists it: the pane follows the first match while searching.
+			const active = visibleRows.length === 0 ? rows.find((r) => r.id === activeId)?.id ?? rows[0]?.id : visibleRows.find((r) => r.id === activeId)?.id ?? visibleRows[0]?.id;
 			const titleId = (0, react.useId)();
 			const panel = (0, react.useRef)(null);
 			(0, _deepseek_ai_dsh_client_ui_primitives.useModalLayer)(panel, true, onClose);
+			// "/" focuses the filter from anywhere in the panel; the section list is
+			// long enough that reaching for the mouse to find one is the slow path.
+			(0, react.useEffect)(() => {
+				const onKeyDown = (event) => {
+					if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+					const target = event.target;
+					if (target instanceof HTMLElement && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+					const input = panel.current?.querySelector("input[type='search']");
+					if (input === null || input === void 0) return;
+					event.preventDefault();
+					input.focus();
+				};
+				document.addEventListener("keydown", onKeyDown);
+				return () => {
+					document.removeEventListener("keydown", onKeyDown);
+				};
+			}, []);
 			return (0, react_dom.createPortal)((0, react_jsx_runtime.jsxs)("div", {
 				className: SettingsRoot_module_css_default.overlay,
 				role: "presentation",
@@ -345,8 +372,35 @@ window.__ModuleLoader__.load({
 							"data-modal-autofocus": active === void 0 ? "" : void 0,
 							children: renderSlot("settings.header", {})
 						}), (0, react_jsx_runtime.jsx)("div", {
+							className: SettingsRoot_module_css_default.search,
+							children: (0, react_jsx_runtime.jsx)("input", {
+								type: "search",
+								className: SettingsRoot_module_css_default.searchInput,
+								placeholder: t("search.placeholder"),
+								"aria-label": t("search.placeholder"),
+								value: query,
+								onChange: (event) => {
+									setQuery(event.currentTarget.value);
+								},
+								// The pointer never has to leave the filter: arrows walk the
+								// matches and the content pane follows the selected row.
+								onKeyDown: (event) => {
+									if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+									if (visibleRows.length === 0) return;
+									event.preventDefault();
+									const index = visibleRows.findIndex((row) => row.id === active);
+									const step = event.key === "ArrowDown" ? 1 : -1;
+									const from = index === -1 ? (step === 1 ? -1 : 0) : index;
+									const next = visibleRows[(from + step + visibleRows.length) % visibleRows.length];
+									if (next !== void 0) onSelect(next.id);
+								}
+							})
+						}), (0, react_jsx_runtime.jsx)("div", {
 							className: SettingsRoot_module_css_default.navList,
-							children: rows.map((row) => (0, react_jsx_runtime.jsxs)("button", {
+							children: visibleRows.length === 0 ? (0, react_jsx_runtime.jsx)("div", {
+								className: SettingsRoot_module_css_default.empty,
+								children: t("search.empty")
+							}) : visibleRows.map((row) => (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
 								className: clsx(SettingsRoot_module_css_default.navCell, row.id === active && SettingsRoot_module_css_default.active),
 								"aria-current": row.id === active ? "true" : void 0,
@@ -528,7 +582,8 @@ window.__ModuleLoader__.load({
 					renderSlot,
 					activeId,
 					onSelect: actions.select,
-					onClose: close
+					onClose: close,
+					t
 				}),
 				onboardingStep !== void 0 && renderSlot("settings.onboarding", {
 					stepId: onboardingStep.id,
@@ -1031,6 +1086,8 @@ window.__ModuleLoader__.load({
 			"desktop.update.tasksUnavailable": "无法确认任务状态，请在工作区就绪后重试更新。",
 			"title": "设置",
 			"close": "关闭",
+			"search.placeholder": "搜索设置…",
+			"search.empty": "没有匹配的设置项",
 			"openDocument": "打开配置文件",
 			"openDocument.error": "无法打开配置文件",
 			"general.nav": "通用设置",
@@ -1075,6 +1132,8 @@ window.__ModuleLoader__.load({
 			"desktop.update.tasksUnavailable": "Task status is unavailable. Try updating again when the workspace is ready.",
 			"title": "Settings",
 			"close": "Close",
+			"search.placeholder": "Search settings…",
+			"search.empty": "No matching settings",
 			"openDocument": "Open configuration file",
 			"openDocument.error": "Could not open configuration file",
 			"general.nav": "General",

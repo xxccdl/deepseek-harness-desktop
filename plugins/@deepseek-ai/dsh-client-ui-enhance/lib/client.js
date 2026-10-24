@@ -64,6 +64,19 @@ window.__ModuleLoader__.load({
 			"._markdown_1xv42_5 blockquote{background:var(--dsw-alias-bg-module-platform);border-radius:0 10px 10px 0;padding:2px 14px 2px 14px}",
 			"._markdown_1xv42_5 img{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--dsw-alias-border-l1)}",
 			"._markdown_1xv42_5 a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}",
+			/* Readability pass. The composer hint and the effort caption sat below the
+			   AA contrast floor on both schemes; the theme tokens stay untouched so a
+			   palette still looks like itself. */
+			"[class*='_placeholder']{color:var(--dsw-alias-label-secondary) !important;opacity:1}",
+			"[class*='_triggerEffort']{color:var(--dsw-alias-label-secondary) !important}",
+			/* Keyboard hints ("Ctrl + Alt + N") render at 12px, where the tertiary
+			   token lands at 4.49:1 — a hair under AA. Secondary clears it. */
+			"[class*='_key_'],[class*='_separator_']{color:var(--dsw-alias-label-secondary) !important}",
+			/* One focus ring for every keyboard-reachable control, and a selection /
+			   scrollbar that follow the theme instead of the OS default. */
+			":where(button,a,input,textarea,select,[role='button'],[tabindex]):focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:inherit}",
+			"::selection{background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 26%,transparent);color:inherit}",
+			"*{scrollbar-width:thin;scrollbar-color:var(--dsw-alias-scrollbar-bg-l2) transparent}",
 			"@media (prefers-reduced-motion: reduce){.dshe-overlay,.dshe-panel,.dshe-toast{animation:none}.dshe-toolbar,.dshe-input,.dshe-item,.dshe-tb-btn,.dshe-lang,.dshe-src-toggle{transition:none}}"
 		].join("");
 		const tagId = "@deepseek-ai/dsh-client-ui-enhance/styles";
@@ -294,7 +307,7 @@ window.__ModuleLoader__.load({
 			{
 				group: "代码块",
 				rows: [
-					{ keys: ["悬停代码块"], desc: "复制 / 保存为文件 / 折叠长代码" },
+					{ keys: ["悬停代码块"], desc: "复制 / 保存 / 插入到输入框 / 折叠长代码" },
 					{ keys: ["Mermaid"], desc: "流程图代码自动渲染为图表，可切换源码" }
 				]
 			}
@@ -349,6 +362,12 @@ window.__ModuleLoader__.load({
 			target.selectionStart = target.selectionEnd = start + text.length;
 			target.dispatchEvent(new Event("input", { bubbles: true }));
 			return true;
+		}
+		/** Prefer the composer over whichever editable was focused last. */
+		function insertIntoComposer(text) {
+			const composer = document.querySelector("[data-composer-input]");
+			if (composer instanceof HTMLElement) lastEditable = composer;
+			return insertIntoEditable(text);
 		}
 		function openClipboardPicker() {
 			const desktop = window.dshDesktop;
@@ -649,6 +668,21 @@ window.__ModuleLoader__.load({
 					});
 				});
 				mkBtn("保存", () => downloadCode(code, lang));
+				// Taking a snippet back to the composer is the loop this whole
+				// surface exists for; without it the only path was select-all and
+				// copy, which loses the block's boundaries on paste.
+				const insertBtn = mkBtn("插入", () => {
+					const text = code.textContent ?? "";
+					if (insertIntoComposer(text)) {
+						insertBtn.textContent = "已插入";
+					} else {
+						// No composer in reach: leave the text on the clipboard so
+						// the press still does something useful.
+						void navigator.clipboard.writeText(text);
+						insertBtn.textContent = "已复制";
+					}
+					setTimeout(() => { insertBtn.textContent = "插入"; }, 1200);
+				});
 				mkBtn("折叠", () => {
 					const collapsed = pre.classList.toggle("dshe-collapsed");
 					const btn = toolbar.lastElementChild;

@@ -35,8 +35,8 @@ window.__ModuleLoader__.load({
 			// the period and the number, and a chevron that turns over while the
 			// table is open — press, hover and open all read differently.
 			".dsp-price{position:relative;display:inline-flex;align-items:center;flex:none}",
-			".dsp-price-trigger{all:unset;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 9px;box-sizing:border-box;border-radius:9px;cursor:pointer;color:var(--dsw-alias-label-tertiary);font-size:11.5px;background:var(--dsw-alias-bg-layer-1);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}",
-			".dsp-price-trigger:hover{color:var(--dsw-alias-label-secondary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l2)}",
+			".dsp-price-trigger{all:unset;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 9px;box-sizing:border-box;border-radius:9px;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11.5px;background:var(--dsw-alias-bg-layer-1);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l1);transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}",
+			".dsp-price-trigger:hover{color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l2)}",
 			".dsp-price-trigger:active{transform:scale(.975);background:var(--dsw-alias-interactive-bg-hover)}",
 			".dsp-price-trigger[aria-expanded='true']{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l2)}",
 			".dsp-price-dot{width:6px;height:6px;border-radius:50%;flex:none;transition:background .3s ease,box-shadow .3s ease}",

@@ -10,24 +10,38 @@ window.__ModuleLoader__.load({
 		const { useState, useEffect, useCallback } = react;
 		//#region styles
 		const css = [
-			/* wizard — restrained monochrome, silk-smooth motion. Colours come from
-			   the harness tokens, the same ones the tutorial section below already
-			   reads: a first-run card should not be the one dark surface in a light
-			   window (or vice versa). */
-			".dsob-overlay{position:fixed;inset:0;z-index:9995;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);backdrop-filter:blur(10px) saturate(1.15);-webkit-backdrop-filter:blur(10px) saturate(1.15);animation:dsobFade .32s cubic-bezier(.2,.8,.3,1)}",
+			/* wizard. Colours come from the harness tokens, the same ones the tutorial
+		   section below already reads: a first-run card should not be the one dark
+		   surface in a light window (or vice versa). */
+		/* Glass over a flat dark app is the classic smudgy-grey rectangle: the
+		   blur has nothing to refract, so the panel reads as a slab. Two faint
+		   brand-tinted radials give the backdrop something to grade against, and
+		   saturate() keeps the blur from washing the colour out. */
+			".dsob-overlay{position:fixed;inset:0;z-index:9995;display:flex;align-items:center;justify-content:center;background:radial-gradient(66% 56% at 20% 14%,color-mix(in srgb,var(--dsw-alias-state-business-primary) 12%,transparent),transparent 74%),radial-gradient(60% 52% at 82% 82%,color-mix(in srgb,#7c5cff 11%,transparent),transparent 76%),rgba(4,6,10,.52);backdrop-filter:blur(12px) saturate(180%);-webkit-backdrop-filter:blur(12px) saturate(180%);animation:dsobFade .32s cubic-bezier(.2,.8,.3,1)}",
 			"@keyframes dsobFade{from{opacity:0}to{opacity:1}}",
 			".dsob-overlay.dsob-closing{animation:dsobFadeOut .26s cubic-bezier(.5,0,.8,.4) forwards}",
 			"@keyframes dsobFadeOut{to{opacity:0}}",
-			".dsob-card{box-sizing:border-box;width:min(580px,92vw);max-height:86vh;display:flex;flex-direction:column;background:var(--dsw-specific-menu);border:1px solid var(--dsw-alias-border-l1);border-radius:18px;box-shadow:var(--dsw-shadow-lv3);overflow:hidden;color:var(--dsw-alias-label-primary);font:14px/1.6 system-ui,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;transform-origin:center 38%;animation:dsobCardIn .5s cubic-bezier(.22,1.24,.36,1) .02s backwards}",
+			/* A raised solid panel, not another sheet of glass: the card carries
+			   paragraphs, and glass under body copy is the WCAG trap. The 1px edge
+			   is a gradient (neutral highlight → one brand accent → fade, all stops
+			   under .4) so it frames the card instead of glowing. 700px rather than
+			   the old 580: three feature tiles shared ~170px apiece, so every line
+			   broke after a dozen characters. */
+			".dsob-card{box-sizing:border-box;width:min(700px,92vw);max-height:86vh;display:flex;flex-direction:column;border:1px solid transparent;border-radius:22px;background:linear-gradient(var(--dsw-alias-bg-layer-2),var(--dsw-alias-bg-layer-2)) padding-box,linear-gradient(135deg,color-mix(in srgb,var(--dsw-alias-label-primary) 26%,transparent),color-mix(in srgb,var(--dsw-alias-state-business-primary) 36%,transparent) 46%,color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent)) border-box;box-shadow:0 34px 84px -26px rgba(0,0,0,.62),0 8px 22px -10px rgba(0,0,0,.36),inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 7%,transparent);overflow:hidden;color:var(--dsw-alias-label-primary);font:14px/1.6 system-ui,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;transform-origin:center 38%;animation:dsobCardIn .5s cubic-bezier(.22,1.24,.36,1) .02s backwards}",
+			/* opt-out for readers who asked for solid surfaces */
+			"@media (prefers-reduced-transparency: reduce){.dsob-overlay{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(4,6,10,.72)}.dsob-card{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l2)}}",
 			"@keyframes dsobCardIn{from{opacity:0;transform:translateY(26px) scale(.96);filter:blur(4px)}to{opacity:1;transform:none;filter:blur(0)}}",
 			".dsob-overlay.dsob-closing .dsob-card{animation:dsobCardOut .26s cubic-bezier(.5,0,.8,.4) forwards}",
 			"@keyframes dsobCardOut{to{opacity:0;transform:translateY(14px) scale(.975);filter:blur(2px)}}",
-			".dsob-head{display:flex;align-items:center;gap:12px;padding:20px 24px 0;animation:dsobRise .5s cubic-bezier(.2,.9,.3,1) .12s backwards}",
+			".dsob-head{display:flex;align-items:center;gap:12px;padding:20px 28px 0;animation:dsobRise .5s cubic-bezier(.2,.9,.3,1) .12s backwards}",
 			".dsob-brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary);letter-spacing:.01em}",
-			".dsob-brand-badge{width:27px;height:27px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--dsw-alias-label-secondary);letter-spacing:.04em;background:var(--dsw-alias-bg-module-platform)}",
-			".dsob-skip{margin-left:auto;font-size:12px;color:var(--dsw-alias-label-tertiary);background:transparent;border:none;cursor:pointer;padding:5px 9px;border-radius:7px;transition:color var(--dsm-t-fast,140ms) ease,background-color var(--dsm-t-fast,140ms) ease}",
-			".dsob-skip:hover{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover)}",
-			".dsob-body{padding:14px 24px 8px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-border-l1) transparent}",
+			".dsob-brand-badge{width:28px;height:28px;border-radius:9px;border:1px solid var(--dsw-alias-border-l2);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--dsw-alias-label-primary);letter-spacing:.04em;background:var(--dsw-alias-bg-module-platform)}",
+			/* The escape hatch was a caption-sized ghost: give it a real button
+			   footprint (hover fill + border) so it reads as dismissable, and keep
+			   the tertiary tone — in this palette that is the brighter neutral. */
+			".dsob-skip{margin-left:auto;font-size:12.5px;color:var(--dsw-alias-label-tertiary);background:transparent;border:1px solid transparent;cursor:pointer;padding:6px 10px;border-radius:8px;transition:color var(--dsm-t-fast,140ms) ease,background-color var(--dsm-t-fast,140ms) ease,border-color var(--dsm-t-fast,140ms) ease}",
+			".dsob-skip:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}",
+			".dsob-body{padding:18px 28px 12px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-border-l1) transparent}",
 			".dsob-body::-webkit-scrollbar{width:8px}",
 			".dsob-body::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l1);border-radius:4px}",
 			/* per-step body transition */
@@ -39,15 +53,28 @@ window.__ModuleLoader__.load({
 			".dsob-anim.dsob-d2{animation-delay:.1s}",
 			".dsob-anim.dsob-d3{animation-delay:.16s}",
 			".dsob-anim.dsob-d4{animation-delay:.22s}",
-			".dsob-title{font-size:20px;font-weight:600;letter-spacing:.01em;margin:4px 0 4px;color:var(--dsw-alias-label-primary)}",
-			".dsob-sub{color:var(--dsw-alias-label-tertiary);font-size:13px;margin-bottom:14px}",
-			".dsob-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin:10px 0}",
-			".dsob-tile{padding:12px 13px;border:1px solid var(--dsw-alias-border-l2);border-radius:11px;background:var(--dsw-alias-bg-module-platform);transition:transform .18s cubic-bezier(.2,.8,.3,1),background-color .18s,border-color .18s}",
-			".dsob-tile:hover{transform:translateY(-2px);background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-border-l1)}",
-			".dsob-tile-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}",
-			".dsob-tile-head svg{width:15px;height:15px;flex:none;color:var(--dsw-alias-label-tertiary)}",
-			".dsob-tile b{display:block;font-size:13px;color:var(--dsw-alias-label-primary);font-weight:600}",
-			".dsob-tile span{font-size:12px;color:var(--dsw-alias-label-tertiary);line-height:1.55;display:block}",
+			".dsob-title{font-size:24px;font-weight:600;line-height:1.3;letter-spacing:-.005em;margin:2px 0 7px;color:var(--dsw-alias-label-primary)}",
+			".dsob-sub{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.65;margin-bottom:16px}",
+			/* The step-0 footnote is neither a title nor a paragraph: it sits after
+			   the tiles as a quiet summary of what the wizard will ask for. */
+			".dsob-note{margin-top:16px;padding-top:13px;box-shadow:inset 0 1px 0 0 color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);color:var(--dsw-alias-label-tertiary);font-size:12.5px;line-height:1.6}",
+			/* Was a hardcoded near-white, which vanished against a light card. */
+			".dsob-link{color:var(--dsw-alias-state-business-primary);text-decoration:underline;text-underline-offset:2px}",
+			".dsob-link:hover{color:var(--dsw-alias-label-primary)}",
+			".dsob-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px;margin:14px 0}",
+			/* Tiles lift off the card with a top-down wash and a hairline, rather
+			   than sitting on it as a second flat grey. */
+			".dsob-tile{padding:15px 16px;border:1px solid color-mix(in srgb,var(--dsw-alias-label-primary) 8%,transparent);border-radius:14px;background:linear-gradient(180deg,color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent),transparent 62%);transition:border-color .18s}",
+			/* These tiles report, they do not open: the old lift promised a click
+			   that never came. The border alone carries the hover. */
+			".dsob-tile:hover{border-color:color-mix(in srgb,var(--dsw-alias-label-primary) 17%,transparent)}",
+			".dsob-tile-head{display:flex;align-items:center;gap:9px;margin-bottom:7px}",
+			/* The glyph sat bare beside the title and read as a stray bullet; the
+			   badge gives it the footprint of an icon. */
+			".dsob-tile-icon{display:grid;place-items:center;flex:none;width:25px;height:25px;border-radius:8px;background:color-mix(in srgb,var(--dsw-alias-label-primary) 10%,transparent);color:var(--dsw-alias-label-primary);opacity:.82}",
+			".dsob-tile-icon svg{width:14px;height:14px}",
+			".dsob-tile b{display:block;font-size:13.5px;color:var(--dsw-alias-label-primary);font-weight:600}",
+			".dsob-tile span{font-size:12.5px;color:var(--dsw-alias-label-tertiary);line-height:1.62;display:block}",
 			".dsob-keytable{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}",
 			".dsob-keytable tr{transition:background-color .14s}",
 			".dsob-keytable tr:hover{background:var(--dsw-alias-interactive-bg-hover)}",
@@ -61,19 +88,32 @@ window.__ModuleLoader__.load({
 			".dsob-loading{color:var(--dsw-alias-label-tertiary)}",
 			".dsob-loading::before{content:'';width:12px;height:12px;border-radius:50%;border:1.5px solid var(--dsw-alias-border-l1);border-top-color:var(--dsw-alias-label-secondary);animation:dsobSpin .8s linear infinite;flex:none}",
 			"@keyframes dsobSpin{to{transform:rotate(360deg)}}",
-			".dsob-steps{display:flex;gap:6px;padding:2px 24px 18px;align-items:center}",
-			".dsob-dot{width:6px;height:6px;border-radius:99px;background:var(--dsw-alias-border-l1);transition:width .3s cubic-bezier(.2,.9,.3,1),background-color .3s,opacity .3s}",
-			".dsob-dot.dsob-cur{width:20px;background:var(--dsw-alias-label-secondary)}",
+			/* The footer is a real footer: a hairline that fades at both ends
+			   separates it from the step's content, and the progress sits on its own
+			   line from the buttons so neither crowds the other. */
+			".dsob-steps{position:relative;display:flex;gap:8px;padding:14px 28px 18px;align-items:center}",
+			".dsob-steps::before{content:'';position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--dsw-alias-label-primary) 11%,transparent) 12%,color-mix(in srgb,var(--dsw-alias-label-primary) 11%,transparent) 88%,transparent)}",
+			".dsob-progress{display:flex;align-items:center;gap:8px}",
+			/* Inactive dots were border-l1 — darker than the panel behind them, so
+			   the five-step progress was invisible. Mixing the label tone adapts to
+			   both schemes instead of picking a fixed grey. */
+			".dsob-dot{width:7px;height:7px;border-radius:99px;background:color-mix(in srgb,var(--dsw-alias-label-primary) 24%,transparent);transition:width .3s cubic-bezier(.2,.9,.3,1),background-color .3s}",
+			".dsob-dot.dsob-cur{width:22px;background:var(--dsw-alias-label-primary)}",
+			".dsob-count{font-size:12px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;letter-spacing:.02em}",
 			".dsob-nav{margin-left:auto;display:flex;gap:8px}",
-			".dsob-btn{font-size:13px;padding:8px 18px;border-radius:9px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-primary);cursor:pointer;transition:background-color .16s,border-color .16s,transform .16s,box-shadow .16s}",
-			".dsob-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2);transform:translateY(-1px)}",
+			/* A fixed width stops the row twitching when the last step's label turns
+			   from 下一步 into 开始使用. */
+			".dsob-btn{font-size:13px;min-width:86px;text-align:center;padding:8px 18px;border-radius:10px;border:1px solid color-mix(in srgb,var(--dsw-alias-label-primary) 12%,transparent);background:color-mix(in srgb,var(--dsw-alias-label-primary) 5%,transparent);color:var(--dsw-alias-label-primary);cursor:pointer;transition:background-color .16s,border-color .16s,transform .16s,box-shadow .16s}",
+			".dsob-btn:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-label-primary) 11%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-label-primary) 22%,transparent);transform:translateY(-1px)}",
 			".dsob-btn:active:not(:disabled){transform:translateY(0)}",
-			".dsob-btn:disabled{opacity:.3;cursor:default}",
+			".dsob-btn:disabled{opacity:.45;cursor:default}",
 			/* The one emphatic control in the card: it inverts against the page, so
 			   it is dark-on-light in the light theme and light-on-dark in the dark
-			   one, the same rule the composer's send button follows. */
-			".dsob-btn-primary{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-base);border-color:transparent;font-weight:600;box-shadow:var(--dsw-shadow-lv2)}",
-			".dsob-btn-primary:hover:not(:disabled){opacity:.88;border-color:transparent;box-shadow:var(--dsw-shadow-lv3)}",
+			   one, the same rule the composer's send button follows. The gradient is
+			   one step of shading, which is what makes it read as a key rather than
+			   a white rectangle. */
+			".dsob-btn-primary{background:linear-gradient(180deg,var(--dsw-alias-label-primary),color-mix(in srgb,var(--dsw-alias-label-primary) 84%,var(--dsw-alias-bg-base)));color:var(--dsw-alias-bg-base);border-color:transparent;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),var(--dsw-shadow-lv2)}",
+			".dsob-btn-primary:hover:not(:disabled){background:linear-gradient(180deg,var(--dsw-alias-label-primary),color-mix(in srgb,var(--dsw-alias-label-primary) 78%,var(--dsw-alias-bg-base)));border-color:transparent;opacity:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),var(--dsw-shadow-lv3);transform:translateY(-1px)}",
 			".dsob-recheck{font-size:12px;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:5px 12px;cursor:pointer;margin-top:4px;transition:background-color .16s,border-color .16s}",
 			".dsob-recheck:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}",
 			/* tutorial section */
@@ -84,7 +124,7 @@ window.__ModuleLoader__.load({
 			".dsob-tut-ch{border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-module-platform);overflow:hidden;transition:border-color .18s}",
 			".dsob-tut-ch:hover{border-color:var(--dsw-alias-border-l1)}",
 			".dsob-tut-ch summary{list-style:none;cursor:pointer;padding:13px 16px;font-size:14px;color:var(--dsw-alias-label-primary);display:flex;align-items:center;gap:8px;user-select:none;transition:background .15s}",
-			".dsob-tut-ch summary:hover{background:rgba(127,127,127,.05)}",
+			".dsob-tut-ch summary:hover{background:var(--dsw-alias-interactive-bg-hover)}",
 			".dsob-tut-ch summary::-webkit-details-marker{display:none}",
 			".dsob-tut-ch summary::after{content:'▾';margin-left:auto;color:var(--dsw-alias-label-secondary);transition:transform .22s cubic-bezier(.2,.9,.3,1);font-size:12px}",
 			".dsob-tut-ch[open] summary::after{transform:rotate(180deg)}",
@@ -154,11 +194,14 @@ window.__ModuleLoader__.load({
 			el.className = "dsob-tile";
 			const head = document.createElement("div");
 			head.className = "dsob-tile-head";
-			head.innerHTML = featureIcon(tile.icon);
+			const icon = document.createElement("span");
+			icon.className = "dsob-tile-icon";
+			icon.innerHTML = featureIcon(tile.icon);
 			const b = document.createElement("b");
 			b.textContent = tile.title;
 			const s = document.createElement("span");
 			s.textContent = tile.text;
+			head.appendChild(icon);
 			head.appendChild(b);
 			el.appendChild(head);
 			el.appendChild(s);
@@ -247,6 +290,9 @@ window.__ModuleLoader__.load({
 			wizardEl.className = "dsob-overlay";
 			const card = document.createElement("div");
 			card.className = "dsob-card";
+			card.setAttribute("role", "dialog");
+			card.setAttribute("aria-modal", "true");
+			card.setAttribute("aria-label", "新手向导");
 			// header
 			const head = document.createElement("div");
 			head.className = "dsob-head";
@@ -262,6 +308,8 @@ window.__ModuleLoader__.load({
 			const skip = document.createElement("button");
 			skip.type = "button";
 			skip.className = "dsob-skip";
+			skip.title = "跳过向导（Esc）";
+			skip.setAttribute("aria-label", "跳过向导");
 			skip.textContent = "跳过向导 ×";
 			head.appendChild(brand);
 			head.appendChild(skip);
@@ -271,13 +319,22 @@ window.__ModuleLoader__.load({
 			// dots + nav
 			const steps = document.createElement("div");
 			steps.className = "dsob-steps";
+			const progress = document.createElement("div");
+			progress.className = "dsob-progress";
+			progress.setAttribute("role", "status");
 			const dots = [];
 			for (let i = 0; i < STEP_COUNT; i += 1) {
 				const dot = document.createElement("span");
 				dot.className = "dsob-dot";
 				dots.push(dot);
-				steps.appendChild(dot);
+				progress.appendChild(dot);
 			}
+			// Bare dots say "somewhere in a set"; the counter says how far and how
+			// much is left, which is what decides whether to keep going.
+			const count = document.createElement("span");
+			count.className = "dsob-count";
+			progress.appendChild(count);
+			steps.appendChild(progress);
 			const nav = document.createElement("div");
 			nav.className = "dsob-nav";
 			const prev = document.createElement("button");
@@ -319,10 +376,29 @@ window.__ModuleLoader__.load({
 					window.removeEventListener("keydown", keyHandler, true);
 					return;
 				}
-				if (event.key === "Enter" && !(event.target instanceof HTMLTextAreaElement)) {
+				if (event.ctrlKey || event.metaKey || event.altKey) return;
+				// Esc lands where the backdrop and 跳过向导 already land — the done
+				// flag is written, or the wizard is back on the next launch.
+				if (event.key === "Escape") {
+					event.preventDefault();
+					finish();
+					return;
+				}
+				// A focused nav button owns Enter and the arrows; without this,
+				// Enter on 上一步 stepped forward instead of back.
+				const onControl = event.target instanceof HTMLElement && event.target.closest(".dsob-nav") !== null;
+				const typed = event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement || (event.target instanceof HTMLElement && event.target.isContentEditable);
+				if (event.key === "Enter") {
+					if (onControl || typed) return;
 					event.preventDefault();
 					if (step === STEP_COUNT - 1) finish();
 					else goTo(step + 1);
+					return;
+				}
+				if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+					if (onControl || typed) return;
+					event.preventDefault();
+					goTo(Math.min(STEP_COUNT - 1, Math.max(0, event.key === "ArrowRight" ? step + 1 : step - 1)));
 				}
 			};
 			window.addEventListener("keydown", keyHandler, true);
@@ -347,13 +423,15 @@ window.__ModuleLoader__.load({
 				for (const tile of FEATURE_TILES.slice(0, 3)) grid.appendChild(buildTile(tile));
 				body.appendChild(grid);
 				const note = document.createElement("div");
-				note.className = "dsob-sub dsob-anim dsob-d4";
-				note.style.marginTop = "6px";
+				note.className = "dsob-note dsob-anim dsob-d4";
 				note.textContent = "接下来 1 分钟：检查 API Key → 认识功能 → 记住几个顺手的快捷键。";
 				body.appendChild(note);
 			};
 			const renderStep1 = () => {
-				title("第 1 步 · 连接 DeepSeek");
+				// Numbered against the card sequence, not against the three
+				// "活动" steps: the footer already counts 第 2 / 5 步 here, and a
+				// title that disagreed with it read as a bug.
+				title("第 2 步 · 连接 DeepSeek");
 				sub("AI 需要 API Key 才能工作；没有也能先逛逛界面，但发不了消息。");
 				const state = document.createElement("div");
 				state.className = "dsob-state dsob-loading dsob-anim dsob-d3";
@@ -384,16 +462,15 @@ window.__ModuleLoader__.load({
 				link.href = "https://platform.deepseek.com";
 				link.target = "_blank";
 				link.rel = "noopener";
+				link.className = "dsob-link";
 				link.textContent = "platform.deepseek.com";
-				link.style.color = "rgba(230,233,240,.85)";
-				link.style.textDecoration = "underline";
 				tip.appendChild(link);
 				tip.append(" → API Keys 页面创建，几秒即得。");
 				body.appendChild(tip);
 				check();
 			};
 			const renderStep2 = () => {
-				title("第 2 步 · 它能做什么");
+				title("第 3 步 · 它能做什么");
 				sub("六大能力，覆盖从写代码到管电脑的大部分场景。");
 				const grid = document.createElement("div");
 				grid.className = "dsob-grid dsob-anim dsob-d3";
@@ -401,7 +478,7 @@ window.__ModuleLoader__.load({
 				body.appendChild(grid);
 			};
 			const renderStep3 = () => {
-				title("第 3 步 · 顺手的快捷键");
+				title("第 4 步 · 顺手的快捷键");
 				sub("记住前三个，效率翻倍；完整的表随时按 F1 查看。");
 				const table = document.createElement("table");
 				table.className = "dsob-keytable dsob-anim dsob-d3";
@@ -427,6 +504,7 @@ window.__ModuleLoader__.load({
 				body.textContent = "";
 				body.scrollTop = 0;
 				dots.forEach((dot, index) => dot.classList.toggle("dsob-cur", index === step));
+				count.textContent = `第 ${step + 1} / ${STEP_COUNT} 步`;
 				prev.disabled = step === 0;
 				next.textContent = step === STEP_COUNT - 1 ? "开始使用" : "下一步";
 				renderers[step]();

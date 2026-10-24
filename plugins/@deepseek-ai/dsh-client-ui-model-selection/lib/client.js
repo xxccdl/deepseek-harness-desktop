@@ -895,6 +895,7 @@ window.__ModuleLoader__.load({
 					});
 					return result;
 				}
+				rememberEffort(selection);
 				if (previous !== null) {
 					const from = `${previous.provider}/${previous.model}`;
 					const to = `${selection.provider}/${selection.model}`;
@@ -1109,6 +1110,44 @@ window.__ModuleLoader__.load({
 			return groups.toSorted((left, right) => (left.id === "deepseek-account" ? 0 : left.id === "deepseek-official" ? 1 : 2) - (right.id === "deepseek-account" ? 0 : right.id === "deepseek-official" ? 1 : 2));
 		}
 		//#endregion
+		//#region per-model effort memory
+		// The Host keeps one effort per Session and each model advertises its own
+		// default, so switching A -> B -> A used to land back on A's default
+		// instead of the level last chosen for A. The last explicit choice per
+		// model is remembered here (per machine) and re-applied on return, but
+		// only while the model still advertises that level.
+		const EFFORT_MEMORY_KEY = "dsh.model-effort.v1";
+		function readEffortMemory() {
+			try {
+				const raw = localStorage.getItem(EFFORT_MEMORY_KEY);
+				const parsed = raw === null ? null : JSON.parse(raw);
+				return parsed !== null && typeof parsed === "object" ? parsed : {};
+			} catch {
+				return {};
+			}
+		}
+		function effortMemoryKey(provider, model) {
+			return provider + "/" + model;
+		}
+		/** The level this machine last chose for one model, when it still exists. */
+		function rememberedEffort(provider, model, reasoning) {
+			if (reasoning === void 0) return void 0;
+			const value = readEffortMemory()[effortMemoryKey(provider, model)];
+			if (typeof value !== "string") return void 0;
+			return reasoning.efforts.some((level) => level.id === value) ? value : void 0;
+		}
+		/** Record an accepted explicit level for the model it was accepted on. */
+		function rememberEffort(selection) {
+			if (selection.reasoningEffort === void 0) return;
+			try {
+				const memory = readEffortMemory();
+				const key = effortMemoryKey(selection.provider, selection.model);
+				if (memory[key] === selection.reasoningEffort) return;
+				memory[key] = selection.reasoningEffort;
+				localStorage.setItem(EFFORT_MEMORY_KEY, JSON.stringify(memory));
+			} catch { /* memory is a convenience; a locked store just skips it */ }
+		}
+		//#endregion
 		//#region desktop-fork motion layer
 		// The upstream effort pane is a plain radio list. This fork keeps the same
 		// data contract but renders the levels as the slider the levels deserve:
@@ -1130,8 +1169,12 @@ window.__ModuleLoader__.load({
 			/* One width for every pane: the slider pane is wider than the root
 			   cells, and without this the menu visibly resized on the way in. */
 			".dsms-menu{min-width:min(280px,100vw - 32px)}",
-			".dsms-effort{--dsms-max:#7c5cff;min-width:272px;padding:4px 6px 2px}",
-			".dsms-effort-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 11px;font-size:12px;color:var(--dsw-alias-label-tertiary)}",
+			".dsms-effort{--dsms-max:#7c5cff;min-width:272px;padding:6px 8px 8px}",
+			".dsms-effort-head{display:flex;align-items:center;gap:8px;margin:0 2px 11px;font-size:12px;color:var(--dsw-alias-label-tertiary)}",
+			/* The keys live in the header rather than in a tooltip: the slider is
+			   one focus stop, so the arrows are the only way to move it without
+			   dragging, and that should be visible before the first attempt. */
+			".dsms-effort-key{margin-left:auto;flex:none;font-size:10.5px;letter-spacing:.06em;color:var(--dsw-alias-label-tertiary);opacity:.8}",
 			".dsms-effort-value{color:var(--dsw-alias-label-primary);font-weight:500}",
 			/* the slider itself: the whole box is the hit area, so a tap anywhere
 			   on a level name is the same gesture as a tap on the rail */
@@ -1140,6 +1183,10 @@ window.__ModuleLoader__.load({
 			".dsms-slider[data-drag='true']{cursor:grabbing}",
 			".dsms-slider[aria-disabled='true']{cursor:default}",
 			".dsms-rail{position:relative;height:4px;border-radius:2px;background:var(--dsw-alias-border-l2)}",
+			/* A tick at every named stop: the rail is a discrete picker, and
+			   without them the fill reads as a continuous percentage. */
+			".dsms-tick{position:absolute;top:50%;width:2px;height:8px;margin-top:-4px;border-radius:1px;transform:translateX(-50%);background:var(--dsw-alias-border-l3);pointer-events:none;transition:background .24s ease}",
+			".dsms-tick[data-active='true']{background:var(--dsw-alias-bg-layer-1)}",
 			".dsms-fill{position:absolute;top:0;bottom:0;border-radius:2px;background:var(--dsw-alias-brand-primary);transition:left .36s cubic-bezier(.22,1,.36,1),width .36s cubic-bezier(.22,1,.36,1)}",
 			".dsms-knob{position:absolute;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 3px rgba(16,20,32,.24),0 0 0 1px var(--dsw-alias-border-l2);transform:translateX(-50%);transition:left .36s cubic-bezier(.22,1,.36,1),width .18s ease,height .18s ease,margin-top .18s ease,box-shadow .2s ease}",
 			/* Affordance: the knob swells under the pointer, so the rail reads as
@@ -1149,11 +1196,18 @@ window.__ModuleLoader__.load({
 			/* while dragging the knob tracks the pointer with no easing at all,
 			   then the release above hands it back to the spring */
 			".dsms-slider[data-drag='true'] .dsms-fill{transition:none}",
+			/* Held on the released level while the Host answers: easing here would
+			   read as the knob still deciding after the user already let go. */
+			".dsms-slider[data-pending='true'] .dsms-fill,.dsms-slider[data-pending='true'] .dsms-knob{transition:none}",
 			".dsms-slider[data-drag='true'] .dsms-knob{width:20px;height:20px;margin-top:-10px;transition:left 0s,width .18s ease,height .18s ease,margin-top .18s ease,box-shadow .2s ease;box-shadow:0 2px 10px rgba(16,20,32,.26),0 0 0 1px var(--dsw-alias-brand-primary),0 0 0 6px color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent)}",
 			".dsms-slider[data-busy='true'] .dsms-knob{box-shadow:0 1px 3px rgba(16,20,32,.24),0 0 0 1px var(--dsw-alias-brand-primary)}",
 			".dsms-stops{display:flex;margin-top:8px}",
-			".dsms-stop{flex:1 1 0;text-align:center;font-size:11.5px;line-height:16px;color:var(--dsw-alias-label-tertiary);transition:color .24s ease,transform .3s cubic-bezier(.22,1,.36,1)}",
-			".dsms-stop[data-active='true']{color:var(--dsw-alias-label-primary);font-weight:500;transform:translateY(-1px);animation:dsmsStopPop .44s cubic-bezier(.22,1,.36,1)}",
+			".dsms-stop{flex:1 1 0;text-align:center;font-size:12px;line-height:17px;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:color .24s ease,transform .3s cubic-bezier(.22,1,.36,1)}",
+			/* The shown stop follows the pointer, so hovering a name previews the
+			   level the same way a drag does; the beat below belongs to a real
+			   landing only, so a sweep across the names stays quiet. */
+			".dsms-stop[data-active='true']{color:var(--dsw-alias-label-primary);font-weight:500;transform:translateY(-1px)}",
+			".dsms-stop[data-landed='true']{animation:dsmsStopPop .44s cubic-bezier(.22,1,.36,1)}",
 			/* Every landing gets a beat, not only the top one, so each stop you let
 			   go on acknowledges the release. The max stop's own rule below has
 			   higher specificity and overrides this with a stronger pop. */
@@ -1179,11 +1233,12 @@ window.__ModuleLoader__.load({
 			   level change rather than the deliberate reach for max. */
 			".dsms-rings[data-max='false'] i{border-width:1px;border-color:var(--dsw-alias-brand-primary);animation-name:dsmsRingSoft}",
 			"@keyframes dsmsRingSoft{from{opacity:.5;transform:scale(.6)}to{opacity:0;transform:scale(3.2)}}",
-			".dsms-stop[data-max='true'][data-active='true']{color:var(--dsms-max);font-weight:600;animation:dsmsMaxPop .52s cubic-bezier(.22,1,.36,1)}",
+			".dsms-stop[data-max='true'][data-active='true']{color:var(--dsms-max);font-weight:600}",
+			".dsms-stop[data-max='true'][data-landed='true']{animation:dsmsMaxPop .52s cubic-bezier(.22,1,.36,1)}",
 			"@keyframes dsmsMaxPop{0%{transform:translateY(-1px) scale(1)}45%{transform:translateY(-2px) scale(1.14)}100%{transform:translateY(-1px) scale(1)}}",
 			".dsms-effort[data-max='true'] .dsms-effort-value{color:var(--dsms-max)}",
-			"@media (prefers-reduced-motion: reduce){.dsms-stop[data-active='true']{animation:none}.dsms-slider[data-max='true'] .dsms-fill:after{animation:none;opacity:0}.dsms-slider[data-max='true'] .dsms-knob{animation:none}.dsms-rings{display:none}}",
-			".dsms-desc{min-height:34px;margin:8px 2px 2px;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-tertiary);animation:dsmsFade .26s ease}",
+			"@media (prefers-reduced-motion: reduce){.dsms-stop[data-landed='true']{animation:none}.dsms-slider[data-max='true'] .dsms-fill:after{animation:none;opacity:0}.dsms-slider[data-max='true'] .dsms-knob{animation:none}.dsms-rings{display:none}}",
+			".dsms-desc{min-height:34px;margin:10px 2px 0;padding-top:8px;box-shadow:inset 0 1px 0 0 var(--dsw-alias-border-l1);font-size:12px;line-height:1.5;color:var(--dsw-alias-label-tertiary);animation:dsmsFade .26s ease}",
 			"@keyframes dsmsFade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}",
 			".dsms-swap{display:inline-block;animation:dsmsSwap .26s cubic-bezier(.22,1,.36,1)}",
 			"@keyframes dsmsSwap{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}",
@@ -1257,14 +1312,44 @@ window.__ModuleLoader__.load({
 			const committed = Math.max(0, choices.findIndex((choice) => choice.effort === selected));
 			const sliderRef = (0, react.useRef)(null);
 			const [drag, setDrag] = (0, react.useState)(null);
+			// A resting pointer previews the level under it before anything is
+			// committed, which is what makes the names read as four choices
+			// rather than as a caption under a rail.
+			const [hover, setHover] = (0, react.useState)(null);
+			// The stop a release landed on, held until the Host answers. Clearing
+			// `drag` alone handed the preview straight back to the OLD committed
+			// level for the length of the round trip, so every release flicked the
+			// knob backwards and then forwards again — the "jitter" this fixed.
+			const [pending, setPending] = (0, react.useState)(null);
 			// The stop the last accepted release landed on, with a monotonic id so
 			// the rings re-mount and replay their pulse. Holding the stop index
 			// rather than the live knob position keeps the pulse where the gesture
 			// ended, even while the Host is still answering.
 			const [landing, setLanding] = (0, react.useState)(null);
-			// Where the knob sits while idle is always the committed level, so a
-			// rejected change snaps back on its own.
-			const position = drag === null ? committed : drag;
+			// Pointer moves arrive several times per frame; one rAF keeps the state
+			// at display rate instead of at mouse rate, which is what makes a slow
+			// drag stop re-rendering React dozens of times between two frames.
+			const frame = (0, react.useRef)(null);
+			const latestX = (0, react.useRef)(0);
+			const wasBusy = (0, react.useRef)(busy);
+			// The Host owns the level once it answers: a changed `selected` settles
+			// the hold, and a selection that ended without changing anything means it
+			// was refused — either way the knob falls back to what the Host holds.
+			(0, react.useEffect)(() => {
+				setPending(null);
+			}, [selected]);
+			(0, react.useEffect)(() => {
+				if (wasBusy.current && !busy) setPending(null);
+				wasBusy.current = busy;
+			}, [busy]);
+			(0, react.useEffect)(() => () => {
+				if (frame.current !== null) cancelAnimationFrame(frame.current);
+			}, []);
+			// Where the knob sits while idle is always the level the Host holds, so
+			// a rejected change snaps back on its own. Priority: the live gesture,
+			// then the release waiting on the Host, then a resting hover preview.
+			const preview = drag !== null ? drag : pending !== null ? pending : hover;
+			const position = preview === null ? committed : preview;
 			const active = Math.min(count - 1, Math.max(0, Math.round(position)));
 			const activeChoice = choices[active];
 			// The last stop is the model's top reasoning level; landing on it gets
@@ -1286,29 +1371,65 @@ window.__ModuleLoader__.load({
 				const index = Math.min(count - 1, Math.max(0, Math.round(value)));
 				const target = choices[index];
 				if (target === void 0 || target.effort === selected) return;
+				// The hold is what keeps the knob on the level the user let go on
+				// while the Host answers; without it the release flicked back. The
+				// hover is dropped with it so a stray sweep cannot retake the knob
+				// the moment the hold ends.
+				setPending(index);
+				setHover(null);
 				setLanding((previous) => ({ seq: (previous?.seq ?? 0) + 1, at: index }));
 				onChoose(target.effort);
+			};
+			/** One state write per frame instead of one per pointermove. */
+			const trackPointer = (clientX) => {
+				latestX.current = clientX;
+				if (frame.current !== null) return;
+				frame.current = requestAnimationFrame(() => {
+					frame.current = null;
+					setDrag(locate(latestX.current));
+				});
+			};
+			const stopTracking = () => {
+				if (frame.current !== null) {
+					cancelAnimationFrame(frame.current);
+					frame.current = null;
+				}
 			};
 			const onPointerDown = (event) => {
 				if (busy || event.button !== 0) return;
 				event.preventDefault();
+				// The gesture owns the preview from here: a hover left over from an
+				// earlier sweep would otherwise fight it for the same slot.
+				setHover(null);
+				// preventDefault keeps the text selection out of the gesture; the
+				// explicit focus keeps the arrows reachable right after a click.
+				event.currentTarget.focus({ preventScroll: true });
 				event.currentTarget.setPointerCapture(event.pointerId);
 				setDrag(locate(event.clientX));
 			};
 			const onPointerMove = (event) => {
 				if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-				setDrag(locate(event.clientX));
+				trackPointer(event.clientX);
 			};
 			const onPointerUp = (event) => {
 				if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
 				event.currentTarget.releasePointerCapture(event.pointerId);
+				stopTracking();
 				setDrag(null);
-				commit(drag ?? committed);
+				// The release event carries the final coordinate itself, so the value
+				// never depends on which frame the last move landed in.
+				commit(locate(event.clientX));
 			};
 			// An aborted gesture (the OS took the pointer, the window lost focus)
 			// drops the preview without touching the level.
 			const onPointerCancel = () => {
+				stopTracking();
 				setDrag(null);
+				setHover(null);
+			};
+			/** Leaving the control drops the preview; the committed level returns. */
+			const onPointerLeave = () => {
+				setHover(null);
 			};
 			const onKeyDown = (event) => {
 				if (busy) return;
@@ -1326,6 +1447,10 @@ window.__ModuleLoader__.load({
 					(0, react_jsx_runtime.jsxs)("div", {
 						className: "dsms-effort-head",
 						children: [(0, react_jsx_runtime.jsx)("span", { children: t("menu.effort") }), (0, react_jsx_runtime.jsx)("span", {
+							className: "dsms-effort-key",
+							"aria-hidden": true,
+							children: "← →"
+						}), (0, react_jsx_runtime.jsx)("span", {
 							className: "dsms-effort-value",
 							children: (0, react_jsx_runtime.jsx)("span", {
 								className: "dsms-swap",
@@ -1345,16 +1470,23 @@ window.__ModuleLoader__.load({
 						"aria-valuetext": activeChoice?.label ?? "",
 						"aria-disabled": String(busy),
 						"data-drag": String(drag !== null),
+						"data-pending": String(pending !== null),
 						"data-busy": String(busy),
 						"data-max": String(atMax),
 						onPointerDown,
 						onPointerMove,
 						onPointerUp,
 						onPointerCancel,
+						onPointerLeave,
 						onKeyDown,
 						children: [(0, react_jsx_runtime.jsxs)("div", {
 							className: "dsms-rail",
-							children: [(0, react_jsx_runtime.jsx)("span", {
+							children: [...choices.map((choice, index) => (0, react_jsx_runtime.jsx)("span", {
+								className: "dsms-tick",
+								"data-active": String(index === active),
+								style: { left: `${stopAt(index)}%` },
+								"aria-hidden": true
+							}, "tick-" + choice.key)), (0, react_jsx_runtime.jsx)("span", {
 								className: "dsms-fill",
 								style: {
 									left: `${stopAt(0)}%`,
@@ -1375,7 +1507,11 @@ window.__ModuleLoader__.load({
 							children: choices.map((choice, index) => (0, react_jsx_runtime.jsx)("span", {
 								className: "dsms-stop",
 								"data-active": String(index === active),
+								"data-landed": String(landing !== null && landing.at === index),
 								"data-max": String(count > 1 && index === count - 1),
+								onPointerEnter: () => {
+									if (drag === null && pending === null) setHover(index);
+								},
 								children: choice.label
 							}, choice.key))
 						})]
@@ -1944,9 +2080,14 @@ window.__ModuleLoader__.load({
 													title: model.name,
 													disabled: busy,
 													onClick: () => {
+														// The level this machine last chose for this model
+														// outranks the catalog default; without it every
+														// return to a model silently reset the effort.
+														const effort = rememberedEffort(group.id, model.id, model.reasoning);
 														choose({
 															provider: group.id,
-															model: model.id
+															model: model.id,
+															...effort === void 0 ? {} : { reasoningEffort: effort }
 														});
 													},
 													children: [(0, react_jsx_runtime.jsx)("span", {
