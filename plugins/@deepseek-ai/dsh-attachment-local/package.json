@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-attachment-local",
   "description": "Private content-addressed DSH_HOME attachment storage",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },
@@ -29,18 +29,18 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-home-paths": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-home-paths": "0.2.1-rc.3",
     "@deepseek-ai/cordis": "~4.0.5"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-lazy-require": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-lazy-require": "0.2.1-rc.3",
     "@deepseek-ai/schemastery": "~3.18.5",
     "sharp": "0.35.5"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-home-paths": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-home-paths": "0.2.1-rc.3",
     "@deepseek-ai/cordis": "~4.0.5"
   }
 }

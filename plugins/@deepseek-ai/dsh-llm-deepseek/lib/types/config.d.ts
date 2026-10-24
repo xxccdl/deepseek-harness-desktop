@@ -132,6 +132,13 @@ export declare const PUBLIC_BASE_URL = "https://api.deepseek.com/anthropic";
 /** Complete protocol settings captured for one request operation. */
 export type ResolvedDeepSeekOptions = DeepSeekConnectionOptions;
 /**
+ * Whether a resolved catalog is the built-in one, which is what a `models`
+ * setting nobody customized resolves to.
+ * @param models - catalog resolved by {@link resolveAdapterOptions}.
+ * @returns whether `models` equals the resolved built-in catalog, entry by entry and in order.
+ */
+export declare function isBuiltInCatalog(models: readonly DeepSeekCatalogModel[]): boolean;
+/**
  * The one explicit resolve step from raw config to validated protocol
  * settings. Programmatic construction may bypass Schemastery normalization, so
  * every default and bound is re-judged here — for the composition entry at

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-subprocess-local",
   "description": "Local-subprocess implementation of the DeepSeek Harness subprocess seam",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },
@@ -41,20 +41,20 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-timeout": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-timeout": "0.2.1-rc.3",
     "@deepseek-ai/cordis": "~4.0.5"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-lazy-require": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-win32-process": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-lazy-require": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-win32-process": "0.2.1-rc.3",
     "koffi": "3.1.1",
     "node-pty": "1.2.0-beta.15"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-loader-smoke": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-timeout": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-loader-smoke": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-timeout": "0.2.1-rc.3",
     "@deepseek-ai/cordis": "~4.0.5"
   },
   "scripts": {

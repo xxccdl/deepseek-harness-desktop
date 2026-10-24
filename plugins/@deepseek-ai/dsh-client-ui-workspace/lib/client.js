@@ -1398,12 +1398,11 @@ window.__ModuleLoader__.load({
 				return this.connectBlank(workspaceId, options);
 			}
 			/**
-			* @param reuse - preset for the reused or created blank; absent creates a fresh Session.
+			* @param reuse - preset for the reused or created blank.
 			*/
 			async connectBlank(workspaceId, reuse) {
 				const workspace = this.workspaces.list.getSnapshot().items.find((item) => item.workspaceId === workspaceId);
 				if (workspace === void 0) throw new Error(`uiWorkspace.connectWorkspace: unknown workspace ${workspaceId}`);
-				if (reuse === void 0) return this.sessions.create({ workspaceId });
 				const inflight = this.connecting.get(workspaceId);
 				if (inflight !== void 0 && inflight.agentPreset === reuse.agentPreset) return inflight.attempt;
 				const attempt = this.createInWorkspace(workspace, reuse).finally(() => {
@@ -1415,12 +1414,14 @@ window.__ModuleLoader__.load({
 				});
 				return attempt;
 			}
+			/** Name the first reusable member blank; a requested preset also skips blanks listing another preset. */
 			createInWorkspace(workspace, options) {
 				const archived = this.workspaces.list.getSnapshot().archivedSessionIds;
 				const sessions = this.sessions.list.getSnapshot();
 				const blank = sessions.ids.find((id) => {
 					const summary = sessions.byId[id];
-					return summary !== void 0 && summary.blank && summary.cwd === workspace.path && workspace.sessionIds.includes(id) && !archived.includes(id);
+					const listed = summary?.projectionValues?.agentPreset;
+					return summary !== void 0 && summary.blank && summary.cwd === workspace.path && workspace.sessionIds.includes(id) && !archived.includes(id) && (options.agentPreset === void 0 || typeof listed !== "string" || listed === options.agentPreset);
 				});
 				return this.createNamed({
 					workspaceId: workspace.workspaceId,
@@ -1499,7 +1500,7 @@ window.__ModuleLoader__.load({
 			startSession(workspaceId, options) {
 				const { agentPreset, ...draft } = options ?? {};
 				const draftOptions = options === void 0 ? void 0 : draft;
-				const initializeDraft = draftOptions !== void 0 && (draftOptions.prompt !== void 0 || draftOptions.clearPreviousDraft === true);
+				const initializeDraft = draftOptions !== void 0 && (draftOptions.prompt !== void 0 || (draftOptions.whenDraftExists ?? (draftOptions.clearPreviousDraft === true ? "replace" : "keep")) === "replace");
 				const workspace = this.workspaces.list.getSnapshot();
 				const sessions = this.sessions.list.getSnapshot();
 				const current = this.mainReference?.sessionId;
@@ -1517,11 +1518,11 @@ window.__ModuleLoader__.load({
 					this.clearMain();
 					return;
 				}
-				(draftOptions === void 0 ? this.openWorkspaceSession(target, void 0, void 0) : this.openWorkspace(target, initializeDraft ? (id) => {
+				this.openWorkspace(target, initializeDraft ? (id) => {
 					const binding = this.sessions.binding(id);
 					if (binding === void 0) this.draftPreparationFailed();
 					this.prepareDraft(binding, draftOptions);
-				} : void 0, agentPreset === void 0 ? {} : { agentPreset })).catch((reason) => {
+				} : void 0, agentPreset === void 0 ? {} : { agentPreset }).catch((reason) => {
 					console.warn("new session failed:", reason);
 				});
 			}

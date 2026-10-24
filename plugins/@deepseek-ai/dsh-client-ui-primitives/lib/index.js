@@ -3038,6 +3038,56 @@ const IconMicrophoneOutlineMedium = (props) => jsx(IconMicrophoneOutlineArtwork,
 	...props,
 	strokeWidth: ICON_MEDIUM_STROKE
 });
+const IconAppsAddOutlineArtwork = ({ size = 16, className, strokeWidth, compact = false }) => {
+	const near = compact ? 2.75 : 2.25;
+	const far = compact ? 9.25 : 9.75;
+	const plusX = far + 2;
+	const plusY = near + 2;
+	return jsxs("svg", {
+		width: size,
+		height: size,
+		viewBox: "0 0 16 16",
+		className,
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth,
+		"aria-hidden": "true",
+		children: [
+			jsx("rect", {
+				x: near,
+				y: near,
+				width: 4,
+				height: 4,
+				rx: 1
+			}),
+			jsx("rect", {
+				x: near,
+				y: far,
+				width: 4,
+				height: 4,
+				rx: 1
+			}),
+			jsx("rect", {
+				x: far,
+				y: far,
+				width: 4,
+				height: 4,
+				rx: 1
+			}),
+			jsx("path", { d: `M${plusX} ${plusY - 2.5}v5M${plusX - 2.5} ${plusY}h5` })
+		]
+	});
+};
+/** Three entry tiles and an add mark with one-pixel strokes. */
+const IconAppsAddOutlineRegular = (props) => jsx(IconAppsAddOutlineArtwork, {
+	...props,
+	strokeWidth: 1
+});
+/** Three entry tiles and an add mark with 1.3px strokes. */
+const IconAppsAddOutlineMedium = (props) => jsx(IconAppsAddOutlineArtwork, {
+	...props,
+	strokeWidth: ICON_MEDIUM_STROKE
+});
 //#endregion
 //#region lib/types/StateDot.js
 /**
@@ -3894,13 +3944,14 @@ const MenuSurface = forwardRef(function MenuSurface({ compact = false, className
 * @param props.children - visible row label.
 * @param props.shortcut - effective key labels and accessible combination.
 * @param props.icon - optional leading icon.
+* @param props.current - whether the row identifies the currently displayed page or view.
 * @param props.disabled - whether the row cannot be activated.
 * @param props.danger - whether to use the destructive row colors.
 * @param props.separatorBefore - whether this row starts a new group (hairline above it).
 * @param props.onSelect - row activation callback.
 * @returns one menu-item row.
 */
-function MenuItemButton({ children, shortcut, icon, disabled = false, danger = false, separatorBefore = false, onSelect }) {
+function MenuItemButton({ children, shortcut, icon, current, disabled = false, danger = false, separatorBefore = false, onSelect }) {
 	return jsxs("div", {
 		className: css$15.itemWrap,
 		children: [separatorBefore && jsx("div", {
@@ -3912,6 +3963,7 @@ function MenuItemButton({ children, shortcut, icon, disabled = false, danger = f
 			className: clsx(css$15.item, danger && css$15.danger),
 			disabled,
 			"aria-keyshortcuts": shortcut?.aria,
+			"aria-current": current === true ? "page" : void 0,
 			onClick: onSelect,
 			children: [
 				icon !== void 0 && jsx("span", {
@@ -3981,6 +4033,7 @@ const MEASURE_STYLE = {
 * the trigger (render-prop anchors, effect-positioned proxies — measuring the
 * wrapper there races the host's layout effects). Called on open, each animation
 * frame, and scroll/resize; return null to skip placement for that frame.
+* @param props.minWidthFromAnchor - in portal mode, keep the menu at least as wide as its anchor, bounded by viewport margins.
 * @param props.footer - rows pinned below the scrolling items area, separated
 * by a hairline; they stay visible while the items above scroll.
 * @param props.children - component rows rendered after `items` in the same
@@ -3997,7 +4050,7 @@ const MEASURE_STYLE = {
 * document.body outside the owner's DOM subtree.
 * @returns anchor wrapper with the conditional list.
 */
-function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onSelect, onClose, align = "start", side = "bottom", portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = "check", getAnchorRect, footer, className, listClassName }) {
+function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onSelect, onClose, align = "start", side = "bottom", portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = "check", getAnchorRect, minWidthFromAnchor = false, footer, className, listClassName }) {
 	const rootRef = useRef(null);
 	const listRef = useRef(null);
 	/** Index the arrow walk last focused, the resume point when focus left the rows. */
@@ -4059,6 +4112,10 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 			const vw = window.innerWidth;
 			const vh = window.innerHeight;
 			const listEl = listRef.current;
+			if (listEl !== null) {
+				const minimum = minWidthFromAnchor ? `${Math.min(r.width, Math.max(0, vw - MARGIN * 2))}px` : "";
+				if (listEl.style.minWidth !== minimum) listEl.style.minWidth = minimum;
+			}
 			const lw = listEl?.offsetWidth ?? 0;
 			const lh = listEl?.offsetHeight ?? 0;
 			let x;
@@ -4098,7 +4155,8 @@ function Menu({ open, anchor, items = [], children, selectedId, selectedIds, onS
 		portal,
 		align,
 		side,
-		getAnchorRect
+		getAnchorRect,
+		minWidthFromAnchor
 	]);
 	useEffect(() => {
 		if (!open) {
@@ -6619,6 +6677,73 @@ function ReferenceChip({ appearance, label, title, onActivate }) {
 	});
 }
 //#endregion
+//#region lib/types/tooltip-placement.js
+const opposite = {
+	right: "left",
+	left: "right",
+	top: "bottom",
+	bottom: "top"
+};
+/**
+* Prefer the requested side, its opposite, then perpendicular sides without covering the anchor.
+* @param input - Observed dimensions, anchor edges, viewport and requested placement; horizontal gaps remain 10px.
+* @returns Border-box coordinates and the selected side; if no side fits, a viewport-bounded fallback.
+*/
+function placeTooltip(input) {
+	const { anchor, viewportWidth, viewportHeight, side, align, gap } = input;
+	let { width, height } = input;
+	const margin = 12;
+	const maxWidth = Math.max(0, viewportWidth - margin * 2);
+	const maxHeight = Math.max(0, viewportHeight - margin * 2);
+	width = Math.min(width, maxWidth);
+	height = Math.min(height, maxHeight);
+	const clampX = (x) => Math.max(margin, Math.min(x, viewportWidth - margin - width));
+	const clampY = (y) => Math.max(margin, Math.min(y, viewportHeight - margin - height));
+	const horizontal = side === "right" || side === "left";
+	const candidates = [
+		side,
+		opposite[side],
+		...horizontal ? ["bottom", "top"] : ["right", "left"]
+	];
+	const positions = {
+		right: {
+			left: anchor.right + 10,
+			top: clampY((anchor.top + anchor.bottom - height) / 2)
+		},
+		left: {
+			left: anchor.left - 10 - width,
+			top: clampY((anchor.top + anchor.bottom - height) / 2)
+		},
+		bottom: {
+			left: clampX(align === "end" ? anchor.right - width : (anchor.left + anchor.right - width) / 2),
+			top: anchor.bottom + gap
+		},
+		top: {
+			left: clampX(align === "end" ? anchor.right - width : (anchor.left + anchor.right - width) / 2),
+			top: anchor.top - gap - height
+		}
+	};
+	for (const candidate of candidates) {
+		const position = positions[candidate];
+		if (position.left >= margin && position.top >= margin && position.left + width <= viewportWidth - margin && position.top + height <= viewportHeight - margin) return {
+			...position,
+			side: candidate,
+			width,
+			height,
+			overflow: false
+		};
+	}
+	const position = positions[side];
+	return {
+		left: clampX(position.left),
+		top: clampY(position.top),
+		side,
+		width,
+		height,
+		overflow: true
+	};
+}
+//#endregion
 //#region lib/types/input-modality.js
 /**
 * Document-wide input tracking shared by tooltips and focus-ring styles.
@@ -6694,28 +6819,29 @@ const TooltipSuppression = createContext(null);
 * Attach a hover/focus tooltip to an anchor element.
 * @param props.label - bubble text, or a resolver evaluated only while visible; an empty string shows only shortcut keys.
 * @param props.shortcutKeys - effective key labels rendered as platform-formatted keycaps after optional text.
-* @param props.side - placement relative to the anchor (default 'right').
+* @param props.side - preferred placement (default 'right'); fitting tries the opposite then perpendicular sides.
 * @param props.align - horizontal anchor-edge alignment for 'bottom'/'top' bubbles: 'end' pins
 * the bubble's right edge to the anchor's (for anchors beside other hover surfaces the centered
-* bubble would overlap); default 'center'. Ignored for side 'right'.
+* bubble would overlap); default 'center'. Horizontal placements ignore it.
 * @param props.portal - render the bubble under document.body, so an ancestor's clipping or its
 * stacking context (which confines the bubble's z-index to that context) cannot hide it.
 * @param props.delayMs - hover delay in milliseconds (default 0).
 * @param props.focusDelayMs - keyboard focus delay in milliseconds (default 0); blur, click,
 * mouse leave, disabling, and unmount cancel a pending show.
 * @param props.gap - anchor-to-bubble distance in pixels for 'bottom'/'top' bubbles (default 8);
-* ignored for side 'right'.
+* horizontal placements use 10px, including after a flip.
 * @param props.disabled - suppress the bubble while true; the anchor renders identically so
 * toggling never remounts it (which would cut its CSS transitions).
 * @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
-* half-viewport cap would render a slab wider than the surface the anchor sits on.
+* half-viewport cap would render a slab wider than the surface the anchor sits on; always bounded by viewport margins.
 * @param props.openOnClick - clicking also pins the bubble for reading; another click, Escape,
 * Tab, or an outside pointerdown dismisses it. Defaults to false for ordinary action tooltips.
 * @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
 * @returns the cloned anchor plus a fixed-position bubble, optionally portaled to the body.
 * The bubble stays hidden until ResizeObserver supplies its size for viewport fitting; clicking the
 * anchor dismisses the bubble unless openOnClick is enabled, and focus arriving after a pointer
-* interaction (a closing menu refocusing its trigger) never raises it.
+* interaction (a closing menu refocusing its trigger) never raises it. When no side fits, the
+* viewport-bounded fallback may overlap the anchor; oversized content is scrollable when pinned.
 */
 function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayMs = 0, focusDelayMs = 0, gap = 8, disabled = false, portal = false, maxWidth, openOnClick = false, children }) {
 	const id = useId();
@@ -6730,7 +6856,6 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 	const [pos, setPos] = useState(null);
 	const bubble = useRef(null);
 	const resolvedLabel = pos === null ? null : typeof label === "function" ? label() : label;
-	const y = pos === null ? 0 : side === "right" ? pos.top + (pos.bottom - pos.top) / 2 : side === "top" ? pos.top - gap : pos.bottom + gap;
 	const showTimer = useRef(null);
 	const triggers = useRef({
 		hover: false,
@@ -6745,32 +6870,41 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 	useEffect(() => {
 		const el = bubble.current;
 		if (pos === null || !visible || suppressed || el === null) return;
-		const edgeMargin = 12;
 		let size;
-		let placement = side;
+		let anchorRect = pos;
 		const fit = () => {
 			if (size === void 0) return;
-			const { inlineSize: width, blockSize: height } = size;
-			const offset = side === "right" ? 0 : align === "end" ? width : width / 2;
-			const left = Math.max(edgeMargin, Math.min(pos.x - offset, window.innerWidth - edgeMargin - width));
-			const fitsBelow = pos.bottom + gap + height <= window.innerHeight - edgeMargin;
-			const fitsAbove = pos.top - gap - height >= edgeMargin;
-			if (placement === "bottom" && !fitsBelow && fitsAbove) placement = "top";
-			else if (placement === "top" && !fitsAbove && fitsBelow) placement = "bottom";
-			el.style.left = `${left + offset}px`;
-			el.style.top = `${placement === "right" ? (pos.top + pos.bottom) / 2 : placement === "top" ? pos.top - gap : pos.bottom + gap}px`;
-			el.dataset.side = placement;
+			const placement = placeTooltip({
+				anchor: anchorRect,
+				width: size.inlineSize,
+				height: size.blockSize,
+				viewportWidth: window.innerWidth,
+				viewportHeight: window.innerHeight,
+				side,
+				align,
+				gap
+			});
+			const horizontal = placement.side === "right" || placement.side === "left";
+			const offsetX = horizontal ? 0 : align === "end" ? placement.width : placement.width / 2;
+			const offsetY = horizontal ? placement.height / 2 : placement.side === "top" ? placement.height : 0;
+			el.style.left = `${placement.left + offsetX}px`;
+			el.style.top = `${placement.top + offsetY}px`;
+			el.dataset.side = placement.side;
 			el.style.visibility = "visible";
+		};
+		const onResize = () => {
+			if (anchor.current !== null) anchorRect = anchor.current.getBoundingClientRect();
+			fit();
 		};
 		const observer = new ResizeObserver((entries) => {
 			size = entries[0]?.borderBoxSize[0];
 			fit();
 		});
 		observer.observe(el, { box: "border-box" });
-		window.addEventListener("resize", fit);
+		window.addEventListener("resize", onResize);
 		return () => {
 			observer.disconnect();
-			window.removeEventListener("resize", fit);
+			window.removeEventListener("resize", onResize);
 		};
 	}, [
 		align,
@@ -6813,12 +6947,7 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 		const el = anchor.current;
 		/* v8 ignore next -- the ref is attached by event time: events fire on the cloned anchor. */
 		if (el === null) return;
-		const r = el.getBoundingClientRect();
-		setPos({
-			x: side === "right" ? r.right + 10 : align === "end" ? r.right : r.left + r.width / 2,
-			top: r.top,
-			bottom: r.bottom
-		});
+		setPos(el.getBoundingClientRect());
 		announce(true);
 	};
 	const showAfterDelay = (delay) => {
@@ -6879,10 +7008,10 @@ function Tooltip({ label, shortcutKeys, side = "right", align = "center", delayM
 		"data-align": align,
 		"data-has-shortcut": shortcutKeys?.length ? true : void 0,
 		style: {
-			left: pos.x,
-			top: y,
+			left: pos.left,
+			top: pos.top,
 			visibility: "hidden",
-			...maxWidth === void 0 ? {} : { maxWidth }
+			...maxWidth === void 0 ? {} : { maxWidth: `min(${maxWidth}px, calc(100vw - 24px))` }
 		},
 		role: "tooltip",
 		"aria-label": shortcutKeys?.length ? [resolvedLabel, shortcutKeys.join(" ")].filter(Boolean).join(" ") : void 0,
@@ -12578,6 +12707,6 @@ function GuideArtworkFiles({ size = 36, className }) {
 	});
 }
 //#endregion
-export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, CommandText, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, HoverCardGroup, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, InlineEditor, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuGroup, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconAutoReviewMedium, PermissionIconAutoReviewRegular, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceChip, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, UserTextRun, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, observeStickyMenuGroups, pointerModality, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
+export { BrandWordmark, Button, CODE_HIGHLIGHT_EXTENSIONS, Checkbox, CodeBlock, CommandText, ConnectionIndicator, DEFAULT_DIFF_MAX_LINES, DEFAULT_READ_MAX_LINES, DEFAULT_SEARCH_MAX_LINES, DEFAULT_TERMINAL_MAX_LINES, DiffBlock, DisclosureRow, FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, FileTypeIcon, FishLogo, GuideArtworkBrowser, GuideArtworkFiles, HoverCard, HoverCardGroup, ICON_MEDIUM_STROKE, ICON_REGULAR_STROKE, IconAgentPresetOutlineMedium, IconAgentPresetOutlineRegular, IconAlarmClockOutlineMedium, IconAlarmClockOutlineRegular, IconApiOutlineMedium, IconApiOutlineRegular, IconAppsAddOutlineMedium, IconAppsAddOutlineRegular, IconArchiveCheckOutlineMedium, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineMedium, IconArchiveOffOutlineRegular, IconArchiveOutlineMedium, IconArchiveOutlineRegular, IconBranchOutlineMedium, IconBranchOutlineRegular, IconBrowseOutlineMedium, IconBrowseOutlineRegular, IconCheckCircleFillMedium, IconCheckCircleFillRegular, IconCheckCircleOutlineMedium, IconCheckCircleOutlineRegular, IconCheckOutlineMedium, IconCheckOutlineRegular, IconChecklistOutlineMedium, IconChecklistOutlineRegular, IconChevronDownOutlineMedium, IconChevronDownOutlineRegular, IconChevronLeftOutlineMedium, IconChevronLeftOutlineRegular, IconChevronRightOutlineMedium, IconChevronRightOutlineRegular, IconChevronUpOutlineMedium, IconChevronUpOutlineRegular, IconChevronsUpDownOutlineMedium, IconChevronsUpDownOutlineRegular, IconClockOutlineMedium, IconClockOutlineRegular, IconCloseCircleFillMedium, IconCloseCircleFillRegular, IconCloseFillMedium, IconCloseFillRegular, IconCloseOutlineMedium, IconCloseOutlineRegular, IconCodeOutlineMedium, IconCodeOutlineRegular, IconCompactOutlineMedium, IconCompactOutlineRegular, IconCompareSplitOutlineMedium, IconCompareSplitOutlineRegular, IconContextInjectionOutlineMedium, IconContextInjectionOutlineRegular, IconCopyOutlineMedium, IconCopyOutlineRegular, IconCordisPluginOutlineMedium, IconCordisPluginOutlineRegular, IconDarkOutlineMedium, IconDarkOutlineRegular, IconDataOutlineMedium, IconDataOutlineRegular, IconDatabaseOutlineMedium, IconDatabaseOutlineRegular, IconDeliverDocMedium, IconDeliverDocRegular, IconDislikeFillMedium, IconDislikeFillRegular, IconDislikeOutlineMedium, IconDislikeOutlineRegular, IconDownloadOutlineMedium, IconDownloadOutlineRegular, IconEditOutlineMedium, IconEditOutlineRegular, IconEllipsisOutlineMedium, IconEllipsisOutlineRegular, IconEnhanceOutlineMedium, IconEnhanceOutlineRegular, IconFlatListOutlineMedium, IconFlatListOutlineRegular, IconFolderCloseMedium, IconFolderCloseRegular, IconFolderOpenMedium, IconFolderOpenOutlineMedium, IconFolderOpenOutlineRegular, IconFolderOpenRegular, IconFollowsystemOutlineMedium, IconFollowsystemOutlineRegular, IconFullscreenOutlineMedium, IconFullscreenOutlineRegular, IconGaugeOutlineMedium, IconGaugeOutlineRegular, IconGlobeOutlineMedium, IconGlobeOutlineRegular, IconGoalOutlineMedium, IconGoalOutlineRegular, IconInfoOutlineMedium, IconInfoOutlineRegular, IconInspectOutlineMedium, IconInspectOutlineRegular, IconLightOutlineMedium, IconLightOutlineRegular, IconLikeFillMedium, IconLikeFillRegular, IconLikeOutlineMedium, IconLikeOutlineRegular, IconLinkOutlineMedium, IconLinkOutlineRegular, IconListPenOutlineMedium, IconListPenOutlineRegular, IconLoadingOutlineMedium, IconLoadingOutlineRegular, IconMicrophoneOutlineMedium, IconMicrophoneOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconNowrapFillMedium, IconNowrapFillRegular, IconPanelLeftOutlineMedium, IconPanelLeftOutlineRegular, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular, IconPaperclipOutlineMedium, IconPaperclipOutlineRegular, IconPauseOutlineMedium, IconPauseOutlineRegular, IconPersonalizationOutlineMedium, IconPersonalizationOutlineRegular, IconPinFillMedium, IconPinFillRegular, IconPinOutlineMedium, IconPinOutlineRegular, IconPlanOutlineMedium, IconPlanOutlineRegular, IconPlayOutlineMedium, IconPlayOutlineRegular, IconPluginPinwheelOutlineMedium, IconPluginPinwheelOutlineRegular, IconPlusOutlineMedium, IconPlusOutlineRegular, IconProjectAddOutlineMedium, IconProjectAddOutlineRegular, IconQuestionOutlineMedium, IconQuestionOutlineRegular, IconQueueOutlineMedium, IconQueueOutlineRegular, IconRefreshOutlineMedium, IconRefreshOutlineRegular, IconRightUpOutlineMedium, IconRightUpOutlineRegular, IconSearchOutlineMedium, IconSearchOutlineRegular, IconSendOutlineMedium, IconSendOutlineRegular, IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconShareOutlineMedium, IconShareOutlineRegular, IconShieldOutlineMedium, IconShieldOutlineRegular, IconSkillOutlineMedium, IconSkillOutlineRegular, IconSlidersTwoOutlineMedium, IconSlidersTwoOutlineRegular, IconSparkleMedium, IconSparkleRegular, IconStopFillMedium, IconStopFillRegular, IconThinkOutlineMedium, IconThinkOutlineRegular, IconTrashOutlineMedium, IconTrashOutlineRegular, IconTreeCornerMedium, IconTreeCornerRegular, IconTriangleRightFillMedium, IconTriangleRightFillRegular, IconUnarchiveOutlineMedium, IconUnarchiveOutlineRegular, IconUserOutlineMedium, IconUserOutlineRegular, IconUsersOutlineMedium, IconUsersOutlineRegular, IconWarningOutlineMedium, IconWarningOutlineRegular, IconWarningTriangleOutlineMedium, IconWarningTriangleOutlineRegular, IconWorkspaceTreeOutlineMedium, IconWorkspaceTreeOutlineRegular, IconWrapFillMedium, IconWrapFillRegular, IconWrapLinesOutlineMedium, IconWrapLinesOutlineRegular, ImageLightbox, InlineEditor, Input, JsonBlock, JsonTree, LinkIconMedium, LinkIconRegular, MarkdownDelegateProvider, MarkdownText, Menu, MenuGroup, MenuItemButton, MenuSurface, Modal, PathLabel, PermissionIconAutoReviewMedium, PermissionIconAutoReviewRegular, PermissionIconFullAccessMedium, PermissionIconFullAccessRegular, PermissionIconReadOnlyMedium, PermissionIconReadOnlyRegular, PermissionIconWorkspaceWriteMedium, PermissionIconWorkspaceWriteRegular, Pill, PluginArtworkDefault, PluginArtworkLoop, PluginArtworkSearch, PluginArtworkSubagent, PluginArtworkTerminal, ReadBlock, ReferenceChip, ReferenceIconMedium, ReferenceIconRegular, RiskConfirmation, SHIELD_OUTLINE_PATH, SearchBlock, SegmentedControl, SegmentedTabs, SettingsForm, SettingsFormModel, SettingsSecretField, SettingsValueField, ShortcutKeys, StateDot, Switch, Tag, TerminalBlock, TextShimmer, Toast, Tooltip, UserTextRun, WebBlock, classifyFileType, classifyLinkPath, closeTopModal, diffTotals, extractMarkdownPlainText, fileExtension, fileSizeText, focusWithoutRing, isBehindModal, isDarwinDesktop, languageForPath, modalSelector, observeComposition, observeStickyMenuGroups, pointerModality, rankByName, relativeTime, settingsNumberField, settingsTextField, useAnchoredMaxHeight, useAnchoredPosition, useCodeHighlighter, useDismissOnOutsidePointer, useModalLayer, writeClipboard };
 
 //# sourceMappingURL=index.js.map

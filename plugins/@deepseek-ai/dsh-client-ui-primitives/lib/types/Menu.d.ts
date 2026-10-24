@@ -37,6 +37,8 @@ export interface MenuItemButtonProps {
     shortcut?: MenuItem['shortcut'];
     /** Leading icon (figma .Menu_cell gap 8). */
     icon?: ReactNode;
+    /** Whether this row identifies the currently displayed page or view. */
+    current?: boolean;
     /** Whether the row cannot be activated. */
     disabled?: boolean;
     /** Destructive row: error-colored text/icon and danger hover fill. */
@@ -60,13 +62,14 @@ export interface MenuItemButtonProps {
  * @param props.children - visible row label.
  * @param props.shortcut - effective key labels and accessible combination.
  * @param props.icon - optional leading icon.
+ * @param props.current - whether the row identifies the currently displayed page or view.
  * @param props.disabled - whether the row cannot be activated.
  * @param props.danger - whether to use the destructive row colors.
  * @param props.separatorBefore - whether this row starts a new group (hairline above it).
  * @param props.onSelect - row activation callback.
  * @returns one menu-item row.
  */
-export declare function MenuItemButton({ children, shortcut, icon, disabled, danger, separatorBefore, onSelect, }: MenuItemButtonProps): import("react").JSX.Element;
+export declare function MenuItemButton({ children, shortcut, icon, current, disabled, danger, separatorBefore, onSelect, }: MenuItemButtonProps): import("react").JSX.Element;
 /**
  * Render an anchored dropdown menu. While the list is open its keys mirror the
  * composer's: Tab settles the focused row — from the trigger, Tab enters the
@@ -102,6 +105,7 @@ export declare function MenuItemButton({ children, shortcut, icon, disabled, dan
  * the trigger (render-prop anchors, effect-positioned proxies — measuring the
  * wrapper there races the host's layout effects). Called on open, each animation
  * frame, and scroll/resize; return null to skip placement for that frame.
+ * @param props.minWidthFromAnchor - in portal mode, keep the menu at least as wide as its anchor, bounded by viewport margins.
  * @param props.footer - rows pinned below the scrolling items area, separated
  * by a hairline; they stay visible while the items above scroll.
  * @param props.children - component rows rendered after `items` in the same
@@ -118,7 +122,7 @@ export declare function MenuItemButton({ children, shortcut, icon, disabled, dan
  * document.body outside the owner's DOM subtree.
  * @returns anchor wrapper with the conditional list.
  */
-export declare function Menu({ open, anchor, items, children, selectedId, selectedIds, onSelect, onClose, align, side, portal, closeOnPointerLeave, dense, compact, autoFocus, selection, getAnchorRect, footer, className, listClassName }: {
+export declare function Menu({ open, anchor, items, children, selectedId, selectedIds, onSelect, onClose, align, side, portal, closeOnPointerLeave, dense, compact, autoFocus, selection, getAnchorRect, minWidthFromAnchor, footer, className, listClassName }: {
     open: boolean;
     autoFocus?: boolean;
     anchor: ReactNode;
@@ -137,6 +141,7 @@ export declare function Menu({ open, anchor, items, children, selectedId, select
     compact?: boolean;
     selection?: 'check' | 'fill';
     getAnchorRect?: () => DOMRect | null;
+    minWidthFromAnchor?: boolean;
     className?: string | undefined;
     listClassName?: string | undefined;
 }): import("react").JSX.Element;

@@ -1,6 +1,6 @@
 import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { type SidebarKey } from './locales.ts';
-export type { SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps, } from './contract/slots.ts';
+export type { SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps, SidebarPanelActionEntry, SidebarPanelActionsOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps, } from './contract/slots.ts';
 export type { SidebarKey } from './locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface LocaleNamespaceMap {

@@ -1,6 +1,7 @@
 import z from "@deepseek-ai/schemastery";
 import { isVolatile } from "@deepseek-ai/cosmokit";
-import { IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ProviderRequestId, ReasoningEffortId, RetryPolicySchema, ToolCallId, attributionHeaders, contentHasImage, errorChain, isContextWindowExceededError, isQuotaExceededError, offloadedImageText, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText } from "@deepseek-ai/dsh-llm";
+import { assertNever, deepEqualJson } from "@deepseek-ai/dsh-util-values";
+import { APP_IDENTITY, IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ProviderRequestId, ReasoningEffortId, RetryPolicySchema, ToolCallId, attributionHeaders, contentHasImage, errorChain, isContextWindowExceededError, isQuotaExceededError, offloadedImageText, projectOffloadedImages, requestImageHandleText, requiredImageOffload, resolveImageAttachmentAccess, resolveRetryPolicy, textOnlyImageText } from "@deepseek-ai/dsh-llm";
 import { MAX_TIMER_DELAY_MS, deadline, idleWatchdog, timeoutOf } from "@deepseek-ai/dsh-timeout";
 import { ImageVariantId, longEdgeDimensions, requestImageDimensions } from "@deepseek-ai/dsh-attachment";
 import { createHash } from "node:crypto";
@@ -10,7 +11,25 @@ import { withFileLock, writeFileAtomic } from "@deepseek-ai/dsh-atomic-write";
 import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 import { getOrCreateAnonymousUserId } from "@deepseek-ai/dsh-anonymous-user-id";
-import { deepEqualJson } from "@deepseek-ai/dsh-util-values";
+import semver from "semver";
+//#region lib/types/models.js
+/** Context window of both official models, as the official `/models` listing declares it. */
+const OFFICIAL_CONTEXT_WINDOW = 1048576;
+/** Advisory official model entries; deployments may replace the catalog. */
+const DEFAULT_MODELS = [{
+	id: "deepseek-flash",
+	name: "DeepSeek-V4.1-Flash",
+	contextWindow: OFFICIAL_CONTEXT_WINDOW,
+	inputModalities: ["text", "image"],
+	systemPromptUpdate: "in-history",
+	toolUpdate: "addition-only"
+}, {
+	id: "deepseek-v4-pro",
+	name: "DeepSeek-V4-Pro-0813",
+	description: "Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.",
+	contextWindow: OFFICIAL_CONTEXT_WINDOW
+}];
+//#endregion
 //#region lib/types/defaults.js
 /** Shared provider limits and Chat Files API defaults. */
 /** Default maximum idle interval while an adapter stream read is outstanding. */
@@ -35,23 +54,6 @@ const DEFAULT_FILE_REFRESH_MARGIN_SECONDS = 3600;
 const DEFAULT_FILE_QUOTA_CLEANUP_BATCH = 100;
 /** Default deadline for resolving one request image through the Files API. */
 const DEFAULT_FILES_API_TIMEOUT_MS = 6e4;
-//#endregion
-//#region lib/types/models.js
-/** Default DeepSeek model catalog. */
-/** Advisory official model entries; deployments may replace the catalog. */
-const DEFAULT_MODELS = [{
-	id: "deepseek-flash",
-	name: "DeepSeek-V4.1-Flash",
-	contextWindow: DEFAULT_CONTEXT_WINDOW,
-	inputModalities: ["text", "image"],
-	systemPromptUpdate: "in-history",
-	toolUpdate: "addition-only"
-}, {
-	id: "deepseek-v4-pro",
-	name: "DeepSeek-V4-Pro-0813",
-	description: "Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.",
-	contextWindow: DEFAULT_CONTEXT_WINDOW
-}];
 //#endregion
 //#region lib/types/image-tokens.js
 /**
@@ -345,6 +347,15 @@ const Config = z.object(deepSeekConfigFields);
 const PUBLIC_BASE_URL = "https://api.deepseek.com/anthropic";
 /** Environment variable naming this provider's endpoint, honored only from trusted layers. */
 const BASE_URL_ENV = "DEEPSEEK_BASE_URL";
+/**
+* Whether a resolved catalog is the built-in one, which is what a `models`
+* setting nobody customized resolves to.
+* @param models - catalog resolved by {@link resolveAdapterOptions}.
+* @returns whether `models` equals the resolved built-in catalog, entry by entry and in order.
+*/
+function isBuiltInCatalog(models) {
+	return deepEqualJson(models, resolveModels(DEFAULT_MODELS));
+}
 /** Resolve, validate, and detach the advisory model catalog. */
 function resolveModels(models) {
 	const seen = /* @__PURE__ */ new Set();
@@ -2324,4 +2335,410 @@ function registerDeepSeekProvider(ctx, provider, dependencies) {
 	});
 }
 //#endregion
-export { Config, DEFAULT_CONTEXT_WINDOW, DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILE_EXPIRY_SECONDS, DEFAULT_FILE_QUOTA_CLEANUP_BATCH, DEFAULT_FILE_REFRESH_MARGIN_SECONDS, DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM, DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET, DEFAULT_MAX_IMAGES_PER_REQUEST, DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES, DEFAULT_MAX_REQUEST_FILES_BYTES, DEFAULT_MAX_TOKENS, DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DeepSeekAdapter, DeepSeekFileId, DeepSeekFileStore, DeepSeekFilesClient, DeepSeekUploadIndex, MAX_FILE_EXPIRY_SECONDS, MAX_FILE_UPLOAD_BYTES, MAX_IMAGE_BYTES, MAX_STORED_FILE_BYTES, MAX_STORED_FILE_COUNT, MIN_FILE_EXPIRY_SECONDS, PUBLIC_BASE_URL, REQUEST_IMAGE_MAX_DIMENSION, catalogModelFields, catalogModelInfo, deepSeekConfigFields, deepSeekFileScope, deepSeekImageRequestPricing, deepSeekImageTokens, deepSeekRequestImageDimensions, plainOptions, registerDeepSeekProvider, resolveAdapterOptions, resolveRequestImageMaxBytes, resolveRequestImageTarget };
+//#region lib/types/listing.js
+/** DeepSeek `GET /models` listing: one authenticated request and per-entry decoding. */
+const LISTED_MODALITIES = ["text", "image"];
+/** Code of a listing deadline's timeout reason; {@link requestModelListing} reports it as `TIMEOUT`. */
+const LISTING_TIMEOUT = "MODEL_LISTING_TIMEOUT";
+/**
+* The listing endpoint of a Messages root.
+* @param baseURL - Messages `baseURL`.
+* @returns `/models` at the origin of `baseURL`, the only origin that receives the route's credential.
+*/
+function modelListingURL(baseURL) {
+	return new URL("/models", new URL(baseURL).origin).href;
+}
+function fieldsOf(value) {
+	return typeof value === "object" && value !== null && !Array.isArray(value) ? value : void 0;
+}
+/** Listed modalities this build sends, in listing order without repeats; `undefined` when the value is not an array. */
+function knownModalities(value) {
+	if (!Array.isArray(value)) return void 0;
+	const listed = value;
+	return LISTED_MODALITIES.filter((modality) => listed.includes(modality)).toSorted((left, right) => listed.indexOf(left) - listed.indexOf(right));
+}
+/** A declared capacity: `undefined` when absent, `false` when not a positive safe integer. */
+function capacity(value) {
+	if (value === void 0) return void 0;
+	return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : false;
+}
+function requirementOf(entry) {
+	if (entry.client_requirements === void 0) return { kind: "none" };
+	const requirements = fieldsOf(entry.client_requirements);
+	if (requirements === void 0) return { kind: "invalid" };
+	const declared = requirements[APP_IDENTITY.product];
+	if (declared === void 0) return { kind: "none" };
+	const own = fieldsOf(declared);
+	if (own === void 0) return { kind: "invalid" };
+	if (own.min_version === void 0) return { kind: "none" };
+	return typeof own.min_version === "string" && own.min_version.length > 0 ? {
+		kind: "min-version",
+		version: own.min_version
+	} : { kind: "invalid" };
+}
+function capabilitiesOf(entry) {
+	const messages = fieldsOf(fieldsOf(entry.api_capabilities)?.anthropic_messages);
+	if (messages === void 0) return {
+		usable: false,
+		reason: "declares no api_capabilities.anthropic_messages"
+	};
+	if ((entry.output_modalities === void 0 ? ["text"] : knownModalities(entry.output_modalities))?.includes("text") !== true) return {
+		usable: false,
+		reason: "declares no text output"
+	};
+	const inputs = entry.input_modalities === void 0 ? ["text"] : knownModalities(entry.input_modalities);
+	if (inputs === void 0 || inputs.length === 0) return {
+		usable: false,
+		reason: "declares no input modality DeepSeek Harness supports"
+	};
+	const contextWindow = capacity(entry.context_window);
+	const maxOutputTokens = capacity(entry.max_output_tokens);
+	if (contextWindow === false || maxOutputTokens === false) return {
+		usable: false,
+		reason: "declares an invalid context_window or max_output_tokens"
+	};
+	const promptUpdate = messages.system_prompt_update ?? void 0;
+	const toolUpdate = messages.tool_update ?? void 0;
+	return {
+		usable: true,
+		facts: {
+			inputModalities: inputs,
+			...contextWindow === void 0 ? {} : { contextWindow },
+			...maxOutputTokens === void 0 ? {} : { maxOutputTokens },
+			...promptUpdate === void 0 ? {} : { systemPromptUpdate: promptUpdate === "in-history" ? "in-history" : "leading-only" },
+			...toolUpdate === void 0 ? {} : { toolUpdate: toolUpdate === "in-history" || toolUpdate === "addition-only" ? toolUpdate : "leading-only" }
+		}
+	};
+}
+/**
+* Decode one `/models` body entry by entry.
+* @param body - parsed JSON response.
+* @returns the entries with a usable id, in listing order.
+* @throws LlmError `INVALID_RESPONSE` when the body has no `data` array or no usable entry.
+*/
+function parseModelListing(body) {
+	const data = fieldsOf(body)?.data;
+	if (!Array.isArray(data)) throw new LlmError("DeepSeek model listing has no \"data\" array", "INVALID_RESPONSE");
+	const rows = data;
+	const entries = [];
+	const seen = /* @__PURE__ */ new Set();
+	for (const row of rows) {
+		const entry = fieldsOf(row);
+		const id = entry?.id;
+		if (entry === void 0 || typeof id !== "string" || id.length === 0 || seen.has(id)) continue;
+		seen.add(id);
+		entries.push({
+			id,
+			...typeof entry.name === "string" && entry.name.length > 0 ? { name: entry.name } : {},
+			requirement: requirementOf(entry),
+			capabilities: capabilitiesOf(entry)
+		});
+	}
+	if (entries.length === 0) throw new LlmError("DeepSeek model listing contains no model entry", "INVALID_RESPONSE");
+	return {
+		entries,
+		skipped: rows.length - entries.length
+	};
+}
+/**
+* Request and decode one model listing. Redirects fail, so credentials stay on the requested origin.
+* @param url - listing endpoint.
+* @param headers - authentication headers for this endpoint.
+* @param signal - cancellation and deadline of the whole exchange.
+* @returns the decoded listing.
+* @throws LlmError `TIMEOUT` when a {@link LISTING_TIMEOUT} deadline elapses before a complete body, `ABORTED` for
+*   another abort, `TRANSPORT` for a network failure, `HTTP_<status>` for a non-2xx answer,
+*   and `INVALID_RESPONSE` for a body that is not a JSON listing.
+*/
+async function requestModelListing(url, headers, signal) {
+	let response;
+	let text;
+	try {
+		response = await fetch(url, {
+			method: "GET",
+			redirect: "error",
+			signal,
+			headers: {
+				...attributionHeaders(),
+				accept: "application/json",
+				...headers
+			}
+		});
+		text = await response.text();
+	} catch (error) {
+		const expired = timeoutOf(signal, LISTING_TIMEOUT);
+		if (expired !== void 0) throw new LlmError(`DeepSeek model listing request to ${url} timed out after ${expired.timeoutMs} ms`, "TIMEOUT", { cause: error });
+		throw signal.aborted ? new LlmError(`DeepSeek model listing request to ${url} was aborted`, "ABORTED", { cause: error }) : new LlmError(`could not reach ${url}`, "TRANSPORT", { cause: error });
+	}
+	if (!response.ok) throw new LlmError(`${url} answered HTTP ${response.status}`, `HTTP_${response.status}`, { status: response.status });
+	let body;
+	try {
+		body = JSON.parse(text);
+	} catch (error) {
+		throw new LlmError(`${url} did not answer with JSON`, "INVALID_RESPONSE", { cause: error });
+	}
+	return parseModelListing(body);
+}
+//#endregion
+//#region lib/types/listing-config.js
+/** Default deadline of one model-listing request and of a first-use wait. */
+const DEFAULT_MODELS_TIMEOUT_MS = 5e3;
+/** Default listing age after which the next access refreshes it in the background. */
+const DEFAULT_MODELS_MAX_AGE_MS = 6e5;
+/** Schemas of the {@link ModelListingConfig} fields. */
+const modelListingConfigFields = {
+	modelsTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_MODELS_TIMEOUT_MS).volatile(),
+	modelsMaxAgeMs: z.number().step(1).min(0).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MODELS_MAX_AGE_MS).volatile()
+};
+/**
+* Validate listing timing. Settings updates can reach it without schema validation, so every bound is judged here.
+* @param options - plain listing options; absent values take the defaults.
+* @param owner - plugin name that prefixes each failure message.
+* @returns the validated timing.
+* @throws Error when a value is outside its schema bounds.
+*/
+function resolveListingTiming(options, owner) {
+	const { modelsTimeoutMs = DEFAULT_MODELS_TIMEOUT_MS, modelsMaxAgeMs = DEFAULT_MODELS_MAX_AGE_MS } = options;
+	if (!Number.isFinite(modelsTimeoutMs) || modelsTimeoutMs <= 0 || modelsTimeoutMs > MAX_TIMER_DELAY_MS) throw new Error(`${owner}: modelsTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
+	if (!Number.isSafeInteger(modelsMaxAgeMs) || modelsMaxAgeMs < 0) throw new Error(`${owner}: modelsMaxAgeMs must be a non-negative safe integer`);
+	return {
+		timeoutMs: modelsTimeoutMs,
+		maxAgeMs: modelsMaxAgeMs
+	};
+}
+//#endregion
+//#region lib/types/listing-cache.js
+/** Credential-scoped `/models` cache with single-flight loads, background refresh, and last-known-good retention. */
+/** Wait for `task` unless `signal` aborts first; the task keeps running. */
+async function abandonable(task, signal) {
+	if (signal === void 0) return task;
+	const abandoned = Promise.withResolvers();
+	const abandon = () => {
+		abandoned.reject(signal.reason);
+	};
+	signal.addEventListener("abort", abandon, { once: true });
+	try {
+		await Promise.race([task, abandoned.promise]);
+	} finally {
+		signal.removeEventListener("abort", abandon);
+	}
+}
+/** One route's listing cache; each endpoint and credential pair has its own scope. */
+var ModelListingCache = class {
+	dependencies;
+	scope;
+	listing;
+	/** Settle time of the latest load in this scope; `undefined` before the first one settles. */
+	settledAt;
+	inflight;
+	request;
+	generation = 0;
+	failing = false;
+	closed = false;
+	/** @param dependencies - credential, transport, clock, and diagnostic callbacks. */
+	constructor(dependencies) {
+		this.dependencies = dependencies;
+	}
+	/**
+	* The last published view, without I/O.
+	* @returns the credential state and listing of the current scope.
+	*/
+	current() {
+		return {
+			authenticated: this.scope !== void 0,
+			listing: this.listing
+		};
+	}
+	/**
+	* Resolve the view for the current credential. The first access of a scope
+	* waits for its load, which the request deadline bounds; later accesses
+	* return at once and refresh a stale listing in the background.
+	* @param settings - endpoint and timing of the caller's configuration generation.
+	* @param signal - abandons this wait only; the shared load continues.
+	* @returns the view after any first load of the scope settles.
+	*/
+	async view(settings, signal) {
+		const credential = await this.dependencies.credential(settings.url);
+		signal?.throwIfAborted();
+		if (this.closed) return this.current();
+		const scope = credential === void 0 ? void 0 : `${settings.url}\n${createHash("sha256").update(credential).digest("hex")}`;
+		if (scope !== this.scope) this.rescope(scope);
+		if (credential !== void 0) {
+			if (this.settledAt === void 0) await abandonable(this.start(settings, credential), signal);
+			else if (this.dependencies.now() - this.settledAt >= settings.maxAgeMs) this.start(settings, credential);
+		}
+		return this.current();
+	}
+	/** Discard the listing and abort any in-flight load; the next access loads again and waits like a first access. */
+	invalidate() {
+		this.rescope(this.scope);
+	}
+	/** Abort in-flight loads; later results and accesses change nothing. */
+	dispose() {
+		this.closed = true;
+		this.generation += 1;
+		this.request?.abort();
+	}
+	rescope(scope) {
+		this.request?.abort();
+		this.scope = scope;
+		this.listing = void 0;
+		this.settledAt = void 0;
+		this.inflight = void 0;
+		this.failing = false;
+		this.generation += 1;
+	}
+	start(settings, credential) {
+		if (this.inflight !== void 0) return this.inflight;
+		this.generation += 1;
+		const generation = this.generation;
+		const request = new AbortController();
+		this.request = request;
+		const limit = deadline(request.signal, settings.timeoutMs, LISTING_TIMEOUT);
+		const run = this.dependencies.load(settings.url, credential, limit.signal).then((listing) => {
+			if (generation !== this.generation) return;
+			this.listing = listing;
+			this.settledAt = this.dependencies.now();
+			this.failing = false;
+			this.dependencies.info(`model listing from ${settings.url} loaded ${listing.entries.length} model(s), skipped ${listing.skipped} row(s)`);
+		}, (error) => {
+			if (generation !== this.generation) return;
+			if (!this.failing) {
+				const fallback = this.listing === void 0 ? "using the bundled catalog" : "keeping the previous catalog";
+				this.dependencies.warn(`model listing from ${settings.url} failed (${String(error)}); ${fallback}`);
+			}
+			this.settledAt = this.dependencies.now();
+			this.failing = true;
+		}).finally(() => {
+			limit[Symbol.dispose]();
+			if (this.inflight === run) this.inflight = void 0;
+		});
+		this.inflight = run;
+		return run;
+	}
+};
+//#endregion
+//#region lib/types/listed-catalog.js
+/** A listed catalog: version gating, this build's model knowledge, and deployment overrides. */
+/** Replace fields of an entry; a text-only result drops the image limits it inherited. */
+function layered(model, layer) {
+	const merged = {
+		...model,
+		...layer
+	};
+	if (merged.inputModalities?.includes("image") !== true) {
+		if (layer.imagePixelBudget === void 0) delete merged.imagePixelBudget;
+		if (layer.imageMaxBytes === void 0) delete merged.imageMaxBytes;
+	}
+	return merged;
+}
+/** Layer one usable listing entry over this build's entry for the same id; a declared `leading-only` mode removes the inherited one. */
+function listed(base, entry, facts, routeMaxTokens) {
+	const { systemPromptUpdate, toolUpdate, ...rest } = base;
+	return layered({
+		...rest,
+		...systemPromptUpdate === void 0 || facts.systemPromptUpdate === "leading-only" ? {} : { systemPromptUpdate },
+		...toolUpdate === void 0 || facts.toolUpdate === "leading-only" ? {} : { toolUpdate }
+	}, {
+		...entry.name === void 0 ? {} : { name: entry.name },
+		...facts.contextWindow === void 0 ? {} : { contextWindow: facts.contextWindow },
+		...facts.maxOutputTokens === void 0 ? {} : { maxTokens: Math.min(routeMaxTokens, facts.maxOutputTokens) },
+		...facts.systemPromptUpdate === "in-history" ? { systemPromptUpdate: "in-history" } : {},
+		...facts.toolUpdate === void 0 || facts.toolUpdate === "leading-only" ? {} : { toolUpdate: facts.toolUpdate },
+		inputModalities: [...facts.inputModalities]
+	});
+}
+function gateOf(entry, known, clientVersion, problems) {
+	const requirement = entry.requirement;
+	switch (requirement.kind) {
+		case "none": return known ? void 0 : { kind: "unsupported" };
+		case "min-version":
+			if (semver.valid(requirement.version) === null) break;
+			return semver.gte(clientVersion, requirement.version) ? void 0 : {
+				kind: "upgrade-required",
+				requiredVersion: requirement.version
+			};
+		case "invalid": break;
+		/* v8 ignore next 2 -- listing decoding produces only the closed requirement union */
+		default: return assertNever(requirement, "model listing client requirement");
+	}
+	problems.push(`model "${entry.id}" declares an unreadable client requirement`);
+	return { kind: "unsupported" };
+}
+/**
+* Resolve a route's catalog from its listing. A declared minimum client version decides a
+* listed model's availability; without one, only models this build supports
+* are offered and the other listed models stay hidden.
+* @param input - listing, supported models, overrides, route cap, and this build's version.
+* @returns offered models, request-resolution entries, refusals, and diagnostics.
+*/
+function resolveListedCatalog(input) {
+	const supported = new Map(input.supported.map((model) => [model.id, model]));
+	const problems = [];
+	const overrideErrors = [];
+	const withOverride = (model) => {
+		const override = input.overrides[model.id];
+		if (override === void 0) return model;
+		const candidate = layered(model, override);
+		try {
+			resolveAdapterOptions({ models: [candidate] });
+		} catch (error) {
+			overrideErrors.push(`modelOverrides.${model.id} does not apply (${String(error)})`);
+			return model;
+		}
+		return candidate;
+	};
+	if (input.listing === void 0) {
+		const resolution = resolveAdapterOptions({ models: input.supported.map(withOverride) }).models;
+		return {
+			offered: resolution,
+			resolution,
+			refusals: /* @__PURE__ */ new Map(),
+			problems,
+			overrideErrors
+		};
+	}
+	const offered = [];
+	const refusals = /* @__PURE__ */ new Map();
+	for (const entry of input.listing) {
+		const refusal = gateOf(entry, supported.has(entry.id), input.clientVersion, problems);
+		if (refusal !== void 0) {
+			refusals.set(entry.id, refusal);
+			continue;
+		}
+		if (!entry.capabilities.usable) {
+			problems.push(`model "${entry.id}" ${entry.capabilities.reason}`);
+			refusals.set(entry.id, { kind: "unsupported" });
+			continue;
+		}
+		offered.push(withOverride(listed(supported.get(entry.id) ?? { id: entry.id }, entry, entry.capabilities.facts, input.routeMaxTokens)));
+	}
+	const offeredIds = new Set(offered.map((model) => model.id));
+	const listedIds = new Set(input.listing.map((entry) => entry.id));
+	for (const id of Object.keys(input.overrides)) if (!listedIds.has(id) && !supported.has(id)) overrideErrors.push(`modelOverrides names "${id}", which neither the model listing nor the built-in catalog describes`);
+	const resolution = resolveAdapterOptions({ models: [...offered, ...input.supported.filter((model) => !offeredIds.has(model.id)).map(withOverride)] }).models;
+	return {
+		offered: resolution.slice(0, offered.length),
+		resolution,
+		refusals,
+		problems,
+		overrideErrors
+	};
+}
+/**
+* Refuse a listed model this build cannot serve, before any network I/O.
+* @param model - requested wire model id.
+* @param refusal - the catalog's refusal for `model`, or `undefined` when it is admitted.
+* @throws LlmError `CLIENT_UPGRADE_REQUIRED` naming the required and current versions, or `MODEL_UNSUPPORTED`.
+*/
+function refuseListedModel(model, refusal) {
+	if (refusal === void 0) return;
+	switch (refusal.kind) {
+		case "upgrade-required": throw new LlmError(`DeepSeek model "${model}" requires DeepSeek Harness ${refusal.requiredVersion} or later; current version is ${APP_IDENTITY.version}`, "CLIENT_UPGRADE_REQUIRED");
+		case "unsupported": throw new LlmError(`DeepSeek model "${model}" is not supported by DeepSeek Harness; current version is ${APP_IDENTITY.version}`, "MODEL_UNSUPPORTED");
+		/* v8 ignore next 2 -- catalog resolution produces only the closed refusal union */
+		default: assertNever(refusal, "listed catalog refusal");
+	}
+}
+//#endregion
+export { Config, DEFAULT_CONTEXT_WINDOW, DEFAULT_FILES_API_TIMEOUT_MS, DEFAULT_FILE_EXPIRY_SECONDS, DEFAULT_FILE_QUOTA_CLEANUP_BATCH, DEFAULT_FILE_REFRESH_MARGIN_SECONDS, DEFAULT_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_IMAGE_OFFLOAD_COUNT_QUANTUM, DEFAULT_INLINE_IMAGE_OFFLOAD_BYTE_QUANTUM, DEFAULT_LOW_DETAIL_IMAGE_PIXEL_BUDGET, DEFAULT_MAX_IMAGES_PER_REQUEST, DEFAULT_MAX_INLINE_REQUEST_IMAGE_BYTES, DEFAULT_MAX_REQUEST_FILES_BYTES, DEFAULT_MAX_TOKENS, DEFAULT_MODELS_MAX_AGE_MS, DEFAULT_MODELS_TIMEOUT_MS, DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_STREAM_IDLE_TIMEOUT_MS, DeepSeekAdapter, DeepSeekFileId, DeepSeekFileStore, DeepSeekFilesClient, DeepSeekUploadIndex, LISTING_TIMEOUT, MAX_FILE_EXPIRY_SECONDS, MAX_FILE_UPLOAD_BYTES, MAX_IMAGE_BYTES, MAX_STORED_FILE_BYTES, MAX_STORED_FILE_COUNT, MIN_FILE_EXPIRY_SECONDS, ModelListingCache, PUBLIC_BASE_URL, REQUEST_IMAGE_MAX_DIMENSION, catalogModelFields, catalogModelInfo, deepSeekConfigFields, deepSeekFileScope, deepSeekImageRequestPricing, deepSeekImageTokens, deepSeekRequestImageDimensions, isBuiltInCatalog, modelListingConfigFields, modelListingURL, parseModelListing, plainOptions, refuseListedModel, registerDeepSeekProvider, requestModelListing, resolveAdapterOptions, resolveListedCatalog, resolveListingTiming, resolveRequestImageMaxBytes, resolveRequestImageTarget };

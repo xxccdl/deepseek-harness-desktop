@@ -6,6 +6,7 @@ export declare const zh: {
     'toggle.open': string;
     'toggle.collapse': string;
     'panels.label': string;
+    'panels.more': string;
 };
 /** The sidebar namespace key union. */
 export type SidebarKey = keyof typeof zh;
@@ -16,5 +17,6 @@ export declare const en: {
     'toggle.open': string;
     'toggle.collapse': string;
     'panels.label': string;
+    'panels.more': string;
 };
 //# sourceMappingURL=locales.d.ts.map

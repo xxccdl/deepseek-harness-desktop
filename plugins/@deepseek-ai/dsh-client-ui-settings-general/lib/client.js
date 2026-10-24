@@ -759,7 +759,7 @@ window.__ModuleLoader__.load({
 		function CurrentVersionRow({ t }) {
 			return (0, react_jsx_runtime.jsx)("div", {
 				className: CurrentVersionRow_module_css_default.row,
-				children: t("general.currentVersion", { version: "0.2.1-rc.2" })
+				children: t("general.currentVersion", { version: "0.2.1-rc.3" })
 			});
 		}
 		//#endregion
@@ -1186,7 +1186,13 @@ window.__ModuleLoader__.load({
 				locale: NS,
 				inject: () => ({
 					hooks: { developerTools: ctx.configForms.developerTools.enabled },
-					setEnabled: (enabled) => ctx.configForms.developerTools.setEnabled(enabled)
+					setEnabled: async (enabled) => {
+						const settings = ctx.configForms.get("ui-settings");
+						const previous = settings.getSnapshot().value?.enabled;
+						const timestamp = Date.now();
+						await ctx.configForms.developerTools.setEnabled(enabled);
+						if (previous !== void 0 && previous !== enabled && settings.getSnapshot().value?.enabled === enabled) ctx.get("productAnalytics")?.track("code_work_view_toggle", { is_enabled: enabled }, timestamp);
+					}
 				})
 			}, DeveloperToolsRow));
 			ctx.slots.inject("settings.general.item", () => ctx.slots.register({

@@ -382,4 +382,12 @@ export declare const IconSlidersTwoOutlineMedium: (props: IconProps) => import("
 export declare const IconMicrophoneOutlineRegular: (props: IconProps) => import("react").JSX.Element;
 /** Microphone with uniform 1.3px strokes. */
 export declare const IconMicrophoneOutlineMedium: (props: IconProps) => import("react").JSX.Element;
+/** `compact` moves the tiles 0.5px inward, for glyphs drawn at card size. */
+type AppsAddIconProps = IconProps & {
+    readonly compact?: boolean | undefined;
+};
+/** Three entry tiles and an add mark with one-pixel strokes. */
+export declare const IconAppsAddOutlineRegular: (props: AppsAddIconProps) => import("react").JSX.Element;
+/** Three entry tiles and an add mark with 1.3px strokes. */
+export declare const IconAppsAddOutlineMedium: (props: AppsAddIconProps) => import("react").JSX.Element;
 //# sourceMappingURL=index.d.ts.map

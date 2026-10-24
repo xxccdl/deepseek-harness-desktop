@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-llm",
   "description": "Provider-neutral LLM service interface for the DeepSeek Harness",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },
@@ -61,16 +61,16 @@
     "@deepseek-ai/cordis": "~4.0.5"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-util-crypto": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-util-crypto": "0.2.1-rc.3",
     "@deepseek-ai/schemastery": "~3.18.5",
     "zod": "4.4.3",
-    "@deepseek-ai/dsh-timeout": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-brand": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-util-values": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-timeout": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-brand": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-util-values": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.3"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.2.1-rc.3",
     "@deepseek-ai/cordis": "~4.0.5"
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-speech-to-text-remote",
   "description": "Remote SenseVoice HTTP transcription for browser clients",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },
@@ -22,6 +22,6 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.3"
   }
 }

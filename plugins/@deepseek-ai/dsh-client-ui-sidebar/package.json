@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-sidebar",
   "description": "Sidebar plugin: session multi-level tree, search, grouping, state dots",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },
@@ -45,21 +45,21 @@
     "@deepseek-ai/cordis": "~4.0.5"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-store": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-test-runtime": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-session": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-workspace": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-store": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-test-runtime": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-session": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.2.1-rc.3",
     "@deepseek-ai/cordis": "~4.0.5",
     "react": "^18.2.0",
     "clsx": "^2.0.0",
-    "@deepseek-ai/dsh-client-shortcuts": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-product-analytics": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-client-shortcuts": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-product-analytics": "0.2.1-rc.3"
   },
   "files": [
     "locale/*.json",

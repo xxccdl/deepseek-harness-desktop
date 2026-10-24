@@ -39,20 +39,21 @@ export interface UiWorkspace {
      */
     forkSession(sessionId: SessionId, onCreated?: (childId: SessionId) => void, options?: Pick<Parameters<ISessions['fork']>[0], 'allowMigration'>): Promise<SessionId>;
     /**
-     * Resolve the Session for a new conversation in a Workspace: the Host reuses
-     * the first listed blank member while it is reusable and otherwise creates one,
-     * under the requested preset or the Host default.
+     * Resolve the Session for a new conversation in a Workspace: navigation names the first
+     * reusable blank member, skipping blanks that list a preset other than a requested one, and
+     * the Host reuses it under the requested preset or its default, or creates another Session.
      * @param workspaceId - target Workspace.
      * @param options - choices for the created or reused Session.
      * @returns a Session already addressable through the Session Controller.
      */
     connectWorkspace(workspaceId: WorkspaceId, options?: Pick<StartSessionOptions, 'agentPreset'>): Promise<SessionId>;
     /**
-     * Create a fresh Session, or reuse a blank when preparing an explicit draft. A creation the Host
-     * refuses is shown through the Workspace notice and leaves the selection as it was.
+     * Open the Workspace blank `connectWorkspace` resolves, so New Session returns to that blank's
+     * unsent draft. A creation the Host refuses is shown through the Workspace notice and leaves the
+     * selection as it was.
      * @param workspaceId - explicit target; absent inherits the current or most recent Workspace.
-     * @param options - initial content and the reused blank's preset; existing text or attachments
-     * are preserved unless clearPreviousDraft is true.
+     * @param options - initial content, the blank's preset, and `whenDraftExists`, which decides
+     * whether existing text or attachments are kept, replaced, or followed by the prompt.
      */
     startSession(workspaceId?: WorkspaceId, options?: StartSessionOptions): void;
     /**
@@ -137,9 +138,10 @@ declare class UiWorkspaceService extends Service implements UiWorkspace {
     constructor(ctx: Context, directoryPicker: ClientRemote['directoryPicker'], workspaces: IWorkspaces, sessions: ISessions, view: Pick<WorkspaceViewStoreActions, 'pinSessionOrder'>, notify: (toast: RowToast) => void);
     connectWorkspace(workspaceId: WorkspaceId, options?: Pick<StartSessionOptions, 'agentPreset'>): Promise<SessionId>;
     /**
-     * @param reuse - preset for the reused or created blank; absent creates a fresh Session.
+     * @param reuse - preset for the reused or created blank.
      */
     private connectBlank;
+    /** Name the first reusable member blank; a requested preset also skips blanks listing another preset. */
     private createInWorkspace;
     /**
      * Create through the Host. A named blank the Host declined may still read as

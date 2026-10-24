@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice",
   "description": "Local SenseVoice ONNX transcription with a managed sherpa-onnx process",
-  "version": "0.2.1-rc.2",
+  "version": "0.2.1-rc.3",
   "publishConfig": {
     "access": "public"
   },
@@ -36,21 +36,21 @@
   "license": "MIT",
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.5",
-    "@deepseek-ai/dsh-timeout": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-timeout": "0.2.1-rc.3",
     "zod": "4.4.3",
     "sherpa-onnx-node": "1.13.8",
     "undici": "^8.10.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.3"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-subprocess-local": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-subprocess-local": "0.2.1-rc.3",
     "tsx": "^4.23.13"
   }
 }
